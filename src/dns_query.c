@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.56 2002/07/06 09:38:18 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.57 2002/07/23 18:36:11 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -55,6 +55,44 @@ static char rcsid[]="$Id: dns_query.c,v 1.56 2002/07/06 09:38:18 tmm Exp $";
 
 /* The method we use for querying other servers */
 int query_method=M_PRESET;
+
+static int set_flags_ttl(short *flags, time_t *ttl, dns_cent_t *cached, int i)
+{
+	if (cached->rr[i-T_MIN]) {
+		if (flags != NULL)
+			*flags|=cached->rr[i-T_MIN]->flags;
+		if (ttl != NULL)
+			if (*ttl<cached->rr[i-T_MIN]->ts+cached->rr[i-T_MIN]->ttl)
+				*ttl=cached->rr[i-T_MIN]->ts+cached->rr[i-T_MIN]->ttl;
+		return 1;
+	}
+	return 0;
+}
+
+static int qt_flags_ttl(short *flags, time_t *ttl, int *neg, dns_cent_t *cached, time_t queryts, int thint)
+{
+	int i, rv;
+
+	rv = 0;
+
+	if (!(rv = set_flags_ttl(flags, ttl, cached, T_CNAME))) {
+		if (thint==QT_ALL) {
+			for (i=0;i<T_NUM;i++)
+				rv = rv || set_flags_ttl(flags, ttl, cached, i);
+		} else if (thint==QT_MAILA) {
+			rv = set_flags_ttl(flags, ttl, cached, T_MD);
+			rv = rv || set_flags_ttl(flags, ttl, cached, T_MF);
+		} else if (thint==QT_MAILB) {
+			rv = set_flags_ttl(flags, ttl, cached, T_MG);
+			rv = rv || set_flags_ttl(flags, ttl, cached, T_MB);
+			rv = rv || set_flags_ttl(flags, ttl, cached, T_MR);
+		} else if (thint>=T_MIN && thint<=T_MAX) {
+			if ((rv = set_flags_ttl(flags, ttl, cached, thint)) && neg != NULL)
+				*neg=cached->rr[thint-T_MIN]->flags&CF_NEGATIVE && *ttl-queryts+CACHE_LAT>=0;
+		}
+	}
+	return (rv);
+}
 
 /*
  * Take a rr and do The Right Thing: add it to the cache list if the oname matches the owner name of the
@@ -958,6 +996,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->flags|=CF_NOAUTH;
 	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,
 		     ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
+		da_free(*ns);
 		free_cent(**ent, 1);
 		pdnsd_free(*ent);
 		pdnsd_free(st->recvbuf);
@@ -967,6 +1006,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	if (ntohs(st->recvbuf->nscount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,
 			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
+			da_free(*ns);
 			pdnsd_free(st->recvbuf);
 			free_cent(**ent, 1);
 			pdnsd_free(*ent);
@@ -977,6 +1017,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	if (ntohs(st->recvbuf->arcount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,
 			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
+			da_free(*ns);
 			pdnsd_free(st->recvbuf);
 			free_cent(**ent, 1);
 			pdnsd_free(*ent);
@@ -1009,15 +1050,29 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
 			DEBUG_MSG("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,(long)ttl);
 			if (!add_cent_rrset(*ent, st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial, 1)) {
-			    free_cent(**ent, 1);
-			    pdnsd_free(*ent);
-			    pdnsd_free(st->recvbuf);
-			    return RC_SERVFAIL;
+				da_free(*ns);
+				free_cent(**ent, 1);
+				pdnsd_free(*ent);
+				pdnsd_free(st->recvbuf);
+				return RC_SERVFAIL;
 			}
 		}
 	}
 
 	pdnsd_free(st->recvbuf);
+
+	/*
+	 * The desired record is not present, there is no further NS
+	 * record and there is no RC_NAMEERR return either, we have hit a
+	 * dead end. This indicates a misconfiguration of the name server or
+	 * an error in the NS records for the domain. Flag this as an error,
+	 * maybe we'll have more luck with another server.
+	 */
+	if (!qt_flags_ttl(NULL, NULL, NULL, *ent, 0, st->qt) && (ns == NULL || da_nel(*ns) == 0)) {
+		da_free(*ns);
+		return RC_SERVFAIL;
+	}
+
 	return RC_OK;
 }
 
@@ -1572,17 +1627,6 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	return rc;          /* Could not find a record on any server */
 } 
 
-static int set_flags_ttl(short *flags, time_t *ttl, dns_cent_t *cached, int i)
-{
-	if (cached->rr[i-T_MIN]) {
-		*flags|=cached->rr[i-T_MIN]->flags;
-		if (*ttl<cached->rr[i-T_MIN]->ts+cached->rr[i-T_MIN]->ttl)
-			*ttl=cached->rr[i-T_MIN]->ts+cached->rr[i-T_MIN]->ttl;
-		return 1;
-	}
-	return 0;
-}
-
 /*
  * Resolve records for name/rrn into dns_cent_t, type thint
  * q is the set of servers to query from. Set q to NULL if you want to ask the servers registered with pdnsd.
@@ -1622,22 +1666,7 @@ int p_dns_cached_resolve(darray q, unsigned char *name, unsigned char *rrn , dns
 						break;
 				}
 			}
-			if (!set_flags_ttl(&flags, &ttl, *cached, T_CNAME)) {
-				if (thint==QT_ALL) {
-					for (i=0;i<T_NUM;i++)
-						set_flags_ttl(&flags, &ttl, *cached, i);
-				} else if (thint==QT_MAILA) {
-					set_flags_ttl(&flags, &ttl, *cached, T_MD);
-					set_flags_ttl(&flags, &ttl, *cached, T_MF);
-				} else if (thint==QT_MAILB) {
-					set_flags_ttl(&flags, &ttl, *cached, T_MG);
-					set_flags_ttl(&flags, &ttl, *cached, T_MB);
-					set_flags_ttl(&flags, &ttl, *cached, T_MR);
-				} else if (thint>=T_MIN && thint<=T_MAX) {
-					if (set_flags_ttl(&flags, &ttl, *cached, thint))
-						neg=(*cached)->rr[thint-T_MIN]->flags&CF_NEGATIVE && ttl-queryts+CACHE_LAT>=0;
-				}
-			}
+			qt_flags_ttl(&flags, &ttl, &neg, *cached, queryts, thint);
 			if (thint>=QT_MIN && thint<=QT_MAX  && !auth)
 				need_req=!(flags&CF_LOCAL);
 			else {
