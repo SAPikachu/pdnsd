@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.6 2000/06/23 17:35:13 thomas Exp $ */
+/* $Id: ipvers.h,v 1.7 2000/06/23 18:07:49 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -49,6 +49,57 @@ struct in_pktinfo
 	struct in_addr	ipi_spec_dst;
 	struct in_addr	ipi_addr;
 };
+#endif
+
+#if TARGET==TARGET_LINUX
+/* some older glibc versions seem to lack this. */
+# ifndef IP_PKTINFO
+#  define IP_PKTINFO 8
+# endif
+# ifndef CMSG_LEN
+/* ---- from glibc 2.1.2 */
+
+/* Ancillary data object manipulation macros.  */
+#  if !defined __STRICT_ANSI__ && defined __GNUC__ && __GNUC__ >= 2
+#   define CMSG_DATA(cmsg) ((cmsg)->__cmsg_data)
+#  else
+#   define CMSG_DATA(cmsg) ((unsigned char *) ((struct cmsghdr *) (cmsg) + 1))
+#  endif
+#  define CMSG_NXTHDR(mhdr, cmsg) __cmsg_nxthdr (mhdr, cmsg)
+#  define CMSG_FIRSTHDR(mhdr) \
+  ((size_t) (mhdr)->msg_controllen >= sizeof (struct cmsghdr)		      \
+   ? (struct cmsghdr *) (mhdr)->msg_control : (struct cmsghdr *) NULL)
+#  define CMSG_ALIGN(len) (((len) + sizeof (size_t) - 1) \
+			 & ~(sizeof (size_t) - 1))
+#  define CMSG_SPACE(len) (CMSG_ALIGN (len) \
+			 + CMSG_ALIGN (sizeof (struct cmsghdr)))
+#  define CMSG_LEN(len)   (CMSG_ALIGN (sizeof (struct cmsghdr)) + (len))
+extern struct cmsghdr *__cmsg_nxthdr __P ((struct msghdr *__mhdr,
+					   struct cmsghdr *__cmsg));
+#  ifdef __USE_EXTERN_INLINES
+#   ifndef _EXTERN_INLINE
+#    define _EXTERN_INLINE extern __inline
+#   endif
+_EXTERN_INLINE struct cmsghdr *
+__cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
+{
+  if ((size_t) __cmsg->cmsg_len < sizeof (struct cmsghdr))
+    /* The kernel header does this so there may be a reason.  */
+    return 0;
+
+  __cmsg = (struct cmsghdr *) ((unsigned char *) __cmsg
+			       + CMSG_ALIGN (__cmsg->cmsg_len));
+  if ((unsigned char *) (__cmsg + 1) >= ((unsigned char *) __mhdr->msg_control
+					 + __mhdr->msg_controllen)
+      || ((unsigned char *) __cmsg + CMSG_ALIGN (__cmsg->cmsg_len)
+	  >= ((unsigned char *) __mhdr->msg_control + __mhdr->msg_controllen)))
+    /* No more entries.  */
+    return 0;
+  return __cmsg;
+}
+#  endif	/* Use `extern inline'.  */
+/* ---- */
+# endif
 #endif
 
 #if defined(ENABLE_IPV4) && !defined(SIN_LEN) && (TARGET==TARGET_BSD)

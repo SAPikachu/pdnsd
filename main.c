@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.8 2000/06/22 22:42:02 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.9 2000/06/23 18:07:49 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -356,5 +356,5 @@ int main(int argc,char *argv[])
 	if (debug_p && daemon_p)
 		fclose(dbg);
 #endif
-	return 0;
+	_exit(0);
 }

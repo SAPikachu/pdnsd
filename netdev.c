@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.7 2000/06/06 21:20:52 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.8 2000/06/23 18:07:49 thomas Exp $";
 #endif
 
 /*
@@ -107,7 +107,7 @@ int if_up(char *devname)
 		return statusif(devname);
 #  else
 		if (isdn_errs==0) {
-			log_warn("An ippp? device specified for uptest, but pdnsd was compiled without ISDN support.");
+			log_warn("An ippp? device was specified for uptest, but pdnsd was compiled without ISDN support.");
 			log_warn("The uptest result will be wrong.");
 			isdn_errs++;
 		}
