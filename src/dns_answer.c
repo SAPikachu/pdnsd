@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.55 2002/01/01 23:54:49 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.56 2002/01/02 17:07:04 tmm Exp $";
 #endif
 
 /*
@@ -312,7 +312,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		*sz+=blen;
 		break;
 	case T_NXT:
-		if (!(blen=compress_name(((unsigned char *)(rr+1))+6, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
+		if (!(blen=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			pdnsd_free(*ans);
 			return 0;
 		}
@@ -330,7 +330,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		ilen=4;
 		for (j=0;j<3;j++) {
 			k=*(((unsigned char *)(rr+1))+ilen);
-			memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,k);
+			memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,k+1);
 			(*sz)+=k+1;
 			ilen+=k+1;
 		}
@@ -387,7 +387,8 @@ typedef struct rre_s {
 static int add_ar(void *tnm, int tsz, darray *ar, unsigned char *nm, time_t ts, time_t ttl, int flags, int tp)
 {
 	rr_ext_t *re;
-	
+
+	PDNSD_ASSERT(tsz <= 256, "add_ar: tsz botch");
 	if ((*ar=da_grow(*ar,1))==NULL) {
 		return 0;
 	}

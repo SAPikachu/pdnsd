@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.24 2001/06/12 22:37:32 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.25 2002/01/02 17:07:04 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -148,6 +148,7 @@ static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg
 	memcpy(&iph,errmsg,sizeof(iph));
 	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+sizeof(eiph))
 		return 0;
+	PDNSD_ASSERT(sizeof(icmph) <= ICMP_BASEHDR_LEN, "icmp4_errcmp: ICMP_BASEHDR_LEN botched");
 	memcpy(&icmph,errmsg+iph.ip_hl*4,ICMP_BASEHDR_LEN);
 	memcpy(&eiph,errmsg+iph.ip_hl*4+ICMP_BASEHDR_LEN,sizeof(eiph));
 	if (elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+eiph.ip_hl*4+8)
