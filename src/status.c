@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.16 2001/02/25 00:56:26 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.17 2001/02/25 18:23:14 tmm Exp $";
 #endif
 
 char sock_path[99];
@@ -118,6 +118,7 @@ void *status_thread (void *p)
 	char owner[256];
 	long ttl;
 	dns_cent_t cent;
+	short pri;
 
 	THREAD_SIGINIT;
 
@@ -305,6 +306,20 @@ void *status_thread (void *p)
 						break;
 					}
 					sz=strlen(dbuf)+1;;
+					break;
+				case T_MX:
+					if (read(rs,dbuf,sizeof(short))<sizeof(short)) {
+						print_serr(rs,"Bad arg.");
+					}
+					if (!fsgets(rs,owner,256)) {
+						print_serr(rs,"Bad domain name.");
+						break;
+					}
+					if (!str2rhn((unsigned char *)owner,(unsigned char *)dbuf+2)) {
+						print_serr(rs,"Bad domain name.");
+						break;
+					}
+					sz=strlen(dbuf+2)+3;;
 					break;
 				default:
 					print_serr(rs,"Bad arg.");

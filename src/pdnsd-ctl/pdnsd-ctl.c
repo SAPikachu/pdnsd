@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.7 2001/02/25 01:29:47 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.8 2001/02/25 18:23:17 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -53,9 +53,9 @@ cmd_s server_cmds[4]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETES
 cmd_s record_cmds[4]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
 cmd_s onoff_cmds[3]= {{"off",0},{"on",1},{NULL,0}};
 #ifdef ENABLE_IPV6
-cmd_s rectype_cmds[5]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{NULL,0}};
+cmd_s rectype_cmds[5]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #else
-cmd_s rectype_cmds[4]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{NULL,0}};
+cmd_s rectype_cmds[4]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #endif
 
 void print_version(void)
@@ -69,7 +69,7 @@ void print_help(void)
 
 	printf("Command line options\n");
 
-	printf("\t-c cachedir\n\tset the cache directory to cachedir (must match pdnsd setting)\n");
+	printf("-c\tcachedir\n\tset the cache directory to cachedir (must match pdnsd setting)\n");
 
 	printf("Commands and needed options are:\n");
 
@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
 				read(pf,errmsg,255);
 			break;
 		case CTL_ADD:
-			if (argc<4 || argc>5) {
+			if (argc<4 || argc>6) {
 				print_help();
 				exit(2);
 			}
@@ -312,8 +312,9 @@ int main(int argc, char *argv[])
 			send_short(cmd,pf);
 			send_string(pf,argv[3]);
 			ttl=900;
-			if (argc==5) {
-				if (sscanf(argv[4],"%li",&ttl)!=1) {
+			if ((cmd!=T_MX && argc==5) || (cmd==T_MX && argc==6)) {
+				tp = cmd==T_MX?5:3;
+				if (sscanf(argv[tp],"%li",&ttl)!=1) {
 					printf("Bad argument for add\n");
 					exit(2);
 				}
@@ -322,6 +323,10 @@ int main(int argc, char *argv[])
 
 			switch (cmd) {
 			case T_A:
+				if (argc>5) {
+					printf("Too many arguments\n");
+					exit(2);
+				}
 				if (!inet_aton(argv[2],&ina4)) {
 					printf("Bad IP for add a option\n");
 					exit(2);
@@ -330,6 +335,10 @@ int main(int argc, char *argv[])
 				break;
 #ifdef ENABLE_IPV6
 			case T_AAAA:
+				if (argc>5) {
+					printf("Too many arguments\n");
+					exit(2);
+				}
 				if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
 					printf("Bad IP (v6) for add aaaa option\n");
 					exit(2);
@@ -339,6 +348,22 @@ int main(int argc, char *argv[])
 #endif
 			case T_PTR:
 			case T_CNAME:
+				if (argc>5) {
+					printf("Too many arguments\n");
+					exit(2);
+				}
+				send_string(pf,argv[2]);
+				break;
+			case T_MX:
+				if (argc<5) {
+					printf("Too few arguments\n");
+					exit(2);
+				}
+				if (sscanf(argv[4], "%hd", &tp)!=1) {
+					printf("Bad number.\n");
+					exit(2);
+				}
+				send_short(tp,pf);
 				send_string(pf,argv[2]);
 				break;
 			}

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.22 2001/02/25 00:56:25 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.23 2001/02/25 18:23:13 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -146,6 +146,7 @@ unsigned char *nm;
 
 %token <num> A
 %token <num> PTR
+%token <num> MX
 %token <num> SOA
 %token <num> NAME
 %token <num> OWNER
@@ -690,6 +691,41 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+1,c_ptr,T_PTR);
+			}
+		| MX '=' STRING ',' NUMBER ';'
+			{
+				if (strlen((char *)c_owner)==0 || strlen((char *)c_name)==0) {
+					yyerror("you must specify owner and name before mx records.");
+					YYERROR;
+				}
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
+				if (!str2rhn($3,c_ptr)) {
+					yyerror("bad domain name - must end in root domain.");
+					YYERROR;
+				}
+				memset(buf,0,532);
+				*((short *)buf)=htons($5);
+				memcpy(buf+2,c_ptr,strlen((char *)c_ptr)+1);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+3,buf,T_MX);
+			}
+		| CNAME '=' STRING ';'
+			{
+				if (strlen((char *)c_owner)==0 || strlen((char *)c_name)==0) {
+					yyerror("you must specify owner and name before cname records.");
+					YYERROR;
+				}
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
+				if (!str2rhn($3,c_ptr)) {
+					yyerror("bad domain name - must end in root domain.");
+					YYERROR;
+				}
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+1,c_ptr,T_CNAME);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
 			{

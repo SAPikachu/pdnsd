@@ -1,10 +1,10 @@
-# $Id: Makefile.am,v 1.17 2001/02/25 00:56:22 tmm Exp $
+# $Id: Makefile.am,v 1.18 2001/02/25 18:23:10 tmm Exp $
 
 SUBDIRS = src doc
 #GZIP_ENV=
 
 EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
-file-list.base.in ChangeLog.old contrib/update_pdnsd.pl contrib/README
+file-list.base.in ChangeLog.old contrib/pdnsd_update.pl contrib/README
 
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
