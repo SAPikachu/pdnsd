@@ -117,7 +117,7 @@ void add_dns_hash(dns_hash_t *hash,unsigned char *key, dns_cent_t *data)
 {
 	int idx=dns_shash(key);
 	dns_hash_ent_t *he;
-	he=calloc(sizeof(dns_hash_ent_t),1);
+	he=calloc(1,sizeof(dns_hash_ent_t));
 	if (!he) {
 		log_error("Out of memory.");
 		pdnsd_exit();

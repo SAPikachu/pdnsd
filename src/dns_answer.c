@@ -628,7 +628,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	std_query_t temp_q;
 
 	ar=NULL;
-	ans=(dns_hdr_t *)pdnsd_calloc(sizeof(dns_hdr_t),1);
+	ans=(dns_hdr_t *)pdnsd_calloc(1,sizeof(dns_hdr_t));
 	if (!ans)
 		return NULL;
 	ans->id=hdr->id;
@@ -888,7 +888,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	int res;
 	dns_hdr_t *hdr;
 	dns_queryel_array q;
-	dns_hdr_t *resp=(dns_hdr_t *)pdnsd_calloc(sizeof(dns_hdr_t),1);
+	dns_hdr_t *resp=(dns_hdr_t *)pdnsd_calloc(1,sizeof(dns_hdr_t));
 	dns_hdr_t *ans;
 	
 
@@ -1003,9 +1003,6 @@ void *udp_answer_thread(void *data)
 	unsigned char *resp;
 	socklen_t sl;
 	int tmp,i,thrid;
-#ifdef ENABLE_IPV6
-	char buf[ADDRSTR_MAXLEN];
-#endif
 	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
 
@@ -1081,17 +1078,23 @@ void *udp_answer_thread(void *data)
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.ai4,sizeof(struct in_addr));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_addr));
 #  endif
-# endif		
-		DEBUG_MSG("Answering to: %s", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
-# if defined(SRC_ADDR_DISC)
-#  if TARGET==TARGET_LINUX
-		DEBUG_MSGC(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
-#  else
-		DEBUG_MSGC(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.ai4));
-#  endif
-# else
-		DEBUG_MSGC("\n");
 # endif
+# if DEBUG>0
+		{
+			char buf[ADDRSTR_MAXLEN];
+
+			DEBUG_MSG("Answering to: %s", inet_ntop(AF_INET,&((udp_buf_t *)data)->addr.sin4.sin_addr,buf,ADDRSTR_MAXLEN));
+#  if defined(SRC_ADDR_DISC)
+#   if TARGET==TARGET_LINUX
+			DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET,&((udp_buf_t *)data)->pi.pi4.ipi_spec_dst,buf,ADDRSTR_MAXLEN));
+#   else
+			DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET,&((udp_buf_t *)data)->pi.ai4,buf,ADDRSTR_MAXLEN));
+#   endif
+#  else
+			DEBUG_MSGC("\n");
+#  endif
+		}
+# endif /* DEBUG */
 	}
 #endif
 #ifdef ENABLE_IPV6
@@ -1107,13 +1110,18 @@ void *udp_answer_thread(void *data)
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.pi6,sizeof(struct in6_pktinfo));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in6_pktinfo));
 # endif
+# if DEBUG>0
+		{
+			char buf[ADDRSTR_MAXLEN];
 
-		DEBUG_MSG("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
-# if defined(SRC_ADDR_DISC)
-		DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
-# else
-		DEBUG_MSGC("\n");
-# endif
+			DEBUG_MSG("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
+#  if defined(SRC_ADDR_DISC)
+			DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
+#  else
+			DEBUG_MSGC("\n");
+#  endif
+		}
+# endif /* DEBUG */
 	}
 #endif
 	
@@ -1289,7 +1297,7 @@ void *udp_server_thread(void *dummy)
 #endif
 
 	while (1) {
-		if (!(buf=(udp_buf_t *)pdnsd_calloc(sizeof(udp_buf_t),1))) {
+		if (!(buf=(udp_buf_t *)pdnsd_calloc(1,sizeof(udp_buf_t)))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");
@@ -1539,7 +1547,7 @@ void *tcp_answer_thread(void *csock)
 			log_error("TCP zero size query received.\n");
 			pthread_exit(NULL);
 		}
-		buf=(unsigned char *)pdnsd_calloc(sizeof(unsigned char),rlen);
+		buf=(unsigned char *)pdnsd_calloc(rlen,sizeof(unsigned char));
 		if (!buf) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
@@ -1720,7 +1728,7 @@ void *tcp_server_thread(void *p)
 	}
 	
 	while (1) {
-		if (!(csock=(int *)pdnsd_calloc(sizeof(int),1))) {
+		if (!(csock=(int *)pdnsd_calloc(1,sizeof(int)))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");

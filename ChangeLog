@@ -1,3 +1,20 @@
+2003-07-04  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.c,src/dns_answer.c,src/dns_query.c
+	Elimated the use of inet_ntoa() in favor of the more modern inet_ntop().
+	inet_ntop() makes more sense in threaded code and is also recommended in
+	the glibc info pages.
+	
+
+2003-07-03  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Fixed an allocation size error (not mine) in p_exec_query().
+	The erroneous size is almost always larger than necessary, so in practice this bug
+	just wastes memory. But there is also a possibilty that the allocated buffer is too
+	small, which would mean trouble.
+	Also fixed two memory leaks on some of the error paths in p_exec_query().
+
 2003-06-28  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* acconfig.h,configure.in,src/thread.h

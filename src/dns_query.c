@@ -526,9 +526,6 @@ static int p_query_sm(query_stat_t *st)
 {
 	struct protoent *pe;
 	int rv;
-#if DEBUG>0
-	char buf[ADDRSTR_MAXLEN];
-#endif
 
 	switch (st->nstate){
 		/* TCP query code */
@@ -585,7 +582,7 @@ static int p_query_sm(query_stat_t *st)
 				/* Since immediate connect() errors does not cost any time, we do not try to switch the
 				 * server status to offline */
 				close(st->sock);
-				DEBUG_MSG("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				DEBUG_SOCKA_MSG("Error while connecting to %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 				st->nstate=QSN_DONE;
 				return RC_SERVFAIL; /* mock error code */
 			}
@@ -596,28 +593,31 @@ static int p_query_sm(query_stat_t *st)
 		fcntl(st->sock,F_SETFL,0); /* reset O_NONBLOCK */
 		/* Since we selected/polled, writeability should be no problem. If connect worked instantly,
 		 * the buffer is empty and there is also no problem. */
-		if (write_all(st->sock,&st->transl,sizeof(st->transl))==-1) {
-			if (errno==ECONNREFUSED || errno==EPIPE) {
-				st->s_errno=errno;
-				/* This error may be delayed from connect() */
-				close(st->sock);
-				st->nstate=QSN_DONE;
-				return RC_TCPREFUSED;
-			} else {
-				close(st->sock);
-				DEBUG_MSG("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
+		{
+			unsigned short transl_net=htons(st->transl);
+			if (write_all(st->sock,&transl_net,sizeof(transl_net))==-1) {
+				if (errno==ECONNREFUSED || errno==EPIPE) {
+					st->s_errno=errno;
+					/* This error may be delayed from connect() */
+					close(st->sock);
+					st->nstate=QSN_DONE;
+					return RC_TCPREFUSED;
+				} else {
+					close(st->sock);
+					DEBUG_SOCKA_MSG("Error while sending data to %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
+					st->nstate=QSN_DONE;
+					return RC_SERVFAIL; /* mock error code */
+				}
 			}
 		}
 		st->nstate=QSN_TCPLWRITTEN;
 		st->event=QEV_WRITE;
 		return -1;
 	case QSN_TCPLWRITTEN:
-		if (write_all(st->sock,st->hdr,ntohs(st->transl))==-1) {
+		if (write_all(st->sock,st->hdr,st->transl)==-1) {
 			st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while sending data to %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -628,7 +628,7 @@ static int p_query_sm(query_stat_t *st)
 		if ((rv=read(st->sock,&st->recvl,sizeof(st->recvl)))!=sizeof(st->recvl)) {
 			if(rv==-1) st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -646,7 +646,7 @@ static int p_query_sm(query_stat_t *st)
 		if ((rv=read(st->sock,st->recvbuf,st->recvl))!=st->recvl) {
 			if(rv==-1) st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -692,7 +692,7 @@ static int p_query_sm(query_stat_t *st)
 		if (connect(st->sock,st->sin,SIN_LEN)==-1) {
 			st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while connecting to %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -700,10 +700,10 @@ static int p_query_sm(query_stat_t *st)
 		/* transmit query by udp*/
 		/* send will hopefully not block on a freshly opened socket (the buffer
 		 * must be empty) */
-		if (send(st->sock,st->hdr,ntohs(st->transl),0)==-1) {
+		if (send(st->sock,st->hdr,st->transl,0)==-1) {
 			st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while sending data to %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -720,7 +720,7 @@ static int p_query_sm(query_stat_t *st)
 		if ((rv=recv(st->sock,st->recvbuf,512,0))==-1) {
 			st->s_errno=errno;
 			close(st->sock);
-			DEBUG_MSG("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
@@ -771,9 +771,6 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	unsigned char *soa;
 #endif
 	unsigned char nbuf[256];
-#if DEBUG>0
-	char buf[ADDRSTR_MAXLEN];
-#endif
 	std_query_t temp_q;
 #ifdef notdef
 	soa_r_t soa_r;
@@ -784,7 +781,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->sin=SIN_ADDR(st);
 		if (!st->lean_query)
 			st->qt=QT_ALL;
-		st->transl=htons(sizeof(dns_hdr_t)+rhnlen(rrn)+4);
+		st->transl=sizeof(dns_hdr_t)+rhnlen(rrn)+4;
 		st->hdr=(dns_hdr_t *)pdnsd_calloc(st->transl,1);
 		if (!st->hdr) {
 			st->state=QS_DONE;
@@ -828,12 +825,12 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 				st->nstate=QSN_UDPINITIAL;
 				st->myrid=get_rand16();
 				st->hdr->id=htons(st->myrid);
-				DEBUG_MSG("TCP connection refused by %s. Trying to use UDP.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				DEBUG_SOCKA_MSG("TCP connection refused by %s. Trying to use UDP.\n", SOCKA2STR(st->sin));
 				return -1;
 			}
 			pdnsd_free(st->hdr);
 			st->state=QS_DONE;
-			DEBUG_MSG("TCP connection refused by %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+			DEBUG_SOCKA_MSG("TCP connection refused by %s\n", SOCKA2STR(st->sin));
 			return RC_SERVFAIL;
 		} else if (rv==-1) {
 			return -1;
@@ -859,10 +856,10 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			/*close(st->sock);*/
 			st->state=QS_DONE;
 			if (rv!=RC_OK) {
-				DEBUG_MSG("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(rv));
+				DEBUG_SOCKA_MSG("Server %s returned error code: %s\n", SOCKA2STR(st->sin),get_ename(rv));
 				return rv;
 			}
-			DEBUG_MSG("Server %s returned invalid answer\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+			DEBUG_SOCKA_MSG("Server %s returned invalid answer\n", SOCKA2STR(st->sin));
 			return RC_SERVFAIL; /* mock error code */
 		}
 
@@ -874,10 +871,10 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 				st->hdr->rd=0;
 				st->myrid=get_rand16();
 				st->hdr->id=htons(st->myrid);
-				DEBUG_MSG("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				DEBUG_SOCKA_MSG("Server %s does not support recursive query. Querying nonrecursive.\n", SOCKA2STR(st->sin));
 				return -1;
 			} else {
-				pdnsd_free(st->hdr);
+				/* pdnsd_free(st->hdr); */
 				st->state=QS_DONE;
 				return RC_SERVFAIL;
 			}
@@ -903,72 +900,72 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	lcnt-=sizeof(dns_hdr_t);
 	if (ntohs(st->recvbuf->qdcount)!=1) {
-		pdnsd_free(st->recvbuf);
 		DEBUG_MSG("Bad number of query records in answer.\n");
-		return RC_SERVFAIL;
+		rv=RC_SERVFAIL;
+		goto free_recvbuf_return;
 	}
 	/* check & skip the query record. We can ignore undersocres here, because they will be
 	 * detected in the name comparison */
-	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, &dummy))!=RC_OK)
-		return rv==RC_TRUNC?RC_FORMAT:rv;
+	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, &dummy))!=RC_OK) {
+		if(rv==RC_TRUNC) rv=RC_FORMAT;
+		goto free_recvbuf_return;
+	}
 
 	i=0;
 	while(1) {
 		j=nbuf[i];
 		if (nbuf[i]!=rrn[i]) {
-			pdnsd_free(st->recvbuf);
 			DEBUG_MSG("Answer does not match query.\n");
-			return RC_SERVFAIL;
+			rv=RC_SERVFAIL;
+			goto free_recvbuf_return;
 		}
 		if (!j) 
 			break;
 		i++;
 		for (;j>0;j--) {
 			if (tolower(nbuf[i])!=tolower(rrn[i])) {
-				pdnsd_free(st->recvbuf);
 				DEBUG_MSG("Answer does not match query.\n");
-				return RC_SERVFAIL;
+				rv=RC_SERVFAIL;
+				goto free_recvbuf_return;
 			}
 			i++;
 		}		
 	}
 	
 	if (lcnt<4) {
-		pdnsd_free(st->recvbuf);
-		return RC_SERVFAIL; /* mock error code */
+		rv=RC_SERVFAIL; /* mock error code */
+		goto free_recvbuf_return;
 	}
 	rrp+=4; /* two shorts (qtype and qclass);*/
 	lcnt-=4;
 	/* second: evaluate the results (by putting them in a dns_cent_t */
-	*ent=(dns_cent_t *)pdnsd_calloc(sizeof(dns_cent_t),1);
+	*ent=(dns_cent_t *)pdnsd_calloc(1,sizeof(dns_cent_t));
 	if (!*ent) {
-		pdnsd_free(st->recvbuf);
-		return RC_SERVFAIL; /* mock error code */
+		rv=RC_SERVFAIL; /* mock error code */
+		goto free_recvbuf_return;
 	}
 
 	/* negative cacheing for domains */
 	if (st->recvbuf->rcode==RC_NAMEERR) {
-		DEBUG_MSG("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(st->recvbuf->rcode));
+		DEBUG_SOCKA_MSG("Server %s returned error code: %s\n", SOCKA2STR(st->sin),get_ename(st->recvbuf->rcode));
 		/* We did not get what we wanted. Cache according to policy */
 		if (global.neg_domain_pol==C_ON || (global.neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
 			DEBUG_MSG("Cacheing domain %s negative\n",name);
 			if (!init_cent(*ent,name, DF_NEGATIVE, queryts, global.neg_ttl, 1)) {
-				pdnsd_free(*ent);
-				return RC_SERVFAIL; /* mock error code */
+				rv=RC_SERVFAIL; /* mock error code */
+				goto free_ent_recvbuf_return;
 			}
-			pdnsd_free(st->recvbuf);
-			return RC_OK;
+			rv=RC_OK;
+			goto free_recvbuf_return;
 		} else {
-			pdnsd_free(*ent);
-			pdnsd_free(st->recvbuf);
-			return RC_NAMEERR;
+			rv=RC_NAMEERR;
+			goto free_ent_recvbuf_return;
 		}
 	}
 
 	if (!init_cent(*ent,name, 0, queryts, 0, 1)) {
-		pdnsd_free(*ent);
-		pdnsd_free(st->recvbuf);
-		return RC_SERVFAIL; /* mock error code */
+		rv=RC_SERVFAIL; /* mock error code */
+		goto free_ent_recvbuf_return;
 	}
 
 	/* By marking aa, we mean authoritative AND complete. */
@@ -980,32 +977,23 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->flags|=CF_NOAUTH;
 	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,
 		     ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
-		da_free(*ns);
-		free_cent(**ent, 1);
-		pdnsd_free(*ent);
-		pdnsd_free(st->recvbuf);
-		return RC_SERVFAIL;
+		rv=RC_SERVFAIL;
+		goto free_ns_ent_recvbuf_return;
 	}
 
 	if (ntohs(st->recvbuf->nscount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,
 			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
-			da_free(*ns);
-			pdnsd_free(st->recvbuf);
-			free_cent(**ent, 1);
-			pdnsd_free(*ent);
-			return RC_SERVFAIL;
+			rv=RC_SERVFAIL;
+			goto free_ns_ent_recvbuf_return;
 		}
 	}
 	
 	if (ntohs(st->recvbuf->arcount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,
 			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
-			da_free(*ns);
-			pdnsd_free(st->recvbuf);
-			free_cent(**ent, 1);
-			pdnsd_free(*ent);
-			return RC_SERVFAIL;
+			rv=RC_SERVFAIL;
+			goto free_ns_ent_recvbuf_return;
 		}
 	}
 
@@ -1034,17 +1022,22 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
 			DEBUG_MSG("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,(long)ttl);
 			if (!add_cent_rrset(*ent, st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial, 1)) {
-				da_free(*ns);
-				free_cent(**ent, 1);
-				pdnsd_free(*ent);
-				pdnsd_free(st->recvbuf);
-				return RC_SERVFAIL;
+				rv=RC_SERVFAIL;
+				goto free_ns_ent_recvbuf_return;
 			}
 		}
 	}
+	rv=RC_OK;
+	goto free_recvbuf_return;
 
+ free_ns_ent_recvbuf_return:
+	da_free(*ns); *ns=NULL;
+	free_cent(**ent, 1);
+ free_ent_recvbuf_return:
+	pdnsd_free(*ent);
+ free_recvbuf_return:
 	pdnsd_free(st->recvbuf);
-	return RC_OK;
+	return rv;
 }
 
 /*
@@ -1146,31 +1139,17 @@ inline static void del_qserv(query_stat_array q)
  */
 static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned char *name, dns_cent_t **ent, int *nocache, int hops, int thint)
 {
-	int aa_needed;
-	pdnsd_a serva;
 	int aa=0;
-	int i,j,k,ad,mc,qo,done,nons,pc,srv,auth_sv;
+	int i,j,k,ad,qo,done,nons,auth_sv;
 	int rv=0;
-	dns_cent_t *nent,*servent;
-	query_stat_array serv;
-	query_stat_t *qs, *qse;
-	unsigned char nsbuf[256],nsname[256];
+	query_stat_t *qse;
 	unsigned long serial=get_serial();
 	nsr_array ns=NULL;
 	time_t ts;
-	long maxto;
 #ifdef ENABLE_IPV6
 	struct in_addr ina;
 #endif
-#ifdef DEBUG
-	char buf[ADDRSTR_MAXLEN];
-#endif
-#ifdef NO_POLL
-	fd_set              reads;
-	fd_set              writes;
-	struct timeval      tv;
-	int                 maxfd;
-#else
+#ifndef NO_POLL
 	struct pollfd       *polls;
 #endif
 
@@ -1183,7 +1162,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 	}
 #endif
 	for (j=0;j<ad;j++) {
-		mc=DA_NEL(q)-j*global.par_queries;
+		int mc=DA_NEL(q)-j*global.par_queries;
 		if (mc>global.par_queries)
 			mc=global.par_queries;
 		/* First, call p_exec_query once for each parallel set to initialize.
@@ -1193,7 +1172,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 		for (i=0;i<mc;i++) {
 			/* The below should not happen any more, but may once again
 			 * (immediate success) */
-			qs=&DA_INDEX(q,global.par_queries*j+i);
+			query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
 			rv=p_exec_query(ent, rrn, name, &aa, qs,&ns,serial);
 			if (rv==RC_OK || rv==RC_NAMEERR) {
 				for (k=0;k<mc;k++) {
@@ -1203,7 +1182,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 					qse=qs;
 					auth_sv=qs->auth_serv;
 					*nocache=qs->nocache;
-					DEBUG_MSG("Query to %s succeeded.\n",socka2str(qs->sin,buf,ADDRSTR_MAXLEN));
+					DEBUG_SOCKA_MSG("Query to %s succeeded.\n",SOCKA2STR(qs->sin));
 				}
 				done=1;
 				break;
@@ -1216,6 +1195,14 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 			 * the returned times are not always to be trusted upon */
 			ts=time(NULL);
 			do {
+				int pc,srv;
+				long maxto;
+#ifdef NO_POLL
+				fd_set              reads;
+				fd_set              writes;
+				struct timeval      tv;
+				int                 maxfd;
+#endif
 				/* build poll/select sets, maintain time. 
 				 * If you do parallel queries, the highest timeout may be honored
 				 * also for the other servers when their timeout is exceeded and
@@ -1231,7 +1218,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 				FD_ZERO(&writes);
 				maxfd=0;
 				for (i=0;i<mc;i++) {
-					qs=&DA_INDEX(q,global.par_queries*j+i);
+					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
 					if (qs->state!=QS_DONE) {
 						if (qs->timeout>maxto)
 							maxto=qs->timeout;
@@ -1260,7 +1247,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 				srv=select(maxfd+1,&reads,&writes,NULL,&tv);
 # else
 				for (i=0;i<mc;i++) {
-					qs=&DA_INDEX(q,global.par_queries*j+i);
+					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
 					if (qs->state!=QS_DONE) {
 						if (qs->timeout>maxto)
 							maxto=qs->timeout;
@@ -1297,7 +1284,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 				
 				qo=1;
 				for (i=0;i<mc;i++) {
-					qs=&DA_INDEX(q,global.par_queries*j+i);
+					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
 					/* Check if we got a poll/select event, or whether we are timed out */
 					if (qs->state!=QS_DONE) {
 						if (srv==0 || time(NULL)-ts>=qs->timeout) {
@@ -1349,8 +1336,8 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 										qse=qs;
 										auth_sv=qs->auth_serv;
 										*nocache=qs->nocache;
-										DEBUG_MSG("Query to %s succeeded.\n",
-										    socka2str(qs->sin,buf,ADDRSTR_MAXLEN));
+										DEBUG_SOCKA_MSG("Query to %s succeeded.\n",
+										    SOCKA2STR(qs->sin));
 									}
 									done=1;
 									break;
@@ -1382,16 +1369,13 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 	 * Look into the query type hint. If it is a wildcard (QT_*), we need an authoritative answer.
 	 * Same if there is no record that answers the query. Mark the cache record if it is not an aa.
 	 */
-	aa_needed=0;
-	if (thint>=QT_MIN && thint<=QT_MAX)
-		aa_needed=1;
-	else if (thint>=T_MIN && thint<=T_MAX) {
-		/* This test will also succeed if we have a negative cached record. This is purposely. */
-		if (!(*ent)->rr[thint-T_MIN] && !(*ent)->rr[T_CNAME-T_MIN])
-			aa_needed=1;
-	}
+
+	/* This test will also succeed if we have a negative cached record. This is purposely. */
+#define aa_needed ((thint>=QT_MIN && thint<=QT_MAX) || \
+	           ((thint>=T_MIN && thint<=T_MAX) && (!(*ent)->rr[thint-T_MIN] && !(*ent)->rr[T_CNAME-T_MIN])))
 
 	if (ns && DA_NEL(ns)>0 && !aa && aa_needed && auth_sv) {
+		query_stat_array serv;
 		init_qserv(&serv);
 		/* Authority records present. Ask them, because the answer was non-authoritative. To do so, we first put 
 		 * the Authority and the additional section into a dns_cent_t and look for name servers in the Authority 
@@ -1399,6 +1383,8 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 		 * resolve the name servers.*/
 		if (hops>=0) {
 			for (j=0;j<DA_NEL(ns);j++) {
+				pdnsd_a serva;
+				unsigned char nsbuf[256],nsname[256];
 				nsr_t *nsr=&DA_INDEX(ns,j);
 				
 				if (global.paranoid) {
@@ -1423,31 +1409,34 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 				if (run_ipv6)
 					serva.ipv6=in6addr_any;
 #endif
+				{
+					dns_cent_t *servent;
 
-				if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
+					if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
 #ifdef ENABLE_IPV4
-					if (run_ipv4) {
-						if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs)
-							memcpy(&serva.ipv4,(unsigned char *)(servent->rr[T_A-T_MIN]->rrs+1),sizeof(serva.ipv4));
-					}
+						if (run_ipv4) {
+							if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs)
+								memcpy(&serva.ipv4,(unsigned char *)(servent->rr[T_A-T_MIN]->rrs+1),sizeof(serva.ipv4));
+						}
 #endif
 #ifdef ENABLE_IPV6
-					if (run_ipv6) {
+						if (run_ipv6) {
 # ifdef DNS_NEW_RRS
-						if (servent->rr[T_AAAA-T_MIN] && servent->rr[T_AAAA-T_MIN]->rrs)
-							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
-						else
+							if (servent->rr[T_AAAA-T_MIN] && servent->rr[T_AAAA-T_MIN]->rrs)
+								memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
+							else
 # endif
-							if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs) {
-								/* XXX: memcpy for alpha (unaligned access) */
-								memcpy(&ina,servent->rr[T_A-T_MIN]->rrs+1,sizeof(ina));
-								IPV6_MAPIPV4(&ina,&serva.ipv6);
-							}
+								if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs) {
+									/* XXX: memcpy for alpha (unaligned access) */
+									memcpy(&ina,servent->rr[T_A-T_MIN]->rrs+1,sizeof(ina));
+									IPV6_MAPIPV4(&ina,&serva.ipv6);
+								}
 						
-					}
+						}
 #endif
-					free_cent(*servent, 1);
-					pdnsd_free(servent);
+						free_cent(*servent, 1);
+						pdnsd_free(servent);
+					}
 				}
 				
 				if (!is_inaddr_any(&serva)) {
@@ -1461,7 +1450,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 						for (i=0;i<DA_NEL(q);i++) {
 							/* q->qs[i].sin is initialized in p_exec_query, and may thus not be
 							   initialized */
-							qs=&DA_INDEX(q,i);
+							query_stat_t *qs=&DA_INDEX(q,i);
 							if (qs->sin && ADDR_EQUIV(SOCKA_A(qs->sin),&serva)) {
 								nons=0;
 								break;
@@ -1473,29 +1462,26 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 						 * in CFF_NOINHERIT). */
 						if (!add_qserv(&serv, &serva, 53, qse->timeout, 1, qse->flags&~CFF_NOINHERIT, 0,thint,
 						    qse->lean_query,!global.paranoid,nsr->nsdomain)) {
+							rv=RC_SERVFAIL;
 							free_cent(**ent, 1);
 							pdnsd_free(*ent);
-							da_free(ns);
-							return RC_SERVFAIL;
+							goto free_ns_return;
 						}
 					}
 				}
 			}
 			if (DA_NEL(serv)>0) {
+				dns_cent_t *nent;
 				rv=p_dns_cached_resolve(serv,  name, rrn, &nent,hops-1,thint,time(NULL));
 				/* return the answer in any case. */
 /*				if (rv==RC_OK || rv==RC_NAMEERR) {*/
-					del_qserv(serv);
 					free_cent(**ent, 1);
 					pdnsd_free(*ent);
  					*ent=nent;
-					
-					da_free(ns);
-					return rv;
+					goto free_qserv_ns_return;
 /*				}*/
 			}
 		}
-		del_qserv(serv);
 		/*
 		 * If we didn't get rrs from any of the authoritative servers, take the one we had. However, set its ttl to 0,
 		 * so that it won't be used again unless it is necessary.
@@ -1504,10 +1490,14 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 			if ((*ent)->rr[j])
 				(*ent)->rr[j]->ttl=0;
 		}
+	free_qserv_ns_return:
+		del_qserv(serv);
 	}
+ free_ns_return:
 	da_free(ns);
 
-	return RC_OK;
+	return rv;
+#undef  aa_needed
 }
 
 /* 
@@ -1570,16 +1560,22 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	for (i=0;i<DA_NEL(servers);i++) {
 		sp=&DA_INDEX(servers,i);
 		if(use_server(sp,name)) {
-		  int j;
-		  for(j=0;j<DA_NEL(sp->atup_a);++j) {
-		    atup_t *at=&DA_INDEX(sp->atup_a,j);
-		    if (at->is_up) {
-			add_qserv(&serv, &at->a, sp->port, sp->timeout, sp->is_proxy, mk_flag_val(sp),sp->nocache,thint,sp->lean_query,1,"");
-			one_up=1;
-		    }
-		  }
+			int j;
+			for(j=0;j<DA_NEL(sp->atup_a);++j) {
+				atup_t *at=&DA_INDEX(sp->atup_a,j);
+				if (at->is_up) {
+					if(add_qserv(&serv, &at->a, sp->port, sp->timeout, sp->is_proxy, mk_flag_val(sp),sp->nocache,thint,sp->lean_query,1,""))
+						one_up=1;
+					else {
+						one_up=0;
+						goto done;
+					}
+						
+				}
+			}
 		}
 	}
+ done:
 	unlock_server_data();
 	if (one_up) {
 		rc=p_recursive_query(serv, rrn, name,cached,&nocache, hops, thint);
@@ -1623,21 +1619,19 @@ static int set_flags_ttl(short *flags, time_t *ttl, dns_cent_t *cached, int i)
  */
 int p_dns_cached_resolve(query_stat_array q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts)
 {
-	dns_cent_t *bcached;
 	int rc;
 	int need_req=0;
 	int timed=0;
-	time_t ttl=0;
-	int auth=0;
 	int neg=0;
 	int i,nopurge=0;
 	short flags=0;
 
 	DEBUG_MSG("Starting cached resolve for: %s, query %s\n",name,get_tname(thint));
 	if ((*cached=lookup_cache(name))) {
+		time_t ttl=0;
+		int auth=0;
+
 		DEBUG_MSG("Record found in cache.\n");
-		auth=0;
-		nopurge=0;
 		if ((*cached)->flags&DF_NEGATIVE) {
 			if ((*cached)->ts+(*cached)->ttl+CACHE_LAT>=queryts)
 				neg=1;
@@ -1685,24 +1679,27 @@ int p_dns_cached_resolve(query_stat_array q, unsigned char *name, unsigned char 
 	/* update server records set onquery */
 	if(global.onquery) test_onquery();
 	if (global.lndown_kluge && !(flags&CF_LOCAL)) {
-		rc=1;
+		int linkdown=1;
 		lock_server_data();
 		for(i=0;i<DA_NEL(servers);++i) {
-		  servparm_t *sp=&DA_INDEX(servers,i);
-		  int j;
-		  for(j=0; j<DA_NEL(sp->atup_a);++j) {
-		    if (DA_INDEX(sp->atup_a,j).is_up)
-		      rc=0;
-		  }
+			servparm_t *sp=&DA_INDEX(servers,i);
+			int j;
+			for(j=0; j<DA_NEL(sp->atup_a);++j) {
+				if (DA_INDEX(sp->atup_a,j).is_up) {
+					linkdown=0;
+					goto done;
+				}
+			}
 		}
+	done:
 		unlock_server_data();
-		if (rc) {
+		if (linkdown) {
 			DEBUG_MSG("Link is down.\n");
 			return RC_SERVFAIL;
 		}
 	}
 	if (!(*cached) || (!((*cached)->flags&DF_LOCAL) && !neg && (need_req || (timed && !(flags&CF_LOCAL))))) {
-		bcached=*cached;
+		dns_cent_t *bcached=*cached;
 		DEBUG_MSG("Trying name servers.\n");
 		if (q) 
 			rc=p_dns_resolve_from(q,name, rrn, cached,hops,thint);

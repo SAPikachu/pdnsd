@@ -193,10 +193,10 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 }
 
 /* Return the length of a rhn. This is for better abstraction and could be a macro */
-int rhnlen(unsigned char *rhn)
+/* int rhnlen(unsigned char *rhn)
 {
 	return strlen((char *)rhn)+1;
-}
+} */
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
@@ -262,48 +262,49 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
 
 /*
  * This is used for user output only, so it does not matter when an error occurs
- * and we leave the string empty.
  */
-char *pdnsd_a2str(pdnsd_a *a, char *str, int maxlen)
+const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 {
+	const char *res;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		strncpy(str,inet_ntoa(a->ipv4),maxlen);
-		str[maxlen-1]='\0';
+		if (!(res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen))) {
+			log_error("inet_ntop: %s", strerror(errno));
+		}
 	}
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		if (inet_ntop(AF_INET6,&a->ipv6,str,maxlen)==NULL) {
+		if (!(res=inet_ntop(AF_INET6,&a->ipv6,buf,maxlen))) {
 			log_error("inet_ntop: %s", strerror(errno));
-			str[0]='\0';
 		}
 	}
 #endif
-	return str;
+	return res?res:"?.?.?.?";
 }
 
 
-#ifdef DEBUG
+#if DEBUG>0
 /* This is a function only needed by dns_query.c in debug mode. */
 
-char *socka2str(struct sockaddr *a, char *str, int maxlen)
+const char *socka2str(struct sockaddr *a, char *buf, int maxlen)
 {
+	const char *res;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		strncpy(str,inet_ntoa(((struct sockaddr_in *)a)->sin_addr),maxlen);
-		str[maxlen-1]='\0';
+		if (!(res=inet_ntop(AF_INET,&((struct sockaddr_in *)a)->sin_addr,buf,maxlen))) {
+			log_error("inet_ntop: %s", strerror(errno));
+		}
 	}
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		if (inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,str,maxlen)==NULL) {
+		if (!(res=inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,buf,maxlen))) {
 			log_error("inet_ntop: %s", strerror(errno));
-			str[0]='\0';
 		}
 	}
 #endif
-	return str;
+	return res?res:"?.?.?.?";
 }
 
 #endif

@@ -90,9 +90,12 @@ extern FILE *dbg_file;
 	}
 #  define DEBUG_MSG(args...)	DEBUG_MSG_(0,args)
 #  define DEBUG_MSGC(args...)	DEBUG_MSG_(1,args)
+#  define DEBUG_SOCKA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
+#  define SOCKA2STR(a)          socka2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
 # else
 #  define DEBUG_MSG(args...)
 #  define DEBUG_MSGC(args...)
+#  define DEBUG_SOCKA_MSG(args...)
 # endif	/* DEBUG > 0 */
 #else
 /* ANSI style. */
@@ -121,9 +124,12 @@ extern FILE *dbg_file;
 
 #  define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
 #  define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
+#  define DEBUG_SOCKA_MSG(...)  {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
+#  define SOCKA2STR(a)          socka2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
 # else
 #  define DEBUG_MSG(...)
 #  define DEBUG_MSGC(...)
+#  define DEBUG_SOCKA_MSG(...)
 # endif	/* DEBUG > 0 */
 #endif
 

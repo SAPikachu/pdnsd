@@ -46,7 +46,10 @@ inline static int isdchar (unsigned char c)
 
 void rhn2str(unsigned char *rhn, unsigned char *str);
 int  str2rhn(unsigned char *str, unsigned char *rhn);
-int rhnlen(unsigned char *rhn);
+inline static int rhnlen(unsigned char *rhn)
+{
+	return strlen(rhn)+1;
+}
 int rhncpy(unsigned char *dst, unsigned char *src);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
@@ -84,10 +87,10 @@ inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
 }
 
 int str2pdnsd_a(char *addr, pdnsd_a *a);
-char *pdnsd_a2str(pdnsd_a *a, char *str, int maxlen);
+const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen);
 
 #if DEBUG>0
-char *socka2str(struct sockaddr *a, char *str, int maxlen);
+const char *socka2str(struct sockaddr *a, char *buf, int maxlen);
 #endif
 
 int init_rng(void);

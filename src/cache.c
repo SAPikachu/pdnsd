@@ -112,7 +112,7 @@ volatile long cache_size=0;
 volatile long ent_num=0;
 
 #define cache_free(ptr, dbg)		{ if (dbg) pdnsd_free(ptr); else free(ptr); }
-#define cache_calloc(sz, n, dbg)	((dbg)?(pdnsd_calloc(sz,n)):(calloc(sz,n)))
+#define cache_calloc(sz, n, dbg)	((dbg)?(pdnsd_calloc(n,sz)):(calloc(n,sz)))
 #define cache_realloc(ptr, sz, dbg)	((dbg)?(pdnsd_realloc(ptr,sz)):(realloc(ptr,sz)))
 
 volatile int cache_w_lock=0;
@@ -565,7 +565,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 {
 	rr_lent_t *le,*ne;
 	int fnd=0;
-	if (!(ne=(rr_lent_t *)calloc(sizeof(rr_lent_t),1)))
+	if (!(ne=(rr_lent_t *)calloc(1,sizeof(rr_lent_t))))
 		return NULL;
 	ne->next=ne->prev=NULL;
 	ne->rrset=rrs;

@@ -1,21 +1,23 @@
-	  Alternative pdnsd implementation - version 1.1.8b1-par4
-	  ======================================================
+	  pdnsd maintenance version 1.1.8b1-par5 by Paul Rombouts
+	  =======================================================
 
-This file describes the customized version of pdnsd that I use personally and am
-making available so other people can run it and/or study the source code.
-Present version is 1.1.8b1-par4 (this version introduces extended configuration
-options for inclusion/exclusion lists, see the note further below).
+This file describes the version of pdnsd that I maintain personally and am
+making available so other people can enjoy the latest features and fixes.
+Thomas Moestl no longer maintains pdnsd himself, so I am effectively the new
+maintainer. Present version is 1.1.8b1-par5 (this version fixes a potentially
+troublesome buffer allocation size error, see the ChangeLog for details).
+
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par4.tar.gz you
-must first apply my patch file pdnsd-1.1.8b1-par4.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par5.tar.gz you
+must first apply my patch file pdnsd-1.1.8b1-par5.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the
 INSTALL file. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par4.diff.gz | patch -p2 -N -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par5.diff.gz | patch -p2 -N -Z
 
 Note: because I have used GNU extensions you will need to compile with gcc and
 link with glibc. This will not be a problem with most Linux distributions.
@@ -46,8 +48,8 @@ which kind of thread library is being used on a Linux system, but I don't have a
 clue yet how to do this. If you can help me with this please write to me at the
 email address listed at the end of this file.
 
-The rest of this file describes some modifications I've made, but you don't have
-to read it if you simply want to run pdnsd as you're used to.
+The rest of this file describes some of the modifications I've made, but you
+don't have to read it if you simply want to run pdnsd as you're used to.
 
 
 - The main new feature I've added enables you to change the server addresses
@@ -122,8 +124,8 @@ treatment of underscores in domain names.
 In addition to the things I've listed above, I've made various little changes to
 fix minor bugs, improve efficiency or elegance, or simply to suit my my own
 coding style. These changes are too numerous to list here, but you can always
-find out about them by comparing the source of my modified version with Thomas'
-original code.
+find out about them by comparing the source of my version with Thomas' original
+code.
 
 If you have any questions about the modifications I've made, you can send these
 to <p.a.rombouts@home.nl>. Questions about the original pdnsd version should
