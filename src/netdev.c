@@ -1,5 +1,5 @@
 /* netdev.c - Test network devices for existence and status
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.7 2001/02/25 01:47:18 tmm Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.8 2001/04/03 21:10:55 tmm Exp $";
 #endif
 
 /*
@@ -94,23 +94,23 @@ int dev_up(char *ifname, char *devname)
 	
  	if (snprintf(buffer, sizeof(buffer), "/var/run/%s.pid", ifname)>=sizeof(buffer))
 		return 0;
- 	if ( (fd=fopen(buffer, "r")) == NULL ) {
- 		return 0 ;
+ 	if ((fd=fopen(buffer, "r")) == NULL ) {
+ 		return 0;
  	}
 
- 	if ( fscanf(fd, "%d", &pidi) != 1 ) {
+ 	if (fscanf(fd, "%d", &pidi) != 1 ) {
 		fclose(fd) ;
- 		return 0 ;
+ 		return 0;
  	}
- 	fclose(fd) ;
+ 	fclose(fd);
  
  	if (snprintf(buffer, sizeof(buffer), "/var/lock/LCK..%s", devname)>=sizeof(buffer))
 		return 0;
- 	if ( (fd=fopen(buffer, "r")) == NULL ) {
+ 	if ((fd=fopen(buffer, "r")) == NULL ) {
 		return 0 ;
  	}
 	
- 	if ( fscanf(fd, "%d", &pidd) != 1 ) {
+ 	if (fscanf(fd, "%d", &pidd) != 1 ) {
 		fclose(fd) ;
 		return 0 ;
  	}
@@ -305,5 +305,5 @@ int is_local_addr(pdnsd_a *a)
 # endif
 
 #else
-# error "No OS macro defined. Please look into config.h.templ."
+# error "Huh. No OS macro defined."
 #endif

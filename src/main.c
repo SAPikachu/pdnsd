@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.34 2001/02/25 01:29:41 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.35 2001/04/03 21:10:52 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -72,13 +72,6 @@ int stat_pipe=0;
 int notcp=0;
 int sigr=0;
 
-/*
-#if TARGET==TARGET_BSD
-void bsd_sighnd (int sig) {
-	sigr=sig;
-}
-#endif
-*/
 
 /* These are some init steps we have to call before we get daemon on linux, but need
  * do call after daemonizing on other OSes.
@@ -340,10 +333,6 @@ int main(int argc,char *argv[])
 		}
 	}
 
-	/* init_log() initializes a mutex. This is done best once we are daemon.
-	 * so this initialization is deferred, and log_* can now do without a mutex
-	 * initially */
-	/*init_log();*/
 	if (daemon_p && pidfile[0]) {
 		unlink(pidfile);
 #ifdef O_NOFOLLOW		
@@ -402,7 +391,6 @@ int main(int argc,char *argv[])
 		}
 		if (i!=0)
 			_exit(0); /* exit parent, so we are no session group leader */
-		signal(SIGPIPE, SIG_IGN);
 		chdir("/");
 		if (pidfile[0]) {
 			fprintf(pf,"%i\n",getpid());

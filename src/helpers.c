@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.15 2001/03/25 19:27:38 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.16 2001/04/03 21:10:52 tmm Exp $";
 #endif
 
 /*
@@ -153,7 +153,7 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
  * Take a host name as used in the dns transfer protocol (a length byte, followed by the
  * first part of the name, ..., followed by a 0 lenght byte), and return a string (in str,
  * length is the same as rhn) in the usual dotted notation. Length checking is done 
- * elsewhere (in decompress_name).
+ * elsewhere (in decompress_name), this takes names from the cache which are validated.
  */
 void rhn2str(unsigned char *rhn, unsigned char *str)
 {

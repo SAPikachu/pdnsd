@@ -28,12 +28,12 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.5 2001/03/28 15:03:31 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.6 2001/04/03 21:11:02 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes only strings with the allowed dns characters
- * [a-zA-Z0-9\-\.] = 54, but with case-insensitivity = 38
+ * [a-zA-Z0-9\-\.] = 64, but with case-insensitivity = 38
  * It is position-aware in a limited way. 
  * It is exactly seen a two-way hash: because I do not want to exaggerate
  * the hash buckets (i do have 1024), but I hash strings and string-comparisons
@@ -160,15 +160,15 @@ dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key)
 {
 	int idx=dns_shash(key);
 	unsigned long rh=dns_rhash(key);
-	dns_hash_ent_t **he;
-	he=&hash->buckets[idx];
-	while (*he) {
-		if ((*he)->rhash==rh) {
-			if (stricomp((char *)key,(char *)(*he)->data->qname)) {
-				return (*he)->data;
+	dns_hash_ent_t *he;
+	he=hash->buckets[idx];
+	while (he) {
+		if ((he)->rhash==rh) {
+			if (stricomp((char *)key,(char *)he->data->qname)) {
+				return he->data;
 			}
 		}
-		he=(dns_hash_ent_t **)&(*he)->next;
+		he=(dns_hash_ent_t *)he->next;
 	}
 	return NULL;   /* not found */
 }

@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.19 2001/03/25 20:48:55 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.20 2001/04/03 21:10:52 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -71,13 +71,12 @@ volatile int ping6_isocket=-1;
 #if TARGET==TARGET_BSD
 # define icmphdr   icmp
 # define iphdr     ip
-# define ip_ihl    ip_hl
 # define ip_saddr  ip_src.s_addr
 # define ip_daddr  ip_dst.s_addr
 #else
 # define ip_saddr  saddr
 # define ip_daddr  daddr
-# define ip_ihl    ihl
+# define ip_hl     ihl
 # define ip_p	   protocol
 #endif
 
@@ -147,13 +146,13 @@ static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg
 	if (elen<sizeof(struct iphdr))
 		return 0;
 	memcpy(&iph,errmsg,sizeof(iph));
-	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_ihl*4+ICMP_BASEHDR_LEN+sizeof(iph))
+	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+sizeof(iph))
 		return 0;
-	memcpy(&icmph,errmsg+iph.ip_ihl*4,sizeof(icmph));
-	memcpy(&eiph,errmsg+iph.ip_ihl*4+ICMP_BASEHDR_LEN,sizeof(eiph));
-	if (elen<iph.ip_ihl*4+ICMP_BASEHDR_LEN+eiph.ip_ihl*4+8)
+	memcpy(&icmph,errmsg+iph.ip_hl*4,sizeof(icmph));
+	memcpy(&eiph,errmsg+iph.ip_hl*4+ICMP_BASEHDR_LEN,sizeof(eiph));
+	if (elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+eiph.ip_hl*4+8)
 		return 0;
-	data=errmsg+iph.ip_ihl*4+ICMP_BASEHDR_LEN+eiph.ip_ihl*4;
+	data=errmsg+iph.ip_hl*4+ICMP_BASEHDR_LEN+eiph.ip_hl*4;
 	return icmph.icmp_type==errtype && memcmp(&to->s_addr, &eiph.ip_daddr, sizeof(to->s_addr))==0 &&
 		memcmp(data, packet, plen<8?plen:8)==0;
 }
@@ -284,8 +283,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
 					if (len>sizeof(struct iphdr)) {
 						memcpy(&iph, buf, sizeof(iph));
-						if (len-iph.ip_ihl*4>=ICMP_BASEHDR_LEN) {
-							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_ihl, sizeof(icmpp));
+						if (len-iph.ip_hl*4>=ICMP_BASEHDR_LEN) {
+							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_hl, sizeof(icmpp));
 							if (iph.ip_saddr==addr.s_addr && icmpp.icmp_type==ICMP_ECHOREPLY &&
 							    ntohs(icmpp.icmp_id)==id && ntohs(icmpp.icmp_seq)<=i) {
 								return (i-ntohs(icmpp.icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
