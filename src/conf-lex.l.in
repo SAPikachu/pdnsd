@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.15 2000/11/11 20:33:03 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.16 2001/02/21 14:25:08 tmm Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -118,7 +118,7 @@ C_CLOSE \*\/
 
 <INITIAL>"domain"		        {return NDOMAIN;}
 
-<INITIAL>[a-zA-Z]+			{if ((yylval.num=lookup_const(yytext))!=-1)
+<INITIAL>[a-zA-Z_]+			{if ((yylval.num=lookup_const(yytext))!=-1)
 						 return CONST; 
 					 else if ((yylval.num=rr_tp_byname(yytext))!=-1)
 						 return RRTYPE;

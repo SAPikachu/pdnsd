@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.31 2001/02/07 13:38:56 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.32 2001/02/21 14:25:09 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -266,7 +266,7 @@ int main(int argc,char *argv[])
 				query_method=TCP_ONLY;
 #endif
 			} else if (strcmp(&argv[i][2],"tu")==0) {
-#if !defined(NO_UDP_QUERIES) || !defined(NO_TCP_QUERIES)
+#if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
 				fprintf(stderr,"Error: pdnsd was not compiled with UDP  and TCP support.\n");
 				exit(1);
 #else
