@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.28 2001/01/24 23:02:55 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.29 2001/01/24 23:50:22 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -386,6 +386,8 @@ int main(int argc,char *argv[])
 			log_error("Error: huh - %s has changed under my feet! Possible link attack?\n", pidfile);
 			exit(1);
 		}
+		fchown(pfd, getuid(), getgid());
+		fchmod(pfd, 0600);
 #endif
 		if (!(pf=fdopen(pfd,"w"))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
