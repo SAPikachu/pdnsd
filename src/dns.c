@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.28 2001/07/02 18:53:37 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.29 2001/12/30 18:26:08 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -178,10 +178,6 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
  */
 int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 {
-#if 0
-	/* Delete this debug code when done */
-	unsigned char buf1[256],buf2[256];
-#endif
 	int i;
 	int add=1;
 	int coffs=-1;
@@ -208,29 +204,15 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 		}
 		if (coffs>-1) {
 			rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
+			PDNSD_ASSERT(rl <= 254, "compress_name: name too long");
 			out[rl]=192|((coffs&0x3f00)>>8);
 			out[rl+1]=coffs&0xff;
 			rl+=2;
-#if 0
-			rhn2str(in,buf1);
-			rhn2str(brest,buf2);
-			printf("Compressed %s to %s and reference to %i.\n",buf1,buf2,coffs);
-#endif
 			add=strlen((char *)brest)!=0;
-		} else {
-#if 0
-			rhn2str(in,buf1);
-			printf("%s not compressed.\n",buf1);
-#endif
+		} else
 			rl=rhncpy(out,in);
-		}
-	} else {
-#if 0
-		rhn2str(in,buf1);
-		printf("%s not compressed.\n",buf1);
-#endif
+	} else
 		rl=rhncpy(out,in);
-	}
 
 	/* part 2: addition to the cache structure */
 	if (add) {

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.30 2001/09/23 13:33:08 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.31 2001/12/30 18:26:08 tmm Exp $";
 #endif
 
 /*
@@ -171,9 +171,13 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 	}
  	while (lb) {
 		for (i=0;i<lb;i++) {
+			PDNSD_ASSERT(cnt < 255,
+			    "rhn2str: string length overflow");
 			str[cnt-1]=rhn[cnt];
 			cnt++;
 		}
+		PDNSD_ASSERT(cnt <= 255,
+		    "rhn2str: string length overflow");
 		str[cnt-1]='.';
 		str[cnt]='\0';
 		lb=rhn[cnt];
@@ -215,6 +219,7 @@ int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
 	if (!(c->rr[T_CNAME-T_MIN] && c->rr[T_CNAME-T_MIN]->rrs))
 		return 0;
 	rr=c->rr[T_CNAME-T_MIN]->rrs;
+	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
 	memcpy(rrn,rr+1,rr->rdlen);
 	rhn2str(rrn,name);
 	return 1;

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.14 2001/07/02 19:30:31 tmm Exp $ */
+/* $Id: error.h,v 1.15 2001/12/30 18:26:08 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -121,7 +121,8 @@ extern FILE *dbg_file;
 #endif
 
 /*
- * This is a macro so that it can be made empty after sufficient testing if !defined(DEBUG)
+ * Assert macro, used in some places. For now, it should be always defined, not
+ * only in the DEBUG case, to be on the safe side security-wise.
  */
 #define PDNSD_ASSERT(cond, msg)						\
 	do { if (!(cond)) {						\
