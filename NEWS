@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.8 2000/06/24 18:58:06 thomas Exp $
+$Id: NEWS,v 1.9 2000/08/26 12:07:05 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -41,3 +41,16 @@ Versions 1.0.1, 1.0.2 and 1.0.3 are bugfix releases.
 
 Version 1.0.4 introduces the new options run_as, strict_setuid and
 paranoid. These new options are optional security enhancements.
+
+Version 1.0.5 has some bugfixes and the new "server_ip" option 
+contributed by Wolfgang Ocker.
+
+Version 1.0.6 has another set of bugfixes, in addition to higher compile-
+time configurability and UDP query support. It also contains Debian rc
+scripts contributed by Markus Mohr.
+
+Version 1.0.7 introduces autoconf support, many new config file options and
+the new pdnsd-ctl run-time configuration program.
+
+Version 1.0.8 is a bugfix release. pdnsd should be fairly stable now.
+
