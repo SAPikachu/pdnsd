@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.7 2000/06/04 17:55:16 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.8 2000/06/06 21:20:52 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -120,7 +120,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
 
-#if TARGET!=LINUX	
+#if TARGET!=TARGET_LINUX	
 	if (!(pe=getprotobyname("ip"))) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
@@ -436,5 +436,5 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 }
 
 #else
-# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=TARGET_LINUX on your compiler command line."
-#endif /*TARGET==TARGET_LINUX*/
+# error "No OS macro defined. Please look into config.h.templ."
+#endif /*TARGET==TARGET_LINUX || TARGET==TARGET_BSD*/

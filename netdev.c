@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.6 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.7 2000/06/06 21:20:52 thomas Exp $";
 #endif
 
 /*
@@ -263,5 +263,5 @@ int is_local_addr(pdnsd_a *a)
 # endif
 
 #else
-# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=TARGET_LINUX on your compiler command line."
+# error "No OS macro defined. Please look into config.h.templ."
 #endif
