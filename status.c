@@ -32,9 +32,10 @@ Boston, MA 02111-1307, USA.  */
 #include "hash.h"
 #include "cache.h"
 #include "error.h"
+#include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.6 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.7 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 char fifo_path[1024];
@@ -51,6 +52,13 @@ void *status_thread (void *p)
 	struct utsname nm;
 
 	THREAD_SIGINIT;
+
+	if (!global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			pdnsd_exit();
+		}
+	}
 
 	uname(&nm);
 	(void)p; /* To inhibit "unused variable" warning */

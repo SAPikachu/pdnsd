@@ -25,6 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <pwd.h>
 #include "ipvers.h"
 #include "error.h"
 #include "helpers.h"
@@ -32,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.9 2000/06/21 20:36:17 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.10 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 /*
@@ -57,6 +58,28 @@ int softlock_mutex(pthread_mutex_t *mutex)
 		usleep(1000);
 	}
 	return 0;
+}
+
+/*
+ * setuid() and setgid() for a specified user
+ */
+int run_as(char *user)
+{
+	struct passwd *pwd;
+
+	if (user[0]!='\0') {
+		if (!(pwd=getpwnam(user))) {
+			return 0;
+		}
+		/* setgid first, because we may not allowed to do it anymore after setuid */
+		if (setgid(pwd->pw_gid)!=0) {
+			return 0;
+		}
+		if (setuid(pwd->pw_uid)!=0) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 /*

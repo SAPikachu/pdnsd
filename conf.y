@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.6 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.7 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -82,6 +82,8 @@ unsigned char *nm;
 %token <num> SERVER_PORT
 %token <num> LINKDOWN_KLUGE
 %token <num> MAX_TTL
+%token <num> RUN_AS
+%token <num> STRICT_SETUID
 
 %token <num> IP
 %token <num> PORT
@@ -194,6 +196,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| CACHE_DIR '=' STRING ';'
 			{
 				strncpy(global.cache_dir,(char *)$3,MAXPATH);
+				global.cache_dir[MAXPATH-1]='\0';
 			}
 		| SERVER_PORT '=' NUMBER ';'
 			{
@@ -211,6 +214,20 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| MAX_TTL '=' NUMBER ';'
 			{
 				global.max_ttl=$3;
+			}
+		| RUN_AS '=' STRING ';'
+			{
+				strncpy(global.run_as,(char *)$3,20);
+				global.run_as[20]='\0';
+			}
+		| STRICT_SETUID '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					global.strict_suid=($3==C_ON);
+				} else {
+					yyerror("bad qualifier in strict_setuid= option.");
+					YYERROR;
+				}
 			}
 		;
 
@@ -281,6 +298,7 @@ serv_el:	IP '=' STRING ';'
 		| INTERFACE '=' STRING  ';'
 			{
 				strncpy(server.interface,(char *)$3,6);
+				server.interface[6]='\0';
 			}
 		| PURGE_CACHE '=' CONST ';'
 			{

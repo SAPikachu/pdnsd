@@ -34,13 +34,14 @@ Boston, MA 02111-1307, USA.  */
 #include "servers.h"
 #include "dns_answer.h"
 #include "error.h"
+#include "helpers.h"
 /*
  *#include "icmp.h"
  *#include "netdev.h"
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.9 2000/06/23 18:07:49 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.10 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -61,6 +62,9 @@ pthread_t main_thread;
 #ifdef ENABLE_IPV6
  int run_ipv6=DEFAULT_IPV6;
 #endif
+
+int tcp_socket;
+int udp_socket;
 
 sigset_t sigs_msk;
 int waiting=0;
@@ -248,6 +252,18 @@ int main(int argc,char *argv[])
 
 	read_config_file(conf_file);
 	init_log();
+	tcp_socket=init_tcp_socket();
+	udp_socket=init_udp_socket();
+	if (tcp_socket==-1 && udp_socket==-1) {
+		log_error("tcp and udp initialization failed. Exiting.");
+		exit(1);
+	}
+	if (global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			_exit(1);
+		}
+	}
 	umask(0077); /* for security reasons */
 	if (daemon_p) {
 		/* become a daemon */
@@ -335,9 +351,17 @@ int main(int argc,char *argv[])
 	}
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 
+	start_servstat_thread();
+
+	if (!global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			_exit(1);
+		}
+	}
+
 	if (stat_pipe)
 		init_stat_fifo();
-	start_servstat_thread();
 
 	start_dns_servers();
 

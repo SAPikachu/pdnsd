@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.17 2000/06/22 11:34:52 thomas Exp $
+# $Id: Makefile,v 1.18 2000/06/23 21:54:57 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -22,7 +22,7 @@ YACC=bison -y
 # strict C compiler flags. Note that some warnings are normal.
 STRICT_CF=-Wstrict-prototypes -Wall -pedantic # -Wmissing-prototypes  -Wpointer-arith
 # The flags given in the C compiler call (these are for gcc)
-CFLAGS=-O2 -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
+CFLAGS=-O2 -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wparentheses -Wswitch -Wunused $(STRICT_CF) #-Wmultichar 
 # The flags given for bison/yacc; OK for bison and yacc
 YACCFLAGS=-d
 # the flags given for lex; should be OK for lex and flex

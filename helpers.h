@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.4 2000/06/21 20:36:17 thomas Exp $ */
+/* $Id: helpers.h,v 1.5 2000/06/23 21:54:57 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
@@ -30,6 +30,7 @@ Boston, MA 02111-1307, USA.  */
 
 #define SOFTLOCK_MAXTRIES 1000
 
+int run_as(char *user);
 void pdnsd_exit(void);
 int softlock_mutex(pthread_mutex_t *mutex);
 

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.18 2000/06/22 22:42:02 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.19 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 /*
@@ -68,6 +68,9 @@ int da_mem_errs=0;
 int da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
+
+int tcp_up=1;
+int udp_up=1;
 
 typedef struct {
 	union {
@@ -119,9 +122,6 @@ typedef struct {
 	unsigned char nm[256];
 	unsigned char data[256];
 } sva_t; 
-
-int tcp_up=1;
-int udp_up=1;
 
 /*
  * Mark an addtional record as added to avoif double records. Supply either name or rhn (set the other to 0)
@@ -984,6 +984,13 @@ void *udp_answer_thread(void *data)
 
 	THREAD_SIGINIT;
 
+	if (!global.strict_suid ) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			pdnsd_exit();
+		}
+	}
+
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
@@ -1064,17 +1071,9 @@ void *udp_answer_thread(void *data)
 	return NULL;
 }
 
-/* 
- * Listen on the specified port for udp packets and answer them (each in a new thread to be nonblocking)
- * This was changed to support sending UDP packets with exactly the same source address as they were coming
- * to us, as required by rfc2181. Although this is a sensible requirement, it is slightly more difficult
- * and may introduce portability issues.
- */
-void *udp_server_thread(void *dummy)
+int init_udp_socket()
 {
-	struct protoent *pe=getprotobyname("udp");
 	int sock;
-	long qlen;
 #ifdef ENABLE_IPV4
 	struct sockaddr_in sin4;
 #endif
@@ -1083,6 +1082,65 @@ void *udp_server_thread(void *dummy)
 #endif
 	struct sockaddr *sin;
 	int sinl;
+	struct protoent *pe=getprotobyname("udp");
+
+	if (!pe) {
+		log_error("Could not get udp protocol: %s",strerror(errno));
+		return -1;
+	}
+#ifdef ENABLE_IPV4
+	if (run_ipv4) {
+		if ((sock=socket(PF_INET,SOCK_DGRAM,pe->p_proto))==-1) {
+			log_error("Could not open udp socket: %s",strerror(errno));
+			return -1;
+		}
+		sin4.sin_family=AF_INET;
+		sin4.sin_port=htons(global.port);
+		sin4.sin_addr.s_addr=INADDR_ANY;
+		SET_SOCKA_LEN4(sin4);
+		sin=(struct sockaddr *)&sin4;
+		sinl=sizeof(sin4);
+	}
+#endif
+#ifdef ENABLE_IPV6
+	if (run_ipv6) {
+		if ((sock=socket(PF_INET6,SOCK_DGRAM,pe->p_proto))==-1) {
+			log_error("Could not open udp socket: %s",strerror(errno));
+			return -1;
+		}
+		sin6.sin6_family=AF_INET6;
+		sin6.sin6_port=htons(global.port);
+		sin6.sin6_flowinfo=IPV6_FLOWINFO;
+		sin6.sin6_addr=in6addr_any;
+		SET_SOCKA_LEN6(sin6);
+		sin=(struct sockaddr *)&sin6;
+		sinl=sizeof(sin6);
+	}
+#endif
+	if (bind(sock,sin,sinl)!=0) {
+		log_error("Could bind to udp socket: %s",strerror(errno));
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
+
+/* 
+ * Listen on the specified port for udp packets and answer them (each in a new thread to be nonblocking)
+ * This was changed to support sending UDP packets with exactly the same source address as they were coming
+ * to us, as required by rfc2181. Although this is a sensible requirement, it is slightly more difficult
+ * and may introduce portability issues.
+ */
+void *udp_server_thread(void *dummy)
+{
+	int sock;
+	long qlen;
+#ifdef ENABLE_IPV4
+	struct sockaddr_in sin4;
+#endif
+#ifdef ENABLE_IPV6
+	struct sockaddr_in6 sin6;
+#endif
 	pthread_attr_t attr;
 	pthread_t pt;
 	udp_buf_t *buf;
@@ -1098,68 +1156,31 @@ void *udp_server_thread(void *dummy)
 
 	THREAD_SIGINIT;
 
-	if (!pe) {
-		if (da_udp_errs<UDP_MAX_ERRS) {
-			da_udp_errs++;
-			log_error("Could not get udp protocol: %s",strerror(errno));
-		}
-		udp_up=0;
-		if (!tcp_up)
+	if (!global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 			pdnsd_exit();
-		return NULL;
+		}
 	}
+
+	sock=udp_socket;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		if ((sock=socket(PF_INET,SOCK_DGRAM,pe->p_proto))==-1) {
-			if (da_udp_errs<UDP_MAX_ERRS) {
-				da_udp_errs++;
-				log_error("Could not open udp socket: %s",strerror(errno));
-			}
-			udp_up=0;
-			if (!tcp_up)
-				pdnsd_exit();
-			return NULL;
-		}
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr.s_addr=INADDR_ANY;
 		SET_SOCKA_LEN4(sin4);
-		sin=(struct sockaddr *)&sin4;
-		sinl=sizeof(sin4);
 	}
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		if ((sock=socket(PF_INET6,SOCK_DGRAM,pe->p_proto))==-1) {
-			if (da_udp_errs<UDP_MAX_ERRS) {
-				da_udp_errs++;
-				log_error("Could not open udp socket: %s",strerror(errno));
-			}
-			udp_up=0;
-			if (!tcp_up)
-				pdnsd_exit();
-			return NULL;
-		}
 		sin6.sin6_family=AF_INET6;
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=in6addr_any;
 		SET_SOCKA_LEN6(sin6);
-		sin=(struct sockaddr *)&sin6;
-		sinl=sizeof(sin6);
 	}
 #endif
-	if (bind(sock,sin,sinl)!=0) {
-		if (da_udp_errs<UDP_MAX_ERRS) {
-			da_udp_errs++;
-			log_error("Could bind to udp socket: %s",strerror(errno));
-		}
-		close(sock);
-		udp_up=0;
-		if (!tcp_up)
-			pdnsd_exit();
-		return NULL;
-	}
 
 #if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
 	/* The following must be set on any case because it also applies for IPv4 packets sent to
@@ -1170,6 +1191,7 @@ void *udp_server_thread(void *dummy)
 			log_error("Could not set options on udp socket: %s",strerror(errno));
 			}
 		close(sock);
+		udp_socket=-1;
 		udp_up=0;
 		if (!tcp_up)
 			pdnsd_exit();
@@ -1183,6 +1205,7 @@ void *udp_server_thread(void *dummy)
 				log_error("Could not set options on udp socket: %s",strerror(errno));
 			}
 			close(sock);
+			udp_socket=-1;
 			udp_up=0;
 			if (!tcp_up)
 				pdnsd_exit();
@@ -1218,56 +1241,11 @@ void *udp_server_thread(void *dummy)
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
 			msg.msg_namelen=sizeof(struct sockaddr_in);
-			if ((qlen=recvmsg(sock,&msg,0))<0) {
-				free(buf);
-				usleep(50000);
-				continue;
-			}
-			cmsg=CMSG_FIRSTHDR(&msg);
-			while(cmsg) {
-				if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
-					memcpy(&buf->pi.pi4,CMSG_DATA(cmsg),sizeof(struct in_pktinfo));
-					break;
-				}
-				cmsg=CMSG_NXTHDR(&msg,cmsg);
-			}
-			if (!cmsg) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
-					log_error("Could not discover udp destination address");
-				}
-				free(buf);
-				usleep(50000);
-				continue;
-			}
-		}
-# endif
-# ifdef ENABLE_IPV6
-		if (run_ipv6) {
-			msg.msg_name=&buf->addr.sin6;
-			msg.msg_namelen=sizeof(struct sockaddr_in6);
-			if ((qlen=recvmsg(sock,&msg,0))<0) {
-				free(buf);
-				usleep(50000);
-				continue;
-			}
-			cmsg=CMSG_FIRSTHDR(&msg);
-			while(cmsg) {
-				if (cmsg->cmsg_level==SOL_IPV6 && cmsg->cmsg_type==IPV6_PKTINFO) {
-					memcpy(&buf->pi.pi6,CMSG_DATA(cmsg),sizeof(struct in6_pktinfo));
-					break;
-				}
-				cmsg=CMSG_NXTHDR(&msg,cmsg);
-			}
-			if (!cmsg) {
-				/* We might have an IPv4 Packet incoming on our IPv6 port, so we also have to
-				 * check for IPv4 sender addresses */
+			if ((qlen=recvmsg(sock,&msg,0))>=0) {
 				cmsg=CMSG_FIRSTHDR(&msg);
 				while(cmsg) {
 					if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
-						sip=(struct in_pktinfo *)CMSG_DATA(cmsg);
-						IPV6_MAPIPV4(&sip->ipi_addr,&buf->pi.pi6.ipi6_addr);
-						buf->pi.pi6.ipi6_ifindex=sip->ipi_ifindex;
+						memcpy(&buf->pi.pi4,CMSG_DATA(cmsg),sizeof(struct in_pktinfo));
 						break;
 					}
 					cmsg=CMSG_NXTHDR(&msg,cmsg);
@@ -1284,34 +1262,68 @@ void *udp_server_thread(void *dummy)
 			}
 		}
 # endif
+# ifdef ENABLE_IPV6
+		if (run_ipv6) {
+			msg.msg_name=&buf->addr.sin6;
+			msg.msg_namelen=sizeof(struct sockaddr_in6);
+			if ((qlen=recvmsg(sock,&msg,0))>=0) {
+				cmsg=CMSG_FIRSTHDR(&msg);
+				while(cmsg) {
+					if (cmsg->cmsg_level==SOL_IPV6 && cmsg->cmsg_type==IPV6_PKTINFO) {
+						memcpy(&buf->pi.pi6,CMSG_DATA(cmsg),sizeof(struct in6_pktinfo));
+						break;
+					}
+					cmsg=CMSG_NXTHDR(&msg,cmsg);
+				}
+				if (!cmsg) {
+				       /* We might have an IPv4 Packet incoming on our IPv6 port, so we also have to
+				        * check for IPv4 sender addresses */
+					cmsg=CMSG_FIRSTHDR(&msg);
+					while(cmsg) {
+						if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
+							sip=(struct in_pktinfo *)CMSG_DATA(cmsg);
+							IPV6_MAPIPV4(&sip->ipi_addr,&buf->pi.pi6.ipi6_addr);
+							buf->pi.pi6.ipi6_ifindex=sip->ipi_ifindex;
+							break;
+						}
+						cmsg=CMSG_NXTHDR(&msg,cmsg);
+					}
+					if (!cmsg) {
+						if (da_udp_errs<UDP_MAX_ERRS) {
+							da_udp_errs++;
+							log_error("Could not discover udp destination address");
+						}
+						free(buf);
+						usleep(50000);
+						continue;
+					}
+				}
+			}
+		}
+# endif
 #else /* TARGET==TARGET_LINUX*/
 # ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
 			msg.msg_namelen=sizeof(struct sockaddr_in);
-			if ((qlen=recvmsg(sock,&msg,0))<0) {
-				free(buf);
-				usleep(50000);
-				continue;
-			}
+			qlen=recvmsg(sock,&msg,0);
 		}
 # endif
 # ifdef ENABLE_IPV6
 		if (run_ipv6) {
 			msg.msg_name=&buf->addr.sin6;
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
-			if ((qlen=recvmsg(sock,&msg,0))<0) {
-				free(buf);
-				usleep(50000);
-				continue;
-			}
+			qlen=recvmsg(sock,&msg,0);
 		}
 # endif
 #endif
-		if (qlen==-1) {
+		if (qlen<0) {
 			free(buf);
-			if (errno==EINTR)
+			usleep(50000);
+			if (errno==EINTR) {
+				close(sock);
 				return NULL;
+			}
 		} else {
 			buf->len=qlen;
 			pthread_attr_init(&attr);
@@ -1320,6 +1332,8 @@ void *udp_server_thread(void *dummy)
 		}
 	}
 	close(sock);
+	udp_socket=-1;
+	return NULL;
 }
 
 /*
@@ -1335,6 +1349,13 @@ void *tcp_answer_thread(void *csock)
 	unsigned char *resp;
 
 	THREAD_SIGINIT;
+
+	if (!global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			pdnsd_exit();
+		}
+	}
 
 	free(csock);
 	rlen=htons(rlen);
@@ -1410,12 +1431,8 @@ void *tcp_answer_thread(void *csock)
 	return NULL;
 }
 
-/*
- * Listen on the specified port for tcp connects and answer them (each in a new thread to be nonblocking)
- */
-void *tcp_server_thread(void *p)
+int init_tcp_socket()
 {
-	struct protoent *pe=getprotobyname("tcp");
 	int sock;
 #ifdef ENABLE_IPV4
 	struct sockaddr_in sin4;
@@ -1425,36 +1442,17 @@ void *tcp_server_thread(void *p)
 #endif
 	struct sockaddr *sin;
 	int sinl;
-	pthread_t pt;
-	pthread_attr_t attr;
-	int *csock;
-	int first=1;
-
-	(void)p; /* To inhibit "unused variable" warning */
-
-	THREAD_SIGINIT;
+	struct protoent *pe=getprotobyname("tcp");
 
 	if (!pe) {
-		if (da_tcp_errs<TCP_MAX_ERRS) {
-			da_tcp_errs++;
-			log_error("Could not get tcp protocol: %s",strerror(errno));
-		}
-		tcp_up=0;
-		if (!udp_up)
-			pdnsd_exit();
-		return NULL;
+		log_error("Could not get tcp protocol: %s",strerror(errno));
+		return -1;
 	}
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		if ((sock=socket(PF_INET,SOCK_STREAM,pe->p_proto))==-1) {
-			if (da_tcp_errs<TCP_MAX_ERRS) {
-				da_tcp_errs++;
-				log_error("Could not open tcp socket: %s",strerror(errno));
-			}
-			tcp_up=0;
-			if (!udp_up)
-				pdnsd_exit();
-			return NULL;
+			log_error("Could not open tcp socket: %s",strerror(errno));
+			return -1;
 		}
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
@@ -1467,14 +1465,8 @@ void *tcp_server_thread(void *p)
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
 		if ((sock=socket(PF_INET6,SOCK_STREAM,pe->p_proto))==-1) {
-			if (da_tcp_errs<TCP_MAX_ERRS) {
-				da_tcp_errs++;
-				log_error("Could not open tcp socket: %s",strerror(errno));
-			}
-			tcp_up=0;
-			if (!udp_up)
-				pdnsd_exit();
-			return NULL;
+			log_error("Could not open tcp socket: %s",strerror(errno));
+			return -1;
 		}
 		sin6.sin6_family=AF_INET6;
 		sin6.sin6_port=htons(global.port);
@@ -1486,15 +1478,36 @@ void *tcp_server_thread(void *p)
 	}
 #endif
 	if (bind(sock,sin,sinl)) {
-		if (da_tcp_errs<TCP_MAX_ERRS) {
-			da_tcp_errs++;
-			log_error("Could not bind tcp socket: %s",strerror(errno));
-		}
-		tcp_up=0;
-		if (!udp_up)
-			pdnsd_exit();
-		return NULL;
+		log_error("Could not bind tcp socket: %s",strerror(errno));
+		close(sock);
+		return -1;
 	}
+	return sock;
+}
+
+/*
+ * Listen on the specified port for tcp connects and answer them (each in a new thread to be nonblocking)
+ */
+void *tcp_server_thread(void *p)
+{
+	int sock;
+	pthread_t pt;
+	pthread_attr_t attr;
+	int *csock;
+	int first=1;
+
+	(void)p; /* To inhibit "unused variable" warning */
+
+	THREAD_SIGINIT;
+
+	if (!global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			pdnsd_exit();
+		}
+	}
+
+	sock=tcp_socket;
 	
 	if (listen(sock,5)) {
 		if (da_tcp_errs<TCP_MAX_ERRS) {
@@ -1524,6 +1537,11 @@ void *tcp_server_thread(void *p)
 				first=0; /* special handling, not da_tcp_errs*/
 				log_error("tcp accept failed: %s",strerror(errno));
 			}
+			if (errno==EINTR) {
+				close(sock);
+				tcp_socket=-1;
+				return NULL;
+			}
 			usleep(50000);
 		} else {
 			/*
@@ -1536,6 +1554,7 @@ void *tcp_server_thread(void *p)
 		}
 	}
 	close(sock);
+	tcp_socket=-1;
 	return NULL;
 }
 
@@ -1546,19 +1565,24 @@ void *tcp_server_thread(void *p)
 void start_dns_servers()
 {
 	pthread_attr_t attrt,attru;
-	pthread_attr_init(&attrt);
-	pthread_attr_setdetachstate(&attrt,PTHREAD_CREATE_DETACHED);
-	if (pthread_create(&tcps,&attrt,tcp_server_thread,NULL)) {
-		log_error("Could not create tcp server thread. Exiting.");
-		pdnsd_exit();
-	} else
-		log_info(2,"tcp server thread started.");
+	
+	if (tcp_socket!=-1) {
+		pthread_attr_init(&attrt);
+		pthread_attr_setdetachstate(&attrt,PTHREAD_CREATE_DETACHED);
+		if (pthread_create(&tcps,&attrt,tcp_server_thread,NULL)) {
+			log_error("Could not create tcp server thread. Exiting.");
+			pdnsd_exit();
+		} else
+			log_info(2,"tcp server thread started.");
+	}		
 
-	pthread_attr_init(&attru);
-	pthread_attr_setdetachstate(&attru,PTHREAD_CREATE_DETACHED);
-	if (pthread_create(&udps,&attru,udp_server_thread,NULL)) {
-		log_error("Could not create tcp server thread. Exiting.");
-		pdnsd_exit();
-	} else
-		log_info(2,"udp server thread started.");
+	if (udp_socket!=-1) {
+		pthread_attr_init(&attru);
+		pthread_attr_setdetachstate(&attru,PTHREAD_CREATE_DETACHED);
+		if (pthread_create(&udps,&attru,udp_server_thread,NULL)) {
+			log_error("Could not create tcp server thread. Exiting.");
+			pdnsd_exit();
+		} else
+			log_info(2,"udp server thread started.");
+	}
 }

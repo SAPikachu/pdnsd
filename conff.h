@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.5 2000/06/22 09:57:34 thomas Exp $ */
+/* $Id: conff.h,v 1.6 2000/06/23 21:54:57 thomas Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -45,7 +45,7 @@ typedef struct {
 	long             ping_timeout;
 	char             interface[7];
 	char             uptest_cmd[513];
-	char             uptest_usr[20];
+	char             uptest_usr[21];
 	char             purge_cache;
 	char             nocache;
 	char             lean_query;
@@ -61,10 +61,12 @@ typedef struct {
 	int           port;
 	char          lndown_kluge;
 	long          max_ttl;
+	char          run_as[21];
+	char          strict_suid;
 } globparm_t;
 
 extern globparm_t global;
-extern servparm_t server;        /*This is only used temporarly*/
+extern servparm_t server;        /* This is only used temporarily */
 extern servparm_t serv_presets;
 
 extern int serv_num;

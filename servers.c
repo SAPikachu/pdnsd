@@ -26,7 +26,6 @@ Boston, MA 02111-1307, USA.  */
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <pwd.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
@@ -36,9 +35,10 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 #include "icmp.h"
 #include "netdev.h"
+#include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.7 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.8 2000/06/23 21:54:57 thomas Exp $";
 #endif
 
 pthread_t stt;
@@ -51,7 +51,6 @@ int fexecerr=1;
 int uptest (servparm_t serv)
 {
 	int ret/*=serv.is_up*/;
-	struct passwd *pwd;
 	pid_t pid;
 	switch (serv.uptest) {
 	case C_NONE:
@@ -76,37 +75,15 @@ int uptest (servparm_t serv)
 				/* We ran as setgid. This is not inherited to the command! */			
 				setegid(getgid());
 			}
-			if (serv.uptest_usr[0]!='\0') {
-				/* Try to setuid() to a different user as specified. Good when you
-				   don't want the test command to run as root */
-				if (!(pwd=getpwnam(serv.uptest_usr))) {
-					if (fexecerr) {
-						log_error("Unable to get uid for %s: %s",serv.uptest_usr,strerror(errno));
-						fexecerr=0;
-					}
-					/*exit(42);*/ /*no success */
-					ret=0;
-					break;
+			/* Try to setuid() to a different user as specified. Good when you
+			   don't want the test command to run as root */
+			if (!run_as(serv.uptest_usr)) {
+				if (fexecerr) {
+					log_error("Unable to get uid for %s: %s",serv.uptest_usr,strerror(errno));
+					fexecerr=0;
 				}
-				/* setgid first, because we may not allowed to do it anymore after setuid */
-				if (setgid(pwd->pw_gid)!=0) {
-					if (fexecerr) {
-						log_error("Unable to do setgid for user %s: %s",serv.uptest_usr,strerror(errno));
-						fexecerr=0;
-					}
-					/*exit(44);*/
-					ret=0;
-					break;
-				}
-				if (setuid(pwd->pw_uid)!=0) {
-					if (fexecerr) {
-						log_error("Unable to do setuid for user %s: %s",serv.uptest_usr,strerror(errno));
-						fexecerr=0;
-					}
-					/*exit(43);*/
-					ret=0;
-					break;
-				}
+				ret=0;
+				break;
 			}
 			execl("/bin/sh", "uptest_sh","-c",serv.uptest_cmd,NULL);
 			_exit(1); /* failed execl */

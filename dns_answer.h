@@ -18,13 +18,20 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_answer.h,v 1.2 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: dns_answer.h,v 1.3 2000/06/23 21:54:57 thomas Exp $ */
 
 #ifndef _DNS_ANSWER_H_
 #define _DNS_ANSWER_H_
 
 #include "config.h"
 
+/* --- from main.c */
+extern int tcp_socket;
+extern int udp_socket;
+/* --- */
+
+int init_udp_socket(void);
+int init_tcp_socket(void);
 void start_dns_servers(void);
 
 #endif
