@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.8 2000/06/26 11:41:58 thomas Exp $ */
+/* $Id: ipvers.h,v 1.9 2000/06/27 10:15:50 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -34,11 +34,11 @@ Boston, MA 02111-1307, USA.  */
 # error "You need to define either or both of ENABLE_IPV4 and ENABLE_IPV6. Look into your config.h.templ"
 #endif
 
-#if DEFAULT_IPV4!=1 && DEFAULT_IPV6!=1
+#if DEFAULT_IPV4==0 && DEFAULT_IPV6==1
 # error "You need to set either IPV4_DEFAULT or IPV6_DEFAULT to 1. Look into your config.h.templ"
 #endif
 
-#if DEFAULT_IPV4==1 && DEFAULT_IPV6==1
+#if DEFAULT_IPV4!=0 && DEFAULT_IPV6!=0
 # error "You only may set one of IPV4_DEFAULT and IPV6_DEFAULT to 1. Look into your config.h.templ"
 #endif
 
@@ -142,7 +142,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 #define IPV6_FLOWINFO 0
 
 /* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine. 
- * Pass a in_addr* and a in6_addr* */
+ * Pass an in_addr* and an in6_addr* */
 #define IPV6_MAPIPV4(a,b) ((uint32_t *)(b))[3]=(a)->s_addr;((uint32_t *)(b))[2]=htonl(0xffff);((uint32_t *)(b))[1]=((uint32_t *)(b))[0]=0
 
 /* A macro to extract the pointer to the address of a struct sockaddr (_in or _in6) */

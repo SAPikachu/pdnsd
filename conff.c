@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "y.tab.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.9 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.10 2000/06/27 10:15:50 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -109,6 +109,10 @@ void report_conf_stat(FILE *f)
 	fprintf(f,"\tServer directory: %s\n",global.cache_dir);
 	fprintf(f,"\tServer port: %i\n",global.port);
 	fprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
+	fprintf(f,"\tMaximum ttl: %i\n",global.max_ttl);
+	fprintf(f,"\tRun as: %s\n",global.run_as);
+	fprintf(f,"\tStrict run as: %i\n",global.strict_suid);
+	fprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
 	for(i=0;i<serv_num;i++) {
 		fprintf(f,"Server %i:\n------\n",i+1);
 		fprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));

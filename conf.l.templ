@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.l.templ,v 1.7 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: conf.l.templ,v 1.8 2000/06/27 10:15:50 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -95,7 +95,7 @@ C_CLOSE \*\/
 <INITIAL>"onquery"			{yylval.num=C_ONQUERY;return CONST;}
 
 <INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
-<INITIAL>[=;\,\[{\}]			{return yytext[0];}
+<INITIAL>[=;\,\{\}]			{return yytext[0];}
 <INITIAL>{C_COMM}[^\n]*			/*munch munch*/
 
 {C_OPEN}				{

@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.8 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.9 2000/06/27 10:15:50 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -172,7 +172,7 @@ spec:		GLOBAL '{' glob_s '}'	{}
 				} 
 			source_s '}'
 			{
-				if (strlen((char *)c_owner)==0) {
+				if (c_owner[0]=='\0') {
 					yyerror("you must specify owner in a source record.");
 					YYERROR;
 				}
@@ -386,7 +386,16 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("you must specify owner and name before a,ptr and soa records.");
 					YYERROR;
 				}
-				if (!inet_aton((char *)$3,&ina4)) {
+				if (inet_aton((char *)$3,&ina4)) {
+#if !defined(ENABLE_IPV4) 
+					yyerror("bad ip in a= option.");
+					YYERROR;
+#else
+					c_a.ipv4=ina4;
+					sz=sizeof(struct in_addr);
+					tp=T_A;
+#endif
+				} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 					if (!inet_pton(AF_INET6,(char *)$3,&c_a.ipv6)) {
 						yyerror("bad ip in a= option.");
@@ -398,15 +407,6 @@ rr_el:		NAME '=' STRING ';'
 #else
 					yyerror("bad ip in a= option.");
 					YYERROR;
-#endif
-				} else {
-#if !defined(ENABLE_IPV4) 
-					yyerror("bad ip in a= option.");
-					YYERROR;
-#else
-					c_a.ipv4=ina4;
-					sz=sizeof(struct in_addr);
-					tp=T_A;
 #endif
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp);
