@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.22 2002/01/03 16:35:33 tmm Exp $
+$Id: NEWS,v 1.23 2002/01/14 17:54:31 tmm Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -146,3 +146,6 @@ gain access as the user pdnsd runs as (an unprivileged user by default). To do
 this, an attacker needs to control a name server that is queried by pdnsd, and
 send a malicious reply to such a query. Upgrading is strongly recommended!
 There are also minor bug fixes and stability improvements.
+
+Version 1.1.7a fixes a reversed assertion that would cause pdnsd to terminate
+if used with the ping uptest. No other changes were made.
