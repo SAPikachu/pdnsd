@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.7 2001/02/09 23:14:11 thomas Exp $
+# $Id: pdnsd.spec.in,v 1.8 2001/03/25 18:09:56 tmm Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -28,7 +28,7 @@ and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 %setup
 
 %build
-./configure --prefix=%{prefix} --sysconfdir=%{confdir} --with-distribution=%{distro}
+./configure --prefix=%{prefix} --sysconfdir=%{confdir} --with-distribution=%{distro} --mandir=%{_mandir}
 %__make
 
 %install
@@ -69,6 +69,8 @@ if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then
 fi
 
 %changelog
+* Sun Mar 25 2001 Thomas Moestl <tmoestl@gmx.net>
+- Merged SuSE fixes by Christian Engstler
 * Fri Feb 09 2001 Thomas Moestl <tmoestl@gmx.net>
 - Merged in a spec fix for mapage inclusion contributed by Sourav K.
   Mandal
