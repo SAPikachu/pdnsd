@@ -1,10 +1,11 @@
-$Id: AUTHORS,v 1.27 2001/05/04 20:13:41 tmm Exp $
+$Id: AUTHORS,v 1.28 2001/06/13 17:28:31 tmm Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
 Small parts of this program are based on code that  was taken from nmap (IP 
-checksumming), the isdn4k-utils (ippp interface uptest) and glibc 2.1.2 (some
-definitions for kernel 2.2.x missing in 2.0 glibcs).
+checksumming), the isdn4k-utils (ippp interface uptest), glibc 2.1.2 (some
+definitions for kernel 2.2.x missing in 2.0 glibcs) and FreeBSD
+(SIZEOF_ADDR_IFREQ in netdev.c).
 nmap was written by Fyodor. The insd4k-utils were written by Fritz Elfert and
 others. The GNU C library (glibc) is copyright by the Free Software 
 Foundation.
