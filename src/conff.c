@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.25 2001/07/01 21:03:15 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.26 2001/07/02 18:55:27 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -41,7 +41,7 @@ globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,120,900,C_AUTH,C_AUT
 #else
 globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
 		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
-+		   20,30,TCP_TIMEOUT,PAR_QUERIES,1,0,65535};
+		   20,30,TCP_TIMEOUT,PAR_QUERIES,1,0,65535};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
