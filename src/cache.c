@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.35 2001/06/23 20:57:47 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.36 2001/09/10 15:59:04 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1155,14 +1155,8 @@ static int cr_add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, in
 
 static int cr_add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
 {
-	if (!cr_check_add(cent, tp, ttl, ts, flags)) {
-		/* If it was there, delete. */
-		if (cent->rr[tp-T_MIN]) {
-			remove_rrl(cent->rr[tp-T_MIN]->lent);
-			del_cent_rrset(cent,tp,0);
-		}
+	if (!cr_check_add(cent, tp, ttl, ts, flags))
 		return 0;
-	}
 	if (!add_cent_rr_int(cent, rr, tp, ttl, ts, flags, serial, dbg))
 		return -1;
 	return 1;
@@ -1416,13 +1410,13 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 				had=1;
 			if ((rrb=create_rr(dlen,data,0))) {
 				add = cr_add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0);
-				if (add < 0) {
+				if (add <= 0) {
 					free_rr(*rrb,0);
 					free(rrb);
 					cache_size+=ret->cs;
-				} else if (add > 0) {
+				} else {
 					cache_size+=ret->cs;
-					if (!had) {
+					if (!had && ret->rr[tp-T_MIN]) {
 						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp,ret->rr[tp-T_MIN]->ts)) {
 							unlock_cache_rw();
 							return 0;
