@@ -25,6 +25,8 @@ Boston, MA 02111-1307, USA.  */
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <string.h>
 #include <errno.h>
@@ -43,7 +45,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.18 2002/07/19 20:56:29 tmm Exp $";
+static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
 #endif
 
 /*
@@ -60,8 +62,9 @@ static char schm[32];
  */
 int uptest (servparm_t serv)
 {
-	int ret;
+	int ret, i;
 	pid_t rv, pid;
+	struct rlimit rl;
 
 	if (serv.scheme[0]) {
 		if (!schm[0]) {
@@ -122,6 +125,19 @@ int uptest (servparm_t serv)
 			if (!run_as(serv.uptest_usr)) {
 				log_error("Unable to get uid for %s: %s",serv.uptest_usr,strerror(errno));
 				_exit(1);
+			}
+			/*
+			 * Mark all open fd's FD_CLOEXEC for paranoia reasons.
+			 */
+			if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+				log_error("getrlimit() failed: %s",strerror(errno));
+				_exit(1);
+			}
+			for (i = 0; i <= rl.rlim_max; i++) {
+				if (fcntl(i, F_SETFD, FD_CLOEXEC) == -1 && errno != EBADF) {
+					log_error("fcntl(F_SETFD) failed: %s",strerror(errno));
+					_exit(1);
+				}
 			}
 			execl("/bin/sh", "uptest_sh","-c",serv.uptest_cmd,NULL);
 			_exit(1); /* failed execl */
