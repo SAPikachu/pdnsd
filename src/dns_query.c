@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.30 2001/02/07 13:38:56 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.31 2001/03/12 22:54:48 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -729,6 +729,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 #if DEBUG>0
 	char buf[ADDRSTR_MAXLEN];
 #endif
+	std_query_t temp;
 
 	switch (st->state){
 	case QS_INITIAL:
@@ -759,8 +760,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr->arcount=0;
 		strcpy(((char *)(st->hdr+1)),(char *)rrn);
 		*(((unsigned char *)(st->hdr+1))+strlen((char *)rrn))='\0';
-		((std_query_t *)(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1))->qtype=htons(st->qt);
-		((std_query_t *)(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1))->qclass=htons(C_IN);
+		temp.qtype=htons(st->qt);
+		temp.qclass=htons(C_IN);
+		memcpy(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1,&temp,4);
 		if (!st->trusted)
 			st->hdr->rd=0;
 		st->recvbuf=NULL;

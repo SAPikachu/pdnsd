@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.34 2001/02/15 23:17:56 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.35 2001/03/12 22:54:48 tmm Exp $";
 #endif
 
 /*
@@ -850,12 +850,11 @@ static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
 			}
 			break;
 		}
-		(&(*q)->first_q)[i].qtype=ntohs(*((unsigned short *)ptr));
-		sz-=2;
-		ptr+=2;
-		(&(*q)->first_q)[i].qclass=ntohs(*((unsigned short *)ptr));
-		sz-=2;
-		ptr+=2;
+		memcpy(&(&(*q)->first_q)[i].qtype,ptr,4);
+		(&(*q)->first_q)[i].qtype=ntohs((&(*q)->first_q)[i].qtype);
+		(&(*q)->first_q)[i].qclass=ntohs((&(*q)->first_q)[i].qclass);
+		sz-=4;
+		ptr+=4;
 	}
 	return RC_OK;
 }
