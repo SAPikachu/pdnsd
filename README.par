@@ -1,0 +1,86 @@
+	  Alternative pdnsd implementation - version 1.1.7a-par
+	  ======================================================
+
+This file describes the customized version of pdnsd that I use personally and am
+making available so other people can run it and/or study the source code.
+Present version is 1.1.7a-par (I've simply appended my initials to the version
+number). The first part of this file describes how to patch, compile, install
+and run pdnsd. The second part describes some of the changes I've made to Thomas
+Moestl's code.
+
+Before compiling and installing pdnsd according to Thomas Moestl's instructions
+described in the INSTALL file you must first apply my patch file
+pdnsd-1.1.7a-par.diff.gz using the command:
+
+gzip -cd <path_to_patch>/pdnsd-1.1.7a-par.diff.gz | patch -p2 -N -E
+
+Note: because I have used GNU extensions you will need to compile with gcc and
+link with glibc. This will not be a problem with most Linux distributions.
+
+That's it! You should now be able to compile, install and run pdnsd.
+
+The rest of this file describes some modifications I've made, but you don't have
+to read it if you simply want to run pdnsd as you're used to.
+
+
+- The main new feature I've added enables you to change the server addresses
+  that pdnsd uses at run-time using pdnsd-ctl. I've done this because the ISPs I
+  use do not specify fixed DNS server addresses, but expect their clients to use
+  dynamic DNS configuration (DHCP in the case of the cable connection, RFC1877
+  in case of isdn). I've extended the options that can be given with the
+  "server" command to pdnsd-ctl, to allow IP addresses to be specified as an
+  additional argument after "up|down|retest". This allows me to put something
+  like this in my ifup-local script:
+
+  pdnsd-ctl server isp-label up $DNS1,$DNS2
+
+  This was quite tricky to implement because there might be pending queries
+  while the addresses are being changed. It certainly was an interesting
+  exercise in writing multi-threaded code for me.
+
+
+- I've implemented a feature which allowed me to specify multiple IP addresses
+  per server section in the configuration file. This allowed for a much more
+  compact configuration file (3 server sections instead of 7 in my case),
+  because most configuration options are identical for servers belonging to the
+  same ISP. It also made the output of "pdnsd-ctl status" more compact. And it
+  was necessary to enable a satisfactory implementation of the previous feature.
+
+- I've changed the implementation of dynamic arrays to make it slightly more
+  efficient, and improve type safety. I also got rid of several arrays of fixed
+  size in favor of dynamically allocated arrays. In particular, I got rid of
+  all occurrences of MAXPATH. I also made several static variables "automatic".
+
+- The output of the "status" command of pdnsd-ctl now gives more meaningful
+  constant names "ping|none|if|exec" instead of numbers for the "uptest" option.
+
+- I've fixed I a problem that caused pdnsd to use up a lot of CPU time and slow
+  down my system considerably when it received a query that took a long time to
+  resolve. It turned out that pdnsd can get into a "busy loop" when one of the
+  DNS servers pdnsd is querying refuses the connection. Apart from fixing this
+  bug, to speed things up additionally, I thought it would be a good idea to
+  mark a server down (without retesting it) after detecting errno==ECONNREFUSED.
+  This gives me very satisfactory performance, with the problematic server being
+  tried only once during every testing interval.
+
+- Due to a bug in Thomas' code, pdnsd tries, but fails, to remove the control
+  socket "pdnsd.status" before exiting. This has also been fixed.
+
+- I've rewritten some of the code that saves the contents of the cache to the
+  file "pdnsd.cache" just before pdnsd exits. This is because I noticed in my
+  logfiles that pdnsd occasionally had problems reading this file back at
+  startup. I eliminated the use of fseek() in Thomas' code. I could not find
+  anything that was demonstrably incorrect about his use of fseek(), but it
+  seemed better to me to do without it and write the file in a strictly
+  sequential order. Anyway, it turned out my hunch paid off: no more error
+  messages about "pdnsd.cache" in my logfile.
+
+In addition to the things I've listed above, I've made various little changes to
+fix minor bugs, improve efficiency or elegance, or simply to suit my my own
+coding style. These changes are too numerous to list here, but you can always
+find out about them by comparing the source of my modified version with Thomas'
+original code.
+
+If you have any questions about the modifications I've made, you can send these
+to <p.a.rombouts@home.nl>. Questions about the original pdnsd version should
+be sent to <tmoestl@gmx.net> or <t.moestl@tu-bs.de>.

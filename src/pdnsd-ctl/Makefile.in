@@ -78,14 +78,14 @@ sbin_PROGRAMS = pdnsd-ctl
 
 pdnsd_ctl_SOURCES = pdnsd-ctl.c
 pdnsd_ctl_LDADD = rr_types.o
-pdnsd_ctl_DEPENDENCIES = ../rr_types.o
+pdnsd_ctl_DEPENDENCIES = rr_types.o
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../../config.h
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(sbin_PROGRAMS)
 
 
-DEFS = @DEFS@ -I. -I$(srcdir) -I../..
+DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
@@ -208,8 +208,10 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 pdnsd-ctl.o: pdnsd-ctl.c ../../config.h ../status.h ../conff.h \
-	../ipvers.h ../list.h ../dns.h ../rr_types.h ../cache.h
+	../ipvers.h ../list.h ../dns.h ../rr_types.h ../cache.h \
+	../helpers.h ../pdnsd_assert.h
 rr_types.o: ../rr_types.c ../rr_types.h ../../config.h
+	$(COMPILE) -c $<
 
 info-am:
 info: info-am

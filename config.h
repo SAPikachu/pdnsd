@@ -15,7 +15,7 @@
 #define HAVE_ALLOCA 1
 
 /* Define if you have <alloca.h> and it should be used (not on Ultrix).  */
-/* #undef HAVE_ALLOCA_H */
+#define HAVE_ALLOCA_H 1
 
 /* Define if you don't have vprintf but do have _doprnt.  */
 /* #undef HAVE_DOPRNT */
@@ -59,14 +59,14 @@
 /* Define your Target here. Currently defined are TARGET_LINUX (any 
  * architecture) and TARGET_BSD (experimental; tested on FreeBSD, hopefully 
  * works for other BSD variants) */
-#define TARGET TARGET_BSD 
+#define TARGET TARGET_LINUX 
 
 /* change the #undef to #define if you do not want to compile with special 
  * ISDN support for Linux. Note that the ISDN support will not compile ok on 
  * unpatched kernerls earlier than 2.2.12 (if you did apply newer isdn patches,
  * it may work fine). This is not on by default because it will cause compile 
  * problems on some systems */
-/* #undef ISDN_SUPPORT */
+#define ISDN_SUPPORT 1
 
 /* The following regulates the IP Protocol support. Supported types are IPv4
  * and IPv6 (aka IPng). You may enable either or both of these protocols. 
@@ -125,7 +125,7 @@
 
 /* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
  * unsure about what this means, just leave this as it is.*/
-/* #undef NO_POLL */
+#define NO_POLL 1
 
 /* Define this if you want to compile with support for the new
  * rrs defined in various rfcs (see rfc1700 for an (incomplete) 
@@ -199,7 +199,7 @@
 #define NO_RCSIDS 1
 
  
-#define NO_IN_PKTINFO 1
+/* #undef NO_IN_PKTINFO */
 
 /* Lock the UDP socket before using it? */
 /* #undef SOCKET_LOCKING */
@@ -252,7 +252,7 @@
 #define HAVE_FCNTL_H 1
 
 /* Define if you have the <malloc.h> header file.  */
-/* #undef HAVE_MALLOC_H */
+#define HAVE_MALLOC_H 1
 
 /* Define if you have the <netinet/in.h> header file.  */
 #define HAVE_NETINET_IN_H 1
@@ -270,11 +270,11 @@
 #define HAVE_UNISTD_H 1
 
 /* Define if you have the pthread library (-lpthread).  */
-/* #undef HAVE_LIBPTHREAD */
+#define HAVE_LIBPTHREAD 1
 
 /* Name of package */
 #define PACKAGE "pdnsd"
 
 /* Version number of package */
-#define VERSION "1.1.7a"
+#define VERSION "1.1.7a-par"
 

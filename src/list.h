@@ -29,43 +29,54 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include <stdlib.h>
+#include "pdnsd_assert.h"
+
 /*
  * The size of this should always be a multiple of 4 on all supported architectures.
  * Otherwise, we need further glue.
  */
-struct darray_head {
-	int tpsz;	/* size of the type we hold (including padding) */
-	int nel;	/* number of elements in array */
-	int ael;	/* number of allocated elements */
-	int dummy;	/* dummy for alignment */
+struct _dynamic_array_dummy_head {
+	long int nel;	/* number of elements in array */
+	double elem[0];	/* dummy for alignment */
 };
 
-typedef struct darray_head *darray;
+typedef struct _dynamic_array_dummy_head  *darray;
 
-/*
- * This will work for i386 and alpha. If someday we support and architecture
- * with different alignment needs, this needs to be fixed.
- */
-#define DA_ALIGNSZ(sz) (((((sz)-1)/8)+1)*8)
+/* used in type declarations */
+#define DYNAMIC_ARRAY(typ) \
+        struct _dynamic_array_of_ ## typ {long int nel; typ elem[0]; } 
 
-#define DA_CREATE(tp) (da_create(sizeof(tp)))
-#define DA_INDEX(a,i,tp) ((tp *)(da_index(a,i)))
+#define DA_CREATE(typ) ((struct _dynamic_array_of_ ## typ *)(da_create(sizeof(typ))))
+#define DA_INDEX(a,i) ((a)->elem[i])
 /* Used often, so make special-case macro here */
-#define DA_LAST(a, tp) ((tp *)(da_index(a, (a)->nel-1)))
+#define DA_LAST(a) ((a)->elem[(a)->nel-1])
 
+#define DA_GROW1(a,typ) ((struct _dynamic_array_of_ ## typ *)da_grow1((darray)(a),sizeof(typ)))
+#define DA_RESIZE(a,typ,n) ((struct _dynamic_array_of_ ## typ *)da_resize((darray)(a),sizeof(typ),n))
+#define DA_NEL(a) da_nel((darray)(a))
 /*
  * Some or all of these should be inline.
  * They aren't macros for type safety.
  */
-darray Dda_create(int sz);
-darray da_grow(darray a, int n);
-darray da_resize(darray a, int n);
-char *da_index(darray a, int i);
-int da_nel(darray a);
-void Dda_free(darray a);
+inline static darray Dda_create(int sz)
+{
+  darray a;
 
-/* Number of elements to over-allocate by default */
-#define DA_PREALLOC	5
+  a=(darray)malloc(sizeof(struct _dynamic_array_dummy_head)+sz*8);
+  if(a) a->nel=0;
+  return a;
+}
+
+darray da_grow1(darray a, int sz);
+darray da_resize(darray a, int sz, int n);
+
+inline static int da_nel(darray a)
+{
+  if (a==NULL)
+    return 0;
+  return a->nel;
+}
 
 /* alloc/free debug code.*/
 #ifdef ALLOC_DEBUG
@@ -76,65 +87,8 @@ darray DBGda_free(darray a, char *file, int line);
 #define da_free(a)	DBGda_free(a, __FILE__, __LINE__)
 #else
 #define da_create	Dda_create
-#define da_free		Dda_free
+#define da_free		free
 #endif
 
-/* List macros. */
-#define PLIST_STRUCT(type)						\
-	struct {							\
-		struct type *next;					\
-		struct type *prev;					\
-	} _list
-
-#define PLIST_HEAD(name, type)						\
-	struct {							\
-		struct type *head;					\
-		struct type *tail;					\
-	} name
-
-#define PLIST_FIRST(name)	((name)->head)
-#define PLIST_NEXT(el)		(*(el)->_list.next)
-#define PLIST_PREV(el)		(*(el)->_list.prev)
-#define PLIST_DELETE(el, type)	(*(el)->prev = (el)->next)
-
-#define PLIST_INSERT_HEAD(el, head)					\
-	do {								\
-		el->next = head->head;					\
-		el->prev = NULL;					\
-		head->head = el;					\
-		if (el->next == NULL)					\
-			head->tail = el;				\
-	} while (0);
-
-#define PLIST_INSERT_TAIL(el, head)					\
-	do {								\
-		el->prev = head->tail;					\
-		el->next = NULL;					\
-		head->tail = el;					\
-		if (el->prev == NULL)					\
-			head->head = el;				\
-	} while (0);
-
-#define PLIST_INSERT_AFTER(el, after)					\
-	do {								\
-		el->next = after->next;					\
-		el->prev = after;					\
-		after->next = el;					\
-		if (el->next == NULL)					\
-			head->tail = el;				\
-		else							\
-			el->next->prev = el;				\
-	} while (0);
-
-#define PLIST_INSERT_BEFORE(el, before)					\
-	do {								\
-		el->prev = before->prev;				\
-		el->next = before;					\
-		before->prev = el;					\
-		if (el->prev == NULL)					\
-			head->head = el;				\
-		else							\
-			el->prev->next = el;				\
-	} while (0);
 
 #endif /* def LIST_H */

@@ -1,10 +1,10 @@
 # $Id: pdnsd.spec.in,v 1.9 2001/05/17 14:14:27 tmm Exp $
 %define name  pdnsd
-%define ver      1.1.7a
+%define ver      1.1.7a-par
 %define rel 1
 %define prefix  /usr
 %define confdir /etc
-%define distro Generic
+%define distro RedHat
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: %{name}

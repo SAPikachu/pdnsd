@@ -111,14 +111,14 @@ volatile rr_lent_t *rrset_l_tail=NULL;
 volatile long cache_size=0;
 volatile long ent_num=0;
 
-#define cache_free(ptr, dbg)		do { if (dbg) pdnsd_free(ptr); else free(ptr); } while (0)
+#define cache_free(ptr, dbg)		{ if (dbg) pdnsd_free(ptr); else free(ptr); }
 #define cache_calloc(sz, n, dbg)	((dbg)?(pdnsd_calloc(sz,n)):(calloc(sz,n)))
 #define cache_realloc(ptr, sz, dbg)	((dbg)?(pdnsd_realloc(ptr,sz)):(realloc(ptr,sz)))
 
 volatile int cache_w_lock=0;
 volatile int cache_r_lock=0;
 
-pthread_mutex_t lock_mutex;
+pthread_mutex_t lock_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* 
  * These are condition variables for lock coordination, so that normal lock
  * routines do not need to loop. Basically, a process wanting to acquire a lock
@@ -128,8 +128,8 @@ pthread_mutex_t lock_mutex;
  * If the rw lock is lifted, either all threads waiting on the r lock or one
  * thread waiting on the rw lock is/are awakened. This is determined by policy.
  */
-pthread_cond_t  rw_cond;
-pthread_cond_t  r_cond;
+pthread_cond_t  rw_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  r_cond = PTHREAD_COND_INITIALIZER;
 
 /* This is to suspend the r lock to avoid lock contention by reading threads */
 volatile int r_pend=0;
@@ -342,13 +342,11 @@ void init_cache()
 }
 
 /* Initialize the cache. Call only once. */
-void init_cache_lock()
+/* void init_cache_lock()
 {
-	pthread_mutex_init(&lock_mutex,NULL);
-	pthread_cond_init(&rw_cond,NULL);
-	pthread_cond_init(&r_cond,NULL);
+
 	use_cache_lock=1;
-}
+} */
 
 /* Delete the cache. Call only once */
 void destroy_cache()
@@ -398,11 +396,11 @@ int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, ti
 	int i;
 
 	/* This mimics strdup, which is not really portable unfortunately */
-	cent->qname=cache_calloc(sizeof(unsigned char),strlen((char *)qname)+1, dbg);
+	cent->qname=cache_calloc(sizeof(unsigned char),strlen(qname)+1, dbg);
 	if (cent->qname == NULL)
 		return 0;
-	strcpy((char *)cent->qname,(char *)qname);
-	cent->cs=sizeof(dns_cent_t)+strlen((char *)qname)+1;
+	strcpy(cent->qname,qname);
+	cent->cs=sizeof(dns_cent_t)+strlen(qname)+1;
 	cent->num_rrs=0;
 	cent->flags=flags;
 	cent->ts=ts;
@@ -646,12 +644,12 @@ dns_cent_t *copy_cent(dns_cent_t *cent, int dbg)
 		return NULL;
 	*ic=*cent;
 
-	ic->qname=cache_calloc(sizeof(unsigned char),strlen((char *)cent->qname)+1,dbg);
+	ic->qname=cache_calloc(sizeof(unsigned char),strlen(cent->qname)+1,dbg);
 	if (ic->qname == NULL) {
 		cache_free(ic,dbg);
 		return NULL;
 	}
-	strcpy((char *)ic->qname,(char *)cent->qname);
+	strcpy(ic->qname,cent->qname);
 	ic->lent=NULL;
 	
 	for (i=0;i<T_NUM;i++) 
@@ -791,35 +789,9 @@ static void purge_cache(long sz, int lazy)
 	}
 }
 
-/* Load an rr from f. data must be null or allocated on first call and freed after last call. dtsz must be the
- * initial size of data (or 0)*/
-static int read_rr (rr_fbucket_t *rr, unsigned char **data, int *dtsz, FILE *f)
-{
-	if (fread(rr,sizeof(rr_fbucket_t),1,f)!=1) {
-		fclose(f);
-		log_warn("Error in disk cache file.");
-		if (*data)
-			free(*data);
-		return 0;
-	}
-	if (rr->rdlen>*dtsz) {
-		*dtsz=rr->rdlen;
-		*data=realloc(*data,*dtsz);
-	}
-	if (!*data) {
-		fclose(f);
-		log_warn("Out of memory in reading cache file. Exiting.");
-		pdnsd_exit();
-		return 0;
-	}
-	if (fread(*data,rr->rdlen,1,f)!=1) {
-		fclose(f);
-		log_warn("Error in disk cache file.");
-		free(*data);
-		return 0;
-	}
-	return 1;
-}
+#define log_warn_read_error \
+        log_warn("%s encountered while reading disk cache file at %s, line %d", \
+        ferror(f)?"Error":feof(f)?"EOF":"Incomplete item", __FILE__, __LINE__);
 
 /*
  * Load cache from disk and rebuild the hash tables. 
@@ -835,89 +807,79 @@ void read_disk_cache()
 	rr_fbucket_t rr;
 	unsigned char *data;
 	unsigned char num_rr;
-	char path[1024];
 	long cnt;
 	FILE *f;
 	unsigned char nb[256];
 
-	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
-		log_warn("Cache file path too long.");
+	char path[strlen(global.cache_dir)+sizeof("/pdnsd.cache")];
+
+	stpcpy(stpcpy(path,global.cache_dir),"/pdnsd.cache");
+
+	if (!(f=fopen(path,"r"))) {
+		log_warn("Could not open disk cache file %s: %s",path,strerror(errno));
 		return;
 	}
 
 	if (!(data = calloc(dtsz,1))) {
 		log_warn("Out of memory in reading cache file. Exiting.");
-		pdnsd_exit();
-		return;
-	}
-
-	if (!(f=fopen(path,"r"))) {
-		log_warn("Could not open disk cache file %s: %s",path,strerror(errno));
-		free(data);
-		return;
+		goto fclose_exit;
 	}
 
 	if (fread(&cnt,sizeof(cnt),1,f)!=1) {
-		fclose(f);
-		log_warn("Error in disk cache file.");
-		free(data);
-		return;
+		log_warn_read_error
+		goto free_data_fclose;
 	}
 	
 	for(;cnt>0;cnt--) {
 		if (fread(&fe,sizeof(dns_file_t),1,f)!=1) {
-			fclose(f);
-			log_warn("Error in disk cache file.");
-			free(data);
-			return;
+			log_warn_read_error
+			goto free_data_fclose;
 		}
 		memset(nb,0,256);
 		if (fe.qlen) {
 			if (fread(nb,fe.qlen,1,f)!=1) {
-				fclose(f);
-				log_warn("Error in disk cache file.");
-				free(data);
-				return;
+				log_warn_read_error
+				goto free_data_fclose;
 			}
 		}
 		if (!init_cent(&ce, nb, fe.flags, fe.ts, fe.ttl,0)) {
-			free(data);
-			fclose(f);
 			log_error("Out of memory in reading cache file. Exiting.");
-			pdnsd_exit();
-			return;
+			goto free_data_fclose_exit;
 		}
 		/* now, read the rr's */
 		for (i=0;i<T_NUM;i++) {
 			if (fread(&num_rr,sizeof(num_rr),1,f)!=1) {
-				log_warn("Error in disk cache file.");
-				free(data);
-				free_cent(ce,0);
-				fclose(f);
-				return;
+				log_warn_read_error
+				goto free_cent_data_fclose;
 			}
 			if (num_rr) {
 				if (fread(&sh,sizeof(sh),1,f)!=1) {
-					log_warn("Error in disk cache file.");
-					free(data);
-					free_cent(ce,0);
-					fclose(f);
-					return;
+					log_warn_read_error
+					goto free_cent_data_fclose;
 				}
 				/* Add the rrset header in any case (needed for negative cacheing */
 				add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0, 0);
 				for (;num_rr>1;num_rr--) {
-					if (!read_rr(&rr,&data,&dtsz,f)) {
-						free_cent(ce,0);
-						return;
+					if (fread(&rr,sizeof(rr_fbucket_t),1,f)!=1) {
+						log_warn_read_error
+						goto free_cent_data_fclose;
 					}
+					if (rr.rdlen>dtsz) {
+						dtsz=rr.rdlen;
+						data=realloc(data,dtsz);
+					}
+					if (!data) {
+						log_warn("Out of memory in reading cache file. Exiting.");
+						goto free_cent_data_fclose_exit;
+					}
+					if (fread(data,rr.rdlen,1,f)!=1) {
+						log_warn_read_error
+						goto free_cent_data_fclose;
+					}
+
 					if (!add_cent_rr(&ce,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,i+T_MIN,0)) {
 						log_error("Out of memory in reading cache file. Exiting.");
-						pdnsd_exit();
-						free(data);
-						free_cent(ce,0);
-						fclose(f);
-						return;
+						goto free_cent_data_fclose_exit;
 					}
 				}
 			}
@@ -925,11 +887,30 @@ void read_disk_cache()
 		add_cache(ce);
 		free_cent(ce,0);
 	}
+#ifdef DBGHASH
 	free(data);
 	fclose(f);
-#ifdef DBGHASH
 	dumphash(&dns_hash);
+	return;
+#else
+	goto free_data_fclose;
 #endif
+
+ free_cent_data_fclose:
+	free_cent(ce,0);
+ free_data_fclose:
+	free(data);
+	fclose(f);
+	return;
+
+ free_cent_data_fclose_exit:
+	free_cent(ce,0);
+	if(data)
+ free_data_fclose_exit:
+	free(data);
+ fclose_exit:
+	fclose(f);
+	pdnsd_exit();
 }
 
 /* write an rr to the file f */
@@ -939,20 +920,19 @@ static int write_rrset(rr_set_t *rrs, FILE *f)
 	rr_fset_t sh;
 	rr_fbucket_t rf;
 	unsigned char num_rr=0;  /* 0 means nothing, 1 means header only, 1 means header + 1 records ... */
-	long nump,oldp;
 	
- 	if ((nump=ftell(f))==-1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
-		fclose(f);
-		return 0;
+	if(rrs && !(rrs->flags&CF_LOCAL)) {
+	  rr=rrs->rrs;
+	  num_rr=1;
+	  while(rr && num_rr<255) {++num_rr; rr=rr->next;}
 	}
-	/* write a dummy at first, since we do no know the number */
+
 	if (fwrite(&num_rr,sizeof(num_rr),1,f)!=1) {
 		log_error("Error while writing disk cache: %s", strerror(errno));
-		fclose(f);
 		return 0;
 	}
-	if (!rrs || rrs->flags&CF_LOCAL)
+
+	if (!num_rr)
 		return 1;
 
 	sh.ttl=rrs->ttl;
@@ -960,31 +940,22 @@ static int write_rrset(rr_set_t *rrs, FILE *f)
 	sh.flags=rrs->flags;
 	if (fwrite(&sh,sizeof(sh),1,f)!=1) {
 		log_error("Error while writing disk cache: %s", strerror(errno));
-		fclose(f);
 		return 0;
 	}
 	rr=rrs->rrs;
 	/* We only write a maximum of 256 of a kind (type) for one domain. This would be already overkill and probably does not happen.
 	 * we want to get along with only one char, because most rr rows are empty (even more with DNS_NEW_RRS), and so the usage
 	 * of greater data types would have significant impact on the cache file size. */
-	num_rr=1;
-	while (rr && num_rr<255) {
-		num_rr++;
+
+	for(;num_rr>1;--num_rr) {
 		rf.rdlen=rr->rdlen;
 		if (fwrite(&rf,sizeof(rf),1,f)!=1 || fwrite((rr+1),rf.rdlen,1,f)!=1) {
 			log_error("Error while writing disk cache: %s", strerror(errno));
-			fclose(f);
 			return 0;
 		}
 		rr=rr->next;
 	}
-	if ((oldp=ftell(f))==-1 || fseek(f,nump,SEEK_SET)==-1 || 
-	    fwrite(&num_rr,sizeof(num_rr),1,f)!=1 ||  /* write the real number */
-	    fseek(f,oldp,SEEK_SET)==-1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
-		fclose(f);
-		return 0;
-	}
+
 	return 1;
 }
 
@@ -999,88 +970,97 @@ static int write_rrset(rr_set_t *rrs, FILE *f)
  */
 void write_disk_cache()
 {
-	int i,j;
+	int j;
 	dns_cent_t *le;
-	char path[1024];
 	dns_file_t df;
 	long en=0;
-	int aloc;
 	dns_hash_pos_t pos;
 	FILE *f;
 
-	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
-		log_warn("Cache file path too long.");
-		return;
-	}		
+	char path[strlen(global.cache_dir)+sizeof("/pdnsd.cache")];
+
+	stpcpy(stpcpy(path,global.cache_dir),"/pdnsd.cache");
+
+	DEBUG_MSGC("Writing cache to %s\n",path);
+
+	if (!softlock_cache_rw()) {
+		goto lock_failed;
+	}
+	/* purge cache down to allowed size*/
+	purge_cache((long)global.perm_cache*1024, 0);
+	if (!softunlock_cache_rw()) {
+		goto lock_failed;
+	}
+
+	if (!softlock_cache_r()) {
+		goto lock_failed;
+	}
 
 	if (!(f=fopen(path,"w"))) {
 		log_warn("Could not open disk cache file %s: %s",path,strerror(errno));
-		return;
+		goto softunlock_return;
 	}
-	
-	/* purge cache down to allowed size*/
-	if (!softlock_cache_rw()) {
-		fclose(f);
-		crash_msg("Lock failed; could not write disk cache.");
-		return;
+
+	le=fetch_first((dns_hash_t *)&dns_hash,&pos);
+	while (le) {
+		/* count the rr's */
+		for (j=0;j<T_NUM;j++) {
+			if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
+				++en;
+				break;
+			}
+		}
+		le=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
-	purge_cache((long)global.perm_cache*1024, 0);
-	if (!softunlock_cache_rw()) {
-		fclose(f);
-		crash_msg("Lock failed; could not write disk cache.");
-		return;
-	}
-	if (!softlock_cache_r()) {
-		fclose(f);
-		crash_msg("Lock failed; could not write disk cache.");
-		return;
-	}
-	/* we don't know the real size by now, so write a dummy */
-	if (fwrite((char *)&ent_num,sizeof(en),1,f)!=1) {
+	if (fwrite(&en,sizeof(en),1,f)!=1) {
 		log_error("Error while writing disk cache: %s", strerror(errno));
-		fclose(f);
-		softunlock_cache_r();
-		return;
+		goto fclose_unlock;
 	}
 
 	le=fetch_first((dns_hash_t *)&dns_hash,&pos);
 	while (le) {
 		/* now, write the rr's */
-		aloc=1;
 		for (j=0;j<T_NUM;j++) {
 			if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
-				aloc=0;
-				break;
+				goto write_rrs;
 			}
 		}
-		if (!aloc) {
-			en++;
-			df.qlen=strlen((char *)le->qname);
+		goto next_le;
+	       write_rrs:
+		{
+			df.qlen=strlen(le->qname);
 			df.flags=le->flags;
 			df.ts=le->ts;
 			df.ttl=le->ttl;
 			if (fwrite(&df,sizeof(dns_file_t),1,f)!=1 ||
 			    fwrite(le->qname,df.qlen,1,f)!=1) {
 				log_error("Error while writing disk cache: %s", strerror(errno));
-				fclose(f);
-				softunlock_cache_r();
-				return;
+				goto fclose_unlock;
 			}
 			
-			for (i=0;i<T_NUM;i++) {
-				if (!write_rrset(le->rr[i],f)) {
-					softunlock_cache_r();
-					return;
+			for (j=0;j<T_NUM;j++) {
+				if (!write_rrset(le->rr[j],f)) {
+					goto fclose_unlock;
 				}
 			}
 		}
+	       next_le:
 		le=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
-	/* write the real size. */
-	if (fseek(f,0,SEEK_SET)==-1 || fwrite(&en,sizeof(en),1,f)!=1)
-		log_error("Error while writing disk cache: %s", strerror(errno));
+#if DEBUG > 0
 	fclose(f);
 	softunlock_cache_r();
+	DEBUG_MSGC("Finished writing cache to disk.\n");
+	return;
+#endif
+ fclose_unlock:
+	fclose(f);
+ softunlock_return:
+	softunlock_cache_r();
+	return;
+
+ lock_failed:
+	crash_msg("Lock failed; could not write disk cache.");
 }
 
 /*
@@ -1442,6 +1422,6 @@ void report_cache_stat(int f)
 	long mc=(long)global.perm_cache*1024+MCSZ;
 	long csz=cache_size*100/mc;
 	fsprintf(f,"\nCache status:\n=============\n");
-	fsprintf(f,"%li kB maximum disk cache size.\n",global.perm_cache);
-	fsprintf(f,"%li of %lu bytes (%lu%%) memory cache used in %lu entries.\n",cache_size,mc,csz,ent_num);
+	fsprintf(f,"%ld kB maximum disk cache size.\n",global.perm_cache);
+	fsprintf(f,"%ld of %ld bytes (%ld%%) memory cache used in %ld entries.\n",cache_size,mc,csz,ent_num);
 }

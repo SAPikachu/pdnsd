@@ -25,6 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include <syslog.h>
 #include <pthread.h>
 #include <signal.h>
+#include <string.h>
 #include "error.h"
 #include "helpers.h"
 #include "conff.h"
@@ -33,18 +34,17 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: error.c,v 1.7 2001/06/03 11:00:54 tmm Exp $";
 #endif
 
-pthread_mutex_t loglock;
+pthread_mutex_t loglock = PTHREAD_MUTEX_INITIALIZER;
 int use_lock=0;
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on
  * multiple simultaneous errors.
  */
-void init_log(void)
+/* void init_log(void)
 {
-	pthread_mutex_init(&loglock,NULL);
 	use_lock=1;
-}
+} */
 
 /* We crashed? Ooops... */
 void crash_msg(char *msg)

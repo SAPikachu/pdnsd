@@ -166,11 +166,14 @@ typedef struct {
 	unsigned char s[256];
 } compel_t;
 
+typedef DYNAMIC_ARRAY(compel_t) *compel_array;
+
+
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore);
 int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest);
-int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb);
+int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb);
 
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char *errbuf, int errsize);
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr);
 
 #if DEBUG>0 
 char *get_cname(int id);

@@ -129,31 +129,34 @@ int statusif(char *name)
  */
 int dev_up(char *ifname, char *devname)
 {
-	char buffer[256];
  	FILE *fd;
  	int pidi, pidd, rv;
 	
- 	if (snprintf(buffer, sizeof(buffer), "/var/run/%s.pid", ifname)>=sizeof(buffer))
-		return 0;
- 	if ((fd=fopen(buffer, "r")) == NULL )
- 		return 0;
+	{
+	  char path[sizeof("/var/run/.pid")+strlen(ifname)];
+	  stpcpy(stpcpy(stpcpy(path,"/var/run/"),ifname),".pid");
+	  if ((fd=fopen(path, "r")) == NULL )
+	    return 0;
 
- 	if (fscanf(fd, "%d", &pidi) != 1 ) {
-		fclose(fd) ;
- 		return 0;
- 	}
- 	fclose(fd);
- 
- 	if (snprintf(buffer, sizeof(buffer), "/var/lock/LCK..%s", devname)>=sizeof(buffer))
-		return 0;
- 	if ((fd=fopen(buffer, "r")) == NULL)
-		return 0;
+	  if (fscanf(fd, "%d", &pidi) != 1 ) {
+	    fclose(fd) ;
+	    return 0;
+	  }
+	  fclose(fd);
+	}
+
+	{
+	  char path[sizeof("/var/lock/LCK..")+strlen(devname)];
+	  stpcpy(stpcpy(path,"/var/lock/LCK.."),devname);
+	  if ((fd=fopen(path, "r")) == NULL)
+	    return 0;
 	
- 	if (fscanf(fd, "%d", &pidd) != 1) {
-		fclose(fd);
-		return 0;
- 	}
- 	fclose(fd);
+	  if (fscanf(fd, "%d", &pidd) != 1) {
+	    fclose(fd);
+	    return 0;
+	  }
+	  fclose(fd);
+	}
 	
  	if (pidi != pidd)
 		return 0;

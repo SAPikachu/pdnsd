@@ -31,13 +31,20 @@ Boston, MA 02111-1307, USA.  */
 
 #include "thread.h"
 #include "helpers.h"
+#include "pdnsd_assert.h"
 
 /* --- from error.c */
 volatile extern int waiting;
+extern int use_lock;
 /* --- */
 
 void crash_msg(char *msg);
-void init_log(void);
+
+inline static void init_log(void)
+{
+	use_lock=1;
+}
+
 void log_error(char *s,...) printfunc(1, 2);
 void log_warn(char *s, ...) printfunc(1, 2);
 void log_info(int level, char *s, ...) printfunc(2, 3);
@@ -66,7 +73,7 @@ extern FILE *dbg_file;
 # if DEBUG > 0
 /* XXX: The timestamp generation makes this a little heavy-weight */
 #  define DEBUG_MSG_(c,args...)								\
-	do {										\
+	{										\
 		if (debug_p) {								\
 			char DM_ts[32];							\
 			time_t DM_tt = time(NULL);					\
@@ -80,7 +87,7 @@ extern FILE *dbg_file;
 			fprintf(dbg_file,args);						\
 			fflush(dbg_file);						\
 		}									\
-	} while (0)
+	}
 #  define DEBUG_MSG(args...)	DEBUG_MSG_(0,args)
 #  define DEBUG_MSGC(args...)	DEBUG_MSG_(1,args)
 # else
@@ -96,7 +103,7 @@ extern FILE *dbg_file;
  *      might make things even more messy...
  */
 #  define DEBUG_MSG_(c,...)								\
-	do {										\
+	{										\
 		if (debug_p) {								\
 			char DM_ts[32];							\
 			time_t DM_tt = time(NULL);					\
@@ -110,7 +117,7 @@ extern FILE *dbg_file;
 			fprintf(dbg_file,__VA_ARGS__);					\
 			fflush(dbg_file);						\
 		}									\
-	} while (0)
+	}
 
 #  define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
 #  define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
@@ -120,13 +127,4 @@ extern FILE *dbg_file;
 # endif	/* DEBUG > 0 */
 #endif
 
-/*
- * Assert macro, used in some places. For now, it should be always defined, not
- * only in the DEBUG case, to be on the safe side security-wise.
- */
-#define PDNSD_ASSERT(cond, msg)						\
-	do { if (!(cond)) {						\
-		log_error("%s:%d: %s", __FILE__, __LINE__, msg);	\
-		pdnsd_exit();						\
- 	} } while (0)
 #endif

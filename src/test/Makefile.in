@@ -1,6 +1,6 @@
-# Makefile.in generated automatically by automake 1.4 from Makefile.am
+# Makefile.in generated automatically by automake 1.4-p5 from Makefile.am
 
-# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
+# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -78,7 +78,7 @@ noinst_PROGRAMS = if_up is_local_addr tping random
 
 TESTADDSRC = 
 #TESTADDSRC= netdev.c error.c thread.c helpers.c icmp.c
-TESTDEPS = ../netdev.o ../error.o ../thread.o ../helpers.o ../icmp.o
+TESTDEPS = netdev.o error.o thread.o helpers.o icmp.o
 
 TESTOBJS = netdev.o error.o thread.o helpers.o icmp.o
 
@@ -103,7 +103,7 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(noinst_PROGRAMS)
 
 
-DEFS = @DEFS@ -I. -I$(srcdir) -I../..
+DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
@@ -123,7 +123,7 @@ DIST_COMMON =  Makefile.am Makefile.in
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
-TAR = tar
+TAR = gtar
 GZIP_ENV = --best
 SOURCES = $(if_up_SOURCES) $(is_local_addr_SOURCES) $(tping_SOURCES) $(random_SOURCES)
 OBJECTS = $(if_up_OBJECTS) $(is_local_addr_OBJECTS) $(tping_OBJECTS) $(random_OBJECTS)
@@ -155,6 +155,9 @@ maintainer-clean-noinstPROGRAMS:
 	$(COMPILE) -c $<
 
 .S.o:
+	$(COMPILE) -c $<
+
+$(TESTOBJS): %.o: ../%.c
 	$(COMPILE) -c $<
 
 mostlyclean-compile:
@@ -227,27 +230,6 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
-error.o: ../error.c ../../config.h ../error.h ../thread.h ../helpers.h \
-	../cache.h ../ipvers.h ../list.h ../dns.h ../rr_types.h \
-	../conff.h
-helpers.o: ../helpers.c ../../config.h ../ipvers.h ../thread.h \
-	../error.h ../helpers.h ../cache.h ../list.h ../dns.h \
-	../rr_types.h ../conff.h
-icmp.o: ../icmp.c ../../config.h ../ipvers.h ../icmp.h ../error.h \
-	../thread.h ../helpers.h ../cache.h ../list.h ../dns.h \
-	../rr_types.h ../conff.h
-if_up.o: if_up.c ../../config.h ../netdev.h ../ipvers.h
-is_local_addr.o: is_local_addr.c ../../config.h ../netdev.h ../ipvers.h
-netdev.o: ../netdev.c ../../config.h ../ipvers.h ../netdev.h ../error.h \
-	../thread.h ../helpers.h ../cache.h ../list.h ../dns.h \
-	../rr_types.h ../conff.h
-random.o: random.c ../../config.h ../helpers.h ../cache.h ../ipvers.h \
-	../list.h ../dns.h ../rr_types.h ../conff.h
-thread.o: ../thread.c ../../config.h ../thread.h ../error.h ../helpers.h \
-	../cache.h ../ipvers.h ../list.h ../dns.h ../rr_types.h \
-	../conff.h
-tping.o: tping.c ../../config.h ../icmp.h ../ipvers.h
-
 info-am:
 info: info-am
 dvi-am:

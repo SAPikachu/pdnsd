@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdarg.h>
 #include <pthread.h>
 #include <signal.h>
+#include <string.h>
 #include "thread.h"
 #include "error.h"
 #include "helpers.h"
@@ -62,18 +63,16 @@ void thread_sig(int sig)
 }
 #endif
 
-void usleep_r(unsigned long usec)
+/* void usleep_r(unsigned long usec)
 {
-#if !(TARGET==TARGET_LINUX || TARGET==TARGET_BSD)
-	struct timeval tv;
-#endif
-
 #if (TARGET==TARGET_LINUX || TARGET==TARGET_BSD) && defined(HAVE_USLEEP)
 	usleep(usec);
 #else
+	struct timeval tv;
+
 	tv.tv_sec=usec/1000000;
 	tv.tv_usec=usec%1000000;
 	select(0, NULL, NULL, NULL, tv);
 #endif
-}
+} */
 

@@ -20,6 +20,7 @@ Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 #include <stdlib.h>
+#include <string.h>
 #include "consts.h"
 #include "rr_types.h"
 
@@ -49,6 +50,25 @@ static const_t consts[]={
 	{TCP_ONLY,  "tcp_only"},
 	{TCP_UDP,   "tcp_udp"},
 	{UDP_ONLY,  "udp_only"}};
+
+/* Added by Paul Rombouts */
+static const char *const_names[]={
+  "on",         /* 0 */
+  "off",        /* 1 */
+  "ping",       /* 2 */
+  "none",       /* 3 */
+  "if",         /* 4 */
+  "exec",       /* 5 */
+  "onquery",    /* 6 */
+  "udp_only",   /* 7 */
+  "tcp_only",   /* 8 */
+  "tcp_udp",    /* 9 */
+  "dev",        /* 10 */
+  "diald",      /* 11 */
+  "included",   /* 12 */
+  "excluded",   /* 13 */
+  "auth"        /* 14 */
+};
 	 
 static int cmp_const(const void *key, const void *el)
 {
@@ -63,3 +83,9 @@ int lookup_const(char *name)
 	return C_ERR;
 }
 
+
+/* Added by Paul Rombouts */
+const char *const_name(int c)
+{
+  return (c>=0 && c<sizeof(const_names)/sizeof(char *))? const_names[c] : "ILLEGAL!";
+}

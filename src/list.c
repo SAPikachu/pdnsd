@@ -26,6 +26,7 @@
 
 #include <config.h>
 #include <stdlib.h>
+#include <string.h>
 #include "helpers.h"
 #include "error.h"
 #include "list.h"
@@ -37,60 +38,59 @@ static char rcsid[]="$Id: list.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #ifdef ALLOC_DEBUG
 darray DBGda_create(int sz, char *file, int line)
 {
-	DEBUG_MSG("+ da_create, %s:%d, %d bytes\n", file, line, DA_ALIGNSZ(sz));
+	DEBUG_MSG("+ da_create, %s:%d, %d bytes\n", file, line, sz);
 	return Dda_create(sz);
 }
 #endif
 
-darray Dda_create(int sz)
+/* darray Dda_create(int sz)
 {
 	darray a;
-	int tpsz = DA_ALIGNSZ(sz); /* Round up sizes for aligned access */
 
-	if (!(a=(darray)malloc(sizeof(struct darray_head)+DA_PREALLOC*tpsz)))
-		return a;
-	a->tpsz=tpsz;
-	a->nel=0;
-	a->ael=DA_PREALLOC;
+	a=(darray)malloc(sizeof(struct _dynamic_array_dummy_head)+sz*8);
+	if(a) a->nel=0;
 	return a;
+} */
+
+darray da_grow1(darray a, int sz)
+{
+  PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
+  {
+    int k = a->nel++;
+    if(k!=0 && (k&7)==0) {
+      darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*(k+8));
+      if (tmp==NULL)
+	free(a);
+      return tmp;
+    }
+    else
+      return a;
+  }
 }
 
-darray da_grow(darray a, int n)
+inline static int alloc_nel(int n)
 {
-	PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
-	return da_resize(a, a->nel+n);
+  return n==0 ? 8 : (n+7)&(~7);
 }
 
-darray da_resize(darray a, int n)
+darray da_resize(darray a, int sz, int n)
 {
-	darray tmp;
-	
-	PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
-	PDNSD_ASSERT(n>=0, "da_resize to negative size");
-	a->nel=n;
-	if (a->nel>a->ael || a->nel<a->ael-2*DA_PREALLOC) {
-		/* adjust alloced space. */
-		a->ael=a->nel+DA_PREALLOC;
-		tmp=(darray)realloc(a, sizeof(struct darray_head)+a->tpsz*a->ael);
-		if (tmp==NULL)
-			da_free(a);
-		return tmp;
-	} else
-		return a;
-}
-
-char *da_index(darray a, int i)
-{
-	PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
-	PDNSD_ASSERT(i>=0&&i<a->nel,"Internal error: dynamic array access out of bounds");
-	return ((char *)a)+sizeof(struct darray_head)+i*a->tpsz;
-}
-
-int da_nel(darray a)
-{
-	if (a==NULL)
-		return 0;
-	return a->nel;
+  PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
+  PDNSD_ASSERT(n>=0, "da_resize to negative size");
+  {
+    int ael = alloc_nel(a->nel);
+    int new_ael = alloc_nel(n);
+    a->nel=n;
+    if(new_ael != ael) {
+      /* adjust alloced space. */
+      darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
+      if (tmp==NULL)
+	free(a);
+      return tmp;
+    }
+    else
+      return a;
+  }
 }
 
 #ifdef ALLOC_DEBUG
@@ -100,12 +100,8 @@ darray DBGda_free(darray a, char *file, int line)
 		DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);
 	else
 		DEBUG_MSG("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);
-	Dda_free(a);
+	free(a);
 	return;
 }
 #endif
 
-void Dda_free(darray a)
-{
-	free(a);
-}

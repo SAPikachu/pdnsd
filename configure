@@ -595,9 +595,9 @@ fi
 
 
 
-test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -g"
+test -z "$CFLAGS" && CFLAGS="-Wall -Winline -g"
 
-CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
+CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
 
 PACKAGE="pdnsd"
 VERSION=`cat version`

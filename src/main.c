@@ -19,9 +19,10 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* in order to use O_NOFOLLOW on Linux: */
-#define _GNU_SOURCE
+/* #define _GNU_SOURCE */
 
 #include <config.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -58,7 +59,7 @@ pthread_t main_thread;
 #if DEBUG>0
 FILE *dbg_file;
 #endif
-#ifdef ENABLE_IPV4
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 int run_ipv4=DEFAULT_IPV4;
 #endif
 #ifdef ENABLE_IPV6
@@ -67,7 +68,7 @@ int run_ipv6=DEFAULT_IPV6;
 int tcp_socket=-1;
 int udp_socket=-1;
 sigset_t sigs_msk;
-char pidfile[MAXPATH]="\0";
+char *pidfile=NULL;
 int stat_pipe=0;
 int notcp=0;
 int sigr=0;
@@ -96,74 +97,93 @@ int final_init()
 	return 1;
 }
 
-/* Print version and licensing information */
-void print_info (void)
-{
-	printf("pdnsd - dns proxy daemon, version %s\n\n",VERSION);
-	printf("pdnsd is free software; you can redistribute it and/or modify\n");
-	printf("it under the terms of the GNU General Public License as published by\n");
-	printf("the Free Software Foundation; either version 2, or (at your option)\n");
-	printf("any later version.\n\n");
-	printf("pdnsd is distributed in the hope that it will be useful,\n");
-	printf("but WITHOUT ANY WARRANTY; without even the implied warranty of\n");
-	printf("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n");
-	printf("GNU General Public License for more details.\n\n");
-	printf("You should have received a copy of the GNU General Public License\n");
-	printf("along with pdsnd; see the file COPYING.  If not, write to\n");
-	printf("the Free Software Foundation, 59 Temple Place - Suite 330,\n");
-	printf("Boston, MA 02111-1307, USA.\n");
-}
+/* version and licensing information */
+static const char info_message[] =
+	
+	"pdnsd - dns proxy daemon, version " VERSION "\n\n"
+	"pdnsd is free software; you can redistribute it and/or modify\n"
+	"it under the terms of the GNU General Public License as published by\n"
+	"the Free Software Foundation; either version 2, or (at your option)\n"
+	"any later version.\n\n"
+	"pdnsd is distributed in the hope that it will be useful,\n"
+	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+	"GNU General Public License for more details.\n\n"
+	"You should have received a copy of the GNU General Public License\n"
+	"along with pdsnd; see the file COPYING.  If not, write to\n"
+	"the Free Software Foundation, 59 Temple Place - Suite 330,\n"
+	"Boston, MA 02111-1307, USA.\n";
 
-/* Print the help page */
-void print_help (void)
-{
-	printf("\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-vn] [-mxx] [-c file]");
+
+/* the help page */
+static const char help_message[] =
+
+	"\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-vn] [-mxx] [-c file]"
 #ifdef ENABLE_IPV4
-	printf(" [-4]");
+	" [-4]"
 #endif
 #ifdef ENABLE_IPV6
-	printf(" [-6]");
+	" [-6]"
 #endif
-	printf("\n\n");
-	printf("Options:\n");
-	printf("-h\t\t--or--\n");
-	printf("--help\t\tprint this help page and exit.\n");
-	printf("-V\t\t--or--\n");
-	printf("--version\tprint version information and exit.\n");
-	printf("--pdnsd-user\tprint the user pdnsd will run as and exit.\n");
-	printf("-s\t\t--or--\n");
-	printf("--status\tEnable status control socket the temp directory\n");
-	printf("-d\t\t--or--\n");
-	printf("--daemon\tStart pdnsd in daemon mode (as background process.)\n");
-	printf("-g\t\t--or--\n");
-	printf("--debug\t\tPrint some debug messages on the console or to the\n");
-	printf("\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n");
-	printf("-t\t\t--or--\n");
-	printf("--tcp\t\tEnables the TCP server thread. pdnsd will then serve\n");
-	printf("\t\tTCP and UDP queries.\n");
-	printf("-p\t\tWrites the pid the server runs as to a specified filename.\n");
-	printf("\t\tWorks only in daemon mode.\n");
-	printf("-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n");
-	printf("\t\t(normal operation) to 3 (many messages for debugging).\n");
-	printf("\t\tUse like -v2\n");
-	printf("-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n");
-	printf("\t\tuo (UDP only), to (TCP only), and tu (TCP or, if the server\n");
-	printf("\t\tdoes not support this, UDP). Use like -muo. Preset: %s\n", 
-	       M_PRESET==UDP_ONLY?"-muo":(M_PRESET==TCP_ONLY?"-mto":"mtu"));
-	printf("-c\t\t--or--\n");
-	printf("--config-file\tspecifies the file the configuration is read from.\n");
-	printf("\t\tDefault is %s/pdnsd.conf\n",CONFDIR);
+	"\n\n"
+	"Options:\n"
+	"-h\t\t--or--\n"
+	"--help\t\tprint this help page and exit.\n"
+	"-V\t\t--or--\n"
+	"--version\tprint version information and exit.\n"
+	"--pdnsd-user\tprint the user pdnsd will run as and exit.\n"
+	"-s\t\t--or--\n"
+	"--status\tEnable status control socket the temp directory\n"
+	"-d\t\t--or--\n"
+	"--daemon\tStart pdnsd in daemon mode (as background process.)\n"
+	"-g\t\t--or--\n"
+	"--debug\t\tPrint some debug messages on the console or to the\n"
+	"\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n"
+	"-t\t\t--or--\n"
+	"--tcp\t\tEnables the TCP server thread. pdnsd will then serve\n"
+	"\t\tTCP and UDP queries.\n"
+	"-p\t\tWrites the pid the server runs as to a specified filename.\n"
+	"\t\tWorks only in daemon mode.\n"
+	"-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n"
+	"\t\t(normal operation) to 3 (many messages for debugging).\n"
+	"\t\tUse like -v2\n"
+	"-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n"
+	"\t\tuo (UDP only), to (TCP only), and tu (TCP or, if the server\n"
+	"\t\tdoes not support this, UDP). Use like -muo. Preset: "
+#if M_PRESET==UDP_ONLY
+	"-muo"
+#elif M_PRESET==TCP_ONLY
+	"-mto"
+#else
+	"mtu"
+#endif
+	"\n"
+	"-c\t\t--or--\n"
+	"--config-file\tspecifies the file the configuration is read from.\n"
+	"\t\tDefault is " CONFDIR "/pdnsd.conf\n"
 #ifdef ENABLE_IPV4
-	printf("-4\t\tenables IPv4 support. IPv6 support is automatically\n");
-	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV4?"On":"Off");
+	"-4\t\tenables IPv4 support. IPv6 support is automatically\n"
+	"\t\tdisabled (should it be available). "
+#  if DEFAULT_IPV4
+	"On"
+#  else
+	"Off"
+#  endif
 #endif
+	" by default.\n"
 #ifdef ENABLE_IPV6
-	printf("-6\t\tenables IPv6 support. IPv4 support is automatically\n");
-	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV6?"On":"Off");
+	"-6\t\tenables IPv6 support. IPv4 support is automatically\n"
+	"\t\tdisabled (should it be available). "
+#  if DEFAULT_IPV6
+	"On"
+#  else
+	"Off"
+#  endif
+	" by default.\n"
 #endif
-	printf("\n\n\"no\" can be prepended to the --status, --daemon, --debug and --tcp\n");
-	printf("options (e.g. --notcp) to reverse their effect.\n");
-}
+	"\n\n\"no\" can be prepended to the --status, --daemon, --debug and --tcp\n"
+	"options (e.g. --notcp) to reverse their effect.\n";
+
 
 /*
  * Argument parsing, init, server startup
@@ -172,10 +192,7 @@ int main(int argc,char *argv[])
 {
 	int i,sig,pfd,np=0;
 	struct passwd *pws;
-	char *conf_file=CONFDIR"/pdnsd.conf";
-#if DEBUG>0
-	char dbgdir[MAXPATH];
-#endif
+	char *conf_file=NULL;
 	FILE *pf;
 #ifndef O_NOFOLLOW
 	struct stat so, sn;
@@ -191,15 +208,14 @@ int main(int argc,char *argv[])
 	 * given in the config file */
 	for (i=1;i<argc;i++) {
 		if (strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--help")==0) {
-			print_info();
-			print_help();
+			fputs(info_message,stdout);
+			fputs(help_message,stdout);
 			exit(1);
 		} else if (strcmp(argv[i],"-V")==0 || strcmp(argv[i],"--version")==0) {
-			print_info();
+			fputs(info_message,stdout);
 			exit(1);
 		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
-			if (i<argc-1) {
-				i++;
+			if (++i<argc) {
 				conf_file=argv[i];
 			} else {
 				fprintf(stderr,"Error: file name expected after -c option.\n");
@@ -225,14 +241,13 @@ int main(int argc,char *argv[])
 		} else if (strcmp(argv[i],"--notcp")==0) {
 			notcp=1;
 		} else if (strcmp(argv[i],"-p")==0) {
-			if (i<argc-1) {
-				i++;
-				if (strlen(argv[i]) >= sizeof(pidfile)) {
-					fprintf(stderr,"Error: pidfile name too long.\n");
-					exit(1);
+			if (++i<argc) {
+				if(pidfile) free(pidfile);
+				pidfile=strdup(argv[i]);
+				if(!pidfile) {
+				  fprintf(stderr,"Error: out of memory.\n");
+				  exit(1);
 				}
-				strncpy(pidfile,argv[i],sizeof(pidfile));
-				pidfile[sizeof(pidfile)-1]='\0';
 			} else {
 				fprintf(stderr,"Error: file name expected after -p option.\n");
 				exit(1);
@@ -275,8 +290,8 @@ int main(int argc,char *argv[])
 			}
 		} else if (strcmp(argv[i],"-4")==0) {
 #ifdef ENABLE_IPV4
-			run_ipv4=1;
 # ifdef ENABLE_IPV6
+			run_ipv4=1;
 			run_ipv6=0;
 # endif
 #else
@@ -321,13 +336,16 @@ int main(int argc,char *argv[])
 		}
 	}
 	
+	if(!global.cache_dir)   global.cache_dir = CACHEDIR;
+	if(!global.scheme_file) global.scheme_file = "/var/lib/pcmcia/scheme";
+
 	if (!(global.run_as[0] && global.strict_suid)) {
 		struct passwd *pws=getpwuid(getuid());
 		char *un=pws?pws->pw_name:"(unknown)";
 		servparm_t *sp;
 		
-		for (i=0; i<da_nel(servers); i++) {
-			sp=DA_INDEX(servers,i,servparm_t);
+		for (i=0; i<DA_NEL(servers); i++) {
+			sp=&DA_INDEX(servers,i);
 			if (sp->uptest==C_EXEC && sp->uptest_usr[0]=='\0') {
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
@@ -336,7 +354,7 @@ int main(int argc,char *argv[])
 		}
 	}
 
-	if (daemon_p && pidfile[0]) {
+	if (daemon_p && pidfile) {
 		if (unlink(pidfile)!=0 && errno!=ENOENT) {
 			log_error("Error: could not unlink pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
@@ -360,8 +378,8 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-	for (i=0;i<da_nel(servers);i++) {
-		if (DA_INDEX(servers,i,servparm_t)->uptest==C_PING)
+	for (i=0;i<DA_NEL(servers);i++) {
+		if (DA_INDEX(servers,i).uptest==C_PING)
 			np=1;
 	}
 	if (np)
@@ -396,7 +414,7 @@ int main(int argc,char *argv[])
 		if (i!=0)
 			_exit(0); /* exit parent, so we are no session group leader */
 		chdir("/");
-		if (pidfile[0]) {
+		if (pidfile) {
 			fprintf(pf,"%i\n",getpid());
 			fclose(pf);
 		}
@@ -418,11 +436,10 @@ int main(int argc,char *argv[])
 		closelog();
 #if DEBUG>0
 		if (debug_p) {
-			if (snprintf(dbgdir, sizeof(dbgdir), "%s/pdnsd.debug", global.cache_dir) < sizeof(dbgdir)) {
-				if (!(dbg_file=fopen(dbgdir,"w")))
-					debug_p=0;
-			} else
-				debug_p=0;
+		  char dbgdir[strlen(global.cache_dir)+sizeof("/pdnsd.debug")];
+		  stpcpy(stpcpy(dbgdir,global.cache_dir),"/pdnsd.debug");
+		  if (!(dbg_file=fopen(dbgdir,"w")))
+		    debug_p=0;
 		}
 #endif
 	} else {
@@ -498,7 +515,7 @@ int main(int argc,char *argv[])
 #endif
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
-	DEBUG_MSGC("Signal caught, writing disk cache.\n");
+	DEBUG_MSGC("Signal %i caught.\n",sig);
 	write_disk_cache();
 	destroy_cache();
 	log_warn("Caught signal %i. Exiting.",sig);
@@ -510,8 +527,9 @@ int main(int argc,char *argv[])
 	if (ping6_isocket!=-1)
 		close(ping6_isocket);
 #endif
-	if (stat_pipe) {
-		unlink(sock_path); /* Delete the socket */
+	if (stat_pipe && sock_path) {
+		if(unlink(sock_path)) /* Delete the socket */
+		  log_warn("Failed to unlink %s: %s.",sock_path, strerror(errno));
 	}
 	free_rng();
 #if DEBUG>0

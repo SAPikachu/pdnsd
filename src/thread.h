@@ -43,7 +43,8 @@ void thread_sig(int sig);
  * It seems to me that signal handlers in fact aren't shared between threads
  * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
 #if TARGET==TARGET_LINUX
-#define THREAD_SIGINIT	do { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
+#define THREAD_SIGINIT	{ pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);     \
+                             signal(SIGINT,thread_sig);                    \
                              signal(SIGILL,thread_sig);                    \
 	                     signal(SIGABRT,thread_sig);                   \
 	                     signal(SIGFPE,thread_sig);                    \
@@ -51,20 +52,39 @@ void thread_sig(int sig);
 	                     signal(SIGTSTP,thread_sig);                   \
                              signal(SIGTTOU,thread_sig);                   \
                     	     signal(SIGTTIN,thread_sig);                   \
+                             signal(SIGTERM, thread_sig);                  \
                              signal(SIGPIPE, SIG_IGN);                     \
-                        } while (0);
+                        }
 
 #else
 #define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)
 #endif
 
-/* This is a thread-safe usleep(). On systems that have a sane usleep, we use
- * that. Otherwise, we use select() with no fd's.*/
-void usleep_r(unsigned long usec);
+
+/* This is a thread-safe usleep(). 
+   Implementation of the BSD usleep function using nanosleep.
+*/
+inline static int usleep_r(unsigned long useconds)
+{
+  struct timespec ts = { tv_sec: (useconds / 1000000),
+			 tv_nsec: (useconds % 1000000) * 1000ul };
+
+  return nanosleep(&ts, NULL);
+}
+
+/* This is a thread-safe sleep().
+   The semantics are somewhat different from the POSIX sleep function,
+   but it suits our purposes.
+*/
+inline static int sleep_r (unsigned int seconds)
+{
+  struct timespec ts = { tv_sec: seconds, tv_nsec: 0 };
+
+  return nanosleep(&ts, NULL);
+}
+  
 
 /* Key for storing private thread ID's */
 extern pthread_key_t thrid_key;
 
 #endif
-
-
