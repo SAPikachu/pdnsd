@@ -1,0 +1,11 @@
+$Id: README,v 1.1 2001/02/20 16:41:21 tmm Exp $
+
+This directory contains user-contributed scripts for use with pdnsd.
+So far there are:
+
+pdnsd_update.pl
+	A perl script contributed by Marko Stolle (derived from a script by
+	Mike Stella) to watch a ISC DHCPD leases file and add local records for
+	the hosts listed there. This makes pdnsd useable in a DHCP setup.
+	Please look into the script for usage instructions (you will probably
+	also need to customize som settings there).
