@@ -42,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.4 2000/08/13 13:53:17 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.5 2000/08/27 12:42:57 thomas Exp $";
 #endif
 
 /*
@@ -90,9 +90,13 @@ int uptest (servparm_t serv)
 		break;
 	case C_IF:
  	case C_DEV:
+	case C_DIALD:
  		ret=if_up(serv.interface);
  		if (ret!=0 && serv.uptest==C_DEV) {
  			ret=dev_up(serv.interface,serv.device);
+ 		}
+ 		if (ret!=0 && serv.uptest==C_DIALD) {
+ 			ret=dev_up("diald",serv.device);
  		}
 		break;
 	case C_EXEC:
