@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.15 2000/11/05 14:59:44 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.16 2000/11/05 15:23:59 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -121,20 +121,27 @@ void read_config_file(char *nm)
 void report_conf_stat(int f)
 {
 	char buf[ADDRSTR_MAXLEN];
-	int i;
+	int i,j;
 	fsprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
 	fsprintf(f,"\tCache size: %li kB\n",global.perm_cache);
 	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
+	fsprintf(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
 	fsprintf(f,"\tServer port: %i\n",global.port);
 	fsprintf(f,"\tServer ip (0.0.0.0=any available): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
 	fsprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
 	fsprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
+	fsprintf(f,"\tMinimum ttl: %li\n",global.min_ttl);
+	fsprintf(f,"\tNegative ttl: %li\n",global.neg_ttl);
+	fsprintf(f,"\tNegative RRS policy: %s\n",global.neg_rrs_pol==C_ON?"on":(global.neg_rrs_pol==C_OFF?"off":"auth"));
+	fsprintf(f,"\tNegative domain policy: %s\n",global.neg_domain_pol==C_ON?"on":(global.neg_domain_pol==C_OFF?"off":"auth"));
 	fsprintf(f,"\tRun as: %s\n",global.run_as);
 	fsprintf(f,"\tStrict run as: %i\n",global.strict_suid);
 	fsprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
 	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
 	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
+	fsprintf(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
+	fsprintf(f,"\tRandomize records in answer: %i\n",global.rnd_recs);
 	for(i=0;i<serv_num;i++) {
 		fsprintf(f,"Server %i:\n------\n",i);
 		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
@@ -145,6 +152,7 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tping timeout: %li\n",servers[i].ping_timeout);
 		fsprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
 		fsprintf(f,"\tinterface: %s\n",servers[i].interface);
+		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",servers[i].device);
 		fsprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
 		fsprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
 		if (servers[i].scheme[0])
@@ -153,6 +161,15 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
 		fsprintf(f,"\tlean query: %i\n",servers[i].lean_query);
 		fsprintf(f,"\tUse only proxy?: %i\n",servers[i].is_proxy);
+		fsprintf(f,"\tDefault policy: %s\n",servers[i].policy==C_INCLUDED?"included":"excluded");
+		fsprintf(f,"\tPolicies:\n");
+		if (servers[i].nalist==0) {
+			fsprintf(f,"\t\t(none)\n");
+		} else {
+			for (j=0;j<servers[i].nalist;j++) {
+				fsprintf(f,"\t\t%s: %s\n",servers[i].alist[j].rule==C_INCLUDED?"include":"exclude",servers[i].alist[j].domain);
+			}
+		}
 		fsprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
 	}
 }
