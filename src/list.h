@@ -24,7 +24,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $Id: list.h,v 1.2 2001/04/12 18:48:23 tmm Exp $ */
+/* $Id: list.h,v 1.3 2001/06/21 23:58:43 tmm Exp $ */
 
 #ifndef LIST_H
 #define LIST_H
@@ -78,5 +78,63 @@ darray DBGda_free(darray a, char *file, int line);
 #define da_create	Dda_create
 #define da_free		Dda_free
 #endif
+
+/* List macros. */
+#define PLIST_STRUCT(type)						\
+	struct {							\
+		struct type *next;					\
+		struct type *prev;					\
+	} _list
+
+#define PLIST_HEAD(name, type)						\
+	struct {							\
+		struct type *head;					\
+		struct type *tail;					\
+	} name
+
+#define PLIST_FIRST(name)	((name)->head)
+#define PLIST_NEXT(el)		(*(el)->_list.next)
+#define PLIST_PREV(el)		(*(el)->_list.prev)
+#define PLIST_DELETE(el, type)	(*(el)->prev = (el)->next)
+
+#define PLIST_INSERT_HEAD(el, head)					\
+	do {								\
+		el->next = head->head;					\
+		el->prev = NULL;					\
+		head->head = el;					\
+		if (el->next == NULL)					\
+			head->tail = el;				\
+	} while (0);
+
+#define PLIST_INSERT_TAIL(el, head)					\
+	do {								\
+		el->prev = head->tail;					\
+		el->next = NULL;					\
+		head->tail = el;					\
+		if (el->prev == NULL)					\
+			head->head = el;				\
+	} while (0);
+
+#define PLIST_INSERT_AFTER(el, after)					\
+	do {								\
+		el->next = after->next;					\
+		el->prev = after;					\
+		after->next = el;					\
+		if (el->next == NULL)					\
+			head->tail = el;				\
+		else							\
+			el->next->prev = el;				\
+	} while (0);
+
+#define PLIST_INSERT_BEFORE(el, before)					\
+	do {								\
+		el->prev = before->prev;				\
+		el->next = before;					\
+		before->prev = el;					\
+		if (el->prev == NULL)					\
+			head->head = el;				\
+		else							\
+			el->prev->next = el;				\
+	} while (0);
 
 #endif /* def LIST_H */
