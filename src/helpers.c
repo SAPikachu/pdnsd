@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.12 2001/01/15 22:55:33 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.13 2001/01/15 23:10:15 thomas Exp $";
 #endif
 
 /*
@@ -285,7 +285,7 @@ void init_crandom()
 }
 #endif
 
-/* initialize the RNG */
+/* initialize the PRNG */
 void init_rng()
 {
 #ifdef RANDOM_DEVICE
