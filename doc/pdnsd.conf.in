@@ -1,4 +1,4 @@
-// $Id: pdnsd.conf.in,v 1.3 2000/08/07 19:00:55 thomas Exp $
+// $Id: pdnsd.conf.in,v 1.4 2000/11/11 20:32:58 thomas Exp $
 
 global {
 	perm_cache=512;
@@ -26,6 +26,19 @@ source {
 	file="/etc/hosts";
 }
 
+/*
+neg {
+	ttl=86400;
+	name="foo.bar.";
+	types=domain;
+}
+
+neg {
+	ttl=86400;
+	name="foo.baz.";
+	types=A,AAAA, MX;
+}
+*/
 /*
 rr {
 	ttl=86400;

@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.14 2000/11/11 20:11:00 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.15 2000/11/11 20:33:03 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -54,7 +54,7 @@ C_CLOSE \*\/
 <INITIAL>"global"			{return GLOBAL;}
 <INITIAL>"server"			{return SERVER;}
 <INITIAL>"rr"			        {return RR;}
-<INITIAL>"rrneg"		        {return RRNEG;}
+<INITIAL>"neg"			        {return NEG;}
 <INITIAL>"source"			{return SOURCE;}
 
 <INITIAL>"perm_cache"			{return PERM_CACHE;}

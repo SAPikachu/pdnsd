@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.18 2000/11/11 20:11:00 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.19 2000/11/11 20:33:03 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -78,7 +78,7 @@ unsigned char *nm;
 %token <num> GLOBAL
 %token <num> SERVER
 %token <num> RR
-%token <num> RRNEG
+%token <num> NEG
 %token <num> SOURCE
 
 %token <num> PERM_CACHE
@@ -208,7 +208,7 @@ spec:		GLOBAL '{'
 				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen((char *)c_owner)+1, c_owner, T_NS);
 				add_cache(c_cent);
 			}
-		| RRNEG '{' 
+		| NEG '{' 
 				{
 					htp=0;
 					hdtp=0;
