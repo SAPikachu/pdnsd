@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.18 2000/07/03 14:13:28 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.19 2000/07/06 17:45:17 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1094,7 +1094,7 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 {
 	FILE *f;
 	unsigned char buf[1025];
-	unsigned char b3[256];
+	unsigned char b2[257],b3[256];
 	unsigned char *p,*pn,*pi;
 	struct in_addr ina4;
 	int tp;
@@ -1133,11 +1133,14 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 			continue;
 		p=pn;
 		while (isdchar(*p) || *p=='.') p++;
-		if (*(p-1)!='.') 
-			*p++='.';
 		*p='\0';
+		memset(b2,'\0',257);
+		strncpy((char *)b2,(char *)pn,255);
+		if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+			b2[strlen((char *)b2)]='.';
+		}
 /*		printf("i: %s, n: %s--\n",pi,pn);*/
-		if (!str2rhn(pn,b3))
+		if (!str2rhn(b2,b3))
 			continue;
 		if (inet_aton((char *)pi,&ina4)) {
 			a.ipv4=ina4;
@@ -1154,21 +1157,24 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 			continue;
 #endif
 		}
-		if (!add_host(pn, rns, b3, &a, sz, ttl, tp,1))
+		if (!add_host(b2, rns, b3, &a, sz, ttl, tp,1))
 			continue;
 		if (aliases) {
-			pn=++p;
+			pn=p+1;
 			while (*pn==' ' || *pn=='\t') pn++;
 			if (!*pn)
 				continue;
 			p=pn;
 			while (isdchar(*p) || *p=='.') p++;
-			if (*(p-1)!='.') 
-				*p++='.';
 			*p='\0';
-			if (!str2rhn(pn,b3))
+			memset(b2,'\0',257);
+			strncpy((char *)b2,(char *)pn,256);
+			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+				b2[strlen((char *)b2)]='.';
+			}
+			if (!str2rhn(b2,b3))
 				continue;
-			add_host(pn, rns, b3, &a, sz, ttl, tp,0);
+			add_host(b2, rns, b3, &a, sz, ttl, tp,0);
 		}
 	}
 	fclose(f);
