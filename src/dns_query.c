@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.49 2001/07/01 21:03:15 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.50 2001/12/30 18:25:40 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -225,7 +225,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_SERVFAIL;
 				break;
 			case T_MX:
-#ifdef DNS_NEW_RR
+#ifdef DNS_NEW_RRS
 			case T_AFSDB:
 			case T_RT:
 			case T_KX:
