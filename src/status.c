@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.14 2001/01/24 22:29:13 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.15 2001/01/24 23:02:55 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -134,9 +134,8 @@ void *status_thread (void *p)
 	strncpy(sock_path, TEMPDIR, 1024);
 	sock_path[1023]='\0';
 	strcpy(sock_dir, sock_path);
-	strncat(sock_dir, "/.pdnsd.status", 1024-strlen(sock_dir));
+	strncat(sock_dir, "/.pdnsd.status", 1023-strlen(sock_dir));
 	strncat(sock_path, "/.pdnsd.status/socket", 1024-strlen(sock_path));
-	sock_path[1023]='\0';
 	unlink(sock_path); /* Delete the socket */
 	rmdir(sock_dir);
 	if (mkdir(sock_dir, (global.ctl_perms&(S_IRGRP|S_IROTH))|S_IRWXU)==-1) {

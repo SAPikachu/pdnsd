@@ -1,6 +1,6 @@
 %{
 /* conf.y - Parser for pdnsd config files.
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.20 2000/12/07 12:33:57 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.21 2001/01/24 23:02:55 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -266,7 +266,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
  			}
 		| SCHEME_FILE '=' STRING ';'
                         {
-                                strncpy(global.scheme_file,(char *)$3,MAXPATH-1);
+                                strncpy(global.scheme_file,(char *)$3,MAXPATH);
                                 global.scheme_file[MAXPATH-1]='\0';
                         }
 		| LINKDOWN_KLUGE '=' CONST ';'
@@ -289,7 +289,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| RUN_AS '=' STRING ';'
 			{
 				strncpy(global.run_as,(char *)$3,20);
-				global.run_as[20]='\0';
+				global.run_as[19]='\0';
 			}
 		| STRICT_SETUID '=' CONST ';'
 			{
@@ -478,14 +478,14 @@ serv_el:	IP '=' STRING ';'
 		| UPTEST_CMD '=' STRING ';'
 			{
 				strncpy(server.uptest_cmd,(char *)$3,512);
-				server.uptest_cmd[512]='\0';
+				server.uptest_cmd[511]='\0';
 			}
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
 				strncpy(server.uptest_cmd,(char *)$3,512);
 				strncpy(server.uptest_usr,(char *)$5,20);
-				server.uptest_cmd[512]='\0';
-				server.uptest_usr[20]='\0';
+				server.uptest_cmd[511]='\0';
+				server.uptest_usr[19]='\0';
 			}
 		| INTERVAL '=' NUMBER ';'
 			{
