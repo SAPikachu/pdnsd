@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.15 2001/06/06 19:13:13 tmm Exp $";
+static char rcsid[]="$Id: servers.c,v 1.16 2001/07/02 18:53:58 tmm Exp $";
 #endif
 
 /*
@@ -61,8 +61,8 @@ static char schm[32];
  */
 int uptest (servparm_t serv)
 {
-	int ret, rv;
-	pid_t pid;
+	int ret;
+	pid_t rv, pid;
 
 	if (serv.scheme[0]) {
 		if (!schm[0]) {
