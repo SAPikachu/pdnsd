@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.29 2001/06/03 21:11:43 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.30 2001/09/23 13:33:08 tmm Exp $";
 #endif
 
 /*
@@ -300,7 +300,7 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 
 /* Appropriately set our random device */
 #ifdef R_DEFAULT
-# if TARGET == TARGET_BSD
+# if TARGET == TARGET_BSD && !defined(__NetBSD__)
 #  define R_ARC4RANDOM 1
 # else
 #  define R_RANDOM 1
