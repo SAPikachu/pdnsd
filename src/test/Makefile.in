@@ -1,6 +1,6 @@
-# Makefile.in generated automatically by automake 1.4-p5 from Makefile.am
+# Makefile.in generated automatically by automake 1.4 from Makefile.am
 
-# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
+# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -66,13 +66,10 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 VERSION = @VERSION@
-YACC = @YACC@
 cachedir = @cachedir@
 def_id = @def_id@
 distribution = @distribution@
 specbuild = @specbuild@
-yflags = @yflags@
-yylineno_option = @yylineno_option@
 
 noinst_PROGRAMS = if_up is_local_addr tping random
 
@@ -123,7 +120,7 @@ DIST_COMMON =  Makefile.am Makefile.in
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
-TAR = gtar
+TAR = tar
 GZIP_ENV = --best
 SOURCES = $(if_up_SOURCES) $(is_local_addr_SOURCES) $(tping_SOURCES) $(random_SOURCES)
 OBJECTS = $(if_up_OBJECTS) $(is_local_addr_OBJECTS) $(tping_OBJECTS) $(random_OBJECTS)

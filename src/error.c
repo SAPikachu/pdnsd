@@ -1,7 +1,7 @@
 /* error.c - Error handling
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -67,7 +67,7 @@ void log_message(int prior, const char *s, ...)
 	if (use_log_lock)
 		ul=softlock_mutex(&loglock);
 	va_start(va,s);
-	if (daemon_p) {
+	if (global.daemon) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(prior,s,va);
 		closelog();
@@ -90,14 +90,14 @@ void log_message(int prior, const char *s, ...)
  * in printf, the optional following arguments are the arguments like in printf */
 void log_info(int level, const char *s, ...)
 {
-	if (level<=verbosity) {
+	if (level<=global.verbosity) {
 		va_list va;
 		if (use_log_lock)
 			if (!softlock_mutex(&loglock)) {
 				return;
 			}
 		va_start(va,s);
-		if (daemon_p) {
+		if (global.daemon) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
 			vsyslog(LOG_INFO,s,va);
 			closelog();
@@ -119,7 +119,7 @@ void debug_msg(int c, const char *fmt, ...)
 	va_list va;
 
 	if (!c) {
-		char DM_ts[32];
+		char DM_ts[sizeof "12/31 23:59:59"];
 		time_t DM_tt = time(NULL);
 		struct tm DM_tm;
 		int *DM_id;

@@ -95,6 +95,7 @@ struct rr_infos {
 extern struct rr_infos rr_info[];
 
 int rr_tp_byname(char *name);
+const char *loc2str(const void *binary, char *ascii, int asclen);
 
 #endif
 

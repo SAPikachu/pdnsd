@@ -44,7 +44,6 @@ and the file README.par in %{_docdir}/%{name}-%{version}
 %{!?_with_ipv6:  --with ipv6}
 %{?_with_ipv6:This package was built with ipv6 support.}
 %{?_without_poll:This package was built with the select(2) function instead of poll(2).}
-%{?_with_underscores:This package was built with underscores enabled.}
 
 %prep
 %setup
@@ -58,7 +57,6 @@ CFLAGS="${CFLAGS:-$RPM_OPT_FLAGS -Wall}" ./configure \
 	%{?_with_isdn:--enable-isdn} \
 	%{?_without_poll:--disable-poll} \
 	%{?_with_nptl:--with-thread-lib=nptl} \
-	%{?_with_underscores:--enable-underscores} \
 	%{?_with_ipv6:--enable-ipv6} \
 	%{?_with_tcpqueries:--enable-tcp-queries} \
 	%{?_without_debug:--with-debug=0}
@@ -85,7 +83,8 @@ cp -f file-list.base file-list
 find doc contrib -not -type d -not -iname makefile -not -name '*.am' -not -name '*.in' |
 sed -e 's/^/%doc --parents /'  >> file-list
 CURDIR=$PWD; cd "$RPM_BUILD_ROOT"
-find . -not -type d -not -name 'pdnsd.conf*' -not -path '.%{_docdir}/*' -not -path './var/*' |
+find . -not -type d '(' -not -name 'pdnsd.conf*' -or -name 'pdnsd.conf.[1-9]*' ')' \
+       -not -path '.%{_docdir}/*' -not -path './var/*' |
 sed -e 's/^\.//
         \:/man:{
           /\.gz$/!s/$/.gz/

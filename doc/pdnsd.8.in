@@ -66,8 +66,9 @@ Print the user \fBpdnsd\fP will run as and exit.
 .BR \-s "  or  " \-\-status
 enables the status control socket. Either this option should be passed
 to the command line or \fBstatus_ctl=on;\fP should be specified in the
-config file if you want to use \fBpdnsd\-ctl(8)\fP to control
-\fBpdnsd\fP at runtime.
+config file if you want to use
+.BR pdnsd\-ctl (8)
+to control \fBpdnsd\fP at runtime.
 .TP
 .BR \-t "  or  " \-\-tcp
 enables the TCP server thread. \fBpdnsd\fP will then serve TCP and UDP
@@ -125,6 +126,10 @@ nameserver 127.0.0.X
 where X can be any number. (I use 3). Comment out all other
 entries. You should put the same value in the server_ip= line in
 \fBglobal\fP section of \fB@sysconfdir@/pdnsd.conf\fP.
+.br
+If you want to use \fBpdnsd\fP as the DNS server for a small local network,
+you should use the IP address or name of the interface connected to
+this network instead of 127.0.0.X.
 .RE
 
 .PP
@@ -134,13 +139,10 @@ following lines in \fB@sysconfdir@/pdnsd.conf\fP:-
 .PP
 .RS
 server {
-        ip=123.456.789.001,123.456.789.002; /* Put your ISP's DNS server addresses here */
-        timeout=60;
-        interval=900;
-        uptest=none;
-        ping_timeout=500;
-        purge_cache=off;
-        caching=on;
+.br
+        label= "myisp";
+        ip=123.456.789.001,123.456.789.002;
+        timeout=10;
 .br
 }
 .RE
@@ -148,8 +150,9 @@ server {
 Note the opening and closing braces. Add more such \fBserver\fP
 sections for each set of DNS servers you want \fBpdnsd\fP to query.
 Of course the configuration options shown here are just examples.
-For instance, it probably makes sense to use a shorter timeout interval.
-See the full documentation for the exact meaning of these options.
+See the
+.BR pdnsd.conf (5)
+man page for all the possible options and their exact meaning.
 .PP
 If you use a dial up connection, remember that ppp scripts usually
 replace \fB/etc/resolv.conf\fP when connection with the ISP is
@@ -170,11 +173,16 @@ If the addresses of the DNS servers are obtained through some type of
 dynamic configuration protocol (e.g. pppd with the usepeerdns
 option or a DHCP client), you can pass the DNS server addresses as an extra
 argument to \fBpdnsd\-ctl\fP to configure \fBpdnsd\fP at run time.
-See the \fBpdnsd\-ctl(8)\fP man page for details.
+See the
+.BR pdnsd\-ctl (8)
+man page for details.
 
 .SH FILES
 
-\fB@sysconfdir@/pdnsd.conf\fP
+\fB@sysconfdir@/pdnsd.conf\fP is the pdnsd configuration file.
+The file format and configuration options are described in the
+.BR pdnsd.config (5)
+man page.
 .PP
 \fB@cachedir@/pdnsd.cache\fP
 .PP
@@ -192,7 +200,11 @@ fiddling with initscripts (not available on all distributions).
 
 .SH BUGS
 .PP
-Report bugs to the authors.
+The verbosity option
+.BI -v n
+presently does not seem to have much effect on the amount of debug output.
+.br
+Report any remaining bugs to the authors.
 
 .SH CONFORMING TO
 .PP
@@ -258,9 +270,10 @@ pdnsd and save cache and executable space):
 
 .SH SEE ALSO
 .PP
-.BR pdnsd\-ctl(8),
-.BR pppconfig(8),
-.BR resolv.conf(5)
+.BR pdnsd\-ctl (8),
+.BR pdnsd.conf (5),
+.BR pppconfig (8),
+.BR resolv.conf (5)
 .PP
 More documentation is available in the \fBdoc/\fP subdirectory of the source,
 or in \fB/usr/share/doc/pdnsd/\fP if you are using a binary package.
@@ -287,7 +300,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too. 
 .PP
-Last revised: 9 May 2004 by Paul Rombouts.
+Last revised: 2 Oct 2004 by Paul Rombouts.
 
 .SH COPYRIGHT
 

@@ -52,9 +52,6 @@
 /* Define if your <sys/time.h> declares struct tm.  */
 #undef TM_IN_SYS_TIME
 
-/* Define if lex declares yytext as a char * by default, not a char[].  */
-#undef YYTEXT_POINTER
-
 /* Define your Target here. Currently defined are TARGET_LINUX (any 
  * architecture) and TARGET_BSD (experimental; tested on FreeBSD, hopefully 
  * works for other BSD variants) */
@@ -223,11 +220,26 @@
 /* If we are using LinuxThreads, implement the fix needed for newer glibcs ? */
 #undef THREADLIB_LINUXTHREADS2
 
+/* Define if you have the asprintf function.  */
+#undef HAVE_ASPRINTF
+
+/* Define if you have the getline function.  */
+#undef HAVE_GETLINE
+
+/* Define if you have the getpwnam_r function.  */
+#undef HAVE_GETPWNAM_R
+
 /* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 
+/* Define if you have the mempcpy function.  */
+#undef HAVE_MEMPCPY
+
 /* Define if you have the mkfifo function.  */
 #undef HAVE_MKFIFO
+
+/* Define if you have the nanosleep function.  */
+#undef HAVE_NANOSLEEP
 
 /* Define if you have the poll function.  */
 #undef HAVE_POLL
@@ -238,26 +250,8 @@
 /* Define if you have the snprintf function.  */
 #undef HAVE_SNPRINTF
 
-/* Define if you have the vsnprintf function.  */
-#undef HAVE_VSNPRINTF
-
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
-
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
-/* Define if you have the uname function.  */
-#undef HAVE_UNAME
-
-/* Define if you have the nanosleep function.  */
-#undef HAVE_NANOSLEEP
-
-/* Define if you have the strdup function.  */
-#undef HAVE_STRDUP
-
-/* Define if you have the strndup function.  */
-#undef HAVE_STRNDUP
 
 /* Define if you have the stpcpy function.  */
 #undef HAVE_STPCPY
@@ -265,11 +259,26 @@
 /* Define if you have the stpncpy function.  */
 #undef HAVE_STPNCPY
 
-/* Define if you have the getline function.  */
-#undef HAVE_GETLINE
+/* Define if you have the strdup function.  */
+#undef HAVE_STRDUP
 
-/* Define if you have the asprintf function.  */
-#undef HAVE_ASPRINTF
+/* Define if you have the strerror function.  */
+#undef HAVE_STRERROR
+
+/* Define if you have the strlcpy function.  */
+#undef HAVE_STRLCPY
+
+/* Define if you have the strndup function.  */
+#undef HAVE_STRNDUP
+
+/* Define if you have the uname function.  */
+#undef HAVE_UNAME
+
+/* Define if you have the vasprintf function.  */
+#undef HAVE_VASPRINTF
+
+/* Define if you have the vsnprintf function.  */
+#undef HAVE_VSNPRINTF
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H

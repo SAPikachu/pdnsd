@@ -1,7 +1,7 @@
 /* cache.c - Keep the dns caches.
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -30,6 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <sys/time.h>
 #include "cache.h"
 #include "hash.h"
 #include "conff.h"
@@ -45,7 +46,7 @@ static char rcsid[]="$Id: cache.c,v 1.37 2002/04/25 12:03:27 tmm Exp $";
 #endif
 
 /* A version identifier to prevent reading incompatible cache files */
-static const char cachverid[] = {'p','d','1','1'};
+static const char cachverid[] = {'p','d','1','2'};
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
  * Prior to version 1.0.0, the cache was managed at domain granularity (all records of a domain were handled as a unit),
@@ -161,14 +162,12 @@ static short int insert_sort=1;
 #define cache_realloc(ptr,sz)	(realloc(ptr,sz))
 #endif
 
-/* This is used internally to check if a cache entry or rrset has timed out. */
-#define timedout(ent) ((ent)->ts+CLAT_ADJ((ent)->ttl)<time(NULL))
 
 /*
  * Prototypes for internal use
  */
 static void purge_cache(long sz, int lazy);
-static void del_cache_ent(dns_cent_t *cent);
+static void del_cache_ent(dns_cent_t *cent,dns_hash_loc_t *loc);
 static void remove_rrl(rr_lent_t *le  DBGPARAM);
 
 /*
@@ -231,6 +230,33 @@ static void lock_cache_rw(void)
 	cache_w_lock=1;
 	rw_pend--;
 	pthread_mutex_unlock(&lock_mutex);
+}
+
+/* Lock cache for reading and writing, or time out after tm seconds. */
+static int timedlock_cache_rw(int tm)
+{
+	int retval=0;
+	struct timeval now;
+	struct timespec timeout;
+
+	if (!use_cache_lock)
+		return 0;
+	pthread_mutex_lock(&lock_mutex);
+	gettimeofday(&now,NULL);
+	timeout.tv_sec = now.tv_sec + tm;
+	timeout.tv_nsec = now.tv_usec * 1000;
+	rw_pend++;
+	while(cache_w_lock || cache_r_lock) {
+		/* This will unlock the mutex while sleeping and relock it before exit */
+		if(pthread_cond_timedwait(&rw_cond, &lock_mutex, &timeout) == ETIMEDOUT)
+			goto cleanup_return;
+	}
+	cache_w_lock=1;
+	retval=1;
+ cleanup_return:
+	rw_pend--;
+	pthread_mutex_unlock(&lock_mutex);
+	return retval;
 }
 
 static void unlock_cache_rw(void)
@@ -331,7 +357,7 @@ static int softunlock_cache_rw(void)
  * be replaced). A serial of 0 is special and will not be used by any query. All records added added authoritatively (as
  * chunk) or read from a file can have no query in process and therefore have serial 0, which is != any other serial.
  */
-
+#if 0
 unsigned long l_serial=1;
 
 unsigned long get_serial()
@@ -342,6 +368,7 @@ unsigned long get_serial()
 	unlock_cache_rw();
 	return rv;
 }
+#endif
 
 /*
  * Cache/cent handlers
@@ -360,6 +387,17 @@ unsigned long get_serial()
 
 	use_cache_lock=1;
 } */
+
+/* Empty the cache completely, freeing all entries. */ 
+int empty_cache()
+{
+	/* Wait at most 60 seconds to obtain a lock. */
+	if(!timedlock_cache_rw(60))
+		return 0;
+	free_dns_hash();
+	unlock_cache_rw();
+	return 1;
+}
 
 /* Delete the cache. Call only once */
 void destroy_cache()
@@ -398,7 +436,7 @@ TARGET!=TARGET_LINUX
 } */
 
 /* Initialize a dns cache record (dns_cent_t) with the query name (in
- * dotted notation, use rhn2str), a flag value, a timestamp indicating
+ * transport format), a flag value, a timestamp indicating
  * the time the query was done, and a TTL. The timestamp and TTL
  * are only used if DF_NEGATIVE is set in the flags. Otherwise,
  * the timestamps of the individual records are used. DF_NEGATIVE
@@ -408,12 +446,12 @@ TARGET!=TARGET_LINUX
 int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t ts, unsigned flags  DBGPARAM)
 {
 	int i;
-	size_t namesz=strlen(qname)+1;
-	/* This mimics strdup, which is not really portable unfortunately */
+	size_t namesz=rhnlen(qname);
+
 	cent->qname=cache_malloc(namesz);
 	if (cent->qname == NULL)
 		return 0;
-	strcpy(cent->qname,qname);
+	memcpy(cent->qname,qname,namesz);
 	cent->num_rrs=0;
 	cent->cs=sizeof(dns_cent_t)+namesz;
 	cent->flags=flags;
@@ -422,13 +460,15 @@ int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t t
 	cent->lent=NULL;
 	for(i=0;i<T_NUM;i++)
 		cent->rr[i]=NULL;
+	cent->c_ns=cundef;
+	cent->c_soa=cundef;
 	return 1;
 }
 
 /*
- * Create a cent using the given values.
+ * Create a rr record holder using the given values.
  */
-rr_bucket_t *create_rr(int dlen, void *data  DBGPARAM)
+static rr_bucket_t *create_rr(unsigned short dlen, void *data  DBGPARAM)
 {
 	rr_bucket_t *rrb;
 	rrb=(rr_bucket_t *)cache_malloc(sizeof(rr_bucket_t)+dlen);
@@ -445,61 +485,50 @@ rr_bucket_t *create_rr(int dlen, void *data  DBGPARAM)
  * Adds an empty rrset_t with the requested data to a cent. This is exactly what you need to
  * do to create a negatively cached cent.
  */
-int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigned flags, unsigned long serial  DBGPARAM)
+int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigned flags  DBGPARAM)
 {
 	rr_set_t *rrset=cache_malloc(sizeof(rr_set_t));
 	cent->rr[tp-T_MIN]=rrset;
 	if (!rrset)
 		return 0;
 	rrset->lent=NULL;
-	if (flags&CF_NOCACHE) {
-		flags &= ~CF_NOCACHE;
-		ttl=0;
-	}
-	else {
-		if(ttl<global.min_ttl)
-			ttl=global.min_ttl;
-		else if(ttl>global.max_ttl)
-			ttl=global.max_ttl;
-	}
-
 	rrset->ttl=ttl;
 	rrset->ts=ts;
 	rrset->flags=flags;
-	rrset->serial=serial;
 	rrset->rrs=NULL;
 	cent->cs += sizeof(rr_set_t);
 	cent->num_rrs++;
+	/* If we add a rrset, even a negative one, the domain is not negative any more. */
+	if (cent->flags&DF_NEGATIVE) {
+		cent->flags &= ~DF_NEGATIVE;
+		cent->ttl=0;
+		/* need to remove the cent from the lent list. */
+		if (cent->lent) {
+			remove_rrl(cent->lent  DBGARG);
+			cent->lent=NULL;
+		}
+	}
 	return 1;
 }
 
 /*
- * Adds a rr record (usually prepared by create_rr) to a cent. For cache.c internal use.
- * Frees the rr if not actually used.
+ * Adds a rr record to a cent. For cache.c internal use.
  */
-static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigned flags, rr_bucket_t *rr, rr_bucket_t **rtail, unsigned long serial  DBGPARAM)
+static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigned flags,
+			   unsigned dlen, void *data, rr_bucket_t **rtail  DBGPARAM)
 {
-	int rv=0;
+	rr_bucket_t *rr;
 	rr_set_t *rrset;
 	if ((cent->flags&DF_LOCAL) && !(flags&CF_LOCAL)) {
 		/* ignore. Local has precedence. */
-		rv=1;
-		goto cleanup_return;
+		return 1;
 	}
+	if (!(rr=create_rr(dlen,data  DBGARG)))
+		return 0;
 	if(!(rtail && *rtail)) {
 		if (!cent->rr[tp-T_MIN]) {
-			if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial  DBGARG))
+			if (!add_cent_rrset(cent, tp, ttl, ts, flags  DBGARG))
 				goto cleanup_return;
-		}
-		/* If we add a record, this is not negative any more. */
-		if (cent->flags&DF_NEGATIVE) {
-			cent->flags &= ~DF_NEGATIVE;
-			cent->ttl=0;
-			/* need to remove the cent from the lent list. */
-			if (cent->lent) {
-				remove_rrl(cent->lent  DBGARG);
-				cent->lent=NULL;
-			}
 		}
 		/* do the linking work */
 		rrset=cent->rr[tp-T_MIN];
@@ -522,7 +551,7 @@ static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsi
  cleanup_return:
 	free_rr(*rr);
 	free(rr);
-	return rv;
+	return 0;
 }
 
 
@@ -530,8 +559,8 @@ static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsi
  * and a pointer to the data. A record is allocated, and the data is copied into
  * it. Do this for all rrs in a cache entry.
  */
-int add_cent_rr(dns_cent_t *cent, int tp , time_t ttl, time_t ts, unsigned flags, int dlen, void *data,
-		unsigned long serial  DBGPARAM)
+int add_cent_rr(dns_cent_t *cent, int tp , time_t ttl, time_t ts, unsigned flags,
+		unsigned dlen, void *data  DBGPARAM)
 {
 	rr_bucket_t *rrb,*rtail=NULL;
 	/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
@@ -544,9 +573,7 @@ int add_cent_rr(dns_cent_t *cent, int tp , time_t ttl, time_t ts, unsigned flags
 			rrb=rrb->next;
 		}
 	}
-	if (!(rrb=create_rr(dlen,data  DBGARG)))
-		return 0;
-	return add_cent_rr_int(cent,tp,ttl,ts,flags,rrb,&rtail,serial  DBGARG);
+	return add_cent_rr_int(cent,tp,ttl,ts,flags,dlen,data,&rtail  DBGARG);
 }
 
 /* Free a complete rrset including all memory. Returns the size of the memory freed */
@@ -579,11 +606,12 @@ static int del_cent_rrset(dns_cent_t *cent, int tp  DBGPARAM)
 		cent->num_rrs--;
 		cent->cs -= rv;
 		cent->rr[tp-T_MIN]=NULL;
+		cent->flags &= ~DF_AUTH;
 	}
 	return rv;
 }
 
-/* Free the pointers cointained in an rr record. If the rr record is on the heap,
+/* Free the pointers contained in an rr record. If the rr record is on the heap,
  * don't forget to delete itself. This is done extra mainly for extensibility
  * -- This is not here any more. The definition is actually an empty macro in
  * cache.h.
@@ -607,6 +635,28 @@ void free_cent(dns_cent_t *cent  DBGPARAM)
 	}
 }
 
+/* Same as free_cent, but is suitable as cleanup handler */
+void free_cent0(void *ptr)
+{
+	free_cent(ptr  DBG0);
+}
+
+/* Negate an existing cache entry and free any existing rr sets. */
+void negate_cent(dns_cent_t *cent)
+{
+	int i;
+
+	for (i=0;i<T_NUM;i++) {
+		rr_set_t *rrs=cent->rr[i];
+		if (rrs) {
+			cent->cs -= del_rrset(rrs  DBG0);
+			cent->rr[i]=NULL;
+		}
+	}
+	cent->num_rrs=0;
+	cent->flags |= DF_NEGATIVE;
+}
+
 inline static time_t get_rrlent_ts(rr_lent_t *le)
 {
 	return (le->rrset)?(le->rrset->ts):(le->cent->ts);
@@ -615,12 +665,17 @@ inline static time_t get_rrlent_ts(rr_lent_t *le)
 /* insert a rrset into the rr_l list. This modifies the rr_set_t if rrs is not NULL!
  * The rrset address needs to be constant afterwards.
  * Call with locks applied. */
-static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
+static int insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
 {
 	time_t ts;
-	rr_lent_t *le,*ne=malloc(sizeof(rr_lent_t));
+	rr_lent_t *le,*ne;
 
-	if (!ne) return NULL;
+	/* No need to add local records to the rr_l list, because purge_cache() ignores them anyway. */
+	if((rrs && (rrs->flags&CF_LOCAL)) || (cent->flags&DF_LOCAL))
+		return 1;
+
+	if (!(ne=malloc(sizeof(rr_lent_t))))
+		return 0;
 	ne->rrset=rrs;
 	ne->cent=cent;
 	ne->tp=tp;
@@ -670,7 +725,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
 	else
 		cent->lent=ne;
 
-	return ne;
+	return 1;
 }
 
 /* Remove a rr from the rr_l list. Call with locks applied. */
@@ -778,11 +833,14 @@ dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM)
 	if (!(copy=cache_malloc(sizeof(dns_cent_t))))
 		return NULL;
 	*copy=*cent;
+	{
+		/* copy the name */
+		size_t namesz=rhnlen(cent->qname);
+		if (!(copy->qname=cache_malloc(namesz)))
+			goto free_return_null;
 
-	if (!(copy->qname=cache_malloc(strlen(cent->qname)+1)))
-		goto free_return_null;
-
-	strcpy(copy->qname,cent->qname);
+		memcpy(copy->qname,cent->qname,namesz);
+	}
 	copy->lent=NULL;
 
 	for (i=0;i<T_NUM;i++)
@@ -859,14 +917,48 @@ static int purge_cent(dns_cent_t *cent, int delete, int test)
 
 	for (i=T_MIN;i<=T_MAX;i++)
 		npurge += purge_rrset(cent,i,test);
+
 	/* if the record was purged empty, delete it from the cache. */
 	if (delete && (cent->num_rrs==0 || (test && cent->num_rrs==npurge)) 
 	    && (!(cent->flags&DF_NEGATIVE) ||
 		(!(cent->flags&DF_LOCAL) && timedout(cent))))
 	{
 		if(!test)
-			del_cache_ent(cent); /* this will subtract the cent's left size from cache_size */
+			del_cache_ent(cent,NULL); /* this will subtract the cent's left size from cache_size */
 		return -1;
+	}
+
+	if(!(cent->flags&DF_LOCAL)) {
+		/* Set stale references to NS or SOA records back to undefined. */
+		unsigned scnt=rhnsegcnt(cent->qname);
+		if(cent->c_ns!=cundef) {
+			rr_set_t *rrset=NULL;
+			if(cent->c_ns==scnt)
+				rrset=cent->rr[T_NS-T_MIN];
+			else if(cent->c_ns<scnt) {
+				dns_cent_t *ce=dns_lookup(skipsegs(cent->qname,scnt-cent->c_ns),NULL);
+				if(ce) rrset=ce->rr[T_NS-T_MIN];
+			}
+			if(!rrset || !rrset->rrs || (!(rrset->flags&CF_LOCAL) && timedout(rrset))) {
+				if(!test)
+					cent->c_ns=cundef;
+				++npurge;
+			}
+		}
+		if(cent->c_soa!=cundef) {
+			rr_set_t *rrset=NULL;
+			if(cent->c_soa==scnt)
+				rrset=cent->rr[T_SOA-T_MIN];
+			else if(cent->c_soa<scnt) {
+				dns_cent_t *ce=dns_lookup(skipsegs(cent->qname,scnt-cent->c_soa),NULL);
+				if(ce) rrset=ce->rr[T_SOA-T_MIN];
+			}
+			if(!rrset || !rrset->rrs || (!(rrset->flags&CF_LOCAL) && timedout(rrset))) {
+				if(!test)
+					cent->c_soa=cundef;
+				++npurge;
+			}
+		}
 	}
 
 	return npurge;
@@ -892,7 +984,7 @@ static void purge_cache(long sz, int lazy)
 		 * per iteration, and this node is the one referenced by le. */
 		rr_lent_t *next=le->next;
 		if (!((le->rrset && (le->rrset->flags&CF_LOCAL)) ||
-		      le->cent->flags&DF_LOCAL)) {
+		      (le->cent->flags&DF_LOCAL))) {
 			dns_cent_t *ce = le->cent;
 			if (le->rrset)
 				purge_rrset(ce, le->tp,0);
@@ -900,7 +992,7 @@ static void purge_cache(long sz, int lazy)
 			 * ce, however, is still guaranteed to be valid. */
 			if (ce->num_rrs==0 && (!(ce->flags&DF_NEGATIVE) ||
 					       (!(ce->flags&DF_LOCAL) && timedout(ce))))
-				del_cache_ent(ce);
+				del_cache_ent(ce,NULL);
 		}
 		le=next;
 	}
@@ -919,21 +1011,21 @@ static void purge_cache(long sz, int lazy)
 	while (le && cache_size>sz) {
 		rr_lent_t *next=le->next;
 		if (!((le->rrset && (le->rrset->flags&CF_LOCAL)) ||
-		      le->cent->flags&CF_LOCAL)) {
+		      (le->cent->flags&DF_LOCAL))) {
 			dns_cent_t *ce = le->cent;
 			if (le->rrset)
 				cache_size -= del_cent_rrset(ce, le->tp  DBG0);
 			/* this will also delete negative cache entries */
 			if (ce->num_rrs==0)
-				del_cache_ent(ce);
+				del_cache_ent(ce,NULL);
 		}
 		le=next;
 	}
 }
 
-#define log_warn_read_error(f) \
-        log_warn("%s encountered while reading disk cache file at %s, line %d", \
-        ferror(f)?"Error":feof(f)?"EOF":"Incomplete item", __FILE__, __LINE__)
+#define log_warn_read_error(f,item) \
+        log_warn("%s encountered while reading %s from disk cache file.", \
+        ferror(f)?"Error":feof(f)?"EOF":"Incomplete item",item)
 
 /*
  * Load cache from disk and rebuild the hash tables.
@@ -941,17 +1033,11 @@ static void purge_cache(long sz, int lazy)
 void read_disk_cache()
 {
 	/* The locks are done when we add items. */
-	int i;
-	dns_file_t fe;
 	dns_cent_t ce;
 	int dtsz=512;
-	rr_fset_t sh;
-	rr_fbucket_t rr;
 	unsigned char *data;
-	unsigned char num_rr;
-	long cnt;
+	unsigned long cnt;
 	FILE *f;
-	unsigned char nb[256];
 
 	char path[strlen(global.cache_dir)+sizeof("/pdnsd.cache")];
 
@@ -977,7 +1063,7 @@ void read_disk_cache()
 		/* check cache version identifier */
 		char buf[sizeof(cachverid)];
 		if (fread(buf,sizeof(cachverid),1,f)!=1) {
-			log_warn_read_error(f);
+			log_warn_read_error(f,"cache version identifier");
 			goto free_data_fclose;
 		}
 		if(memcmp(buf,cachverid,sizeof(cachverid))) {
@@ -987,68 +1073,89 @@ void read_disk_cache()
 	}
 
 	if (fread(&cnt,sizeof(cnt),1,f)!=1) {
-		log_warn_read_error(f);
+		log_warn_read_error(f,"entry count");
 		goto free_data_fclose;
 	}
 
-	for(;cnt>0;cnt--) {
-		if (fread(&fe,sizeof(dns_file_t),1,f)!=1) {
-			log_warn_read_error(f);
+	for(;cnt>0;--cnt) {
+		dns_file_t fe;
+		unsigned char nb[256];
+		unsigned num_rrs;
+		unsigned char prevtp;
+		if (fread(&fe,sizeof(fe),1,f)!=1) {
+			log_warn_read_error(f,"cache entry header");
 			goto free_data_fclose;
 		}
 		if (fe.qlen) {
+			int i;
 			if (fread(nb,fe.qlen,1,f)!=1) {
-				log_warn_read_error(f);
+				log_warn_read_error(f,"domain name");
 				goto free_data_fclose;
+			}
+			for(i=0;i<fe.qlen;) {
+				unsigned lb=nb[i];
+				if(!lb || lb>63 || (i += lb+1)>fe.qlen) {
+					log_warn("Invalid domain name encountered while reading disk cache file.");
+					goto free_data_fclose;
+				}
 			}
 		}
 		nb[fe.qlen]='\0';
 		if (!init_cent(&ce, nb, fe.ttl, fe.ts, fe.flags  DBG0)) {
 			goto free_data_fclose_exit;
 		}
+		ce.c_ns=fe.c_ns; ce.c_soa=fe.c_soa;
+
 		/* now, read the rr's */
-		for (i=0;i<T_NUM;i++) {
-			if (fread(&num_rr,sizeof(num_rr),1,f)!=1) {
-				log_warn_read_error(f);
+		prevtp=0;
+		for (num_rrs=fe.num_rrs;num_rrs;--num_rrs) {
+			rr_fset_t sh;
+			unsigned num_rr;
+			if (fread(&sh,sizeof(sh),1,f)!=1) {
+				log_warn_read_error(f,"rr header");
 				goto free_cent_data_fclose;
 			}
-			if (num_rr) {
-				if (fread(&sh,sizeof(sh),1,f)!=1) {
-					log_warn_read_error(f);
+			if(sh.tp<T_MIN || sh.tp>T_MAX) {
+				log_warn("Invalid rr type encountered while reading disk cache file.");
+				goto free_data_fclose;
+			}
+			if(sh.tp<=prevtp) {
+				log_warn("Unexpected rr type encountered (smaller than the previous one) while reading disk cache file.");
+				goto free_data_fclose;
+			}
+			prevtp=sh.tp;
+			/* Add the rrset header in any case (needed for negative caching) */
+			if(!add_cent_rrset(&ce, sh.tp, sh.ttl, sh.ts, sh.flags  DBG0)) {
+				goto free_cent_data_fclose_exit;
+			}
+			for (num_rr=sh.num_rr;num_rr;--num_rr) {
+				rr_fbucket_t rr;
+				if (fread(&rr,sizeof(rr),1,f)!=1) {
+					log_warn_read_error(f,"rr data length");
 					goto free_cent_data_fclose;
 				}
-				/* Add the rrset header in any case (needed for negative caching */
-				if(!add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0  DBG0)) {
-					goto free_cent_data_fclose_exit;
-				}
-				for (;num_rr>1;num_rr--) {
-					if (fread(&rr,sizeof(rr),1,f)!=1) {
-						log_warn_read_error(f);
-						goto free_cent_data_fclose;
-					}
-					if (rr.rdlen>dtsz) {
-						unsigned char *tmp;
-						dtsz=rr.rdlen;
-						tmp=realloc(data,dtsz);
-						if (!tmp) {
-							goto free_cent_data_fclose_exit;
-						}
-						data=tmp;
-					}
-					if (fread(data,rr.rdlen,1,f)!=1) {
-						log_warn_read_error(f);
-						goto free_cent_data_fclose;
-					}
-					if (!add_cent_rr(&ce,i+T_MIN,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,0 DBG0)) {
+				if (rr.rdlen>dtsz) {
+					unsigned char *tmp;
+					dtsz=rr.rdlen;
+					tmp=realloc(data,dtsz);
+					if (!tmp) {
 						goto free_cent_data_fclose_exit;
 					}
+					data=tmp;
+				}
+				if (rr.rdlen && fread(data,rr.rdlen,1,f)!=1) {
+					log_warn_read_error(f,"rr data");
+					goto free_cent_data_fclose;
+				}
+				if (!add_cent_rr(&ce,sh.tp,sh.ttl,sh.ts,sh.flags,rr.rdlen,data  DBG0)) {
+					goto free_cent_data_fclose_exit;
 				}
 			}
 		}
 		add_cache(&ce);
 		free_cent(&ce  DBG0);
 	}
-#ifdef DBGHASH
+#ifdef DEBUG_HASH
 	free(data);
 	fclose(f);
 	dumphash();
@@ -1062,7 +1169,7 @@ void read_disk_cache()
  free_data_fclose:
 	free(data);
 	fclose(f);
-#ifdef DBGHASH
+#ifdef DEBUG_HASH
  sort_return:
 #endif
 	/* Do we need read/write locks to sort the rr_l list?
@@ -1088,43 +1195,32 @@ void read_disk_cache()
 }
 
 /* write an rr to the file f */
-static int write_rrset(rr_set_t *rrs, FILE *f)
+static int write_rrset(int tp, rr_set_t *rrs, FILE *f)
 {
 	rr_bucket_t *rr;
 	rr_fset_t sh;
 	rr_fbucket_t rf;
-	unsigned char num_rr=0;  /* 0 means nothing, 1 means header only, 2 means header + 1 record ... */
+	unsigned num_rr;
 
-	if(rrs && !(rrs->flags&CF_LOCAL)) {
-		rr=rrs->rrs;
-		num_rr=1;
-		while(rr && num_rr<255) {++num_rr; rr=rr->next;}
-	}
+	sh.tp=tp;
 
-	if (fwrite(&num_rr,sizeof(num_rr),1,f)!=1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
-		return 0;
-	}
-
-	if (!num_rr)
-		return 1;
-
+	num_rr=0;
+	for(rr=rrs->rrs; rr && num_rr<255; rr=rr->next) ++num_rr;
+	sh.num_rr=num_rr;
 	sh.ttl=rrs->ttl;
 	sh.ts=rrs->ts;
 	sh.flags=rrs->flags;
+
 	if (fwrite(&sh,sizeof(sh),1,f)!=1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
+		log_error("Error while writing rr header to disk cache: %s", strerror(errno));
 		return 0;
 	}
-	rr=rrs->rrs;
-	/* We only write a maximum of 256 of a kind (type) for one domain. This would be already overkill and probably does not happen.
-	 * we want to get along with only one char, because most rr rows are empty (even more with DNS_NEW_RRS), and so the usage
-	 * of greater data types would have significant impact on the cache file size. */
 
-	for(;num_rr>1;--num_rr) {
+	rr=rrs->rrs;
+	for(; num_rr; --num_rr) {
 		rf.rdlen=rr->rdlen;
-		if (fwrite(&rf,sizeof(rf),1,f)!=1 || fwrite((rr+1),rf.rdlen,1,f)!=1) {
-			log_error("Error while writing disk cache: %s", strerror(errno));
+		if (fwrite(&rf,sizeof(rf),1,f)!=1 || (rf.rdlen && fwrite((rr+1),rf.rdlen,1,f)!=1)) {
+			log_error("Error while writing rr data to disk cache: %s", strerror(errno));
 			return 0;
 		}
 		rr=rr->next;
@@ -1146,9 +1242,11 @@ void write_disk_cache()
 {
 	int j;
 	dns_cent_t *le;
-	long en=0;
+	unsigned long en=0;
 	dns_hash_pos_t pos;
 	FILE *f;
+	unsigned long num_rrs_errs=0;
+#	define MAX_NUM_RRS_ERRS 10
 
 	char path[strlen(global.cache_dir)+sizeof("/pdnsd.cache")];
 
@@ -1176,56 +1274,78 @@ void write_disk_cache()
 
 	/* Write the cache version identifier */
 	if (fwrite(cachverid,sizeof(cachverid),1,f)!=1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
+		log_error("Error while writing cache version identifier to disk cache: %s", strerror(errno));
 		goto fclose_unlock;
 	}
 
-	le=fetch_first(&pos);
-	while (le) {
+	for (le=fetch_first(&pos); le; le=fetch_next(&pos)) {
 		/* count the rr's */
-		for (j=0;j<T_NUM;j++) {
-			if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
-				++en;
-				break;
+		if((le->flags&DF_NEGATIVE) && !(le->flags&DF_LOCAL))
+			++en;
+		else {
+			for (j=0;j<T_NUM;j++) {
+				if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
+					++en;
+					break;
+				}
 			}
 		}
-		le=fetch_next(&pos);
 	}
 	if (fwrite(&en,sizeof(en),1,f)!=1) {
-		log_error("Error while writing disk cache: %s", strerror(errno));
+		log_error("Error while writing entry count to disk cache: %s", strerror(errno));
 		goto fclose_unlock;
 	}
 
-	le=fetch_first(&pos);
-	while (le) {
+	for (le=fetch_first(&pos); le; le=fetch_next(&pos)) {
 		/* now, write the rr's */
+		if((le->flags&DF_NEGATIVE) && !(le->flags&DF_LOCAL))
+			goto write_rrs;
 		for (j=0;j<T_NUM;j++) {
 			if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
 				goto write_rrs;
 			}
 		}
-		goto next_le;
+		continue;
 	       write_rrs:
 		{
 			dns_file_t df;
-			df.qlen=strlen(le->qname);
+			int num_rrs;
+			df.qlen=rhnlen(le->qname)-1; /* Don't include the null byte at the end */
 			df.flags=le->flags;
 			df.ts=le->ts;
 			df.ttl=le->ttl;
-			if (fwrite(&df,sizeof(df),1,f)!=1 ||
-			    fwrite(le->qname,df.qlen,1,f)!=1) {
-				log_error("Error while writing disk cache: %s", strerror(errno));
+			df.c_ns=le->c_ns; df.c_soa=le->c_soa;
+			df.num_rrs=0; num_rrs=0;
+			for (j=0;j<T_NUM;j++) {
+				rr_set_t *rrset=le->rr[j];
+				if(rrset) {
+					++num_rrs;
+					if(!(rrset->flags&CF_LOCAL))
+						++df.num_rrs;
+				}
+			}
+			if(num_rrs!=le->num_rrs && ++num_rrs_errs<=MAX_NUM_RRS_ERRS) {
+				char buf[256];
+				log_warn("Counted %d rr record types for %s but cached counter=%d",
+					 num_rrs,rhn2str(le->qname,buf,sizeof(buf)),le->num_rrs);
+			}
+			if (fwrite(&df,sizeof(df),1,f)!=1) {
+				log_error("Error while writing cache entry header to disk cache: %s", strerror(errno));
+				goto fclose_unlock;
+			}
+			if (df.qlen && fwrite(le->qname,df.qlen,1,f)!=1) {
+				log_error("Error while writing domain name to disk cache: %s", strerror(errno));
 				goto fclose_unlock;
 			}
 
 			for (j=0;j<T_NUM;j++) {
-				if (!write_rrset(le->rr[j],f)) {
-					goto fclose_unlock;
+				rr_set_t *rrset=le->rr[j];
+				if(rrset && !(rrset->flags&CF_LOCAL)) {
+					if(!write_rrset(j+T_MIN,rrset,f))
+						goto fclose_unlock;
 				}
 			}
 		}
-	       next_le:
-		le=fetch_next(&pos);
 	}
 	if(fclose(f)) {
 		log_error("Could not close cache file %s after writing cache: %s", path,strerror(errno));
@@ -1309,8 +1429,22 @@ static int cr_check_add(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigne
 }
 
 
+inline static void adjust_ttl(rr_set_t *rrset)
+{
+	if (rrset->flags&CF_NOCACHE) {
+		rrset->flags &= ~CF_NOCACHE;
+		rrset->ttl=0;
+	}
+	else {
+		if(rrset->ttl<global.min_ttl)
+			rrset->ttl=global.min_ttl;
+		else if(rrset->ttl>global.max_ttl)
+			rrset->ttl=global.max_ttl;
+	}
+}
+
 /*
- * Add a ready build dns_cent_t to the hashes, purge if necessary to not exceed cache size
+ * Add a ready built dns_cent_t to the hashes, purge if necessary to not exceed cache size
  * limits, and add the entries to the hashes.
  * As memory is already reserved for the rrs, we only need to wrap up the dns_cent_t and
  * alloc memory for it.
@@ -1326,29 +1460,38 @@ static int cr_check_add(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigne
 void add_cache(dns_cent_t *cent)
 {
 	dns_cent_t *ce;
+	dns_hash_loc_t loc;
 	int i;
 
 	lock_cache_rw();
  retry:
-	if (!(ce=dns_lookup(cent->qname))) {
+	if (!(ce=dns_lookup(cent->qname,&loc))) {
+		/* if the new entry doesn't contain any information,
+		   don't try to add it to the cache because purge_cache() will not
+		   be able to get rid of it.
+		*/
+		if(cent->num_rrs==0 && !(cent->flags&DF_NEGATIVE))
+			goto purge_cache_return;
+
 		if(!(ce=copy_cent(cent  DBG0))) {
 			goto warn_unlock_cache_return;
 		}
 		/* Add the rrs to the rr list */
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i]) {
+				adjust_ttl(ce->rr[i]);
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
 					goto free_cent_unlock_cache_return;
 				}
 			}
 		}
-		/* If this record is negative cached, add the cent to the rr list. */
-		if (cent->flags&DF_NEGATIVE) {
+		/* If this record is negatively cached, add the cent to the rr list. */
+		if (ce->flags&DF_NEGATIVE) {
 			if (!insert_rrl(NULL,ce,-1)) {
 				goto free_cent_unlock_cache_return;
 			}
 		}
-		add_dns_hash(ce);
+		add_dns_hash(ce,&loc);
 		ent_num++;
 	} else {
 		if (cent->flags&DF_NEGATIVE) {
@@ -1360,7 +1503,7 @@ void add_cache(dns_cent_t *cent)
 					goto unlock_cache_return; /* Do not clobber local records */
 				}
 			}
-			del_cache_ent(ce);
+			del_cache_ent(ce,&loc);
 			goto retry;
 		}
 		purge_cent(ce, 0,0);
@@ -1368,7 +1511,18 @@ void add_cache(dns_cent_t *cent)
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
 			rr_set_t *centrrs=cent->rr[i],*cerrs=ce->rr[i];
-			if (centrrs && !(cerrs && cerrs->flags&CF_LOCAL)) {
+			/* Local records have precedence.
+			   Records from answer sections have precedence over additional (off-topic) records.
+			   Answers obtained from root servers have precedence over additional records
+			   from other servers. */
+			if (centrrs &&
+			    !(cerrs &&
+			      ((!(centrrs->flags&CF_LOCAL) && (cerrs->flags&CF_LOCAL)) ||
+			       ((centrrs->flags&CF_ADDITIONAL) && (!(cerrs->flags&CF_ADDITIONAL) ||
+								   (!(centrrs->flags&CF_ROOTSERV) &&
+								    (cerrs->flags&CF_ROOTSERV))) &&
+				!timedout(cerrs)))))
+			{
 				rr_bucket_t *rr,*rtail;
 
 				del_cent_rrset(ce,i+T_MIN  DBG0);
@@ -1378,27 +1532,34 @@ void add_cache(dns_cent_t *cent)
 
 				/* pre-initialize a rrset_t for the case we have a negative cached
 				 * rrset, in which case no further rrs will be added. */
-				if (!add_cent_rrset(ce, i+T_MIN, centrrs->ttl, centrrs->ts, centrrs->flags, 0  DBG0)) {
+				if (!add_cent_rrset(ce, i+T_MIN, centrrs->ttl, centrrs->ts, centrrs->flags  DBG0)) {
 					goto addsize_unlock_cache_return;
 				}
 				rr=centrrs->rrs; rtail=NULL;
 				while (rr) {
-					rr_bucket_t *rrb=create_rr(rr->rdlen, rr+1  DBG0);
-					if (!rrb) {
+					if (!add_cent_rr_int(ce,i+T_MIN,centrrs->ttl, centrrs->ts, centrrs->flags,
+							     rr->rdlen, rr+1, &rtail  DBG0))
+					{
 						/* cleanup this entry */
 						goto cleanup_cent_unlock_cache_return;
 					}
-					add_cent_rr_int(ce,i+T_MIN,centrrs->ttl, centrrs->ts, centrrs->flags,rrb,&rtail,0  DBG0);
 					rr=rr->next;
 				}
+				adjust_ttl(ce->rr[i]);
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
 					goto cleanup_cent_unlock_cache_return;
 				}
 			}
 		}
+		ce->flags |= (cent->flags&(DF_AUTH|DF_WILD));
+		if(cent->c_ns!=cundef && (ce->c_ns==cundef || ce->c_ns<cent->c_ns))
+			ce->c_ns=cent->c_ns;
+		if(cent->c_soa!=cundef && (ce->c_soa==cundef || ce->c_soa<cent->c_soa))
+			ce->c_soa=cent->c_soa;
 	}
 
 	cache_size += ce->cs;
+ purge_cache_return:
 	purge_cache((long)global.perm_cache*1024+MCSZ, 1);
 	goto unlock_cache_return;
 
@@ -1415,6 +1576,50 @@ void add_cache(dns_cent_t *cent)
  unlock_cache_return:
 	unlock_cache_rw();
 }
+
+/*
+  Convert A (and AAA) records in a ready built cache entry to PTR records suitable for reverse resolving
+  of numeric addresses and add them to the cache.
+*/
+int add_reverse_cache(dns_cent_t * cent)
+{
+	int tp;
+
+	for(tp=T_A;;) {
+		rr_set_t *rrset=cent->rr[tp-T_MIN];
+		if(rrset) {
+			rr_bucket_t *rr=rrset->rrs;
+			while(rr) {
+				dns_cent_t ce;
+				unsigned char buf[256],rhn[256];
+				if(!a2ptrstr((pdnsd_ca *)(rr+1),tp,buf) || !str2rhn(buf,rhn))
+					return 0;
+				if(!init_cent(&ce, rhn, cent->ttl, cent->ts, cent->flags  DBG0))
+					return 0;
+				if(!add_cent_rr(&ce,T_PTR,rrset->ttl,rrset->ts,rrset->flags,rhnlen(cent->qname),cent->qname  DBG0)) {
+					free_cent(&ce  DBG0);
+					return 0;
+				}
+				ce.rr[T_NS-T_MIN]=cent->rr[T_NS-T_MIN];
+				ce.rr[T_SOA-T_MIN]=cent->rr[T_SOA-T_MIN];
+				add_cache(&ce);
+				ce.rr[T_NS-T_MIN]=NULL;
+				ce.rr[T_SOA-T_MIN]=NULL;
+				free_cent(&ce  DBG0);
+				rr=rr->next;
+			}
+		}
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+		if(tp==T_AAAA)
+			break;
+		tp=T_AAAA;
+#else
+		break;
+#endif
+	}
+	return 1;
+}
+
 
 /* 
    Delete a cent from the cache. Call with write locks applied.
@@ -1435,12 +1640,15 @@ void del_cent(dns_cent_t *cent)
 /*
  * Delete a cent from the cache. Call with write locks applied.
  */
-static void del_cache_ent(dns_cent_t *cent)
+static void del_cache_ent(dns_cent_t *cent,dns_hash_loc_t *loc)
 {
 	dns_cent_t *data;
 
 	/* Delete from the hash */
-	data=del_dns_hash(cent->qname);
+	if(loc)
+		data=del_dns_hash_ent(loc);
+	else
+		data=del_dns_hash(cent->qname);
 	if(!data) {
 		log_warn("Cache entry not found by del_dns_hash() in %s, line %d",__FILE__,__LINE__);
 	}
@@ -1471,56 +1679,109 @@ void invalidate_record(const unsigned char *name)
 	int i;
 
 	lock_cache_rw();
-	if ((ce=dns_lookup(name))) {
+	if ((ce=dns_lookup(name,NULL))) {
 		for (i=0;i<T_NUM;i++) {
 			rr_set_t *rrs=ce->rr[i];
 			if (rrs) {
 				rrs->ts=0;
-				rrs->flags &= ~CF_LOCAL;
+				rrs->flags &= ~(CF_LOCAL|CF_AUTH);
 			}
 		}
 		/* set the cent time to 0 (for the case that this was negative) */
 		ce->ts=0;
-		ce->flags &= ~DF_LOCAL;
+		ce->flags &= ~(DF_LOCAL|DF_AUTH);
 	}
 	unlock_cache_rw();
 }
 
 
 /*
- * See if we have an entry in the cache, whether it is negative or not.
- * Saves a copy operation compared to lookup_cache.
+  Set flags of the cache entry with the specified name.
+  Don't use this to set the DF_NEGATIVE flag, or you will
+  risk leaving the cache in an inconsistent state.
+  Returns 0 if the cache entry cannot be found, otherwise 1.
  */
-/* int have_cached(unsigned char *name)
+int set_cent_flags(const unsigned char *name, unsigned flags)
 {
 	dns_cent_t *ret;
-	lock_cache_r();
-	ret=dns_lookup(name);
-	unlock_cache_r();
+	lock_cache_rw();
+	ret=dns_lookup(name,NULL);
+	if (ret) {
+		ret->flags |= flags;
+	}
+	unlock_cache_rw();
 	return ret!=NULL;
-} */
+}
 
-/* Lookup an entry in the cache using name (in dotted notation).
+unsigned char *getlocalowner(unsigned char *name,int tp)
+{
+	unsigned char *ret=NULL;
+	dns_cent_t *ce;
+	unsigned lb;
+
+	lock_cache_r();
+	if((lb = *name)) {
+		while(name += lb+1, lb = *name) {
+			if((ce=dns_lookup(name,NULL))) {
+				if(!(ce->flags&DF_LOCAL))
+					break;
+				if(have_rr(ce,tp)) {
+					ret=name;
+					break;
+				}
+			}
+		}
+	}
+	unlock_cache_r();
+
+	return ret;
+}
+
+
+/* Lookup an entry in the cache using name (in length byte -  string notation).
  * For thread safety, a copy must be returned, so delete it after use, by first doing
  * free_cent to remove the rrs and then by freeing the returned pointer.
- * If subdom is nonzero, and name can't be found in the cache, lookup_cache()
- * will search up the name hierarchy for a record with the DF_NEGATIVE flag set.
+ * If wild is nonzero, and name can't be found in the cache, lookup_cache()
+ * will search up the name hierarchy for a record with the DF_NEGATIVE or DF_WILD flag set.
  */
-dns_cent_t *lookup_cache(const unsigned char *name, int subneg)
+dns_cent_t *lookup_cache(const unsigned char *name, int *wild)
 {
 	int purge=0;
 	dns_cent_t *ret;
 
 	/* First try with only read access to the cache. */
 	lock_cache_r();
-	ret=dns_lookup(name);
-	if(!ret && subneg) {
-		const unsigned char *nm=name;
-		while((nm=strchr(nm,'.')) && *++nm) {
-			if ((ret=dns_lookup(nm))) {
-				if(!(ret->flags&DF_NEGATIVE))
-					ret=NULL;
-				break;
+	ret=dns_lookup(name,NULL);
+	if(wild) {
+		*wild=0;
+		if(!ret) {
+			const unsigned char *nm=name;
+			unsigned lb=*nm;
+			if(lb) {
+				while(nm += lb+1, lb = *nm) {
+					if ((ret=dns_lookup(nm,NULL))) {
+						if(ret->flags&DF_NEGATIVE)
+							/* use this entry */
+							*wild=w_neg;
+						else if(ret->flags&DF_WILD) {
+							unsigned char buf[256];
+							buf[0]=1; buf[1]='*';
+							/* When we get here, at least element of name
+							   has been removed, so assuming name is not longer
+							   than 256 bytes, the remainder is guaranteed to
+							   fit into 254 bytes */
+							rhncpy(&buf[2],nm);
+							ret=dns_lookup(buf,NULL);
+							if(ret)
+								*wild=w_wild;
+						}
+						else if(ret->flags&DF_LOCAL)
+							*wild=w_locnerr;
+						else
+							ret=NULL;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -1533,14 +1794,33 @@ dns_cent_t *lookup_cache(const unsigned char *name, int subneg)
 	if(purge) {
 		/* we need exclusive read and write access before we delete anything. */
 		lock_cache_rw();
-		ret=dns_lookup(name);
-		if(!ret && subneg) {
-			const unsigned char *nm=name;
-			while((nm=strchr(nm,'.')) && *++nm) {
-				if ((ret=dns_lookup(nm))) {
-					if(!(ret->flags&DF_NEGATIVE))
-						ret=NULL;
-					break;
+		ret=dns_lookup(name,NULL);
+		if(wild) {
+			*wild=0;
+			if(!ret) {
+				const unsigned char *nm=name;
+				unsigned lb=*nm;
+				if(lb) {
+					while(nm += lb+1, lb = *nm) {
+						if ((ret=dns_lookup(nm,NULL))) {
+							if(ret->flags&DF_NEGATIVE)
+								/* use this entry */
+								*wild=w_neg;
+							else if(ret->flags&DF_WILD) {
+								unsigned char buf[256];
+								buf[0]=1; buf[1]='*';
+								rhncpy(&buf[2],nm);
+								ret=dns_lookup(buf,NULL);
+								if(ret)
+									*wild=w_wild;
+							}
+							else if(ret->flags&DF_LOCAL)
+								*wild=w_locnerr;
+							else
+								ret=NULL;
+							break;
+						}
+					}
 				}
 			}
 		}
@@ -1556,25 +1836,27 @@ dns_cent_t *lookup_cache(const unsigned char *name, int subneg)
 	return ret;
 }
 
+#if 0
 /* Add an rr to an existing cache entry or create a new entry if necessary.
  * The rr is treated with the precedence of an additional or off-topic record, ie. regularly retrieved
  * have precedence.
  * You cannot add a negative additional record. Makes no sense anyway. */
-int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, unsigned flags, int dlen, void *data, unsigned long serial)
+int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, unsigned flags, unsigned dlen, void *data, unsigned long serial)
 {
+	dns_hash_loc_t loc;
 	dns_cent_t *ret;
 	rr_set_t *rrs;
 	int rv=0;
 
 	lock_cache_rw();
-	if (!(ret=dns_lookup(name))) {
+	if (!(ret=dns_lookup(name,&loc))) {
 		if (!(ret=cache_malloc(sizeof(dns_cent_t))))
 			goto unlock_return;
 		if(!init_cent(ret, name, 0, ts, 0  DBG1)) {
 			cache_free(ret);
 			goto unlock_return;
 		}
-		add_dns_hash(ret);
+		add_dns_hash(ret,&loc);
 		ent_num++;
 	}
 	else {
@@ -1615,7 +1897,7 @@ int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, u
 	unlock_cache_rw();
 	return rv;
 }
-
+#endif
 
 /* Report the cache status to the file descriptor f, for the status fifo (see status.c) */
 int report_cache_stat(int f)
@@ -1628,20 +1910,308 @@ int report_cache_stat(int f)
 	return 0;
 }
 
+
+#define timestamp2str(ts,now,buf)								\
+{												\
+	struct tm tstm;										\
+	if(!((ts) && localtime_r(&(ts), &tstm) &&						\
+	     strftime(buf, sizeof(buf),								\
+		      ((ts)<=(now) && (now)-(ts)<365*24*60*60/2)?"    %m/%d %T":"%Y/%m/%d %T",	\
+		      &tstm)>0))								\
+		strcpy(buf,"                  ");						\
+}
+
+/* Dump contents of a cache entry to file descriptor fd.
+   Returns 1 on success, -1 if there is an IO error.
+*/
+static int dump_cent(int fd, dns_cent_t *cent)
+{
+	time_t now;
+	char tstr[sizeof "2000/12/31 23:59:59"],dbuf[1024];
+
+	fsprintf_or_return(fd,"%s\n",rhn2str(cent->qname,dbuf,sizeof(dbuf)));
+	now=time(NULL);
+
+	if(cent->flags&DF_NEGATIVE) {
+		timestamp2str(cent->ts,now,tstr);
+		fsprintf_or_return(fd,"%s    (domain negated)\n",tstr);
+	}
+	else {
+		int i;
+		for(i=0;i<T_NUM;++i) {
+			rr_set_t *rrset=cent->rr[i];
+			if (rrset) {
+				timestamp2str(rrset->ts,now,tstr);
+				if(rrset->flags&CF_NEGATIVE) {
+					fsprintf_or_return(fd,"%s    %-7s (negated)\n",tstr,rr_info[i].name);
+				}
+				else {
+					rr_bucket_t *rr=rrset->rrs;
+					while(rr) {
+						switch (i+T_MIN) {
+						case T_CNAME:
+						case T_MB:
+						case T_MD:
+						case T_MF:
+						case T_MG:
+						case T_MR:
+						case T_NS:
+						case T_PTR:
+							rhn2str((unsigned char *)(rr+1),dbuf,sizeof(dbuf));
+							break;
+						case T_MINFO:
+#ifdef DNS_NEW_RRS
+						case T_RP:
+#endif
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							int n;
+							rhn2str(p,dbuf,sizeof(dbuf));
+							n=strlen(dbuf);
+							dbuf[n++] = ' ';
+							if(n>=sizeof(dbuf))
+								goto hex_dump;
+							rhn2str(skiprhn(p),dbuf+n,sizeof(dbuf)-n);
+						}
+						break;
+						case T_MX:
+#ifdef DNS_NEW_RRS
+						case T_AFSDB:
+						case T_RT:
+						case T_KX:
+#endif
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned pref;
+							int n;
+							GETINT16(pref,p);
+							n=sprintf(dbuf,"%u ",pref);
+							if(n<0) goto hex_dump;
+							rhn2str(p,dbuf+n,sizeof(dbuf)-n);
+						}
+						break;
+						case T_SOA:
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							char *q;
+							int n,rem;
+							uint32_t serial,refresh,retry,expire,minimum;
+							rhn2str(p,dbuf,sizeof(dbuf));
+							n=strlen(dbuf);
+							dbuf[n++] = ' ';
+							if(n>=sizeof(dbuf))
+								goto hex_dump;
+							q=dbuf+n;
+							rem=sizeof(dbuf)-n;
+							p=skiprhn(p);
+							rhn2str(p,q,rem);
+							n=strlen(q);
+							q[n++] = ' ';
+							if(n>=rem)
+								goto hex_dump;
+							q += n;
+							rem -= n;
+							p=skiprhn(p);
+							GETINT32(serial,p);
+							GETINT32(refresh,p);
+							GETINT32(retry,p);
+							GETINT32(expire,p);
+							GETINT32(minimum,p);
+							n=snprintf(q,rem,"%lu %lu %lu %lu %lu",
+								   (unsigned long)serial,(unsigned long)refresh,
+								   (unsigned long)retry,(unsigned long)expire,
+								   (unsigned long)minimum);
+							if(n<0 || n>=rem)
+								goto hex_dump;
+						}
+						break;
+						case T_HINFO:
+						case T_TXT:
+						{
+							/* TXT records are not necessarily validated
+							   before they are stored in the cache, so
+							   we need to be careful. */
+							unsigned char *p=(unsigned char *)(rr+1);
+							char *q=dbuf;
+							int j=0,n,rem=sizeof(dbuf);
+							while(j<rr->rdlen) {
+								unsigned lb;
+								if(rem<3)
+									goto hex_dump;
+								if(j) {
+									*q++ = ' ';
+									--rem;
+								}
+								*q++ = '"';
+								--rem;
+								lb=*p++;
+								if((j += lb+1)>rr->rdlen)
+									goto hex_dump;
+								n=escapestr(p,lb,q,rem);
+								if(n<0 || n+1>=rem)
+									goto hex_dump;
+								q += n;
+								*q++ = '"';
+								rem -= n+1;
+								p += lb;
+							}
+							*q=0;
+						}
+						break;
+#ifdef DNS_NEW_RRS
+						case T_PX:
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							char *q;
+							unsigned pref;
+							int n,rem;
+							GETINT16(pref,p);
+							n=sprintf(dbuf,"%u ",pref);
+							if(n<0) goto hex_dump;
+							q=dbuf+n;
+							rem=sizeof(dbuf)-n;
+							rhn2str(p,q,rem);
+							n=strlen(q);
+							q[n++] = ' ';
+							if(n>=rem)
+								goto hex_dump;
+							rhn2str(skiprhn(p),q+n,rem-n);
+						}
+						break;
+						case T_SRV:
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned priority,weight,port;
+							int n;
+							GETINT16(priority,p);
+							GETINT16(weight,p);
+							GETINT16(port,p);
+							n=sprintf(dbuf,"%u %u %u ",priority,weight,port);
+							if(n<0) goto hex_dump;
+							rhn2str(p,dbuf+n,sizeof(dbuf)-n);
+						}
+						break;
+						case T_NXT:
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							int n,rlen;
+							rhn2str(p,dbuf,sizeof(dbuf));
+							n=strlen(dbuf);
+							dbuf[n++] = ' ';
+							if(n>=sizeof(dbuf))
+								goto hex_dump;
+							rlen=rhnlen(p);
+							hexdump(p+rlen,rr->rdlen-rlen,dbuf+n,sizeof(dbuf)-n);
+						}
+						break;
+						case T_NAPTR:
+						{
+							unsigned char *p=(unsigned char *)(rr+1);
+							char *q;
+							unsigned order,pref;
+							int n,rem,j;
+							GETINT16(order,p);
+							GETINT16(pref,p);
+							n=sprintf(dbuf,"%u %u ",order,pref);
+							if(n<0) goto hex_dump;
+							q=dbuf+n;
+							rem=sizeof(dbuf)-n;
+							for (j=0;j<3;++j) {
+								unsigned lb;
+								if(rem<2)
+									goto hex_dump;
+								*q++ = '"';
+								--rem;
+								lb=*p++;
+								n=escapestr(p,lb,q,rem);
+								if(n<0 || n+2>=rem)
+									goto hex_dump;
+								q += n;
+								*q++ = '"';
+								*q++ = ' ';
+								rem -= n+2;
+								p += lb;
+							}
+							rhn2str(p,q,rem);
+						}
+						break;
+						case T_LOC:
+						{
+							/* Binary data length has not necessarily been validated */
+							if(rr->rdlen!=16)
+								goto hex_dump;
+							if(!loc2str(rr+1,dbuf,sizeof(dbuf)))
+								goto hex_dump;
+						}
+						break;
+#endif
+						case T_A:
+							if (!inet_ntop(AF_INET,rr+1,dbuf,sizeof(dbuf)))
+								goto hex_dump;
+							break;
+#if defined(DNS_NEW_RRS) && defined(AF_INET6)
+						case T_AAAA:
+							if (!inet_ntop(AF_INET6,rr+1,dbuf,sizeof(dbuf)))
+								goto hex_dump;
+							break;
+#endif
+						default:
+						hex_dump:
+							hexdump(rr+1,rr->rdlen,dbuf,sizeof(dbuf));
+						}
+						fsprintf_or_return(fd,"%s    %-7s %s\n",tstr,rr_info[i].name,dbuf);
+						rr=rr->next;
+					}
+				}
+			}
+		}
+	}
+	fsprintf_or_return(fd,"\n");
+	return 1;
+}
+
+/* Dump cache contents to file descriptor fd.
+   If name is not null, restricts information to that name,
+   otherwise dumps information about all names found in the cache.
+   Returns 1 on success, 0 if the name is not found, -1 is there is an IO error.
+   Mainly for debugging purposes.
+*/
+int dump_cache(int fd, const unsigned char *name)
+{
+	int rv=0;
+	lock_cache_r();
+	if(name) {
+		dns_cent_t *cent=dns_lookup(name,NULL);
+		if(cent)
+			rv=dump_cent(fd,cent);
+	}
+	else {
+		dns_cent_t *cent;
+		dns_hash_pos_t pos;
+		for (cent=fetch_first(&pos); cent; cent=fetch_next(&pos)) {
+			if((rv=dump_cent(fd,cent))<0)
+				break;
+		}
+	}
+	unlock_cache_r();
+	return rv;
+}
+
+
 #if DEBUG>0
 
 /* Added by Paul Rombouts: This is only used in debug messages. */
-static const char flgnames[NFLAGS*3]={'N','E','G','L','O','C','N','O','A','N','O','C','A','D','D','N','O','P'};
+const char cflgnames[NCFLAGS*3]={'N','E','G','L','O','C','A','U','T','N','O','C','A','D','D','N','O','P','R','T','S'};
+const char dflgnames[NDFLAGS*3]={'N','E','G','L','O','C','A','U','T','W','L','D'};
 
-char *flags2str(unsigned flags,char *buf)
+char *flags2str(unsigned flags,char *buf,int nflags,const char *flgnames)
 {
-	int i;
 	char *p=buf;
-	for(i=0;i<sizeof(flgnames);i+=3) {
+	int i,nflgchars=3*nflags;
+	for(i=0;i<nflgchars;i+=3) {
 		if(flags&1) {
 			if(p>buf) *p++='|';
-			memcpy(p,&flgnames[i],3);
-			p+=3;
+			p=mempcpy(p,&flgnames[i],3);
 		}
 		flags >>= 1;
 	}

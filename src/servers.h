@@ -1,7 +1,7 @@
 /* servers.h - manage a set of dns servers
-   Copyright (C) 2000 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003, 2004.
+   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -38,7 +38,9 @@ void test_onquery(void);
 void perform_uptest(int i, int j);
 void lock_server_data();
 void unlock_server_data();
-int change_servers(int i, addr_array ar, int c);
+int exclusive_lock_server_data(int tm);
+void exclusive_unlock_server_data(int retest);
+int change_servers(int i, addr_array ar, int up);
 
 inline static int needs_intermittent_testing(servparm_t *sp)
 {

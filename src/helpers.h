@@ -1,7 +1,7 @@
 /* helpers.h - Various helper functions
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -35,20 +35,20 @@ Boston, MA 02111-1307, USA.  */
 
 #define SOFTLOCK_MAXTRIES 1000
 
-int run_as(char *user);
+int run_as(const char *user);
 void pdnsd_exit(void);
 int softlock_mutex(pthread_mutex_t *mutex);
 
-inline static int isdchar (unsigned char c)
+/* inline static int isdchar (unsigned char c)
 {
   return ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-'
 #ifdef UNDERSCORE
 	  || c=='_'
 #endif
 	  );
-}
+} */
 
-void rhn2str(const unsigned char *rhn, unsigned char *str);
+const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int size);
 int  str2rhn(const unsigned char *str, unsigned char *rhn);
 const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn);
 
@@ -58,19 +58,41 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn);
 */
 inline static unsigned int rhnlen(const unsigned char *rhn)
 {
-	unsigned int i=0;
-	unsigned char lb;
+	unsigned int i=0,lb;
 
 	while((lb=rhn[i]))
 		i+=lb+1;
 	return i+1;
 }
 
-/* count the number of name segments. */
+/* Skip k segments in a name in length-byte string notation. */
+inline static unsigned char *skipsegs(unsigned char *nm, unsigned k)
+{
+	unsigned lb;
+	for(;k;--k) {
+		lb= *nm;
+		if(!lb) return nm;
+		nm += lb+1;
+	}
+	return nm;
+}
+
+/* Skip a name in length-byte string notation and return a pointer to the
+   position right after the terminating null byte.
+*/
+inline static unsigned char *skiprhn(unsigned char *rhn)
+{
+	unsigned lb;
+
+	while((lb= *rhn))
+		rhn += lb+1;
+	return rhn+1;
+}
+
+/* count the number of name segments of a name in length-byte string notation. */
 inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 {
-	unsigned int res=0;
-	unsigned char lb;
+	unsigned int res=0,lb;
 
 	while((lb= *rhn)) {
 		++res;
@@ -81,7 +103,7 @@ inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 
 unsigned int rhncpy(unsigned char *dst, const unsigned char *src);
 
-int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
+int follow_cname_chain(dns_cent_t *c, unsigned char *name);
 
 inline static int is_inaddr_any(pdnsd_a *a)
 {
@@ -154,11 +176,14 @@ inline static int write_all(int fd,const void *data,int n)
   return written;
 }
 
+void hexdump(const void *data, int dlen, char *buf, int buflen);
+int escapestr(char *in, int ilen, char *str, int size);
 
-inline static int stricomp(const char *a, const char *b)
+/* inline static int stricomp(const char *a, const char *b)
 {
   return !strcasecmp(a,b);
 }
+*/
 
 /* compare two names in length byte - string format */
 inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
@@ -170,17 +195,20 @@ inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
 		if(lb!=b[i]) return 0;
 		if(!lb) break;
 		++i;
-		for(;lb;--lb) {
+		do {
 			if(tolower(a[i])!=tolower(b[i])) return 0;
 			++i;
-		}
+		} while(--lb);
 	}
 	return 1;
 }
 
 /* Bah. I want strlcpy. */
-inline static int strncp(char *dst, const char *src, int dstsz)
+inline static int strncp(char *dst, const char *src, size_t dstsz)
 {
+#ifdef HAVE_STRLCPY
+	return (strlcpy(dst,src,dstsz)<dstsz);
+#else
 #ifdef HAVE_STPNCPY
 	char *p=stpncpy(dst,src,dstsz);
 	if(p<dst+dstsz) return 1;
@@ -191,6 +219,7 @@ inline static int strncp(char *dst, const char *src, int dstsz)
 	if(strlen(src)<dstsz) return 1;
 	dst[dstsz-1]='\0';
 	return 0;
+#endif
 #endif
 }
 
@@ -233,12 +262,24 @@ inline static char *stpcpy (char *dest, const char *src)
 }
 #endif
 
+#ifndef HAVE_MEMPCPY
+inline static void *mempcpy(void *dest, const void *src, size_t len)
+{
+  memcpy(dest,src,len);
+  return ((char *)dest)+len;
+}
+#endif
+
 #ifndef HAVE_GETLINE
 int getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
 #ifndef HAVE_ASPRINTF
 int asprintf (char **lineptr, const char *format, ...);
+#endif
+
+#ifndef HAVE_VASPRINTF
+int vasprintf (char **lineptr, const char *format, va_list va);
 #endif
 
 #define strlitlen(strlit) (sizeof(strlit)-1)

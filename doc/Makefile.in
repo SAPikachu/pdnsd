@@ -66,26 +66,24 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 VERSION = @VERSION@
-YACC = @YACC@
 cachedir = @cachedir@
 def_id = @def_id@
 distribution = @distribution@
 specbuild = @specbuild@
-yflags = @yflags@
-yylineno_option = @yylineno_option@
 
-man_MANS = pdnsd.8 pdnsd-ctl.8
+man_MANS = pdnsd.8 pdnsd-ctl.8 pdnsd.conf.5
 
 EXTRA_DIST = pdnsd.conf.in html/dl.html html/doc.html html/faq.html html/index.html txt/faq.txt txt/intro.txt txt/manual.txt $(man_MANS)
 
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
-CONFIG_CLEAN_FILES =  pdnsd.conf
+CONFIG_CLEAN_FILES =  pdnsd.8 pdnsd.conf.5 pdnsd.conf
 man8dir = $(mandir)/man8
+man5dir = $(mandir)/man5
 MANS = $(man_MANS)
 
 NROFF = nroff
-DIST_COMMON =  Makefile.am Makefile.in pdnsd.conf.in
+DIST_COMMON =  Makefile.am Makefile.in pdnsd.8.in pdnsd.conf.5.in pdnsd.conf.in
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
@@ -101,6 +99,10 @@ Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
+pdnsd.8: $(top_builddir)/config.status pdnsd.8.in
+	cd $(top_builddir) && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
+pdnsd.conf.5: $(top_builddir)/config.status pdnsd.conf.5.in
+	cd $(top_builddir) && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 pdnsd.conf: $(top_builddir)/config.status pdnsd.conf.in
 	cd $(top_builddir) && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
@@ -136,12 +138,48 @@ uninstall-man8:
 	  echo " rm -f $(DESTDIR)$(man8dir)/$$inst"; \
 	  rm -f $(DESTDIR)$(man8dir)/$$inst; \
 	done
+
+install-man5:
+	$(mkinstalldirs) $(DESTDIR)$(man5dir)
+	@list='$(man5_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.5*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  if test -f $(srcdir)/$$i; then file=$(srcdir)/$$i; \
+	  else file=$$i; fi; \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " $(INSTALL_DATA) $$file $(DESTDIR)$(man5dir)/$$inst"; \
+	  $(INSTALL_DATA) $$file $(DESTDIR)$(man5dir)/$$inst; \
+	done
+
+uninstall-man5:
+	@list='$(man5_MANS)'; \
+	l2='$(man_MANS)'; for i in $$l2; do \
+	  case "$$i" in \
+	    *.5*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " rm -f $(DESTDIR)$(man5dir)/$$inst"; \
+	  rm -f $(DESTDIR)$(man5dir)/$$inst; \
+	done
+
 install-man: $(MANS)
 	@$(NORMAL_INSTALL)
 	$(MAKE) $(AM_MAKEFLAGS) install-man8
+	$(MAKE) $(AM_MAKEFLAGS) install-man5
 uninstall-man:
 	@$(NORMAL_UNINSTALL)
 	$(MAKE) $(AM_MAKEFLAGS) uninstall-man8
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-man5
 tags: TAGS
 TAGS:
 
@@ -189,6 +227,7 @@ install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) AM_INSTALL_PROGRAM_FLAGS=-s install
 installdirs:
 	$(mkinstalldirs)  $(DESTDIR)$(mandir)/man8
+	$(mkinstalldirs)  $(DESTDIR)$(mandir)/man5
 
 
 mostlyclean-generic:

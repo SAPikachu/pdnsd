@@ -4,46 +4,47 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD\-CTL" "8" "01 Jan 2004" "" ""
+.TH "PDNSD\-CTL" "8" "Oct 2004" "pdnsd 1.2-par" ""
 .SH NAME
-\fBpdnsd\-ctl\fR - controls pdnsd
+\fBpdnsd\-ctl\fP \- controls pdnsd
 .SH SYNOPSIS
 .sp
-\fBpdnsd\-ctl\fR [\fB\-c\fR cachedir] [\fB\-q\fR] command [options]
+\fBpdnsd\-ctl\fP [\fB\-c\fP \fIcachedir\fP] [\fB\-q\fP] \fIcommand\fP [\fIoptions\fP]
 .SH "DESCRIPTION"
 .PP
-\fBpdnsd\-ctl\fR controls \fBpdnsd\fR, a proxy dns server with permanent caching.
+\fBpdnsd\-ctl\fP controls \fBpdnsd\fP, a proxy dns server with permanent caching.
 Note that the status control socket must be enabled (by specifying an option on
 the pdnsd command line or in the configuration file) before you can use
-\fBpdnsd\-ctl\fR.
+\fBpdnsd\-ctl\fP.
 .PP
 .TP
-\fB\-c\fR cachedir
-set the cache directory to cachedir (must match pdnsd setting).
+\fB\-c\fP \fIcachedir\fP
+Set the cache directory to \fIcachedir\fP (must match pdnsd setting).
 This is only necessary if the directory differs from the default specified
 at compile time.
 .TP
-\fB\-q\fR
-be quiet unless output is specified by command or something goes wrong.
+\fB\-q\fP
+Be quiet unless output is specified by command or something goes wrong.
 .SH "COMMANDS"
 .TP
-\fBhelp\fR
+\fBhelp\fP
 [no options]
 
-print short help
+Print a command summary.
 .TP
-\fBversion\fR
+\fBversion\fP
 [no options]
 
-print version info
+Print version info.
 .TP
-\fBstatus\fR
+\fBstatus\fP
 [no options]
 
-print pdnsd's status
+Print a description of pdnsd's cache status and configuration.
+Also shows which remote name servers are assumed to be available.
 .TP
-\fBserver\fR
-(index|label) (\fBup\fR|\fBdown\fR|\fBretest\fR) [dns1[,dns2[,...]]]
+\fBserver\fP
+(\fIindex\fP|\fIlabel\fP) (\fBup\fP|\fBdown\fP|\fBretest\fP) [\fIdns1\fP[,\fIdns2\fP[,...]]]
 
 Set the status of the servers with the given index or label to up or down, or
 force a retest. The index is assigned in the order of definition in pdnsd.conf
@@ -58,71 +59,122 @@ or DHCP clients. The last argument may also be an empty string, which causes
 existing IP addresses to be removed and the corresponding server section to
 become inactive.
 .TP
-\fBrecord\fR
-name (\fBdelete\fR|\fBinvalidate\fR)
+\fBrecord\fP
+\fIname\fP (\fBdelete\fP|\fBinvalidate\fP)
 
-Delete or invalidate the record of the given domain if it is 
+Delete or invalidate the records of the given domain name if it is 
 in the cache.
+Invalidation means that the records are marked as timed out, and will be reloaded if possible.
+For local records (i.e., records that were given in the config file using a rr section,
+records read from a hosts-style file and records added using pdnsd-ctl),
+invalidation has no effect. Deletion will work, though.
 .TP
-\fBsource\fR
-fn owner [ttl] [(\fBon\fR|\fBoff\fR)] [\fBnoauth\fR]
+\fBsource\fP
+\fIfn\fP \fIowner\fP [\fIttl\fP] [(\fBon\fP|\fBoff\fP)] [\fBnoauth\fP]
 
 Load a hosts-style file. Works like using the pdnsd source option.
 Owner and ttl are used as in the source section. ttl has a default
 of 900 (it does not need to be specified). The next to last option corresponds
 to the serve_aliases option, and is off by default.
-\fBnoauth\fR is used to make the domains non-authoritative (please
-consult the pdnsd manual for what that means).
+\fBnoauth\fP is used to make the domains non-authoritative
+(this is similar to setting authrec=off in the config file,
+please consult the
+.BR pdnsd.conf (5)
+man page for what that means).
 fn is the name of the file, which must be readable by pdnsd.
 .TP
-\fBadd\fR
-\fBa\fR addr name [ttl] [\fBnoauth\fR]
+\fBadd\fP
+\fBa\fP \fIaddr\fP \fIname\fP [\fIttl\fP] [\fBnoauth\fP]
 .TP
-\fBadd\fR
-\fBaaaa\fR addr name [ttl] [\fBnoauth\fR]
+\fBadd\fP
+\fBaaaa\fP \fIaddr\fP \fIname\fP [\fIttl\fP] [\fBnoauth\fP]
 .TP
-\fBadd\fR
-\fBptr\fR host name [ttl] [\fBnoauth\fR]
+\fBadd\fP
+\fBptr\fP \fIhost\fP \fIname\fP [\fIttl\fP] [\fBnoauth\fP]
 .TP
-\fBadd\fR
-\fBcname\fR host name [ttl] [\fBnoauth\fR]
+\fBadd\fP
+\fBcname\fP \fIhost\fP \fIname\fP [\fIttl\fP] [\fBnoauth\fP]
 .TP
-\fBadd\fR
-\fBmx\fR host name pref [ttl] [\fBnoauth\fR]
+\fBadd\fP
+\fBmx\fP \fIhost\fP \fIname\fP \fIpref\fP [\fIttl\fP] [\fBnoauth\fP]
 
 Add a record of the given type to the pdnsd cache, replacing existing
 records for the same name and type. The 2nd argument corresponds
 to the argument of the option in the rr section that is named like
 the first option. The ttl is optional, the default is 900 seconds.
-\fBnoauth\fR is used to make the domains non-authoritative (please
-consult the pdnsd manual for what that means).
+\fBnoauth\fP is used to make the domains non-authoritative
+(this is similar to setting authrec=off in the config file,
+please consult the
+.BR pdnsd.conf (5)
+man page for what that means).
 If you want no other record than the newly added in the cache, do
-\fBpdnsd\-ctl\fR \fBrecord\fR \fIname\fR \fBdelete\fR
+\fBpdnsd\-ctl\fP\ \fBrecord\fP\ \fIname\fP\ \fBdelete\fP
 before adding records.
 .TP
-\fBneg\fR
-name [type] [ttl]
+\fBneg\fP
+\fIname\fP [\fItype\fP] [\fIttl\fP]
 
-Add a negative cached record to pdnsd's cache, replacing existing
+Add a negatively cached record to pdnsd's cache, replacing existing
 records for the same name and type. If no type is given, the whole
-domain is cached negative. For negative cached records, errors are
+domain is cached negatively. For negatively cached records, errors are
 immediately returned on a query, without querying other servers first.
 The ttl is optional, the default is 900 seconds.
 .TP
-\fBlist\-rrtypes\fR
+\fBconfig\fP
+\fIfilename\fP
+
+Reload pdnsd's configuration file.
+.br
+The config file must be owned by the uid that pdnsd had when it was started,
+and be readable by pdnsd's run_as uid.
+If no file name is specified, the config file used at start up is reloaded.
+Note that some configuration changes, like the port or IP address pdnsd listens on,
+cannot be made this way and you will receive an error message.
+In these cases, you will have to restart pdnsd instead.
+.TP
+\fBempty\-cache\fP
+[no options]
+
+Empty the cache completely, freeing all existing entries.
+Note that this also removes local records, as defined by the config file.
+To restore local records, run "pdnsd-ctl\ config" immediately afterwards.
+.TP
+\fBdump\fP
+[\fIname\fP]
+
+Print information stored in the cache about \fIname\fP.
+If \fIname\fP is not specified, information about all the names in the cache
+will be printed.
+.TP
+\fBlist\-rrtypes\fP
 [no options]
 
 List available rr types for the neg command. Note that those are only
 used for the neg command, not for add!
 .SH "BUGS"
 .PP
-Mail the authors if you find any.
+If you pipe the output of \fBdump\fP command through an application that
+reads only part of the output and then blocks (such as more or less),
+pdnsd threads trying to add new entries to the cache will be suspended
+until the pipe is closed.
+It is preferable to capture the output in a file in that case.
+.br
+Report any remaining bugs to the authors.
 .SH "AUTHORS"
-.PD 0
 .PP
-Thomas Moestl<tmoestl@gmx.net>
+Thomas Moestl
+.UR
+<tmoestl@gmx.net>
+.UE
+.br
+Paul Rombouts
+.UR
+<p.a.rombouts@home.nl>
+.UE
+(for versions 1.1.8b1\-par and later)
 .PP
-Paul Rombouts<p.a.rombouts@home.nl> (for versions 1.1.7a\-par and later)
+Last revised: 3 Oct 2004 by Paul Rombouts.
 .SH "SEE ALSO"
-
-\fBpdnsd(8)\fR
+.PP
+.BR pdnsd (8),
+.BR pdnsd.conf (5)

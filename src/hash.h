@@ -1,7 +1,7 @@
 /* hash.h - Manage hashes for cached dns records
-   Copyright (C) 2000 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -44,6 +44,12 @@ typedef struct dns_hash_ent_s {
 
 extern dns_hash_ent_t *hash_buckets[];
 
+/* A type for remembering the position in the hash table where a new entry can be inserted. */
+typedef struct {
+	dns_hash_ent_t **pos;      /* pointer to the location in the hash table */
+	unsigned long  rhash;      /* long hash */
+} dns_hash_loc_t;
+
 /* A type for position specification for fetch_first and fetch_next */
 typedef struct {
 	int            bucket;     /* bucket chain we are in */
@@ -57,15 +63,16 @@ inline static void mk_dns_hash()
 		hash_buckets[i]=NULL;
 }
 
-void add_dns_hash(dns_cent_t *data);
+dns_cent_t *dns_lookup(const unsigned char *key, dns_hash_loc_t *loc);
+void add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc);
+dns_cent_t *del_dns_hash_ent(dns_hash_loc_t *loc);
 dns_cent_t *del_dns_hash(const unsigned char *key);
-dns_cent_t *dns_lookup(const unsigned char *key);
 void free_dns_hash();
 
 dns_cent_t *fetch_first(dns_hash_pos_t *pos);
 dns_cent_t *fetch_next(dns_hash_pos_t *pos);
 
-#ifdef DBGHASH
+#ifdef DEBUG_HASH
 void dumphash();
 #endif
 

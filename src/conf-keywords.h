@@ -65,6 +65,7 @@ enum {
 	LEAN_QUERY,
 	PRESET,
 	PROXY_ONLY,
+	ROOT_SERVER,
 	INCLUDE,
 	EXCLUDE,
 	POLICY,
@@ -81,7 +82,8 @@ enum {
 	TYPES,
 	FILET,
 	SERVE_ALIASES,
-	AUTHREC
+	AUTHREC,
+	REVERSE
 };
 
 
@@ -101,6 +103,7 @@ static const namevalue_t global_options[]= {
 	{"daemon",           DAEMON},
 	{"debug",            C_DEBUG},
 	{"delegation_only",  DELEGATION_ONLY},
+	{"interface",        SERVER_IP},
 	{"ipv4_6_prefix",    IPV4_6_PREFIX},
 	{"linkdown_kluge",   LINKDOWN_KLUGE},
 	{"max_ttl",          MAX_TTL},
@@ -136,6 +139,7 @@ static const namevalue_t server_options[]= {
 	{"caching",      CACHING},
 	{"device",       DEVICE},
 	{"exclude",      EXCLUDE},
+	{"file",         FILET},
 	{"include",      INCLUDE},
 	{"interface",    INTERFACE},
 	{"interval",     INTERVAL},
@@ -149,6 +153,7 @@ static const namevalue_t server_options[]= {
 	{"preset",       PRESET},
 	{"proxy_only",   PROXY_ONLY},
 	{"purge_cache",  PURGE_CACHE},
+	{"root_server",  ROOT_SERVER},
 	{"scheme",       SCHEME},
 	{"timeout",      TIMEOUT},
 	{"uptest",       UPTEST},
@@ -162,8 +167,10 @@ static const namevalue_t rr_options[]= {
 	{"cname",   CNAME},
 	{"mx",      MX},
 	{"name",    NAME},
+	{"ns",      OWNER},
 	{"owner",   OWNER},
 	{"ptr",     PTR},
+	{"reverse", REVERSE},
 	{"soa",     SOA},
 	{"ttl",     TTL}
 };
@@ -172,6 +179,7 @@ static const namevalue_t rr_options[]= {
 static const namevalue_t source_options[]= {
 	{"authrec",       AUTHREC},
 	{"file",          FILET},
+	{"ns",            OWNER},
 	{"owner",         OWNER},
 	{"serve_aliases", SERVE_ALIASES},
 	{"ttl",           TTL}

@@ -72,7 +72,7 @@ specbuild = @specbuild@
 
 sbin_PROGRAMS = pdnsd
 
-pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c dns_query.c error.c helpers.c 	icmp.c list.c main.c netdev.c rr_types.c status.c servers.c thread.c cache.c hash.c make_hashconvtable.c 	conf-parser.h conf-keywords.h conff.h consts.h debug.h dns.h dns_answer.h dns_query.h error.h helpers.h icmp.h ipvers.h list.h 	netdev.h rr_types.h servers.h status.h thread.h cache.h hash.h pdnsd_assert.h
+pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c dns_query.c error.c helpers.c 	icmp.c list.c main.c netdev.c rr_types.c status.c servers.c thread.c cache.c hash.c 	conf-parser.h conf-keywords.h conff.h consts.h debug.h dns.h dns_answer.h dns_query.h error.h helpers.h icmp.h ipvers.h list.h 	netdev.h rr_types.h servers.h status.h thread.h cache.h hash.h pdnsd_assert.h
 
 
 SUBDIRS = . pdnsd-ctl rc test
@@ -107,7 +107,7 @@ OBJECTS = $(pdnsd_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
-.SUFFIXES: .S .c .l .o .s .y
+.SUFFIXES: .S .c .o .s
 $(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
 	cd $(top_srcdir) && $(AUTOMAKE) --gnu --include-deps src/Makefile
 
@@ -162,14 +162,6 @@ maintainer-clean-compile:
 pdnsd: $(pdnsd_OBJECTS) $(pdnsd_DEPENDENCIES)
 	@rm -f pdnsd
 	$(LINK) $(pdnsd_LDFLAGS) $(pdnsd_OBJECTS) $(pdnsd_LDADD) $(LIBS)
-.l.c:
-	$(LEX) $(AM_LFLAGS) $(LFLAGS) $< && mv $(LEX_OUTPUT_ROOT).c $@
-.y.c:
-	$(YACC) $(AM_YFLAGS) $(YFLAGS) $< && mv y.tab.c $*.c
-	if test -f y.tab.h; then \
-	if cmp -s y.tab.h $*.h; then rm -f y.tab.h; else mv y.tab.h $*.h; fi; \
-	else :; fi
-
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.
@@ -288,10 +280,10 @@ distdir: $(DISTFILES)
 cache.o: cache.c ../config.h cache.h ipvers.h list.h dns.h rr_types.h \
 	conff.h hash.h helpers.h error.h thread.h debug.h pdnsd_assert.h
 conf-parser.o: conf-parser.c ../config.h conf-parser.h ipvers.h conff.h list.h \
-	consts.h cache.h dns.h rr_types.h dns_query.h helpers.h conf-keywords.h \
+	consts.h cache.h dns.h rr_types.h helpers.h netdev.h conf-keywords.h \
 	pdnsd_assert.h
 conff.o: conff.c ../config.h ipvers.h conff.h list.h consts.h helpers.h \
-	cache.h dns.h dns_query.h rr_types.h conf-parser.h servers.h pdnsd_assert.h
+	cache.h dns.h rr_types.h conf-parser.h servers.h icmp.h pdnsd_assert.h
 consts.o: consts.c ../config.h consts.h rr_types.h
 debug.o: debug.c ../config.h helpers.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h pdnsd_assert.h
@@ -306,8 +298,7 @@ dns_query.o: dns_query.c ../config.h list.h consts.h ipvers.h \
 error.o: error.c ../config.h error.h thread.h helpers.h cache.h ipvers.h \
 	list.h dns.h rr_types.h conff.h pdnsd_assert.h
 hash.o: hash.c ../config.h hash.h cache.h ipvers.h list.h dns.h \
-	rr_types.h conff.h error.h thread.h helpers.h pdnsd_assert.h \
-	./hashconvtable.h
+	rr_types.h conff.h error.h thread.h helpers.h pdnsd_assert.h
 helpers.o: helpers.c ../config.h ipvers.h thread.h error.h helpers.h \
 	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 icmp.o: icmp.c ../config.h ipvers.h icmp.h error.h thread.h helpers.h \
@@ -319,12 +310,13 @@ main.o: main.c ../config.h consts.h cache.h ipvers.h list.h dns.h \
 	error.h thread.h helpers.h icmp.h pdnsd_assert.h hash.h
 netdev.o: netdev.c ../config.h ipvers.h netdev.h error.h thread.h \
 	helpers.h cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
-rr_types.o: rr_types.c rr_types.h ../config.h
+rr_types.o: rr_types.c dns.h ../config.h rr_types.h list.h pdnsd_assert.h \
+	ipvers.h
 servers.o: servers.c ../config.h thread.h error.h helpers.h cache.h \
 	ipvers.h list.h dns.h rr_types.h conff.h servers.h consts.h \
-	icmp.h netdev.h status.h pdnsd_assert.h
+	icmp.h netdev.h dns_query.h pdnsd_assert.h
 status.o: status.c ../config.h ipvers.h status.h conff.h list.h thread.h \
-	cache.h dns.h rr_types.h error.h helpers.h servers.h pdnsd_assert.h
+	cache.h dns.h rr_types.h error.h helpers.h servers.h consts.h pdnsd_assert.h
 thread.o: thread.c ../config.h thread.h error.h helpers.h cache.h \
 	ipvers.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 
@@ -405,8 +397,6 @@ uninstall-am uninstall all-redirect all-am all installdirs-am \
 installdirs mostlyclean-generic distclean-generic clean-generic \
 maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
-hashconvtable.h: make_hashconvtable
-	./make_hashconvtable > hashconvtable.h
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

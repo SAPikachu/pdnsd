@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "../conff.h"
 #include "../netdev.h"
 #include "../ipvers.h"
 
@@ -22,6 +23,7 @@ pthread_t main_thread;
 #if DEBUG>0
 FILE *dbg_file;
 #endif
+globparm_t global;
 
 
 int main(int argc, char *argv[]) 

@@ -1,7 +1,7 @@
 /* icmp.c - Server response tests using ICMP echo requests
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -59,7 +59,7 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: icmp.c,v 1.26 2002/01/14 17:39:26 tmm Exp $";
 #endif
 
-#define ICMP_MAX_ERRS 5
+#define ICMP_MAX_ERRS 10
 volatile unsigned long icmp_errs=0; /* This is only here to minimize log output. Since the 
 				       consequences of a race is only one log message more/less
 				       (out of ICMP_MAX_ERRS), no lock is required. */
@@ -167,23 +167,12 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	int isock;
 #if TARGET==TARGET_LINUX
 	struct icmp_filter f;
-#else
-	struct protoent *pe;
-	int SOL_IP;
 #endif
 	struct sockaddr_in from,to;
 	struct icmphdr icmpd;
 	unsigned long sum;
 	unsigned short *ptr;
 	unsigned short id=(unsigned short)get_rand16(); /* randomize a ping id */
-
-#if TARGET!=TARGET_LINUX	
-	if (!(pe=getprotobyname("ip"))) {
-		log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
-		return -1;
-	}
-	SOL_IP=pe->p_proto;
-#endif
 
 	isock=ping_isocket;
 
@@ -265,10 +254,11 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				break;
 
 #ifdef NO_POLL
-			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse)) {
+			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse))
 #else
-			if (pfd.revents&POLLIN || pfd.revents&POLLERR) {
+			if (pfd.revents&(POLLIN|POLLERR))
 #endif
+			{
 				char buf[1024];
 				socklen_t sl=sizeof(from);
 				int len;
@@ -297,6 +287,12 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				} else {
 					return -1; /* error */
 				}
+			}
+			else {
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
+					log_error("Unhandled poll/select event in ping4() at %s, line %d.",__FILE__,__LINE__);
+				}
+				return -1; 
 			}
 			tpassed=time(NULL)-tm;
 		} while (tpassed<timeout);
@@ -429,10 +425,11 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				break;
 
 #ifdef NO_POLL
-			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse)) {
+			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse))
 #else
-			if (pfd.revents&POLLIN || pfd.revents&POLLERR) {
+			if (pfd.revents&(POLLIN|POLLERR))
 #endif
+			{
 				char buf[1024];
 				socklen_t sl=sizeof(from);
 				int len;
@@ -456,6 +453,12 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				} else {
 					return -1; /* error */
 				}
+			}
+			else {
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
+					log_error("Unhandled poll/select event in ping6() at %s, line %d.",__FILE__,__LINE__);
+				}
+				return -1; 
 			}
 			tpassed=time(NULL)-tm;
 		} while (tpassed<timeout);

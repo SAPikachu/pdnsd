@@ -1,7 +1,7 @@
 /* conff.h - Definiton for configuration management.
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -37,13 +37,12 @@ Boston, MA 02111-1307, USA.  */
 #include "list.h"
 
 /* From main.c */
-extern short int daemon_p;
 extern short int debug_p;
-extern short int verbosity;
 extern short int stat_pipe;
-extern short int notcp;
 extern pthread_t main_thread;
-extern char *pidfile;
+extern uid_t init_uid;
+extern char *conf_file;
+
 /* ----------- */
 
 typedef DYNAMIC_ARRAY(pdnsd_a) *addr_array;
@@ -56,8 +55,9 @@ typedef struct {
 typedef DYNAMIC_ARRAY(atup_t) *atup_array;
 
 typedef struct {
-	int              rule;
 	char            *domain;
+	short            exact;
+	short            rule;
 } slist_t;
 typedef DYNAMIC_ARRAY(slist_t) *slist_array;
 
@@ -77,6 +77,7 @@ typedef struct {
 	char             nocache;
 	char             lean_query;
 	char             is_proxy;
+	char             rootserver;
 	char             preset;
 	short            policy;
 	slist_array      alist;
@@ -91,14 +92,23 @@ typedef DYNAMIC_ARRAY(zone_t) *zone_array;
 typedef struct {
 	long          perm_cache;
 	char         *cache_dir;
+	char         *pidfile;
 	int           port;
 	pdnsd_a       a;
+#ifdef ENABLE_IPV6
+	struct in6_addr ipv4_6_prefix;
+#endif
 	time_t        max_ttl;
 	time_t        min_ttl;
 	time_t        neg_ttl;
 	short         neg_rrs_pol;
 	short         neg_domain_pol;
+	short         verbosity;
 	char          run_as[21];
+	char          daemon;
+	char          debug;
+	char          stat_pipe;
+	char          notcp;
 	char          strict_suid;
 	char          paranoid;
 	char          lndown_kluge;
@@ -111,17 +121,32 @@ typedef struct {
 	time_t        tcp_qtimeout;
 	time_t        timeout;
 	int           par_queries;
+	int           query_method;
 	int           query_port_start;
 	int           query_port_end;
 	zone_array    deleg_only_zones;
 } globparm_t;
 
+typedef struct {
+	char	prefix,
+		pidfile,
+		verbosity,
+		pdnsduser,
+		daemon,
+		debug,
+		stat_pipe,
+		notcp,
+		query_method;
+} cmdlineflags_t;
+
 extern globparm_t global;
+extern cmdlineflags_t cmdline;
 extern servparm_t serv_presets;
 
 extern servparm_array servers;
 
-void read_config_file(char *nm); /*nm may be NULL*/
+int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, char **errstr);
+int reload_config_file(const char *nm, char **errstr);
 
 int report_conf_stat(int f);
 #endif

@@ -1,7 +1,7 @@
 /* netdev.c - Test network devices for existence and status
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -182,7 +182,6 @@ int dev_up(char *ifname, char *devname)
  */
 int if_up(char *devname)
 {
-        struct protoent *pe;
 	int sock;
 	struct ifreq ifr;
 # if TARGET==TARGET_LINUX
@@ -204,9 +203,7 @@ int if_up(char *devname)
 		/* If it doesn't match our rules for isdn devices, treat as normal if */
 	}
 # endif
-	if (!(pe=getprotobyname("udp")))
-		return 0;
-	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
+	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
 		return 0;
 	strncp(ifr.ifr_name,devname,IFNAMSIZ);
 	if (ioctl(sock,SIOCGIFFLAGS,&ifr)==-1) {
@@ -224,11 +221,8 @@ int is_local_addr(pdnsd_a *a)
 #  ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		int res=0,i,sock;
-		struct protoent *pe;
 		struct ifreq ifr;
-		if (!(pe=getprotobyname("udp")))
-			return 0;
-		if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
+		if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
 			return 0;
 		for (i=1;i<255;i++) {
 			ifr.ifr_ifindex=i;
@@ -297,7 +291,6 @@ int is_local_addr(pdnsd_a *a)
 
 int is_local_addr(pdnsd_a *a)
 {
-	struct protoent *pe;
 	int sock;
         struct ifconf ifc;
 	char buf[2048];
@@ -308,9 +301,7 @@ int is_local_addr(pdnsd_a *a)
 
 	ifc.ifc_len=2048;
 	ifc.ifc_buf=buf;
-	if (!(pe=getprotobyname("udp")))
-		return 0;
-	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
+	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
 		return 0;
 	if (ioctl(sock,SIOCGIFCONF,&ifc)==-1) {
 	        return 0;

@@ -1,7 +1,7 @@
 /* ipvers.h - definitions for IPv4 and IPv6
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -65,7 +65,6 @@ extern short int cmdlineipv;
 #ifdef ENABLE_IPV6
 #define DEFAULT_IPV4_6_PREFIX "::ffff:0.0.0.0"
 extern short int cmdlineprefix;
-extern struct in6_addr ipv4_6_prefix;
 #endif
 
 #if TARGET==TARGET_LINUX && defined(NO_IN_PKTINFO)
@@ -132,7 +131,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # define SIN_LEN
 #endif 
 
-#if defined(ENABLE_IPV6) && TARGET==LINUX
+#if defined(ENABLE_IPV6) && TARGET==TARGET_LINUX
 
 /* Some glibc versions (I know of 2.1.2) get this wrong, so we define out own. To be exact, this is fixed
  * glibc code. */
@@ -157,17 +156,23 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 /* A macro to extract the pointer to the address of a struct sockaddr (_in or _in6) */
 
-#define SOCKA_A4(a) ((void *)&((struct sockaddr_in *)(a))->sin_addr)
-#define SOCKA_A6(a) ((void *)&((struct sockaddr_in6 *)(a))->sin6_addr)
+#define SOCKA_A4(a) ((pdnsd_a *)&((struct sockaddr_in *)(a))->sin_addr)
+#define SOCKA_A6(a) ((pdnsd_a *)&((struct sockaddr_in6 *)(a))->sin6_addr)
 
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
 #  define SOCKA_A(a) (run_ipv4?SOCKA_A4(a):SOCKA_A6(a))
+#  define PDNSD_PF_INET (run_ipv4?PF_INET:PF_INET6)
+#  define PDNSD_AF_INET (run_ipv4?AF_INET:AF_INET6)
 # else
 #  define SOCKA_A(a) SOCKA_A4(a)
+#  define PDNSD_PF_INET PF_INET
+#  define PDNSD_AF_INET AF_INET
 # endif
 #else
 # define SOCKA_A(a) SOCKA_A6(a)
+# define PDNSD_PF_INET PF_INET6
+# define PDNSD_AF_INET AF_INET6
 #endif
 
 /* This is to compare two addresses. This is a macro because it may change due to the more complex IPv6 adressing architecture
@@ -222,7 +227,7 @@ typedef union {
 } pdnsd_a;
 
 /* used to enter local records */
-typedef	struct {
+typedef	union {
 	struct in_addr ipv4;
 #ifdef ENABLE_IPV6
 	struct in6_addr ipv6;

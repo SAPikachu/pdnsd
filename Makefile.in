@@ -66,13 +66,10 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 VERSION = @VERSION@
-YACC = @YACC@
 cachedir = @cachedir@
 def_id = @def_id@
 distribution = @distribution@
 specbuild = @specbuild@
-yflags = @yflags@
-yylineno_option = @yylineno_option@
 
 SUBDIRS = src doc contrib
 #GZIP_ENV=
@@ -370,7 +367,7 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
 	[ -f $(DESTDIR)$(cachedir)/pdnsd.cache ] || \
-	  echo -n -e "pd11\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
+	  echo -n -e "pd12\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	  chown $(def_id) $(DESTDIR)$(cachedir); \

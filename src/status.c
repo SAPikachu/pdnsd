@@ -1,7 +1,7 @@
 /* status.c - Allow control of a running server using a socket
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -53,9 +53,9 @@ int stat_sock;
 pthread_t st;
 
 /* Print an error to the socket */
-static void print_serr(int rs, const char *msg)
+static int print_serr(int rs, const char *msg)
 {
-	short cmd;
+	uint16_t cmd;
 
 	cmd=htons(1);
 	if(write(rs,&cmd,sizeof(cmd))!=sizeof(cmd) ||
@@ -63,25 +63,29 @@ static void print_serr(int rs, const char *msg)
 	{
 		DEBUG_MSG("Error writing to control socket: %s\n"
 			  "Failed to send error message '%s'\n",strerror(errno),msg);
+		return 0;
 	}
+	return 1;
 }
 
 /* Print a success code to the socket */
-static void print_succ(int rs)
+static int print_succ(int rs)
 {
-	short cmd;
+	uint16_t cmd;
 
 	cmd=htons(0);
 	if(write(rs,&cmd,sizeof(cmd))!=sizeof(cmd)) {
 		DEBUG_MSG("Error writing to control socket: %s\n"
 			  "Failed to send success code.\n",strerror(errno));
+		return 0;
 	}
+	return 1;
 }
 
 /* Read a cmd short */
-static int read_short(int fh, short *res)
+static int read_short(int fh, uint16_t *res)
 {
-	short cmd;
+	uint16_t cmd;
 
 	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd)) {
 		/* print_serr(fh,"Bad arg."); */
@@ -92,9 +96,9 @@ static int read_short(int fh, short *res)
 }
 
 /* Read a cmd long */
-static int read_long(int fh,long *res)
+static int read_long(int fh, uint32_t *res)
 {
-	long cmd;
+	uint32_t cmd;
 
 	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd)) {
 		/* print_serr(fh,"Bad arg."); */
@@ -106,18 +110,20 @@ static int read_long(int fh,long *res)
 
 /* Read a string preceded by a char count.
    A buffer of the right size is allocated to hold the result.
-   A return value of 1 means success (if the result is undefined then *res is set to NULL),
+   A return value of 1 means success,
+   -1 means the result is undefined (*res is set to NULL),
    0 means read or allocation error.
 */
 static int read_allocstring(int fh, char **res)
 {
-	unsigned short count;
+	uint16_t count;
 	char *buf;
-	int nread=0;
+	int nread;
 
 	if(!read_short(fh,&count)) return 0;
-	if(count==(unsigned short)(~0)) {*res=NULL; return 1;}
+	if(count==(uint16_t)(~0)) {*res=NULL; return -1;}
 	if(!(buf=malloc(count+1))) return 0;
+	nread=0;
 	while(nread<count) {
 		int m=read(fh,buf+nread,count-nread);
 		if(m<=0) {free(buf); return 0;}
@@ -131,28 +137,29 @@ static int read_allocstring(int fh, char **res)
 /* Read a string preceded by a char count.
    Place it in a buffer of size buflen and terminate by a dot (if it is missing)
    and a null char.
-   A return value of 1 means success, 0 means error (read error,
-   buffer too small or result undefined).
+   A return value of 1 means success, -1 means not defined,
+   0 means error (read error, buffer too small).
 */
 static int read_domain(int fh, char *buf, int buflen)
 {
-	unsigned short count;
-	int nread=0;
+	uint16_t count;
+	int nread;
 
 	/* PDNSD_ASSERT(buflen>0, "bad read_domain call"); */
 	if(!read_short(fh,&count)) return 0;
-	if(count==(unsigned short)(~0)) return 0;
+	if(count==(uint16_t)(~0)) return -1;
 	if(count >=buflen) return 0;
+	nread=0;
 	while(nread<count) {
 		int m=read(fh,buf+nread,count-nread);
 		if(m<=0) return 0;
 		nread+=m;
 	}
 	buf[count]=0;
-	if(count==0 || buf[count-1]!='.') {
+	/* if(count==0 || buf[count-1]!='.') {
 		if(count+1>=buflen) return 0;
 		buf[count]='.'; buf[count+1]=0;
-	}
+	} */
 	return 1;
 }
 
@@ -163,7 +170,6 @@ static void *status_thread (void *p)
 
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 			pdnsd_exit();
 		}
 	}
@@ -179,7 +185,7 @@ static void *status_thread (void *p)
 		socklen_t res=sizeof(ra);
 		int rs;
 		if ((rs=accept(stat_sock,(struct sockaddr *)&ra,&res))!=-1) {
-			short cmd;
+			uint16_t cmd;
 			DEBUG_MSG("Status socket query pending.\n");
 			if (read_short(rs,&cmd)) {
 			    const char *errmsg;
@@ -200,9 +206,9 @@ static void *status_thread (void *p)
 			    case CTL_SERVER: {
 				    char *label,*dnsaddr;
 				    int indx;
-				    short cmd2;
+				    uint16_t cmd2;
 				    DEBUG_MSG("Received SERVER command.\n");
-				    if (!read_allocstring(rs,&label) || !label) {
+				    if (read_allocstring(rs,&label)<=0) {
 					print_serr(rs,"Error reading server label.");
 					break;
 				    }
@@ -214,6 +220,15 @@ static void *status_thread (void *p)
 					print_serr(rs,"Error reading DNS addresses.");
 					goto free_label_break;
 				    }
+				    /* Note by Paul Rombouts:
+				       We are about to access server configuration data.
+				       Now that the configuration can be changed during run time,
+				       we should be using locks before accessing server config data, even if it
+				       is read-only access.
+				       However, as long as this is the only thread that calls reload_config_file()
+				       it should be OK to read the server config without locks, but it is
+				       something to keep in mind.
+				    */
 				    {
 					char *endptr;
 					indx=strtol(label,&endptr,0);
@@ -305,7 +320,7 @@ static void *status_thread (void *p)
 						    DA_LAST(ar)=addr;
 						}
 					    change_servs:
-						if(change_servers(indx,ar,cmd2))
+						if(change_servers(indx,ar,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP)))
 						    print_succ(rs);
 						else
 						    print_serr(rs,"Timed out while trying to gain access to server data.");
@@ -324,13 +339,15 @@ static void *status_thread (void *p)
 			    }
 				    break;
 			    case CTL_RECORD: {
-				    short cmd2;
-				    char name[256];
+				    uint16_t cmd2;
+				    char name[256],buf[256];
 				    DEBUG_MSG("Received RECORD command.\n");
 				    if (!read_short(rs,&cmd2))
 					    goto incomplete_command;
-				    if (!read_domain(rs, name, sizeof(name)))
+				    if (read_domain(rs, buf, sizeof(buf))<=0)
 					    goto incomplete_command;
+				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
+					    goto bad_domain_name;
 				    switch (cmd2) {
 				    case CTL_R_DELETE:
 					    del_cache(name);
@@ -346,17 +363,17 @@ static void *status_thread (void *p)
 			    }
 				    break;
 			    case CTL_SOURCE: {
-				    long ttl;
+				    uint32_t ttl;
 				    char *fn;
-				    short servaliases,flags;
+				    uint16_t servaliases,flags;
 				    char buf[256],owner[256];
 
 				    DEBUG_MSG("Received SOURCE command.\n");
-				    if (!read_allocstring(rs,&fn) || !fn) {
+				    if (read_allocstring(rs,&fn)<=0) {
 					    print_serr(rs,"Bad filename name.");
 					    break;
 				    }
-				    if (!read_domain(rs, buf, sizeof(buf)) ||
+				    if (read_domain(rs, buf, sizeof(buf))<=0 ||
 					!read_long(rs,&ttl) ||
 					!read_short(rs,&servaliases) ||	/* serve aliases */
 					!read_short(rs,&flags))		/* caching flags */
@@ -378,7 +395,7 @@ static void *status_thread (void *p)
 						    print_succ(rs);
 					    else {
 						    print_serr(rs,errmsg?:"Out of memory.");
-						    if(errmsg) free(errmsg);
+						    free(errmsg);
 					    }
 				    }
 			    free_fn:
@@ -386,21 +403,21 @@ static void *status_thread (void *p)
 			    }
 				    break;
 			    case CTL_ADD: {
-				    long ttl;
+				    uint32_t ttl;
 				    int sz;
-				    short tp,flags;
+				    uint16_t tp,flags;
 				    char name[256],buf[256],dbuf[260];
 
 				    DEBUG_MSG("Received ADD command.\n");
 				    if (!read_short(rs,&tp))
 					    goto incomplete_command;
-				    if (!read_domain(rs, name, sizeof(name)))
+				    if (read_domain(rs, buf, sizeof(buf))<=0)
 					    goto incomplete_command;
 				    if (!read_long(rs,&ttl))
 					    goto incomplete_command;
 				    if (!read_short(rs,&flags))	/* caching flags */
 					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(name,sizeof(name),buf))!=NULL)
+				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
 					    goto bad_domain_name;
 				    if (ttl < 0)
 					    goto bad_ttl;
@@ -420,16 +437,16 @@ static void *status_thread (void *p)
 #endif
 				    case T_CNAME:
 				    case T_PTR:
-					    if (!read_domain(rs, buf, sizeof(buf)))
+					    if (read_domain(rs, buf, sizeof(buf))<=0)
 						    goto incomplete_command;
 					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
 						    goto bad_domain_name;
 					    sz=rhnlen(dbuf);
 					    break;
 				    case T_MX:
-					    if (read(rs,dbuf,sizeof(short))!=sizeof(short))
+					    if (read(rs,dbuf,2)!=2)
 						    goto bad_arg;
-					    if (!read_domain(rs, buf, sizeof(buf)))
+					    if (read_domain(rs, buf, sizeof(buf))<=0)
 						    goto incomplete_command;
 					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf+2))!=NULL)
 						    goto bad_domain_name;
@@ -441,10 +458,12 @@ static void *status_thread (void *p)
 				    {
 					    dns_cent_t cent;
 
-					    if (!init_cent(&cent, name, 0, time(NULL), flags  DBG1))
+					    if (!init_cent(&cent, name, 0, 0, flags  DBG1))
 						    goto out_of_memory;
-					    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf,0  DBG1))
+					    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf  DBG1)) {
+						    free_cent(&cent  DBG1);
 						    goto out_of_memory;
+					    }
 					    add_cache(&cent);
 					    free_cent(&cent  DBG1);
 				    }
@@ -452,18 +471,18 @@ static void *status_thread (void *p)
 			    }
 				    break;
 			    case CTL_NEG: {
-				    long ttl;
-				    short tp;
+				    uint32_t ttl;
+				    uint16_t tp;
 				    char name[256],buf[256];
 
 				    DEBUG_MSG("Received NEG command.\n");
-				    if (!read_domain(rs, name, sizeof(name)))
+				    if (read_domain(rs, buf, sizeof(buf))<=0)
 					    goto incomplete_command;
 				    if (!read_short(rs,&tp))
 					    goto incomplete_command;
 				    if (!read_long(rs,&ttl))
 					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(name,sizeof(name),buf))!=NULL) {
+				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL) {
 					    DEBUG_MSG("NEG: received bad domain name.\n");
 					    goto bad_domain_name;
 				    }
@@ -478,12 +497,12 @@ static void *status_thread (void *p)
 					    dns_cent_t cent;
 
 					    if (tp==255) {
-						    if (!init_cent(&cent, name, ttl, time(NULL), DF_LOCAL|DF_NEGATIVE  DBG1))
+						    if (!init_cent(&cent, name, ttl, 0, DF_LOCAL|DF_NEGATIVE  DBG1))
 							    goto out_of_memory;
 					    } else {
-						    if (!init_cent(&cent, name, 0, time(NULL), 0  DBG1))
+						    if (!init_cent(&cent, name, 0, 0, 0  DBG1))
 							    goto out_of_memory;
-						    if (!add_cent_rrset(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE,0  DBG1)) {
+						    if (!add_cent_rrset(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE  DBG1)) {
 							    free_cent(&cent  DBG1);
 							    goto out_of_memory;
 						    }
@@ -492,6 +511,52 @@ static void *status_thread (void *p)
 					    free_cent(&cent DBG1);
 				    }
 				    print_succ(rs);
+			    }
+				    break;
+			    case CTL_CONFIG: {
+				    char *fn,*errmsg;
+				    DEBUG_MSG("Received CONFIG command.\n");
+				    if (!read_allocstring(rs,&fn)) {
+					    print_serr(rs,"Bad filename name.");
+					    break;
+				    }
+				    if (reload_config_file(fn,&errmsg))
+					    print_succ(rs);
+				    else {
+					    print_serr(rs,errmsg?:"Out of memory.");
+					    free(errmsg);
+				    }
+				    free(fn);
+			    }
+				    break;
+			    case CTL_EMPTY:
+				    DEBUG_MSG("Received EMPTY command.\n");
+				    if(empty_cache())
+					    print_succ(rs);
+				    else
+					    print_serr(rs,"Could not lock the cache.");
+				    break;
+			    case CTL_DUMP: {
+				    int rv;
+				    char *nm=NULL;
+				    char buf[256],rhn[256];
+				    DEBUG_MSG("Received DUMP command.\n");
+				    if (!(rv=read_domain(rs,buf,sizeof(buf)))) {
+					    print_serr(rs,"Bad domain name.");
+					    break;
+				    }
+				    if(rv>0) {
+					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),rhn))!=NULL)
+						    goto bad_domain_name;
+					    nm=rhn;
+				    }
+				    if(!print_succ(rs))
+					    break;
+				    if((rv=dump_cache(rs,nm))<0 ||
+				       (!rv && fsprintf(rs,"Could not find %s in the cache.\n",nm?buf:"any entries")<0))
+				    {
+					    DEBUG_MSG("Error writing to control socket: %s\n",strerror(errno));
+				    }
 			    }
 				    break;
 			    incomplete_command:
@@ -534,9 +599,17 @@ static void *status_thread (void *p)
 void init_stat_sock()
 {
 	struct sockaddr_un *sa;
-	unsigned int sa_size = (offsetof(struct sockaddr_un, sun_path) + sizeof("/pdnsd.status") + strlen(global.cache_dir));
+	/* Should I include the terminating null byte in the calculation of the length parameter
+	   for the socket address? The glibc info page "Details of Local Namespace" tells me I should not,
+	   yet it is immediately followed by an example that contradicts that.
+	   The SUN_LEN macro seems to be defined as
+	   (offsetof(struct sockaddr_un, sun_path) + strlen(sa->sun_path)),
+	   so I conclude it is not necessary to count the null byte, but it probably makes no
+	   difference if you do.
+	*/
+	unsigned int sa_len = (offsetof(struct sockaddr_un, sun_path) + strlitlen("/pdnsd.status") + strlen(global.cache_dir));
 
-	sa=(struct sockaddr_un *)alloca(sa_size);
+	sa=(struct sockaddr_un *)alloca(sa_len+1);
 	stpcpy(stpcpy(sa->sun_path,global.cache_dir),"/pdnsd.status");
 
 	if (unlink(sa->sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
@@ -556,7 +629,7 @@ void init_stat_sock()
 	/* Early initialization, so that umask can be used race-free. */
 	{
 		mode_t old_mask = umask((S_IRWXU|S_IRWXG|S_IRWXO)&(~global.ctl_perms));
-		if (bind(stat_sock,(struct sockaddr *)sa,sa_size)==-1) {
+		if (bind(stat_sock,(struct sockaddr *)sa,sa_len)==-1) {
 			log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 			close(stat_sock);
 			stat_pipe=0;

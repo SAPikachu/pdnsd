@@ -1,7 +1,7 @@
 /* error.h - Error handling
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -87,10 +87,13 @@ extern FILE *dbg_file;
 #  define DEBUG_MSGC(args...)	{if (debug_p) debug_msg(1,args);}
 #  define DEBUG_PDNSDA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
 #  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
+#  define DEBUG_RHN_MSG(args...) {char _debugstrbuf[256]; DEBUG_MSG(args);}
+#  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(args...)
 #  define DEBUG_MSGC(args...)
 #  define DEBUG_PDNSDA_MSG(args...)
+#  define DEBUG_RHN_MSG(args...)
 # endif	/* DEBUG > 0 */
 #else
 /* ANSI style. */
@@ -103,10 +106,13 @@ extern FILE *dbg_file;
 #  define DEBUG_MSGC(...)	{if (debug_p) debug_msg(1,__VA_ARGS__);}
 #  define DEBUG_PDNSDA_MSG(...)	{char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
 #  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
+#  define DEBUG_RHN_MSG(...)	{char _debugstrbuf[256]; DEBUG_MSG(__VA_ARGS__);}
+#  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(...)
 #  define DEBUG_MSGC(...)
 #  define DEBUG_PDNSDA_MSG(...)
+#  define DEBUG_RHN_MSG(...)
 # endif	/* DEBUG > 0 */
 #endif
 

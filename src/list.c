@@ -1,30 +1,24 @@
 /* list.c - Dynamic array and list handling
- * Copyright (C) 2001 Thomas Moestl
- *
- * With modifications by Paul Rombouts, 2002, 2003.
- *
- * This file is part of the pdnsd package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
- * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+  
+   Copyright (C) 2001 Thomas Moestl
+   Copyright (C) 2002, 2003 Paul A. Rombouts
+  
+   This file is part of the pdnsd package.
+
+pdnsd is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2, or (at your option)
+any later version.
+
+pdnsd is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with pdsnd; see the file COPYING.  If not, write to
+the Free Software Foundation, 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 #include <stdlib.h>
@@ -55,13 +49,19 @@ darray DBGda_create(size_t sz, char *file, int line)
 	return a;
 } */
 
-darray da_grow1(darray a, size_t sz)
+darray da_grow1(darray a, size_t sz, void (*cleanuproutine) (void *))
 {
 	unsigned int k = (a?a->nel:0);
 	if(!a || (k!=0 && (k&7)==0)) {
 		darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*(k+8));
-		if (tmp==NULL)
+		if (!tmp && a) {
+			if(cleanuproutine) {
+				unsigned int i;
+				for(i=0;i<k;++i)
+					cleanuproutine(((char *)a->elem)+sz*i);
+			}
 			free(a);
+		}
 		a=tmp;
 	}
 	if(a) a->nel=k+1;
@@ -73,22 +73,25 @@ inline static unsigned int alloc_nel(unsigned int n)
   return n==0 ? 8 : (n+7)&(~7);
 }
 
-darray da_resize(darray a, size_t sz, unsigned int n)
+darray da_resize(darray a, size_t sz, unsigned int n, void (*cleanuproutine) (void *))
 {
-	PDNSD_ASSERT(n>=0, "da_resize to negative size");
-	{
-		unsigned int ael = (a?alloc_nel(a->nel):0);
-		unsigned int new_ael = alloc_nel(n);
-		if(new_ael != ael) {
-			/* adjust alloced space. */
-			darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
-			if (tmp==NULL)
-				free(a);
-			a=tmp;
+	unsigned int ael = (a?alloc_nel(a->nel):0);
+	unsigned int new_ael = alloc_nel(n);
+	if(new_ael != ael) {
+		/* adjust alloced space. */
+		darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
+		if (!tmp && a) {
+			if(cleanuproutine) {
+				unsigned int i,k=a->nel;
+				for(i=0;i<k;++i)
+					cleanuproutine(((char *)a->elem)+sz*i);
+			}
+			free(a);
 		}
-		if(a) a->nel=n;
-		return a;
+		a=tmp;
 	}
+	if(a) a->nel=n;
+	return a;
 }
 
 #ifdef ALLOC_DEBUG
@@ -102,4 +105,33 @@ void DBGda_free(darray a, size_t sz, char *file, int line)
 	free(a);
 }
 #endif
+
+#define DLISTALIGN(len) (((len) + (sizeof(size_t)-1)) & ~(sizeof(size_t)-1))
+#define DLISTCHUNKSIZEMASK 0x3ff
+
+/* Add space for a new item of size len to the list a. */
+dlist dlist_grow(dlist a, size_t len)
+{
+	size_t szincr=DLISTALIGN(len+sizeof(size_t)), sz=0, allocsz=0, newsz;
+	if(a) {
+		sz=a->last+a->lastsz;
+		allocsz = (sz+DLISTCHUNKSIZEMASK)&(~DLISTCHUNKSIZEMASK);
+		*((size_t *)&a->data[a->last])=a->lastsz;
+	}
+	newsz=sz+szincr;
+	if(!a || newsz>allocsz) {
+		dlist tmp;
+		allocsz = (newsz+DLISTCHUNKSIZEMASK)&(~DLISTCHUNKSIZEMASK);
+		tmp=realloc(a, sizeof(struct _dynamic_list_head)+allocsz);
+		if (!tmp)
+			free(a);
+		a=tmp;
+	}
+	if(a) {
+		a->last=sz;
+		a->lastsz=szincr;
+		*((size_t *)&a->data[sz])=0;
+	}
+	return a;
+}
 

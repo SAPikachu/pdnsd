@@ -1,7 +1,7 @@
 /* helpers.c - Various helper functions
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -70,27 +70,84 @@ int softlock_mutex(pthread_mutex_t *mutex)
 }
 
 /*
- * setuid() and setgid() for a specified user
+ * setuid() and setgid() for a specified user.
  */
-int run_as(char *user)
+int run_as(const char *user)
 {
-	struct passwd *pwd;
+	if (user[0]) {
+#ifdef HAVE_GETPWNAM_R
+		struct passwd pwdbuf, *pwd;
+		size_t buflen;
+		int err;
 
-	if (user[0]!='\0') {
+		for(buflen=128;; buflen*=2) {
+			char buf[buflen];  /* variable length array */
+
+			/* Note that we use getpwnam_r() instead of getpwnam(),
+			   which returns its result in a statically allocated buffer and
+			   cannot be considered thread safe. */
+			err=getpwnam_r(user, &pwdbuf, buf, buflen, &pwd);
+			if(err==0 && pwd) {
+				/* setgid first, because we may not be allowed to do it anymore after setuid */
+				if (setgid(pwd->pw_gid)!=0) {
+					log_error("Could not change group id to that of run_as user '%s': %s",
+						  user,strerror(errno));
+					return 0;
+				}
+				if (initgroups(user, pwd->pw_gid)!=0) {
+					log_error("Could not initialize the group access list of run_as user '%s': %s",
+						  user,strerror(errno));
+					return 0;
+				}
+				if (setuid(pwd->pw_uid)!=0) {
+					log_error("Could not change user id to that of run_as user '%s': %s",
+						  user,strerror(errno));
+					return 0;
+				}
+				break;
+			}
+			else if(err!=ERANGE) {
+				if(err)
+					log_error("run_as user '%s' could not be found: %s",user,strerror(err));
+				else
+					log_error("run_as user '%s' could not be found.",user);
+				return 0;
+			}
+			else if(buflen>=16*1024) {
+				/* If getpwnam_r() seems defective, call it quits rather than
+				   keep on allocating ever larger buffers until we crash. */
+				log_error("getpwnam_r() requires more than %i bytes of buffer space.",(int)buflen);
+				return 0;
+			}
+			/* Else try again with larger buffer. */
+		}
+#else
+		/* No getpwnam_r() :-(  We'll use getpwnam() and hope for the best. */
+		struct passwd *pwd;
+
 		if (!(pwd=getpwnam(user))) {
+			log_error("run_as user %s could not be found.",user);
 			return 0;
 		}
 		/* setgid first, because we may not allowed to do it anymore after setuid */
 		if (setgid(pwd->pw_gid)!=0) {
+			log_error("Could not change group id to that of run_as user '%s': %s",
+				  user,strerror(errno));
 			return 0;
 		}
 		if (initgroups(user, pwd->pw_gid)!=0) {
+			log_error("Could not initialize the group access list of run_as user '%s': %s",
+				  user,strerror(errno));
 			return 0;
 		}
 		if (setuid(pwd->pw_uid)!=0) {
+			log_error("Could not change user id to that of run_as user '%s': %s",
+				  user,strerror(errno));
 			return 0;
 		}
+#endif
 	}
+
 	return 1;
 }
 
@@ -116,31 +173,34 @@ int run_as(char *user)
  */
 int str2rhn(const unsigned char *str, unsigned char *rhn)
 {
-	int n=0,i,j;
+	int i,j;
+
+	if(*str=='.' && !*(str+1)) {
+		/* Special case: root domain */
+		rhn[0]=0;
+		return 1;
+	}
 
 	for(i=0;;) {
 		int jlim,lb;
 		jlim=i+63;
 		if(jlim>254) jlim=254; /* 254 because the termination 0 has to follow */
-		for(j=i; isdchar(str[j]); ++j) {
+		for(j=i; str[j] && str[j]!='.'; ++j) {
 			if(j>=jlim) return 0;
 			rhn[j+1]=str[j];
 		}
 		if(!str[j]) break;
-		if(str[j]!='.') return 0;
 		lb=j-i;
 		if (lb>0) {
 			rhn[i]=(unsigned char)lb;
-			++n;
 			i = j+1;
 		}
 		else
 			return 0;
-				
 	}
 
 	rhn[i]=0;
-	if (j>i || n==0)
+	if (j>i || i==0)
 		return 0;
 	return 1;
 }
@@ -152,15 +212,22 @@ int str2rhn(const unsigned char *str, unsigned char *rhn)
  */
 const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 {
-	int n=0,i=0,j;
+	int i,j;
 
+	if(len>0 && *str=='.' && (len==1 || !*(str+1))) {
+		/* Special case: root domain */
+		rhn[0]=0;
+		return NULL;
+	}
+
+	i=0;
 	do {
 		int jlim,lb;
 		jlim=i+63;
 		if(jlim>254) jlim=254;
 		for(j=i; j<len && str[j] && str[j]!='.'; ++j) {
-			if(!isdchar(str[j]))
-				return "Illegal character in domain name";
+			/* if(!isdchar(str[j]))
+				return "Illegal character in domain name"; */
 			if(j>=jlim)
 				return "Domain name element too long";
 			rhn[j+1]=str[j];
@@ -169,7 +236,6 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 		lb=j-i;
 		if (lb>0) {
 			rhn[i]=(unsigned char)lb;
-			++n;
 			i = j+1;
 		}
 		else if(j<len && str[j])
@@ -179,41 +245,81 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 	} while(j<len && str[j]);
 
 	rhn[i]=0;
-	if(n==0)
-		return "Empty or root domain name not allowed";
+	if(i==0)
+		return "Empty domain name not allowed";
 	return NULL;
 }
 
 /*
- * Take a host name as used in the dns transfer protocol (a length byte, followed by the
- * first part of the name, ..., followed by a 0 length byte), and return a string (in str,
- * length is the same as rhn) in the usual dotted notation. Length checking is done 
- * elsewhere (in decompress_name), this takes names from the cache which are validated.
- * The buffer str points to is assumed to be 256 bytes in size.
+ * Take a host name as used in the dns transfer protocol (a length byte,
+ * followed by the first part of the name, ..., followed by a 0 length byte),
+ * and return a string in the usual dotted notation. Length checking is done
+ * elsewhere (in decompress_name), this takes names from the cache which are
+ * validated. No more than "size" bytes will be written to the buffer str points to.
+ * If the labels in rhn contains non-printable characters, these are represented
+ * in the result by a backslash followed three octal digits. Additionally some
+ * special characters are preceded by a backslash. Normally the result should
+ * fit within 256 bytes, but if there are many non-printable characters, the
+ * receiving buffer may not be able to contain the full result. In that case the
+ * truncation in the result is indicated by series of trailing dots. This
+ * function is only used for diagnostic purposes, thus a truncated result should
+ * not be a very serious problem (and should only occur under pathological
+ * circumstances).
  */
-void rhn2str(const unsigned char *rhn, unsigned char *str)
+const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int size)
 {
-	unsigned char lb;
+	unsigned lb;
+	int i,j;
 
 	lb=rhn[0];
 	if (!lb) {
 		strcpy(str,".");
 	}
 	else {
-		int i=0;
+		i=1; j=0;
 		do {
-			PDNSD_ASSERT(i+lb < 255,
-				     "rhn2str: string length overflow");
 			for (;lb;--lb) {
-				str[i]=rhn[i+1];
-				i++;
+				unsigned char c;
+				if(j>=size-2)
+					goto overflow;
+				c=rhn[i++];
+				if(c<=0x20 || c>=0x7f) {
+					int rem=size-1-j;
+					int n=snprintf(&str[j],rem,"\\%03o",c);
+					if(n<0 || n>=rem) {
+						str[j++]='.';
+						goto overflow;
+					}
+					j+=n;
+				}
+				else {
+					if(c=='.' || c=='\\' || c=='"') {
+						str[j++]='\\';
+						if(j>=size-2)
+							goto overflow;
+					}
+					str[j++]=c;
+				}
 			}
-			str[i]='.';
-			i++;
-			lb=rhn[i];
+			str[j++]='.';
+			lb=rhn[i++];
 		} while(lb);
-		str[i]='\0';
+		str[j]=0;
 	}
+	return str;
+
+ overflow:
+	j=size;
+	str[--j]=0;
+	if(j>0) {
+	  str[--j]='.';
+	  if(j>0) {
+	    str[--j]='.';
+	    if(j>0)
+	      str[--j]='.';
+	  }
+	}
+	return str;
 }
 
 /* Return the length of a rhn. The definition has in fact been moved to helpers.h as an inline function.
@@ -223,8 +329,7 @@ void rhn2str(const unsigned char *rhn, unsigned char *str)
 */
 /* unsigned int rhnlen(const unsigned char *rhn)
 {
-	unsigned int i=0;
-	unsigned char lb;
+	unsigned int i=0,lb;
 
 	while((lb=rhn[i]))
 		i+=lb+1;
@@ -249,17 +354,16 @@ unsigned int rhncpy(unsigned char *dst, const unsigned char *src)
 }
 
 
-/* take a name and its rrn (buffer must be 256 bytes), and return the name indicated by the cnames
- * in the record. */
-int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
+/* take a name in length-byte string notation (buffer must be 256 bytes),
+   and return the name indicated by the cnames in the record. */
+int follow_cname_chain(dns_cent_t *c, unsigned char *name)
 {
 	rr_set_t *rrset=c->rr[T_CNAME-T_MIN];
 	rr_bucket_t *rr;
 	if (!rrset || !(rr=rrset->rrs))
 		return 0;
 	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
-	memcpy(rrn,rr+1,rr->rdlen);
-	rhn2str(rrn,name);
+	memcpy(name,rr+1,rr->rdlen);
 	return 1;
 }
 
@@ -275,7 +379,7 @@ int str2pdnsd_a(const char *addr, pdnsd_a *a)
 		/* Try to map an IPv4 address to IPv6 */
 		struct in_addr a4;
 		if(inet_aton(addr,&a4)) {
-			a->ipv6=ipv4_6_prefix;
+			a->ipv6=global.ipv4_6_prefix;
 			((uint32_t *)(&a->ipv6))[3]=a4.s_addr;
 			return 1;
 		}
@@ -426,6 +530,70 @@ int fsprintf(int fd, const char *format, ...)
 	return n;
 }
 
+/* Convert data into a hexadecimal representation (for debugging purposes)..
+   The result is stored in the character array buf.
+   If buf is not large enough to hold the result, the
+   truncation is indicated by trailing dots.
+*/
+void hexdump(const void *data, int dlen, char *buf, int buflen)
+{
+	const unsigned char *p=data;
+	int i,j=0;
+	for(i=0;i<dlen;++i) {
+		int rem=buflen-j;
+		int n=snprintf(buf+j, rem, i==0?"%02x":" %02x", p[i]);
+		if(n<0 || n>=rem) goto truncated;
+		j += n;
+	}
+	return;
+
+ truncated:
+	if(j>=6) {
+		j -= 3;
+		if(j+4>=buflen)
+			j -= 3;
+		buf[j++]=' ';
+		buf[j++]='.';
+		buf[j++]='.';
+		buf[j++]='.';
+	}
+	buf[j]=0;
+}
+
+/* Copy string "in" to "str" buffer, converting non-printable characters
+   to escape sequences.
+   Returns the length of the output string, or -1 if the result does not
+   fit in the output buffer.
+*/
+int escapestr(char *in, int ilen, char *str, int size)
+{
+	int i,j=0;
+	for(i=0;i<ilen;++i) {
+		unsigned char c;
+		if(j>=size-1)
+			return -1;
+		c=in[i];
+		if(c<0x20 || c>=0x7f) {
+			int rem=size-j;
+			int n=snprintf(&str[j],rem,"\\%03o",c);
+			if(n<0 || n>=rem) {
+				return -1;
+			}
+			j+=n;
+		}
+		else {
+			if(c=='\\' || c=='"') {
+				str[j++]='\\';
+				if(j>=size-1)
+					return -1;
+			}
+			str[j++]=c;
+		}
+	}
+	str[j]=0;
+	return j;
+}
+
 /*
  * This is not like strcmp, but will return 1 on match or 0 if the
  * strings are different.
@@ -504,18 +672,30 @@ int getline(char **lineptr, size_t *n, FILE *stream)
 #undef BUFSIZE
 #endif
 
-#ifndef HAVE_ASPRINTF
-int asprintf (char **lineptr, const char *format, ...)
+
+#ifndef HAVE_VASPRINTF
+/* On systems where the macro va_copy is not available, hopefully simple assignment will work.
+   Otherwise, I don't see any portable way of defining vasprintf() (without using a completely
+   different algorithm).
+*/
+#ifndef va_copy
+# ifdef __va_copy
+#  define va_copy __va_copy
+# else
+#  define va_copy(dst,src) ((dst)=(src))
+# endif
+#endif
+
+int vasprintf (char **lineptr, const char *format, va_list va)
 {
 	int sz=128,n;
 	char *line=malloc(sz);
-	va_list va;
+	va_list vasave;
 
 	if(!line) return -1;
 
-	va_start(va,format);
+	va_copy(vasave,va);
 	n=vsnprintf(line,sz,format,va);
-	va_end(va);
 
 	if(n>=sz) {
 		/* retry with a right sized buffer, needs glibc 2.1 or higher to work */
@@ -529,15 +709,28 @@ int asprintf (char **lineptr, const char *format, ...)
 			line=tmp;
 		}
 
-		va_start(va,format);
-		n=vsnprintf(line,sz,format,va);
-		va_end(va);
+		n=vsnprintf(line,sz,format,vasave);
 	}
+	va_end(vasave);
 
 	if(n>=0)
 		*lineptr=line;
 	else
 		free(line);
+	return n;
+}
+#endif
+
+#ifndef HAVE_ASPRINTF
+int asprintf (char **lineptr, const char *format, ...)
+{
+	int n;
+	va_list va;
+
+	va_start(va,format);
+	n=vasprintf(lineptr,format,va);
+	va_end(va);
+
 	return n;
 }
 #endif

@@ -10,7 +10,7 @@ file-list.base.in ChangeLog.old COPYING.BSD
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
 	[ -f $(DESTDIR)$(cachedir)/pdnsd.cache ] || \
-	  echo -n -e "pd11\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
+	  echo -n -e "pd12\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	  chown $(def_id) $(DESTDIR)$(cachedir); \

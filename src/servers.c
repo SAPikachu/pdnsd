@@ -1,7 +1,7 @@
 /* servers.c - manage a set of dns servers
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -45,7 +45,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 #include "netdev.h"
 #include "helpers.h"
-#include "status.h"
+#include "dns_query.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
@@ -60,7 +60,7 @@ pthread_t stt;
 pthread_mutex_t servers_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t server_data_cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t server_test_cond = PTHREAD_COND_INITIALIZER;
-int server_data_users = 0;
+static int server_data_users = 0, servstat_up = 0;
 static char schm[32];
 
 /*
@@ -89,16 +89,15 @@ static int uptest (servparm_t *serv, int j)
 	case C_DIALD:
  		ret=if_up(serv->interface);
 #if TARGET==TARGET_LINUX
- 		if (ret!=0 && serv->uptest==C_DEV) {
- 			ret=dev_up(serv->interface,serv->device);
- 		}
- 		if (ret!=0 && serv->uptest==C_DIALD) {
- 			ret=dev_up("diald",serv->device);
+ 		if (ret!=0) {
+			if(serv->uptest==C_DEV)
+				ret=dev_up(serv->interface,serv->device);
+			else if (serv->uptest==C_DIALD)
+				ret=dev_up("diald",serv->device);
  		}
 #endif
 		break;
-	case C_EXEC:
-	  {
+	case C_EXEC: {
 	  	pid_t pid;
 
 		if ((pid=fork())==-1) {
@@ -116,7 +115,6 @@ static int uptest (servparm_t *serv, int j)
 			/* Try to setuid() to a different user as specified. Good when you
 			   don't want the test command to run as root */
 			if (!run_as(serv->uptest_usr)) {
-				log_error("Unable to get uid for %s: %s",serv->uptest_usr,strerror(errno));
 				_exit(1);
 			}
 			{
@@ -128,14 +126,14 @@ static int uptest (servparm_t *serv, int j)
 				    log_error("getrlimit() failed: %s",strerror(errno));
 				    _exit(1);
 			    }
-			    for (i = 0; i <= rl.rlim_max; i++) {
+			    for (i = 0; i < rl.rlim_max; i++) {
 				    if (fcntl(i, F_SETFD, FD_CLOEXEC) == -1 && errno != EBADF) {
 					    log_error("fcntl(F_SETFD) failed: %s",strerror(errno));
 					    _exit(1);
 				    }
 			    }
 			}
-			execl("/bin/sh", "uptest_sh","-c",serv->uptest_cmd,NULL);
+			execl("/bin/sh", "uptest_sh","-c",serv->uptest_cmd,(char *)NULL);
 			_exit(1); /* failed execl */
 		} else {
 			int status;
@@ -143,7 +141,11 @@ static int uptest (servparm_t *serv, int j)
 				ret=(WEXITSTATUS(status)==0);
 			}
 		}
-	  }
+	}
+		break;
+	case C_QUERY:
+		ret=query_uptest(&DA_INDEX(serv->atup_a,j).a, serv->port,
+				 serv->timeout>=global.timeout?serv->timeout:global.timeout, PINGREPEAT);
 	}
 
 	pthread_mutex_lock(&servers_lock);
@@ -187,6 +189,7 @@ static void retest(int i, int j)
   servparm_t *srv=&DA_INDEX(servers,i);
   int nsrvs=DA_NEL(srv->atup_a);
 
+  if(!nsrvs) return;
   if(j>=0) {
     if(j<nsrvs) nsrvs=j+1;  /* test just one */
   }
@@ -209,7 +212,7 @@ static void retest(int i, int j)
 	DA_INDEX(srv->atup_a,j).i_ts=s_ts;
     }
   }
-  else if(srv->uptest==C_PING && is_inaddr_any(&srv->ping_a)) {  /* test each ip address seperately */
+  else if(srv->uptest==C_QUERY || (srv->uptest==C_PING && is_inaddr_any(&srv->ping_a))) {  /* test each ip address separately */
     for(;j<nsrvs;++j) {
 	s_ts=time(NULL);
 	DA_INDEX(srv->atup_a,j).is_up=uptest(srv,j);
@@ -246,6 +249,7 @@ void *servstat_thread(void *p)
 	THREAD_SIGINIT;
 
 	pthread_mutex_lock(&servers_lock);
+	servstat_up=1;
 	for (i=0;i<DA_NEL(servers);++i) {
 		sp=&DA_INDEX(servers,i);
 		if (needs_intermittent_testing(sp)) {
@@ -291,23 +295,23 @@ void *servstat_thread(void *p)
 			}
 			schm[0] = '\0';
 			for (i=0;i<DA_NEL(servers);++i) {
+				int j;
 				sp=&DA_INDEX(servers,i);
-				if(needs_intermittent_testing(sp)) {
-					int j;
-
-					for(j=0;j<DA_NEL(sp->atup_a);++j) {
-						time_t tj=DA_INDEX(sp->atup_a,j).i_ts;
-						time_t now=time(NULL);
-						if (now-tj>sp->interval ||
-						    tj>now) { /* kluge for clock skew */
-							retest(i,j);
-						}
+				for(j=0;j<DA_NEL(sp->atup_a);++j) {
+					time_t ts=DA_INDEX(sp->atup_a,j).i_ts;
+					time_t now;
+					if (ts==0 /* Always test servers with timestamp 0 */ ||
+					    (needs_intermittent_testing(sp) && ((now=time(NULL))-ts>sp->interval ||
+										ts>now /* kluge for clock skew */)))
+					{ 
+						retest(i,j);
 					}
 				}
 			}
 		}
 	}
 
+	servstat_up=0;
 	pthread_mutex_unlock(&servers_lock);
 	DEBUG_MSG("Server status thread exiting.\n");
 	return NULL; /* server status thread no longer needed. */
@@ -424,27 +428,65 @@ void test_onquery()
 	pthread_mutex_unlock(&servers_lock);
 }
 
-
+/* non-exclusive lock, for read only access to server data. */
 void lock_server_data()
 {
-     pthread_mutex_lock(&servers_lock);
-     ++server_data_users;
-     pthread_mutex_unlock(&servers_lock);
+	pthread_mutex_lock(&servers_lock);
+	++server_data_users;
+	pthread_mutex_unlock(&servers_lock);
 }
 
 void unlock_server_data()
 {
-     pthread_mutex_lock(&servers_lock);
-     PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
-     if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
-     pthread_mutex_unlock(&servers_lock);
+	pthread_mutex_lock(&servers_lock);
+	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
+	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
+	pthread_mutex_unlock(&servers_lock);
 }
 
+/* Try to obtain an exclusive lock, needed for modifying server data.
+   Return 1 on success, 0 on failure (time out after tm seconds).
+*/
+int exclusive_lock_server_data(int tm)
+{
+	struct timeval now;
+	struct timespec timeout;
+
+	pthread_mutex_lock(&servers_lock);
+	gettimeofday(&now,NULL);
+	timeout.tv_sec = now.tv_sec + tm;     /* time out after tm seconds */
+	timeout.tv_nsec = now.tv_usec * 1000;
+	while (server_data_users>0) {
+		if(pthread_cond_timedwait(&server_data_cond, &servers_lock, &timeout) == ETIMEDOUT) {
+			pthread_mutex_unlock(&servers_lock);
+			return 0;
+		}
+	}
+	return 1;
+}
+/* Call this to free the lock obtained with exclusive_lock_server_data().
+   If retest is nonzero, the server-status thread is reactivated to check
+   which servers are up. This is useful in case the configuration has changed.
+*/
+void exclusive_unlock_server_data(int retest)
+{
+	if(retest) {
+		if(servstat_up)
+			pthread_cond_signal(&server_test_cond);
+		else
+			start_servstat_thread();
+	}
+	pthread_mutex_unlock(&servers_lock);
+}
 
 /*
   Change addresses of servers during runtime.
+  i is the number of the server section to change.
+  ar should point to an array of IP addresses (may be NULL).
+  up=1 or up=0 means mark server up or down afterwards,
+  up=-1 means retest.
 */
-int change_servers(int i, addr_array ar, int c)
+int change_servers(int i, addr_array ar, int up)
 {
      int change=0,result=0;
      int n=DA_NEL(ar);
@@ -484,7 +526,7 @@ int change_servers(int i, addr_array ar, int c)
 
      {
        time_t now = time(NULL);
-       int upordown = (c==CTL_S_UP)?1:(c==CTL_S_DOWN)?0:sp->preset;
+       int upordown = (up>=0)?up:sp->preset;
        int j;
        for(j=0; j<n; ++j) {
 	 atup_t *at = &DA_INDEX(sp->atup_a,j);
@@ -494,7 +536,7 @@ int change_servers(int i, addr_array ar, int c)
        }
      }
 
-     if(c==CTL_S_RETEST) retest(i,-1);
+     if(up<0) retest(i,-1);
      result=1;
 
  unlock_mutex:

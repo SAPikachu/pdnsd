@@ -1,3 +1,241 @@
+2004-09-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* doc/pdnsd.conf.5.in
+	A new man page describing the format of the pdnsd config file has been
+	added to the pdnsd package. I've used a customized Perl script to generate
+	one automatically from the html documentation.
+
+2004-09-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/hash.c
+	The cache entries in a hash chain are now stored in order of increasing long hash
+	value. The advantage is that if an name is looked up that is not present in the
+	cache, this can be done by comparing with only half (on average) of the number
+	of entries in the hash chain. Not a huge speed up, but still worth while, I think.
+	Additionally, the number of hash computations for each add_cache() call has
+	been halved.
+
+2004-09-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.h,src/cache.c,src/dns_query.c,src/dns_answer.c,src/conf-parser.c
+	I've started using GETINT16,GETINT32,PUTINT16,PUTINT32 macros, which are based
+	on the NS_GET/NS_PUT macros that can be found in the BIND source, instead of memcpy
+	for fetching and storing non-aligned integer data.
+
+2004-09-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	New pdnsd-ctl command: "pdnsd-ctl dump" will print information about all the
+	entries contained in the cache.
+	"pdnsd-ctl dump <name>" will only print entries belonging to <name>.
+	The data fields of the more common rr-types will be printed in human readable
+	form, the remaining ones in a hexadecimal representation.
+	With thanks to Dan Jacobson for suggesting this feature.
+
+2004-08-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	At the suggestion of Dan Tihelka, I have expanded to the server_ip= option
+	to allow the name of an interface to be specified instead of an IP address.
+	pdnsd will not bind to the interface name, but will lookup the address the
+	interface has at start up, and listen on that address. If the address
+	of the interface changes while pdnsd is running, pdnsd will not notice that.
+
+2004-08-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/cache.c
+	I've reversed the meaning of the CF_NOAUTH and renamed it CF_AUTH.
+	I've also added a domain level flag DF_AUTH, which is used to
+	mark cache entries obtained from authoritave replies in response to
+	a query of type * (all)..
+
+2004-08-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've changed the format of the cache file. A typical cache entry has empty
+	sets for most RR types (even more if DNS_NEW_RRS is defined). In the old
+	format, each empty RR set was represented by a zero byte.
+	In the new format only non-empty sets are respresented, leading
+	to a (modest) reduction is size.
+
+2004-08-28  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	New option for "rr" sections in the config file: reverse=on/off.
+	If you want a locally defined name to resolve to a numeric address and vice
+	versa, you can now achieve this by setting reverse=on before defining the
+	A record, making it unnecessary to define a seperate PTR record for the reverse
+	resolving.
+
+2004-08-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/cache.c,src/conf-parser.c,src/dns_query.c
+	At the request of Daniel Black, I have added support for defining local wildcard records
+	in pdnsd. The only type supported presently is records beginning with '*.'.
+
+2004-08-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/hash.c,src/cache.c,src/dns_query.c,src/dns_answer.c
+	Sampo Lehtinen has remarked that pdnsd sometimes fails to resolve classless
+	reversed-delegated IP addresses, and that this has something to do with the fact
+	that pdnsd did not accept '/' characters in domain names. After reading Sampo's
+	and Thomas' remarks, and also rfc2317 and some of the rfc's referenced in rfc2317,
+	I decided pdnsd should place no restrictions at all on the types of characters it
+	allows in domain names, only on the lengths of the byte sequences.
+	This led me to make some quite extensive internal changes to pdnsd. Among other
+	things domain names are now stored in transport format (sequences of bytes preceded
+	by length bytes) instead of C strings. This is also more efficient because there
+	is no need any more to convert from one representation to the other, except when
+	reading the config file, interacting with pdnsd-ctl or running in debug mode.
+	Conversion between the two representations isn't always possible, though.
+	For example, domain names in transport format might contain non-printable characters.
+	These are now printed as escape sequences (three octal digits preceded by a back slash).
+	Presently there are still restrictions on the characters in the domain names that can
+	be defined in local records. I doubt this will ever be considered a problem.
+
+2004-08-02  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	The code for handling NXT records was flawed. A response from a remote server
+	containing NXT records (even well-formed ones) could cause pdnsd to crash.
+	The code for handling NAPTR records contained incorrect PDNSD_ASSERT statements, 
+	which could cause pdnsd to abort unnecessarily.
+
+2004-07-25  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/list.h,src/list.c,src/dns.c,src/dns_query,src/dns_answer.c
+	I've noticed that some of the (dynamic) arrays that pdnsd uses are quite sparse.
+	Instead of using an array structure with elements that are large enough to contain
+	the largest possible domain name, I've implemented a "list" data structure that
+	is more compact. The elements of a list can only be accessed sequentially from
+	beginning to end, but it allows more efficient memory use in case the names are
+	significantly shorter that the maximum.
+
+2004-07-22  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	I've expanded pdnsd's configuration options by adding support in pdnsd for reading
+	/etc/resolv.conf style files. Instead of specifying IP addresses in a server section,
+	the option "file=<filename>" can be used.
+	The IP addresses in the lines beginning with "nameserver" will be added to
+	the list of address for that section, the remaining lines will be ignored.
+	To avoid the possibility that pdnsd will query itself, local addresses are skipped
+	(unless pdnsd is configured to listen on a different port number).
+
+2004-07-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/cache.c,src/dns_query.c,src/conf-parser.c
+	New option for "server" sections in the config file: root_server=on/off.
+	In case a server section contains only addresses of root servers, which
+	only give the nameservers of top level domains in their reply, setting
+	root_server=on will enable certain optimizations. This involves using
+	cached information to reduce queries to the root servers, thus speeding up
+	the resolving of new names. This option is also necessary to make the
+	delegation_only option work in combination with root servers.
+
+2004-07-16  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	New pdnsd-ctl command: "pdnsd-ctl empty-cache" will make pdnsd delete its entire
+	cache, freeing all entries. This is useful for debugging purposes, or in situations
+	where you suspect that stale cache entries are causing you problems, but you are not
+	sure which ones.
+
+2004-07-11  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/dns_query.c
+	I've removed the use of the function add_cache_rr_add(), which was used to
+	add additional RR records to the cache one at a time. I've changed the code
+	in dns_query.c such that additional (or off-topic) records are first collected
+	in arrays of dns_cent_t structures, and then added to the cache using add_cache().
+	With this approach only one function, viz. add_cache(), is used for adding
+	new entries to the cache, which I believe leads to a cleaner programming
+	interface. Added benefit is that query serial numbers are no longer
+	necessary.
+
+2004-07-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/cache.c,src/dns_query.c,src/dns_answer.c
+	I've added two new field to the dns_cent_t struct, namely c_ns and c_soa.
+	These will be used to remember references to NS and SOA records in the authority
+	sections of replies from remote name servers.
+	This information can be used by pdnsd to fill in the authority section of its
+	own reply.
+	
+
+2004-06-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c,src/servers.c,src/consts.c
+	I've added an new server availability test which can be selected with "uptest=query".
+	This can be useful as an alternative to "uptest=ping" in case the remote server does not
+	respond to ICMP_ECHO requests at all, which unfortunately is quite common these days.
+	"uptest=query" causes pdnsd to send an empty query to remote nameservers. Any well-formed
+	response (apart from SERVFAIL) within the timeout period will be interpreted as a sign that the
+	server is "up".
+	In a sense this new availability test can actually be considered more reliable than the
+	other ones that pdnsd supports.
+	With thanks to Juliusz Chroboczek for suggesting this feature.
+
+2004-06-24  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/helpers.c
+	Don't use getpwnam() while we are multi-threaded, because it returns a pointer to
+	a statically allocated structure. I will use getpwnam_r() instead, which is thread
+	safe. Unfortunately there seem to be some portability problems with getpwnam_r().
+	For those platforms that lack getpwnam_r(), I will keep the old code with getpwnam()
+	as an alternative.
+
+2004-06-23  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/servers.c
+	Check that the number of IP addresses in a server section is nonzero before
+	testing servers for availability. Otherwise pdnsd could crash in debug mode.
+
+2004-06-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conf-parser.c,src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	New pdnsd-ctl command: "pdnsd-ctl config" will make pdnsd re-load its configuration file.
+	In most cases (but there are still some exceptions) this is preferable
+	to restarting pdnsd after making changes to the configuration file.
+	An important advantage is that there should be no perceptible interruption in the dns service
+	when using the reload command.
+	An alternative config file can be specified with "pdnsd-ctl config <filename>".
+
+2004-05-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c,src/dns_query.h
+	I've made an adjustment to p_recursive_query() and related functions, so that
+	when pdnsd chases name servers in pursuit of authoritative records, it avoids
+	all the name servers already queried for the same name in the recursive calling
+	chain, not just the servers most recently used.
+	Although the hops counter will already break any possible cycles, this will
+	allow pdnsd to detect pathological cycles earlier and waste less resources.
+
+	* src/cache.c
+	In add_cache(), don't add empty entries to the cache. Empty cache entries
+	waste memory and are more persistent than non-empty ones, because purge_cache()
+	cannot get rid of them.
+
+2004-05-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c,src/icmp.c,src/netdev.c
+	I've removed the calls to getprotobyname() and used the constants IPPROTO_TCP
+	and IPPROTO_UDP instead. First of all, it doesn't seem very efficient to call
+	a function repeatedly to look up the same well-known protocol numbers.
+	More importantly, getprotobyname() stores its results in a statically-allocated
+	structure and thus cannot be considered thread safe. (getprotobyname_r()
+	is thread safe, but is not portable.)
+
+2004-05-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	I've noticed that when pdnsd is restarted shortly after it has answered a TCP
+	query, it is often not able to bind to the TCP socket again, resulting in a
+	disabled TCP server thread. The solution appears to be to set the SO_REUSEADDR
+	socket option before binding the socket. This allows you to use the same port even
+	if it is busy (in the TIME_WAIT state).
+	I found the code for this in a patch file from an old Debian package.
+
 2004-05-20  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c

@@ -54,7 +54,7 @@ sockets needed for this.
 The server should support the full standard dns queries following the rfcs 1034
 and 1035. As of version 1.0.0, the rfc compliance has been improved again, and
 pdnsd is now believed (or hoped?) to be fully rfc-compatible. It completely
-follows rfc 2181 (except for one minor issue in the FreeBSD port, see the 
+follows rfc 2181 (except for one minor issue in the FreeBSD port, see the
 documentation). It does not support the following features, of which most are
 marked optional, experimental or obsolete in these rfcs:
 

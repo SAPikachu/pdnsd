@@ -25,6 +25,6 @@ Boston, MA 02111-1307, USA.  */
 #ifndef CONF_PARSER_H
 #define CONF_PARSER_H
 
-int confparse(FILE* in);
+int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errstr);
 
 #endif /* CONF_PARSER_H */

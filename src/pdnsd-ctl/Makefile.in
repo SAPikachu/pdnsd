@@ -66,13 +66,10 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 VERSION = @VERSION@
-YACC = @YACC@
 cachedir = @cachedir@
 def_id = @def_id@
 distribution = @distribution@
 specbuild = @specbuild@
-yflags = @yflags@
-yylineno_option = @yylineno_option@
 
 sbin_PROGRAMS = pdnsd-ctl
 

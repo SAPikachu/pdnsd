@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -51,29 +51,24 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
 #endif
 
-short int daemon_p=0;
 short int debug_p=0;
-short int verbosity=VERBOSITY;
 short int stat_pipe=0;
-short int notcp=0;
+
 /* int sigr=0; */
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 short int run_ipv4=DEFAULT_IPV4;
 short int cmdlineipv=0;
 #endif
-#ifdef ENABLE_IPV6
-short int cmdlineprefix=0;
-struct in6_addr ipv4_6_prefix;
-#endif
-
+cmdlineflags_t cmdline={0};
 pthread_t main_thread;
+uid_t init_uid;
 #if DEBUG>0
 FILE *dbg_file;
 #endif
 volatile int tcp_socket=-1;
 volatile int udp_socket=-1;
 sigset_t sigs_msk;
-char *pidfile=NULL;
+char *conf_file=CONFDIR"/pdnsd.conf";
 
 
 /* version and licensing information */
@@ -181,17 +176,16 @@ static const char help_message[] =
 int final_init()
 {
 #ifndef NO_TCP_SERVER
-	if (!notcp)
+	if (!global.notcp)
 		tcp_socket=init_tcp_socket();
 #endif
 	udp_socket=init_udp_socket();
 	if (tcp_socket==-1 && udp_socket==-1) {
 		log_error("tcp and udp initialization failed. Exiting.");
-		exit(1);
+		return 0;
 	}
 	if (global.strict_suid) {
 		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 			return 0;
 		}
 	}
@@ -223,13 +217,13 @@ static int check_ipv6()
 int main(int argc,char *argv[])
 {
 	int i,sig,pfd=-1;  /* Initialized to inhibit compiler warning */
-	char *conf_file=NULL;
 
 	main_thread=pthread_self();
+	init_uid=getuid();
 #ifdef ENABLE_IPV6
 	{
 		int err;
-		if((err=inet_pton(AF_INET6,DEFAULT_IPV4_6_PREFIX,&ipv4_6_prefix))<=0) {
+		if((err=inet_pton(AF_INET6,DEFAULT_IPV4_6_PREFIX,&global.ipv4_6_prefix))<=0) {
 			fprintf(stderr,"Error: inet_pton() wont accept default prefix %s in %s, line %d\n",
 				DEFAULT_IPV4_6_PREFIX,__FILE__,__LINE__);
 			if(err)
@@ -239,8 +233,9 @@ int main(int argc,char *argv[])
 	}
 #endif
 	
-	/* We parse the command line two times, because the command-line options shall override the ones
-	 * given in the config file */
+	/* Parse the command line.
+	   Remember which options were specified here, because the command-line options
+	   shall override the ones given in the config file */
 	for (i=1;i<argc;i++) {
 		char *arg=argv[i];
 		if (strcmp(arg,"-h")==0 || strcmp(arg,"--help")==0) {
@@ -292,11 +287,11 @@ int main(int argc,char *argv[])
 		} else if(strcmp(arg,"-i")==0 || strcmp(arg,"--ipv4_6_prefix")==0) {
 			if (++i<argc) {
 #ifdef ENABLE_IPV6
-				if(inet_pton(AF_INET6,argv[i],&ipv4_6_prefix)<=0) {
+				if(inet_pton(AF_INET6,argv[i],&global.ipv4_6_prefix)<=0) {
 					fprintf(stderr,"Error: %s: argument not a valid IPv6 address.\n",arg);
 					exit(1);
 				}
-				cmdlineprefix=1;
+				cmdline.prefix=1;
 #else
 				fprintf(stderr,"pdnsd was compiled without IPv6 support. %s will be ignored.\n",arg);
 #endif
@@ -304,6 +299,74 @@ int main(int argc,char *argv[])
 				fprintf(stderr,"Error: IPv6 address expected after %s option.\n",arg);
 				exit(1);
 			}
+		} else if (strcmp(arg,"-s")==0 || strcmp(arg,"--status")==0) {
+			global.stat_pipe=1; cmdline.stat_pipe=1;
+		} else if (strcmp(arg,"--nostatus")==0) {
+			global.stat_pipe=0; cmdline.stat_pipe=1;
+		} else if (strcmp(arg,"-d")==0 || strcmp(arg,"--daemon")==0) {
+			global.daemon=1; cmdline.daemon=1;
+		} else if (strcmp(arg,"--nodaemon")==0) {
+			global.daemon=0; cmdline.daemon=1;
+		} else if (strcmp(arg,"-t")==0 || strcmp(arg,"--tcp")==0) {
+			global.notcp=0; cmdline.notcp=1;
+#ifdef NO_TCP_SERVER
+			fprintf(stderr,"pdnsd was compiled without tcp server support. -t has no effect.\n");
+#endif
+		} else if (strcmp(arg,"--notcp")==0) {
+			global.notcp=1; cmdline.notcp=1;
+		} else if (strcmp(arg,"-p")==0) {
+			if (++i<argc) {
+				global.pidfile=argv[i]; cmdline.pidfile=1;
+			} else {
+				fprintf(stderr,"Error: file name expected after -p option.\n");
+				exit(1);
+			}
+		} else if (strncmp(arg,"-v",2)==0) {
+			if (strlen(arg)!=3 || !isdigit(arg[2])) {
+				fprintf(stderr,"Error: one digit expected after -v option (like -v2).\n");
+				exit(1);
+			}
+			global.verbosity=arg[2]-'0'; cmdline.verbosity=1;
+		} else if (strncmp(arg,"-m",2)==0) {
+			if (strlen(arg)!=4) {
+				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
+				exit(1);
+			}
+			if (strcmp(&arg[2],"uo")==0) {
+#ifdef NO_UDP_QUERIES
+				fprintf(stderr,"Error: pdnsd was compiled without UDP support.\n");
+				exit(1);
+#else
+				global.query_method=UDP_ONLY;
+#endif
+			} else if (strcmp(&arg[2],"to")==0) {
+#ifdef NO_TCP_QUERIES
+				fprintf(stderr,"Error: pdnsd was compiled without TCP support.\n");
+				exit(1);
+#else
+				global.query_method=TCP_ONLY;
+#endif
+			} else if (strcmp(&arg[2],"tu")==0) {
+#if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
+				fprintf(stderr,"Error: pdnsd was not compiled with UDP and TCP support.\n");
+				exit(1);
+#else
+				global.query_method=TCP_UDP;
+#endif
+			} else {
+				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
+				exit(1);
+			}
+			cmdline.query_method=1;
+		} else if (strcmp(arg,"-g")==0 || strcmp(arg,"--debug")==0) {
+			global.debug=1; cmdline.debug=1;
+#if !DEBUG
+			fprintf(stderr,"pdnsd was compiled without debugging support. -g has no effect.\n");
+#endif
+		} else if (strcmp(arg,"--nodebug")==0) {
+			global.debug=0; cmdline.debug=1;
+		} else if (strcmp(arg,"--pdnsd-user")==0) {
+			cmdline.pdnsduser=1;
 		} else {
 			char *equ=strchr(arg,'=');
 			if(equ) {
@@ -316,117 +379,14 @@ int main(int argc,char *argv[])
 				}
 				else if(arg_isparam("--ipv4_6_prefix")) {
 #ifdef ENABLE_IPV6
-					if(inet_pton(AF_INET6,valstr,&ipv4_6_prefix)<=0) {
+					if(inet_pton(AF_INET6,valstr,&global.ipv4_6_prefix)<=0) {
 						fprintf(stderr,"Error: --ipv4_6_prefix: argument not a valid IPv6 address.\n");
 						exit(1);
 					}
-					cmdlineprefix=1;
+					cmdline.prefix=1;
 #else
 					fprintf(stderr,"pdnsd was compiled without IPv6 support. --ipv4_6_prefix will be ignored.\n");
 #endif
-				}
-			}
-		}
-	}
-
-	init_cache();
-	read_config_file(conf_file);
-
-	for (i=1;i<argc;i++) {
-		char *arg=argv[i];
-		if (strcmp(arg,"-s")==0 || strcmp(arg,"--status")==0) {
-			stat_pipe=1;
-		} else if (strcmp(arg,"--nostatus")==0) {
-			stat_pipe=0;
-		} else if (strcmp(arg,"-d")==0 || strcmp(arg,"--daemon")==0) {
-			daemon_p=1;
-		} else if (strcmp(arg,"--nodaemon")==0) {
-			daemon_p=0;
-		} else if (strcmp(arg,"-t")==0 || strcmp(arg,"--tcp")==0) {
-			notcp=0;
-#ifdef NO_TCP_SERVER
-			fprintf(stderr,"pdnsd was compiled without tcp server support. -t has no effect.\n");
-#endif
-		} else if (strcmp(arg,"--notcp")==0) {
-			notcp=1;
-		} else if (strcmp(arg,"-p")==0) {
-			if (++i<argc) {
-				if(pidfile) free(pidfile);
-				pidfile=strdup(argv[i]);
-				if(!pidfile) {
-					fprintf(stderr,"Error: out of memory.\n");
-					exit(1);
-				}
-			} else {
-				fprintf(stderr,"Error: file name expected after -p option.\n");
-				exit(1);
-			}
-		} else if (strncmp(arg,"-v",2)==0) {
-			if (strlen(arg)!=3 || !isdigit(arg[2])) {
-				fprintf(stderr,"Error: one digit expected after -v option (like -v2).\n");
-				exit(1);
-			}
-			verbosity=arg[2]-'0';
-		} else if (strncmp(arg,"-m",2)==0) {
-			if (strlen(arg)!=4) {
-				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
-				exit(1);
-			}
-			if (strcmp(&arg[2],"uo")==0) {
-#ifdef NO_UDP_QUERIES
-				fprintf(stderr,"Error: pdnsd was compiled without UDP support.\n");
-				exit(1);
-#else
-				query_method=UDP_ONLY;
-#endif
-			} else if (strcmp(&arg[2],"to")==0) {
-#ifdef NO_TCP_QUERIES
-				fprintf(stderr,"Error: pdnsd was compiled without TCP support.\n");
-				exit(1);
-#else
-				query_method=TCP_ONLY;
-#endif
-			} else if (strcmp(&arg[2],"tu")==0) {
-#if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
-				fprintf(stderr,"Error: pdnsd was not compiled with UDP and TCP support.\n");
-				exit(1);
-#else
-				query_method=TCP_UDP;
-#endif
-			} else {
-				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
-				exit(1);
-			}
-		} else if (strcmp(arg,"-g")==0 || strcmp(arg,"--debug")==0) {
-			debug_p=1;
-#if !DEBUG
-			fprintf(stderr,"pdnsd was compiled without debugging support. -g has no effect.\n");
-#endif
-		} else if (strcmp(arg,"--nodebug")==0) {
-			debug_p=0;
-		} else if (strcmp(arg,"--pdnsd-user")==0) {
-			if (global.run_as[0]) {
-				printf("%s\n",global.run_as);
-			} else {
-				uid_t uid=getuid();
-				struct passwd *pws=getpwuid(uid);
-				if (pws)
-					printf("%s\n",pws->pw_name);
-				else
-					printf("%i\n",uid);
-			}
-			exit(0);
-		} else if (strcmp(arg,"-c")==0 || strcmp(arg,"--config-file")==0 || strcmp(arg,"-i")==0 || strcmp(arg,"--ipv4_6_prefix")==0) {
-			/* at this point, it is already checked that a file name or prefix arg follows. */
-			i++;
-		} else if(strcmp(arg,"-4")==0 || strcmp(arg,"-6")==0 || strcmp(arg,"-a")==0) {
-			/* already processed. */
-		} else {
-			char *equ=strchr(arg,'=');
-			if(equ) {
-				int plen=equ-arg;
-				if(arg_isparam("--config-file") || arg_isparam("--ipv4_6_prefix")) {
-					/* at this point, these options have already been processed. */
 				}
 				else {
 					fputs("Error: unknown option: ",stderr);
@@ -441,8 +401,34 @@ int main(int argc,char *argv[])
 		}
 	}
 
+	init_cache();
+	{
+		char *errmsg;
+		if(!read_config_file(conf_file,&global,&servers,&errmsg)) {
+			fputs(errmsg?:"Out of memory.",stderr);
+			fputc('\n',stderr);
+			exit(3);
+		}
+	}
+
+	if(cmdline.pdnsduser) {
+		if (global.run_as[0]) {
+			printf("%s\n",global.run_as);
+		} else {
+			uid_t uid=getuid();
+			struct passwd *pws=getpwuid(uid);
+			if (pws)
+				printf("%s\n",pws->pw_name);
+			else
+				printf("%i\n",uid);
+		}
+		exit(0);
+	}
+
 	if(!global.cache_dir)   global.cache_dir = CACHEDIR;
 	if(!global.scheme_file) global.scheme_file = "/var/lib/pcmcia/scheme";
+	debug_p=global.debug;
+	stat_pipe=global.stat_pipe;
 
 	if (!(global.run_as[0] && global.strict_suid)) {
 		for (i=0; i<DA_NEL(servers); i++) {
@@ -463,13 +449,14 @@ int main(int argc,char *argv[])
 		}
 	}
 
-	if (daemon_p && pidfile) {
-		if (unlink(pidfile)!=0 && errno!=ENOENT) {
-			log_error("Error: could not unlink pid file %s: %s",pidfile, strerror(errno));
+	if (global.daemon && global.pidfile) {
+		if (unlink(global.pidfile)!=0 && errno!=ENOENT) {
+			log_error("Error: could not unlink pid file %s: %s",global.pidfile, strerror(errno));
 			exit(1);
 		}
-#ifdef O_NOFOLLOW		
-		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600))==-1) {
+		if ((pfd=open(global.pidfile,O_WRONLY|O_CREAT|O_EXCL
+#ifdef O_NOFOLLOW
+			      |O_NOFOLLOW
 #else
 		/* 
 		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the 
@@ -477,9 +464,9 @@ int main(int argc,char *argv[])
 		 * OS's that do not support O_NOFOLLOW are currently not 
 		 * supported, this is just-in-case code.
 		 */
-		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))==-1) {
 #endif
-			log_error("Error: could not open pid file %s: %s",pidfile, strerror(errno));
+			      , 0600))==-1) {
+			log_error("Error: could not open pid file %s: %s",global.pidfile, strerror(errno));
 			exit(1);
 		}
 	}
@@ -498,7 +485,7 @@ int main(int argc,char *argv[])
 #endif
 	signal(SIGPIPE, SIG_IGN);
 	umask(0077); /* for security reasons */
-	if (daemon_p) {
+	if (global.daemon) {
 		pid_t pid;
 		int fd;
 
@@ -521,21 +508,21 @@ int main(int argc,char *argv[])
 			_exit(1);
 		}
 		if (pid!=0) {
-			if (pidfile) {
+			if (global.pidfile) {
 				FILE *pf=fdopen(pfd,"w");
 				if (pf) {
 					fprintf(pf,"%i\n",pid);
 					fclose(pf);
 				}
 				else {
-					log_error("Error: could not open pid file %s: %s",pidfile, strerror(errno));
+					log_error("Error: could not open pid file %s: %s",global.pidfile, strerror(errno));
 					_exit(1);
 				}
 			}
 			_exit(0); /* exit parent, so we are no session group leader */
 		}
 
-		if (pidfile) close(pfd);
+		if (global.pidfile) close(pfd);
 		chdir("/");
 		if ((fd=open("/dev/null",O_RDONLY))==-1) {
 			log_error("Could not become a daemon: open for /dev/null failed: %s",strerror(errno));
@@ -636,7 +623,6 @@ int main(int argc,char *argv[])
 #if TARGET==TARGET_LINUX
 		if (!global.strict_suid) {
 			if (!run_as(global.run_as)) {
-				log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 				_exit(1);
 			}
 		}
@@ -679,7 +665,7 @@ int main(int argc,char *argv[])
 
 	free_rng();
 #if DEBUG>0
-	if (debug_p && daemon_p)
+	if (debug_p && global.daemon)
 		fclose(dbg_file);
 #endif
 	_exit(0);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
+#include "../conff.h"
 #include "../helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
@@ -21,6 +22,7 @@ pthread_t main_thread;
 #if DEBUG>0
 FILE *dbg_file;
 #endif
+globparm_t global;
 
 
 int main(void) 

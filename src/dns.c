@@ -1,7 +1,7 @@
 /* dns.c - Declarations for dns handling and generic dns functions
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003, 2004.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -38,96 +38,138 @@ static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
  * a source pointer (it is returned pointing to the location after the name). msgsize is the size of the whole message,
  * len is the total name length.
  * msg and msgsz are needed for decompression (see rfc1035). The returned data is decompressed, but still in the
- * rr name form (length byte - string of that length, terminated by a 0 lenght byte).
- * If uscore is NULL, an underscore will be treated as illegal (except when UNDERSCORE is defined). Otherwise,
- * *uscore will be set to 0 if the name contained no underscores, and to 1 otherwise.
+ * rr name form (length byte - string of that length, terminated by a 0 length byte).
  *
  * Returned is a dns return code, with one exception: RC_TRUNC, as defined in dns.h, indicates that the message is
  * truncated at the name (which needs a special return code, as it might or might not be fatal).
  */
-int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore)
+int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *sz, unsigned char *tgt, int *len)
 {
 	unsigned char lb;
-	int jumped=0;
-	long offs;
+	unsigned offs;
 	unsigned char *lptr;
-	int i;
 	int hops=0;
 	int tpos=0;
 	long osz=*sz;
 
-	if (!*sz)
-		return RC_TRUNC;
-	if (uscore!=NULL)
-		*uscore=0;
 	lptr=*src;
-	while (1) {
+	for(;;) {
+		if (*sz<=0)
+			return RC_TRUNC;
 		if (lptr-msg>=msgsz)
 			return RC_FORMAT;
-		if (!jumped)
+		(*sz)--;
+		lb=*lptr++;
+
+		if(lb>0x3f) {
+ 			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
+				return RC_FORMAT;
 			if (*sz<=0)
-				return RC_FORMAT;
-		if (tpos>255)
-			return RC_FORMAT;
-		if (!jumped)
-			(*sz)--;
-		lb=*lptr;
-		lptr++;
-
-		do {
- 			if (lb>63 && lb<192)     /* The two highest bits must be either 00 or 11 */
-				return RC_FORMAT;
-			if (lb>=192) {
-				if (lptr-msg>=msgsz)
-					return RC_FORMAT;
-				if (!jumped) {
-					if ((*sz)<1)
-						return RC_TRUNC;
-					(*sz)--;
-					jumped=1;
-
-				}
-				offs=(((unsigned short)lb&0x3f)<<8)|(*lptr);
-				if (offs>=msgsz) 
-					return RC_FORMAT;
-				lptr=msg+offs;
-				hops++;
-				if (hops>255)
-					return RC_FORMAT;
-				lb=*lptr;
-				lptr++;
-			}
-		} while (lb>63);
- 		tgt[tpos]=lb;
-		tpos++;
-		if (lb==0) {
-			break;
-		}
-		for (i=0;i<lb;i++) {
+				return RC_TRUNC;
 			if (lptr-msg>=msgsz)
 				return RC_FORMAT;
-			if (!jumped) {
-				if (*sz<=0)
-					return RC_TRUNC;
-			}
-			if (tpos>=255)
+			(*sz)--;
+			offs=(((unsigned int)lb&0x3f)<<8)|(*lptr);
+			if (offs>=msgsz) 
 				return RC_FORMAT;
-			if (!isdchar(*lptr) && (uscore==NULL || *lptr!='_'))
-				return RC_FORMAT;
-			if (*lptr=='_' && uscore!=NULL)
-				*uscore=1;
-			tgt[tpos]=*lptr;
-			lptr++;
-			tpos++;
-			if (!jumped) {
-				(*sz)--;
-			}
+			lptr=msg+offs;
+			goto jumped;
 		}
+ 		tgt[tpos++]=lb;
+		if (lb==0)
+			break;
+
+		if (tpos+lb>255) /* terminating null byte has to follow */
+			return RC_FORMAT;
+		do {
+			if (*sz<=0)
+				return RC_TRUNC;
+			if (lptr-msg>=msgsz)
+				return RC_FORMAT;
+			/* if (!*lptr || *lptr=='.')
+				return RC_FORMAT; */
+			(*sz)--;
+			tgt[tpos++]=*lptr++;
+		} while(--lb);
 	}
+	goto return_OK;
+
+ jumped:
+	++hops;
+	for(;;) {
+		lb=*lptr++;
+
+		while(lb>0x3f) {
+ 			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
+				return RC_FORMAT;
+			if (lptr-msg>=msgsz)
+				return RC_FORMAT;
+			if (++hops>255)
+				return RC_FORMAT;
+			offs=(((unsigned int)lb&0x3f)<<8)|(*lptr);
+			if (offs>=msgsz) 
+				return RC_FORMAT;
+			lptr=msg+offs;
+			lb=*lptr++;
+		}
+ 		tgt[tpos++]=lb;
+		if (lb==0)
+			break;
+
+		if (lptr+lb-msg>=msgsz || tpos+lb>255) /* terminating null byte has to follow */
+			return RC_FORMAT;
+		do {
+			/* if (!*lptr || *lptr=='.')
+				return RC_FORMAT; */
+			tgt[tpos++]=*lptr++;
+		} while(--lb);
+	}
+ return_OK:
 	*src+=osz-*sz;
 	if(len) *len=tpos;
 	return RC_OK;
 }
+
+#if 0
+/* Compare two names (ordinary C-strings) back-to-forth and return the longest match.
+   The comparison is done at name granularity.
+   The return value is the length of the match in name elements.
+   *os (*od) is set to the offset in the domain name ms (md) of the match.
+ */
+int domain_name_match(const unsigned char *ms, const unsigned char *md, int *os, int *od)
+{
+	int i,j,k=0,offs,offd;
+
+	offs=i=strlen(ms); offd=j=strlen(md);
+	if(i && ms[i-1]=='.') --offs;
+	if(j && md[j-1]=='.') --offd;
+
+	if(i==0 || (i==1 && *ms=='.') || j==0 || (j==1 && *md=='.'))
+		/* Special case: root domain */
+		;
+	else {
+		--i; if(ms[i]=='.') --i;
+		--j; if(md[j]=='.') --j;
+		while(tolower(ms[i]) == tolower(md[j])) {
+			if(ms[i]=='.') {
+				++k;
+				offs=i+1; offd=j+1;
+			}
+			if(i==0 || j==0) {
+				if((i==0 || ms[i-1]=='.') && (j==0 || md[j-1]=='.')) {
+					++k;
+					offs=i; offd=j;
+				}
+				break;
+			}
+			--i; --j;
+		}	
+	}
+	if(os) *os=offs;
+	if(od) *od=offd;
+	return k;
+}
+#endif
 
 /* Compare the names (in length byte-string notation) back-to-forth and return the longest match.
    The comparison is done at name granularity.
@@ -144,14 +186,14 @@ int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int 
 	while((lb=ms[i])) {
 		PDNSD_ASSERT(ns<128, "domain_match: too many name segments");
 		ls[ns++]=lb;
-		i += lb+1;
+		i += ((unsigned)lb)+1;
 	}
 
 	j=0;
 	while((lb=md[j])) {
 		PDNSD_ASSERT(nd<128, "domain_match: too many name segments");
 		ld[nd++]=lb;
-		j += lb+1;
+		j += ((unsigned)lb)+1;
 	}
 
 	n=ns;  if(n>nd) n=nd;
@@ -178,9 +220,9 @@ int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int 
  * It is guaranteed (and insured by assertions) that the output is smaller or equal in
  * size to the input.
  */
-int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb)
+int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb)
 {
-	int i;
+	compel_t *ci;
 	int add=1;
 	int longest=0,lrem=0,coffs=0;
 	int rl=0;
@@ -189,9 +231,9 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 	PDNSD_ASSERT(ilen<=256, "compress_name: name too long");
 
 	/* part 1: compression */
-	for (i=0;i<DA_NEL(*cb);i++) {
+	for (ci=dlist_first(*cb); ci; ci=dlist_next(ci)) {
 		int rv,rem,to;
-		if ((rv=domain_match(in, DA_INDEX(*cb,i).s, &rem,&to))>longest) {
+		if ((rv=domain_match(in, ci->s, &rem,&to))>longest) {
 			/*
 			 * This has some not obvious implications that should be noted: If a 
 			 * domain name as saved in the list has been compressed, we only can
@@ -201,7 +243,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 			 */
 			longest=rv;
 			lrem=rem;
-			coffs=DA_INDEX(*cb,i).index+to;
+			coffs= ci->index + to;
 		}
 	}
 	if (longest>0) {
@@ -219,80 +261,74 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 
 	/* part 2: addition to the cache structure */
 	if (add) {
-		if (!(*cb=DA_GROW1(*cb)))
+		if (!(*cb=dlist_grow(*cb,sizeof(compel_t)+ilen)))
 			return 0;
-		DA_LAST(*cb).index=offs;
-		memcpy(DA_LAST(*cb).s,in,ilen);
+		ci=dlist_last(*cb);
+		ci->index=offs;
+		memcpy(ci->s,in,ilen);
 	}
 	return rl;
 }
 
+/* Convert a numeric IP address into a domain name representation
+   suitable for PTR records.
+*/
+int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
+{
+	if(tp==T_A) {
+		unsigned char *p=(unsigned char *)&a->ipv4.s_addr;
+		if(snprintf(buf,256,"%i.%i.%i.%i.in-addr.arpa.",p[3],p[2],p[1],p[0])>=256)
+			return 0;
+	}
+	else 
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+	if(tp==T_AAAA) {
+		unsigned char *p=(unsigned char *)&a->ipv6;
+		int i,offs=0;
+		for (i=15;i>=0;--i) {
+			unsigned char bt=p[i];
+			int n=snprintf(buf+offs, 256-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
+			if(n<0) return 0;
+			offs+=n;
+			if(offs>=256) return 0;
+		}
+		if(!strncp(buf+offs,"ip6.int.",256-offs))
+			return 0;
+	}
+	else
+#endif
+		return 0;
+	return 1;
+}
 
 /*
  * Add records for a host as read from a hosts-style file.
  * Returns 1 on success, 0 in an out of memory condition, and -1 when there was a problem with
  * the record data.
  */
-static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, unsigned flags, int tp, int reverse)
+static int add_host(unsigned char *pn, unsigned char *rns, pdnsd_ca *a, int tp, int a_sz, time_t ttl, unsigned flags, int reverse)
 {
 	dns_cent_t ce;
 
-	if (!init_cent(&ce, pn, 0, time(NULL), flags  DBG0))
+	if (!init_cent(&ce, pn, 0, 0, flags  DBG0))
 		return 0;
-#ifdef ENABLE_IPV4
-	if (tp==T_A) {
-		if (!add_cent_rr(&ce,tp,ttl,0,CF_LOCAL,a_sz,&a->ipv4,0  DBG0))
-			goto free_cent_return0;
-	}
-#endif
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-	if (tp==T_AAAA) {
-		if (!add_cent_rr(&ce,tp,ttl,0,CF_LOCAL,a_sz,&a->ipv6,0  DBG0))
-			goto free_cent_return0;
-	}
-#endif
-	if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns,0  DBG0))
+	if (!add_cent_rr(&ce,tp,ttl,0,CF_LOCAL,a_sz,a  DBG0))
+		goto free_cent_return0;
+	if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns  DBG0))
 		goto free_cent_return0;
 	add_cache(&ce);
 	free_cent(&ce  DBG0);
 	if (reverse) {
 		unsigned char b2[256],rhn[256];
-#ifdef ENABLE_IPV4
-		if (tp==T_A) {
-			uint32_t ipa=ntohl(a->ipv4.s_addr);
-# if TARGET==TARGET_BSD
-			snprintf(b2,sizeof(b2),"%li.%li.%li.%li.in-addr.arpa.",ipa&0xffl,(ipa>>8)&0xffl,
-				 (ipa>>16)&0xffl, (ipa>>24)&0xffl);
-# else
-			snprintf(b2,sizeof(b2),"%i.%i.%i.%i.in-addr.arpa.",ipa&0xff,(ipa>>8)&0xff,
-				 (ipa>>16)&0xff, (ipa>>24)&0xff);
-# endif
-		}
-		else
-#endif
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-		if (tp==T_AAAA) {
-			int i,offs=0;
-			for (i=15;i>=0;--i) {
-				unsigned char bt=((unsigned char *)&a->ipv6)[i];
-				int n=snprintf(b2+offs, sizeof(b2)-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
-				if(n<0) return -1;
-				offs+=n;
-				if(offs>=sizeof(b2)) return -1;
-			}
-			if(!strncp(b2+offs,"ip6.int.",sizeof(b2)-offs))
-				return -1;
-		}
-		else
-#endif
+		if(!a2ptrstr(a,tp,b2))
 			return -1;
 		if (!str2rhn(b2,rhn))
 			return -1;
-		if (!init_cent(&ce, b2, 0, time(NULL), flags  DBG0))
+		if (!init_cent(&ce, rhn, 0, 0, flags  DBG0))
 			return 0;
-		if (!add_cent_rr(&ce,T_PTR,ttl,0,CF_LOCAL,rhnlen(b3),b3,0  DBG0))
+		if (!add_cent_rr(&ce,T_PTR,ttl,0,CF_LOCAL,rhnlen(pn),pn  DBG0))
 			goto free_cent_return0;
-		if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns,0  DBG0))
+		if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns  DBG0))
 			goto free_cent_return0;
 		add_cache(&ce);
 		free_cent(&ce  DBG0);
@@ -309,7 +345,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
  * Errors are largely ignored so that we can skip entries we do not understand
  * (but others possibly do).
  */
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr)
+int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr)
 {
 	int rv=0;
 	FILE *f;
@@ -326,9 +362,9 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int ali
 		goto fclose_return;
 	}
 	while(getline(&buf,&buflen,f)>=0) {
-		unsigned int len;
+		int len;
 		unsigned char *p,*pn,*pi;
-		unsigned char b2[256],b3[256];
+		unsigned char rhn[256];
 		int tp,sz;
 		pdnsd_ca a;
 
@@ -353,14 +389,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int ali
 			++p;
 		} while(*p && !isspace(*p));
 		len=p-pn;
-		if(len>255) continue;
-		memcpy(b2,pn,len);
-		if(b2[len-1]!='.') {
-			b2[len]='.';
-			if(++len>255) continue;
-		}
-		b2[len]=0;
-		if (!str2rhn(b2,b3))
+		if (parsestr2rhn(pn,len,rhn)!=NULL)
 			continue;
 		if (inet_aton(pi,&a.ipv4)) {
 			tp=T_A;
@@ -375,7 +404,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int ali
 			continue;
 		}
 		{
-			int res=add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1);
+			int res=add_host(rhn, rns, &a, tp,sz, ttl, flags, 1);
 			if(res==0) {
 				*errstr= NULL;
 				goto cleanup_return;
@@ -395,16 +424,9 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int ali
 					++p;
 				} while(*p && !isspace(*p));
 				len=p-pn;
-				if(len>255) break;
-				memcpy(b2,pn,len);
-				if(b2[len-1]!='.') {
-					b2[len]='.';
-					if(++len>255) break;
-				}
-				b2[len]=0;
-				if (!str2rhn(b2,b3))
+				if (parsestr2rhn(pn,len,rhn)!=NULL)
 					break;
-				if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {
+				if (add_host(rhn, rns, &a, tp,sz, ttl, flags, 0) == 0) {
 					*errstr= NULL;
 					goto cleanup_return;
 				}
@@ -428,7 +450,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int ali
  * Const decoders for debugging display
  */
 char *c_names[C_NUM] = {"IN","CS","CH","HS"};
-char *qt_names[QT_NUM]={"IXFR","AXFR","MAILA","MAILB","*"};
+char *qt_names[QT_NUM]={"IXFR","AXFR","MAILB","MAILA","*"};
 
 char *get_cname(int id)
 {

@@ -1,7 +1,7 @@
 /* dns.h - Declarations for dns handling and generic dns functions
-   Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   Copyright (C) 2000, 2001 Thomas Moestl
+   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -32,6 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include <inttypes.h>
 #include "rr_types.h"
 #include "list.h"
+#include "ipvers.h"
 
 /* Deal with byte orders */
 #ifndef BYTE_ORDER
@@ -153,28 +154,72 @@ typedef struct {
 	uint16_t arcount   __attribute__((packed));
 } dns_hdr_t;
 
+
+/* Macros to retrieve or store integer data that is not necessarily aligned.
+   Also takes care of network to host byte order.
+   The pointer cp is advanced and should be of type void* or char*.
+   These are actually adapted versions of the NS_GET16 and NS_GET32
+   macros in the arpa/nameser.h include file in the BIND 9 source.
+*/
+
+#define GETINT16(s,cp) do {							\
+	register uint16_t t_s;							\
+	register const unsigned char *t_cp = (const unsigned char *)(cp);	\
+	t_s = (uint16_t)*t_cp++ << 8;						\
+	t_s |= (uint16_t)*t_cp++;						\
+	(s) = t_s;								\
+	(cp) = (void *)t_cp;							\
+} while (0)
+
+#define GETINT32(l,cp) do {							\
+	register uint32_t t_l;							\
+	register const unsigned char *t_cp = (const unsigned char *)(cp);	\
+	t_l = (uint32_t)*t_cp++ << 24;						\
+	t_l |= (uint32_t)*t_cp++ << 16;						\
+	t_l |= (uint32_t)*t_cp++ << 8;						\
+	t_l |= (uint32_t)*t_cp++;						\
+	(l) = t_l;								\
+	(cp) = (void *)t_cp;							\
+} while (0)
+
+#define PUTINT16(s,cp) do {					\
+	register uint16_t t_s = (uint16_t)(s);			\
+	register unsigned char *t_cp = (unsigned char *)(cp);	\
+	*t_cp++ = t_s >> 8;					\
+	*t_cp++ = t_s;						\
+	(cp) = (void *)t_cp;					\
+} while (0)
+
+#define PUTINT32(l,cp) do {					\
+	register uint32_t t_l = (uint32_t)(l);			\
+	register unsigned char *t_cp = (unsigned char *)(cp);	\
+	*t_cp++ = t_l >> 24;					\
+	*t_cp++ = t_l >> 16;					\
+	*t_cp++ = t_l >> 8;					\
+	*t_cp++ = t_l;						\
+	(cp) = (void *)t_cp;					\
+} while (0)
+
+
 /* Recursion depth. */
 #define MAX_HOPS 20
-
-/* maximum number of levels to go up the hierarchy searching for authoritive name servers. */
-#define MAXUPNS 3
 
 /*
  * Types for compression buffers.
  */
 typedef struct {
 	int           index;
-	unsigned char s[256];
+	unsigned char s[0];
 } compel_t;
 
-typedef DYNAMIC_ARRAY(compel_t) *compel_array;
 
 
-int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore);
+int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *sz, unsigned char *tgt, int *len);
+/* int domain_name_match(const unsigned char *ms, const unsigned char *md, int *os, int *od); */
 int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int *od);
-int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb);
-
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr);
+int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb);
+int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf);
+int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr);
 
 #if DEBUG>0 
 char *get_cname(int id);
