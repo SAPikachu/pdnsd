@@ -213,7 +213,10 @@ int is_local_addr(pdnsd_a *a)
 	int sock;
         struct ifconf ifc;
 	char buf[2048];
-	int i;
+	int cnt=0;
+	struct ifreq *ir;
+	char *ad;
+	  
 
 	ifc.ifc_len=2048;
 	ifc.ifc_buf=buf;
@@ -224,23 +227,28 @@ int is_local_addr(pdnsd_a *a)
 	if (ioctl(sock,SIOCGIFCONF,&ifc)==-1) {
 	        return 0;
 	}
-	for (i=0;i<ifc.ifc_len/sizeof(struct ifreq);i++) {
+	ad=buf;
+	/*	for (i=0;i<ifc.ifc_len/sizeof(struct ifreq);i++) {*/
+	while(cnt<ifc.ifc_len) {
+		ir=(struct ifreq *)ad;
 #  ifdef ENABLE_IPV4
-	  if (run_ipv4) {
-	          if (ifc.ifc_req[i].ifr_addr.sa_family==AF_INET &&
-		      ((struct sockaddr_in *)&ifc.ifc_req[i].ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr) {
-		          return 1;
-	          }
-	  }
+		if (run_ipv4) {
+			if (ir->ifr_addr.sa_family==AF_INET &&
+			    ((struct sockaddr_in *)&ir->ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr) {
+				return 1;
+			}
+		}
 #  endif
 #  ifdef ENABLE_IPV6
-	  if (run_ipv6) {
-	          if (ifc.ifc_req[i].ifr_addr.sa_family==AF_INET6 &&
-		      IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ifc.ifc_req[i].ifr_addr)->sin6_addr,&a->ipv6)) {
-		          return 1;
-	          }
-	  }
+		if (run_ipv6) {
+			if (ir->ifr_addr.sa_family==AF_INET6 &&
+			    IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ir->ifr_addr)->sin6_addr,&a->ipv6)) {
+				return 1;
+			}
+		}
 #  endif
+		cnt+=_SIZEOF_ADDR_IFREQ(*ir);
+		ad+=_SIZEOF_ADDR_IFREQ(*ir);
 	        
 	}
 	close(sock);

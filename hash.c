@@ -24,6 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "hash.h"
 #include "cache.h"
 #include "error.h"
+#include "helpers.h"
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes only strings with the allowed dns characters

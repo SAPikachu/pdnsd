@@ -558,7 +558,7 @@ static void purge_cache(unsigned long sz)
 		le=&rr_l;
 		while (*le && cache_size>sz) {
 			if (!((*le)->rr->flags&CF_LOCAL)) {
-				/*next=(*le)->next;*&
+				/*next=(*le)->next;*/
 				del_cent_rr((*le)->cent, (*le)->rr, (*le)->tp);
 				free_rr(*(*le)->rr);
 				free((*le)->rr);

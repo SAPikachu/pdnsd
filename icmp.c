@@ -118,10 +118,10 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	socklen_t sl;
 
 #if TARGET!=LINUX	
-	if ((pe=getprotobyname("ip"))) {
+	if (!(pe=getprotobyname("ip"))) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
-			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+			log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
 		}
 		return -1;
 	}
@@ -196,7 +196,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		from.sin_port=0;
 		from.sin_addr=addr;
 		SET_SOCKA_LEN4(from);
-		if (sendto(osock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
+		if (sendto(osock,&icmpd,8,0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
@@ -214,9 +214,11 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			msg.msg_control=buf;
 			msg.msg_controllen=1024;
 			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
-				close(osock);
-				close(isock);
-				return -1;  /* error in sending (e.g. no route to host) */
+				if (*((unsigned int *)buf)!=0) {
+					close(osock);
+					close(isock);
+					return -1;  /* error in sending (e.g. no route to host) */
+				}
 			}
 			sl=sizeof(from);
 			if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
@@ -277,10 +279,10 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	int SOL_IPV6;
 	struct protoent *pe;
 
-	if ((pe=getprotobyname("ipv6"))) {
+	if (!(pe=getprotobyname("ipv6"))) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
-			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+			log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
 		}
 		return -1;
 	}
@@ -332,7 +334,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			close(isock);
 			return -1;
 		}
-
 		icmpd.icmp6_type=ICMP6_ECHO_REQUEST;
 		icmpd.icmp6_code=0;
 		icmpd.icmp6_cksum=0; /* The friently kernel does fill that in for us. */
@@ -363,9 +364,11 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			msg.msg_control=buf;
 			msg.msg_controllen=1024;
 			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
-				close(osock);
-				close(isock);
-				return -1;  /* error in sending (e.g. no route to host) */
+				if (*((unsigned int *)buf)!=0) {
+					close(osock);
+					close(isock);
+					return -1;  /* error in sending (e.g. no route to host) */
+				}
 			}
 			sl=sizeof(from);
 /*			printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
