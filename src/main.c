@@ -190,13 +190,8 @@ static const char help_message[] =
  */
 int main(int argc,char *argv[])
 {
-	int i,sig,pfd,np=0;
-	struct passwd *pws;
+	int i,sig,pfd;
 	char *conf_file=NULL;
-	FILE *pf;
-#ifndef O_NOFOLLOW
-	struct stat so, sn;
-#endif
 
 	main_thread=pthread_self();
 	
@@ -320,11 +315,12 @@ int main(int argc,char *argv[])
 			if (global.run_as[0]) {
 				printf("%s\n",global.run_as);
 			} else {
-				if ((pws=getpwuid(getuid()))) {
+				uid_t uid=getuid();
+				struct passwd *pws=getpwuid(uid);
+				if (pws)
 					printf("%s\n",pws->pw_name);
-				} else {
-					printf("%i\n",getuid());
-				}
+				else
+					printf("%i\n",uid);
 			}
 			exit(0);
 		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
@@ -340,23 +336,27 @@ int main(int argc,char *argv[])
 	if(!global.scheme_file) global.scheme_file = "/var/lib/pcmcia/scheme";
 
 	if (!(global.run_as[0] && global.strict_suid)) {
-		struct passwd *pws=getpwuid(getuid());
-		char *un=pws?pws->pw_name:"(unknown)";
-		servparm_t *sp;
-		
 		for (i=0; i<DA_NEL(servers); i++) {
-			sp=&DA_INDEX(servers,i);
+			servparm_t *sp=&DA_INDEX(servers,i);
 			if (sp->uptest==C_EXEC && sp->uptest_usr[0]=='\0') {
+				uid_t uid=getuid();
+				struct passwd *pws=getpwuid(uid);
+		
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
-				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user %s!\n",sp->uptest_cmd, un);
+				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user ", sp->uptest_cmd);
+				if (pws)
+					fprintf(stderr,"%s\n",pws->pw_name);
+				else
+					fprintf(stderr,"%i\n",uid);
+
 			}
 		}
 	}
 
 	if (daemon_p && pidfile) {
 		if (unlink(pidfile)!=0 && errno!=ENOENT) {
-			log_error("Error: could not unlink pid file %s: %s\n",pidfile, strerror(errno));
+			log_error("Error: could not unlink pid file %s: %s",pidfile, strerror(errno));
 			exit(1);
 		}
 #ifdef O_NOFOLLOW		
@@ -370,20 +370,17 @@ int main(int argc,char *argv[])
 		 */
 		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))==-1) {
 #endif
-			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
-			exit(1);
-		}
-		if (!(pf=fdopen(pfd,"w"))) {
-			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+			log_error("Error: could not open pid file %s: %s",pidfile, strerror(errno));
 			exit(1);
 		}
 	}
 	for (i=0;i<DA_NEL(servers);i++) {
-		if (DA_INDEX(servers,i).uptest==C_PING)
-			np=1;
+		if (DA_INDEX(servers,i).uptest==C_PING) {
+			init_ping_socket();
+			break;
+		}
 	}
-	if (np)
-		init_ping_socket();
+
 	if (!init_rng())
 		exit(1);
 #if TARGET==TARGET_LINUX
@@ -393,44 +390,57 @@ int main(int argc,char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 	umask(0077); /* for security reasons */
 	if (daemon_p) {
+		pid_t pid;
+		int fd;
+
 		/* become a daemon */
-		i=fork();
-		if (i==-1) {
-			log_error("Could not become a daemon: fork failed: %s\n",strerror(errno));
+		pid=fork();
+		if (pid==-1) {
+			log_error("Could not become a daemon: fork #1 failed: %s",strerror(errno));
 			exit(1);
 		}
-		if (i!=0)
+		if (pid!=0)
 			exit(0); /* exit parent */
 		/* dissociate from controlling terminal */
 		if (setsid()==-1) {
 			log_error("Could not become a daemon: setsid failed: %s",strerror(errno));
 			_exit(1);
 		}
-		i=fork();
-		if (i==-1) {
-			log_error("Could not become a daemon: fork failed: %s",strerror(errno));
+		pid=fork();
+		if (pid==-1) {
+			log_error("Could not become a daemon: fork #2 failed: %s",strerror(errno));
 			_exit(1);
 		}
-		if (i!=0)
+		if (pid!=0) {
+			if (pidfile) {
+				FILE *pf=fdopen(pfd,"w");
+				if (pf) {
+					fprintf(pf,"%i\n",pid);
+					fclose(pf);
+				}
+				else {
+					log_error("Error: could not open pid file %s: %s",pidfile, strerror(errno));
+					_exit(1);
+				}
+			}
 			_exit(0); /* exit parent, so we are no session group leader */
+		}
+
+		if (pidfile) close(pfd);
 		chdir("/");
-		if (pidfile) {
-			fprintf(pf,"%i\n",getpid());
-			fclose(pf);
-		}
-		if ((i=open("/dev/null",O_RDONLY))==-1) {
+		if ((fd=open("/dev/null",O_RDONLY))==-1) {
 			log_error("Could not become a daemon: open for /dev/null failed: %s",strerror(errno));
 			_exit(1);
 		}
-		dup2(i,0);
-		close(i);
-		if ((i=open("/dev/null",O_WRONLY))==-1) {
+		dup2(fd,0);
+		close(fd);
+		if ((fd=open("/dev/null",O_WRONLY))==-1) {
 			log_error("Could not become a daemon: open for /dev/null failed: %s",strerror(errno));
 			_exit(1);
 		}
-		dup2(i,1);
-		dup2(i,2);
-		close(i);
+		dup2(fd,1);
+		dup2(fd,2);
+		close(fd);
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		syslog(LOG_INFO,"pdnsd-%s starting.",VERSION);
 		closelog();
@@ -474,15 +484,19 @@ int main(int argc,char *argv[])
 
 	sigemptyset(&sigs_msk);
 	sigaddset(&sigs_msk,SIGHUP);
+	sigaddset(&sigs_msk,SIGINT);
+#ifndef THREADLIB_NPTL
 	sigaddset(&sigs_msk,SIGILL);
+#endif
 	sigaddset(&sigs_msk,SIGABRT);
 	sigaddset(&sigs_msk,SIGFPE);
+#ifndef THREADLIB_NPTL
 	sigaddset(&sigs_msk,SIGSEGV);
+#endif
 	sigaddset(&sigs_msk,SIGTERM);
-	if (!daemon_p) {
-		sigaddset(&sigs_msk,SIGINT);
+	/* if (!daemon_p) {
 		sigaddset(&sigs_msk,SIGQUIT);
-	}
+	} */
 #if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
@@ -511,7 +525,7 @@ int main(int argc,char *argv[])
 
 	DEBUG_MSGC("All threads started successfully.\n");
 
-#if TARGET==TARGET_LINUX
+#if TARGET==TARGET_LINUX && !defined(THREADLIB_NPTL)
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 	waiting=1;
@@ -528,10 +542,11 @@ int main(int argc,char *argv[])
 	if (ping6_isocket!=-1)
 		close(ping6_isocket);
 #endif
-	if (stat_pipe && sock_path) {
-		if(unlink(sock_path)) /* Delete the socket */
-		  log_warn("Failed to unlink %s: %s.",sock_path, strerror(errno));
-	}
+	/* Close and delete the status socket */
+	if(stat_pipe) close(stat_sock);
+	if (sock_path && unlink(sock_path))
+		log_warn("Failed to unlink %s: %s",sock_path, strerror(errno));
+
 	free_rng();
 #if DEBUG>0
 	if (debug_p && daemon_p)

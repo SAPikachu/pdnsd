@@ -42,27 +42,69 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
-	<td bgcolor="#FFCCFF" width="20%"><b>2002-01-03</b></td>
+	<td bgcolor="#ffccff" width="20%"><b>2003-07-28</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.8b1-par6 has been released.</b>
+	Latest "maintenance" release by Paul Rombouts. In addition to some further code cleanup,
+	the documentation has been revised.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2003-07-10</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.8b1-par5 has been released.</b>
+	A troublesome allocation size error has been discovered in Thomas Moestl's code.
+	In practice this bug only wastes memory but it could
+	also potentially lead to memory corruption. Upgrading is recommended.
+	More details can be found in the <code>ChangeLog</code>.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2003-06-30</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.8b1-par4 has been released.</b>
+	Due to incompatibilities between various implementations of
+	the pthread library on Linux systems, problems can occur with signal handling in
+	pdnsd. The usual symptom is failure by pdnsd to save the cache to disk, and
+	<code>/var/cache/pdnsd/pdnsd.cache</code> remaining empty. If you experience
+	this kind of trouble, try reconfiguring with different values for the new
+	<code>--with-thread-lib</code> option. The allowable values are
+	described in the <a href="doc.html#threadlib">documentation</a>.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2003-04-07</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>pdnsd is no longer maintained by Thomas Moestl:</b>
+	I have not had time to maintain pdnsd for quite a while now, and have been very slow to
+	respond to issues, or did not respond at all. It is time that I officially announce that
+	pdnsd is no longer actively maintained; I apologize to all those who reported bugs or
+	asked questions without receiving any reply. However, <b>Paul A. Rombouts</b> has published
+	a patch set against the last released version at 
+	<a href="http://www.phys.uu.nl/~rombouts/pdnsd.html">http://www.phys.uu.nl/~rombouts/pdnsd.html</a>,
+	which cleans up a lot of code fixes many bugs.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2002-07-19</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Documentation update.</b>
+	Please note that pdnsd should <b>never be installed with setuid or setgid attributes</b>,
+	as it is not always possible to give up all privileges due to operating system restrictions.
+	While this was never intended and I don't think that anybody would actually do this, the
+	documentation was updated to explicitely mention this to avoid misunderstandings.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2002-01-15</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 1.1.7a has been released.</b>
+	This fixes a reversed test in an assertion that would cause pdnsd to termintate when the ping uptest
+	was used. No other changes were made.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2002-01-15</b></td>
 	<td bgcolor="#CCFFFF" width="80%"><b>Version 1.1.7 has been released.</b>
 	This fixes some problems that might be remotely exploitable to gain access as the user pdnsd runs as
 	(an unprivileged user by default). To do this, an attacker needs to control a name server that is
 	queried by pdnsd, and send a malicious reply to such a query.<br>
 	Upgrading is strongly recommended!<br>
 	There are also minor bug fixes and stability improvements.
-	</td>
-      </tr>
-      <tr>
-	<td bgcolor="#FFCCFF" width="20%"><b>2001-07-02</b></td>
-	<td bgcolor="#CCFFFF" width="80%"><b>Version 1.1.6 has been released.</b>
-	This introduces the query_port_start and query_port_end options (contributed by Andreas Steinmetz). It also
-	fixes some bugs, one of which could cause pdnsd to hang.<br>
-	Upgrade is recommended.
-	</td>
-      </tr>
-      <tr>
-	<td bgcolor="#FFCCFF" width="20%"><b>2001-06-20</b></td>
-	<td bgcolor="#CCFFFF" width="80%"><b>An OpenBSD Port of pdnsd is available</b>
-	as ports/net/pdnsd, done by Sebastian Stark. Thanks!
 	</td>
       </tr>
     </table>
@@ -258,9 +300,9 @@
     <h1>Authors</h1>
     <p>
       pdnsd was written by Thomas Moestl <a href="mailto:tmoestl@gmx.net">&lt;tmoestl@gmx.net&gt;</a><br>
-      <i>Note:</i>Recently, some people have reported problems with that email address. If it does not work
-      for you, or you suspect that I have not received a mail you have sent me, please try to mail to
-      <a href="mailto:t.moestl@tu-bs.de">t.moestl@tu-bs.de</a>.
+      <em>Note added by Paul Rombouts</em>: I have revised the code and added a few new features.
+      See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed an RPM) for more details.
+      If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
     </p>
     <p>
       Daniel Smolik has contributed RedHat RPM's.<br>
@@ -316,7 +358,7 @@
       Alan Swanson,<br>
       Eelco Vriezekolk
     </p>
-    <!--
+    <!--nodoc(-->
     <h1>Links</h1>
     Well, this is the obligatory link section.
     <br>
@@ -344,13 +386,13 @@
 	  </center></td>
       </tr>
     </table> 
-    -->
+    <!--)nodoc-->
     <br>
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      $Id: index.html,v 1.71 2002/01/03 16:48:23 tmm Exp $
+      <i>Last revised: 27 July 2003 by Paul Rombouts</i>
     </p>
   </body>
 </html>

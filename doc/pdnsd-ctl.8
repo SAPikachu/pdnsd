@@ -3,7 +3,8 @@
 .\" <http://shell.ipoline.com/~elmert/hacks/docbook2X/> 
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
-.TH "PDNSD-CTL" "8" "26 January 2001" "" ""
+.\" This manpage has been edited manually by Paul Rombouts.
+.TH "PDNSD-CTL" "8" "28 July 2003" "" ""
 .SH NAME
 pdnsd-ctl \- controls pdnsd
 .SH SYNOPSIS
@@ -31,13 +32,17 @@ print version info
 print pdnsd's status
 .TP
 \fBserver\fR
-index (up|down|retest)
+(index|label) (up|down|retest) [dns1,dns2,...]
 
-Set the status of the server with the given index to up or down, or
-force a retest. The index is assigned in the order of definition in
-pdnsd.cache starting with 0. Use the status command to view the indexes.
-You can specify all instead of an index to perform th action for all
-servers registered with pdnsd.
+Set the status of the servers with the given index or label to up or down, or
+force a retest. The index is assigned in the order of definition in pdnsd.cache
+starting with 0. Use the status command to view the indexes. You can specify all
+instead of an index to perform the action for all servers registered with pdnsd.
+.IP
+An optional third argument can be given consisting of a comma delimited list of
+IP addresses. This list will replace the addresses of name servers used by pdnsd
+for the given server section. This feature is useful for run-time configuration
+of pdnsd with dynamic DNS data in scripts called by ppp or DHCP clients.
 .TP
 \fBrecord\fR
 name (delete|invalidate)
@@ -94,10 +99,13 @@ List available rr types for the neg command. Note that those are only
 used for the neg command, not for add!
 .SH "BUGS"
 .PP
-Mail the author if you find any.
-.SH "AUTHOR"
+Mail the authors if you find any.
+.SH "AUTHORS"
+.PD 0
 .PP
 Thomas Moestl<tmoestl@gmx.net>
+.PP
+Paul Rombouts<p.a.rombouts@home.nl> (for versions 1.1.7a-par and later)
 .SH "SEE ALSO"
 
 \fBpdnsd(8)\fR

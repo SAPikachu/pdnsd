@@ -369,11 +369,9 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
-	if test "$(cachedbm)" = "native"; then \
-	  dd if=/dev/zero of=$(DESTDIR)$(cachedir)/pdnsd.cache bs=1 count=4; \
-	else \
-	  touch $(DESTDIR)$(cachedir)/pdnsd.cache; \
-	fi
+	[ -f $(DESTDIR)$(cachedir)/pdnsd.cache ] || \
+	  dd if=/dev/zero of=$(DESTDIR)$(cachedir)/pdnsd.cache bs=4 count=1 || \
+	  touch $(DESTDIR)$(cachedir)/pdnsd.cache
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	  chown $(def_id) $(DESTDIR)$(cachedir); \

@@ -1,7 +1,25 @@
+2003-07-28  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* doc/html/index.html,doc/html/doc.html,doc/html/dl.html,doc/pdnsd-ctl.8,contrib/README
+	Revised the documentation.
+
+2003-07-21  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/main.c,src/status.c,src/icmp.c
+	Setting stat_pipe=0 after opening or binding the control socket fails.
+	This should prevent further use of the control socket if a problem with
+	it has been detected previously.
+	Also properly initialized the global variable int ping_isocket in src/icmp.c
+
+2003-07-13  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/main.c
+	Polished the code in main().
+
 2003-07-04  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/helpers.c,src/dns_answer.c,src/dns_query.c
-	Elimated the use of inet_ntoa() in favor of the more modern inet_ntop().
+	Eliminated the use of inet_ntoa() in favor of the more modern inet_ntop().
 	inet_ntop() makes more sense in threaded code and is also recommended in
 	the glibc info pages.
 	
@@ -11,7 +29,7 @@
 	* src/dns_query.c
 	Fixed an allocation size error (not mine) in p_exec_query().
 	The erroneous size is almost always larger than necessary, so in practice this bug
-	just wastes memory. But there is also a possibilty that the allocated buffer is too
+	just wastes memory. But there is also a possibility that the allocated buffer is too
 	small, which would mean trouble.
 	Also fixed two memory leaks on some of the error paths in p_exec_query().
 

@@ -1564,13 +1564,9 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 			for(j=0;j<DA_NEL(sp->atup_a);++j) {
 				atup_t *at=&DA_INDEX(sp->atup_a,j);
 				if (at->is_up) {
-					if(add_qserv(&serv, &at->a, sp->port, sp->timeout, sp->is_proxy, mk_flag_val(sp),sp->nocache,thint,sp->lean_query,1,""))
-						one_up=1;
-					else {
-						one_up=0;
+					one_up=add_qserv(&serv, &at->a, sp->port, sp->timeout, sp->is_proxy, mk_flag_val(sp),sp->nocache,thint,sp->lean_query,1,"");
+					if(!one_up)
 						goto done;
-					}
-						
 				}
 			}
 		}

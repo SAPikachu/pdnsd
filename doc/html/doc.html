@@ -32,8 +32,9 @@
     </table> 
     <!--)notext-->
     <center><h1>pdnsd Documentation</h1></center>
-    This is the &quot;official&quot; pdnsd documentation and reference.<br>
-    It is up-to-date for version 1.1.0b1. For older documentation, please refer to the doc
+    This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
+    with revisions by Paul Rombouts.<br>
+    It is up-to-date for version 1.1.8b1-par6. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -42,22 +43,97 @@
     <h2>0. Installation</h2>
     <h3>0.1 Installing binary RPM's</h3>
     To install a binary RPM, just do<br>
-    <code>rpm -i pdnsd-&lt;version&gt;.rpm</code><br>
+    <ul><code>rpm&nbsp;-i&nbsp;pdnsd-&lt;<i>version</i>&gt;.rpm</code></ul>
     This should install pretty much everything automatically. The only thing left
-    for you to do is adatpt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
+    for you to do is adapt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
     according to your needs (see below). 
     In the SuSE RPMs, a start script is also installed; read the section <i>0.4, Start at Boot Time</i>
     about that.
 
     <br>
-    <h3>0.2 Installing source RPM's</h3>
-    To install a source RPM, just do<br>
-    <code>rpm --recompile pdnsd-&lt;version&gt;.rpm</code><br>
-    This should install pretty much everything automatically. The only thing left
-    for you to do is adapt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
-    according to your needs. 
-    In the SuSE RPMs, a start script is also installed; read the section <i>Start at Boot Time</i>
-    about that.
+    <h3>0.2 Building RPM's</h3>
+    It is possible to build a binary RPM from a source package using the command<br>
+    <ul><code>rpmbuild&nbsp;--rebuild&nbsp;pdnsd-&lt;<i>version</i>&gt;.src.rpm</code></ul>
+    or alternatively from a tarball using the command<br>
+    <ul><code>rpmbuild&nbsp;-tb&nbsp;pdnsd-&lt;<i>version</i>&gt;.tar.gz</code></ul>
+    You can do this as root, but it is safer to build a binary package first as a normal user,
+    and then, when all has gone well, install the resulting binary package as root as in the previous section.
+    How to build an RPM package without being root is described at
+    <a href="http://www-106.ibm.com/developerworks/library/l-rpm2/">
+    http://www-106.ibm.com/developerworks/library/l-rpm2/</a>.<br><br>
+    Several pdnsd-specific options are available when building RPM packages:
+    <table cellpadding=7>
+      <tr>
+	<td>
+	  <code>--with&nbsp;isdn</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--enable-isdn</code> (<a href="#enableisdn">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--without&nbsp;poll</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--disable-poll</code> (<a href="#disablepoll">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--with&nbsp;nptl</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--with-thread-lib=nptl</code> (<a href="#threadlib">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--with&nbsp;underscores</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--enable-underscores</code> (<a href="#enableunderscores">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--define&nbsp;"distro&nbsp;&lt;<i>distro</i>&gt;"</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--with-distribution=&lt;<i>distro</i>&gt;</code> (<a href="#withdistro">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--define&nbsp;"run_as_user&nbsp;&lt;<i>user</i>&gt;"</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--with-default-id=&lt;<i>user</i>&gt;</code> (<a href="#defaultid">see below</a>).<br>
+	  For RPMs the default <code>&lt;<i>user</i>&gt;</code> is <code>"pdnsd"</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--define&nbsp;"run_as_uid&nbsp;&lt;<i>uid</i>&gt;"</code>
+	</td>
+	<td>
+	  If the user defined by the previous option does not exist when the RPM is installed, the pre-install script will try to create a new user with numerical id <code>&lt;<i>uid</i>&gt;</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--define&nbsp;"cachedir&nbsp;&lt;<i>dir</i>&gt;"</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--with-cachedir=&lt;<i>dir</i>&gt;</code> (<a href="#withcachedir">see below</a>).
+	</td>
+      </tr>
+    </table>
+    You can also configure which compiler flags will be used by setting the environment variable
+    <code>CFLAGS</code>.
+    Using a bash shell, you can do that on the command line like this:
+    <code>&nbsp;CFLAGS="-O1&nbsp;-Wall"&nbsp;rpmbuild&nbsp;...</code><br>
+    This is useful if you prefer a different level of optimization, for instance.
 
     <br>
     <h3>0.3 Installing from the pure sources (tar archives)</h3>
@@ -67,15 +143,13 @@
     pdnsd-&lt;version&gt;.tar.bz2. If you have bunzip2 installed on your computer, I 
     recommed you save bandwidth and get the .bz2-version.
     To decompress it (using a modern tar) do<br>
-    <code>tar -xzf pdnsd-&lt;version&gt;.tar.gz</code><br>
+    <code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code><br>
     <i>--or--</i><br>
-    <code>tar -xIf pdnsd-&lt;version&gt;.tar.bz2</code><br><br>
+    <code>tar&nbsp;-xjf&nbsp;pdnsd-&lt;version&gt;.tar.bz2</code><br><br>
     If your tar doesn't do this, use:<br>
-    <code>gunzip pdnsd-&lt;version&gt;.tar.gz<br>
-      tar -xf pdnsd-&lt;version&gt;.tar</code><br>
+    <code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code><br>
     <i>--or--</i><br>
-    <code>bunzip2 pdnsd-&lt;version&gt;.tar.bz2<br>
-      tar -xf pdnsd-&lt;version&gt;.tar</code>
+    <code>bzip2&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.bz2&nbsp;| tar&nbsp;-xf&nbsp;-</code>
 
 
     <br>
@@ -105,6 +179,7 @@
 	  if you did not specify a prefix. To set this e.g. to <code>/etc<code>, use <code>--sysconfdir=/etc</code>.
 	</td>
       </tr>
+      <a name="withdistro"></a>
       <tr>
 	<td>
 	  <code>--with-distribution=distro</code>
@@ -125,6 +200,7 @@
 	  you system manually.
 	</td>
       </tr>
+      <a name="withcachedir"></a>
       <tr>
 	<td>
 	  <code>--with-cachedir=dir</code>
@@ -134,15 +210,7 @@
 	  This setting can be changed via config file settings when pdnsd was built.
 	</td>
       </tr>
-      <tr>
-	<td>
-	  <code>--with-dbm=dbm</code>
-	</td>
-	<td>
-	  Specifiy database manager to use for cacheing (default=native; others: gdbm)<br>
-	  Currently, only native will work.
-	</td>
-      </tr>
+      <a name="enableisdn"></a>
       <tr>
 	<td>
 	  <code>--enable-isdn</code>
@@ -240,6 +308,7 @@
 	  &quot;could not discover udp source address&quot;.
 	</td>
       </tr>
+      <a name="disablepoll"></a>
       <tr>
 	<td>
 	  <code>--disable-poll</code>
@@ -272,6 +341,7 @@
 	  different TTLs). Normally not needed.
 	</td>
       </tr>
+      <a name="enableunderscores"></a>
       <tr>
 	<td>
 	  <code>--enable-underscores</code>
@@ -302,6 +372,7 @@
 	  
 	</td>
       </tr>
+      <a name="defaultid"></a>
       <tr>
 	<td>
 	  <code>--with-default-id=user </code>
@@ -381,6 +452,27 @@
 	  The default for this option is 2.
 	</td>
       </tr>
+      <a name="threadlib"></a>
+      <tr>
+	<td>
+	  <code>--with-thread-lib=&lt;<i>lib</i>&gt;</code>
+	</td>
+	<td>
+	  <em>Added by Paul Rombouts</em>: Use this option if you experience problems with
+	  signal handling under Linux. The usual symptom is that pdnsd fails to save
+	  the cache to disk, and <code>/var/cache/pdnsd/pdnsd.cache</code> remains empty.
+	  If you experience this kind of trouble, try reconfiguring with different values
+	  for the <code>--with-thread-lib</code> option. The allowable values are
+	  <code>linuxthreads</code> (the default), <code>linuxthreads2</code>
+	  (or <code>lt2</code> for short), and <code>nptl</code>.
+	  I recommend that you first configure and compile without the
+	  <code>--with-thread-lib</code> option, then if you experience trouble try again
+	  with <code>--with-thread-lib=lt2</code> and recompile.
+	  If your Linux system has an implementation of the Native POSIX Thread Library,
+	  which is the case with Red Hat 9 for instance, you should use
+	  <code>--with-thread-lib=nptl</code> .
+	</td>
+      </tr>
     </table>
     Normally, you will need only <code>--prefix</code>, <code>--sysconfdir</code> and 
     <code>--with-distribution</code>.
@@ -397,7 +489,14 @@
 
     Further instructions are in the INSTALL document in the pdsd source directory.
     <code>./configure --help</code> will give you a list of all supported command line
-    options.
+    options.<br><br>
+    <em>Note added by Paul Rombouts</em>: Some people may want change the compiler optimization flag.
+    I use the <code>-O2</code> flag, but it might be safer to use a lower level of
+    optimization or no optimization at all. In that case prefix the
+    <code>configure</code> command with the desired compiler flags like this
+    (assuming you're using a bash shell):
+    <ul><code>CFLAGS="-O1&nbsp;-Wall"&nbsp;./configure&nbsp;...</code></ul>
+
     
     <br>
     <h4>0.3.3 Building &amp; installing </h4>
@@ -553,10 +652,11 @@
       where 0 means normal operation, while 3 will most verbose. Example is <code>-v2</code>
     </p>
     <p>
-      The option <b>-s</b> or <b>--status</b> enables the status pipe. This is a named pipe in
-      the server directory called <code>status</code>. You can read the server status by doing <br>
-      <code>cat &lt;your cache directory&gt;/status</code>. <b>--nostatus</b> disables the status
-      pipe.
+      The option <b>-s</b> or <b>--status</b> enables the status control socket. This is a named socket in
+      the cache directory called <code>pdnsd.status</code>. This socket allows run-time configuration of pdnsd
+      using the utility <code>pdnsd-ctl</code>. See <a href="#pdnsdctl">below</a> for more details about <code>pdnsd-ctl</code>.
+      <b>--nostatus</b> disables status control.
+      See also the configuration option <code>status_ctl</code> in the <a href="#globalsection">global section</a>.
     </p>
     <p>
       The option <b>-t</b> or <b>--notcp</b> disables the seldom needed TCP server thread, which may
@@ -601,6 +701,7 @@
     these signs to the end of the current line is regarded as a comment and ignored.<br>
     There are examples for nearly all options in the sample config file.
     <br>
+    <a name="globalsection"></a>
     <h3>2.1.1 <code>global</code> Section</h3>
     The global section specifies parameters that affect the overall behaviour of the
     server. If you specify multiple global sections, the settings of those later in
@@ -784,7 +885,10 @@
 	<td>
 	  <b><code>status_ctl=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
 	  This has the same effect as the <code>-s</code> command line option: the status control is enabled when
-	  <code>on</code> is specified.
+	  <code>on</code> is specified.<br>
+	  <em>Added by Paul Rombouts</em>: Note that <code>pdnsd-ctl</code> allows run-time configuration of pdnsd,
+	  even the IP addesses of the name servers can be changed. If you're not using <code>pdnsd-ctl</code> and
+	  you want maximum security, you should disable this option.
 	</td>
       </tr>
       <tr>
@@ -941,8 +1045,12 @@
       <tr>
 	<td>
 	  <b><code>ip=string;</code></b><br>
-	  Give the ip (the ip, _not_ the hostname) of the server.
-	  Must be specified.
+	  Give the IP (the IP, <em>not</em> the hostname) of the server.
+	  Must be specified.<br>
+	  Multiple IP addresses can be given per server section.
+	  This can be done by entering multiple lines of the form <code>ip=string;</code>
+	  or a single line like this:
+	  <ul><code>ip=string,string,string;</code></ul>
 	</td>
       </tr>
       <tr>
@@ -1017,10 +1125,12 @@
 	  but do not want the uptest to be performed with root privileges.
 	  In fact, you should never execute the uptest as root if you can help
 	  it.<br>
-	  If the server is running setuid or setgid, the privileges gained such
-	  are dropped even before changin identity to the specified user to
-	  prevent setuid/gid security holes (otherwise, any user might execute
-	  commands as root if you setuid the executable).<br>
+	  If the server is running setuid or setgid, the privileges thus gained
+	  are attempted to be dropped even before changing identity to the
+	  specified user to prevent setuid/gid security holes (otherwise, any
+	  user might execute commands as root if you setuid the executable).<br>
+	  <b>Note that this is not always possible, and that pdnsd should never
+	    be installed as setuid or setgid.</b>
 	  The command is executed using <code>/bin/sh</code>, so you should be able to use
 	  shell builtin commands.
 	</td>
@@ -1073,7 +1183,7 @@
 	  <b><code> purge_cache=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
 	  In every fetched dns record, there is a cache timeout given, which 
 	  specifies how long the fetched data may be cached until it needs to be 
-	  reloaded. If <code>purge_cache</code> is set to <code>no</code>, the cached records are not purged 
+	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the cached records are not purged 
 	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
 	  Instead, they are still served if they cannot succesfully be
 	  updated (eg. because all servers are down).       
@@ -1141,20 +1251,28 @@
 
       <tr>
 	<td>
-	  <b><code> policy=(&lt;included&gt;|&lt;excluded&gt;);</code></b><br>
+	  <b><code> policy=(&lt;included&gt;|&lt;excluded&gt;|&lt;simple_only&gt;|&lt;fqdn_only&gt;);</code></b><br>
 	   pdnsd supports inclusion/exclusion lists for server sections: with <code>include=</code>
-	   and <code>exclude=</code> (see below) you can specifiy  domain names for that this server
+	   and <code>exclude=</code> (see below) you can specify domain names for which this server
 	   will be used or will not be used. The first match counts (i.e., the first include or
 	   exclude rule in a server section that matches a domain name is applied, and the
 	   search for other rules is terminated). If no rule matched a given domain name,
 	   the <code>policy=</code> option determines whether this server is used for the
 	   lookup for that domain name; when <code>included</code> is given, the server will
-	   be asked, otherwise not.<br>
+	   be asked, and when <code>excluded</code> is given, it will not.
+	   If <code>simple_only</code> is given the server will be used if the name to lookup
+	   is a simple host name, on the other hand if <code>fqdn_only</code> is given the server
+	   will be used only  for fully qualified domain names
+	   (i.e. the name has at least one dot in-between).<br>
 	   If no server is available for a queried domain, pdnsd will return an error message
 	   to the client that usually will stop the clients attempts to resolve a specific
 	   domain from this server (the libc resolver will e.g. return an error to the application that
 	   tried to resolve the domain if no other servers are available in the <code>resolv.conf</code>). 
 	   This may be of use sometimes.<br>
+	   <em>Note</em>: the <code>simple_only</code> and <code>fqdn_only</code> constants
+	   were added by Paul Rombouts.
+	   They are useful for controlling which name servers (if any) will be used by
+	   pdnsd for simple host names.<br>
 	   The default for this option is <code>included</code>.
 	</td>
       </tr>
@@ -1228,7 +1346,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>authrec=(on|off);</code></b><br>
+	  <b><code>authrec=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
 	  If this is turned on, pdnsd will create authoritative local records for this rr section.
 	  This means that pdnsd flags the domain record so that records of this domain that are not
 	  present in the cache are treated as non-existent, i.e. no other servers are queried for
@@ -1406,7 +1524,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>serve_aliases=(on|off);</code></b><br>
+	  <b><code>serve_aliases=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
 	  If this is turned on pdnsd will serve the aliases given in a <code>hosts</code>-style file.
 	  These are the third entry in a line of a hosts-style file, which usually give a "short name" for the host.
 	  This may be used to support broken clients without a proper domain-search option.
@@ -1417,7 +1535,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>authrec=(on|off);</code></b><br>
+	  <b><code>authrec=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
 	  If this is turned on, pdnsd will create authoritative local records with the data from the hosts file.
 	  Please see the description of the option of the same name in the rr section for a closer description of
 	  what this means. Please note that this only has an effect for files sourced with <code>file</code> options
@@ -1426,6 +1544,7 @@
       </tr>
     </table>
     <br>
+    <a name="pdnsdctl"></a>
     <h2>3 pdnsd-ctl</h2>
     pdnsd-ctl allows you to run-time configure pdnsd. To make this work, you have to start pdnsd with the <code>-s</code>
     option (or use the <code>status_ctl</code> option in the config file). You also should make sure that you
@@ -1441,7 +1560,7 @@
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
       <tr>
 	<td><b>Command</b></td>
-	<td colspan=4><b>Options</b></td>
+	<td colspan=5><b>Options</b></td>
 	<td><b>Description</b></td>
       </tr>
       <tr>
@@ -1466,7 +1585,7 @@
 	<td>server</td>
 	<td>(<i>index</i>|<i>label</i>)</td>
 	<td>(up|down|retest)</td>
-	<td></td>
+	<td>[<i>dns1,dns2,...</i>]</td>
 	<td></td>
 	<td></td>
 	<td>
@@ -1476,7 +1595,13 @@
 	  pdnsd.cache starting with 0. Use the status command to view the indices and labels.
 	  You can specify <code>all</code> instead of an index or label to perform th action for all
 	  servers registered with pdnsd. Example:<br>
-	  <code>pdnsd-ctl server 0 retest</code>
+	  <code>pdnsd-ctl&nbsp;server&nbsp;0&nbsp;retest</code><br>
+	  An optional third argument consisting of a comma-separated list of IP addresses can be given.
+	  This list will replace the previous list of addresses of name servers used by pdnsd in the
+	  specified section of the config file.
+	  For example in the <code>/etc/ppp/ip-up</code> script called by <code>pppd</code> you could
+	  place the following line:<br>
+	  <code>pdnsd-ctl&nbsp;server&nbsp;isplabel&nbsp;up&nbsp;$DNS1${DNS1:+${DNS2:+,}}$DNS2</code>
 	</td>
       </tr>
       <tr>
@@ -1495,7 +1620,7 @@
 	  using a <code>rr</code> section, records read from a hosts-style file
 	  and records added using pdnsd-ctl), invalidation has no effect. Deletion
 	  will work, though. Example:<br>
-	  <code>pdnsd-ctl record localhost. delete</code>
+	  <code>pdnsd-ctl&nbsp;record&nbsp;localhost.&nbsp;delete</code>
 	</td>
       </tr>
       <tr>
@@ -1514,7 +1639,7 @@
 	  the description of the <code>authrec</code> config file options for a description of what
 	  that means.
 	  <i>fn</i> is the filename. The file must be readable by pdnsd! Example:<br>
-	  <code>pdnsd-ctl source /etc/hosts localhost. 900 off</code>
+	  <code>pdnsd-ctl&nbsp;source&nbsp;/etc/hosts&nbsp;localhost.&nbsp;900&nbsp;off</code>
 	</td>
       </tr>
       <tr>
@@ -1538,7 +1663,7 @@
 	  If you want no other record than the newly added in the cache, do<br>
 	  <code>pdnsdctl record <i>name</i> delete</code>
 	  before adding records. This is also better when overwriting local records. Example:<br>
-	  <code>pdnsd-ctl add a 127.0.0.1 localhost. 900</code>
+	  <code>pdnsd-ctl&nbsp;add&nbsp;a&nbsp;127.0.0.1&nbsp;localhost.&nbsp;900</code>
 	</td>
       </tr>
       <tr>
@@ -1581,8 +1706,8 @@
 	You can get a list of all types you can pass to this command using
 	<code>pdnsd-ctl list-rrtypes</code>. The type is treated case-sensitive!
 	Example:<br>
-	<code>pdnsd-ctl neg foo.bar A 900</code><br>
-	<code>pdnsd-ctl neg foo.baz 900</code><br>
+	<code>pdnsd-ctl&nbsp;neg&nbsp;foo.bar&nbsp;A&nbsp;900</code><br>
+	<code>pdnsd-ctl&nbsp;neg&nbsp;foo.baz&nbsp;900</code><br>
 	</td>
       </tr>
     </table>
@@ -1590,13 +1715,17 @@
     <br>
     <h2>4 contrib/</h2>
     The contrib directory in the pdnsd distribution contains useful user-contributed scripts.<br>
-    So far, there is a script contributed by Marko Stolle that makes pdnsd usable in a DHCP setup.
+    So far, there are scripts contributed by Marko Stolle and Paul Rombouts that make pdnsd
+    usable in a DHCP setup.
     Please take a look into the README file in the contrib directory for further information.
     <br>
     <br>
     <h2>5 Problems...</h2>
-    If you have problems with configuring or tunning pdnsd, be sure to read th <a href="faq.html">FAQ</a>. If this does not 
-    help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.
+    If you have problems with configuring or tunning pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
+    If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
+    <em>Note added by Paul Rombouts</em>: I have revised the code and added a few new features.
+    See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed an RPM) for more details.
+    If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
     <br>
     <br>
     <h2>5 Hacking</h2>
@@ -1743,7 +1872,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      $Id: doc.html,v 1.42 2001/07/02 18:44:30 tmm Exp $
+      <i>Last revised: 29 July 2003 by Paul Rombouts</i>
     </p>
   </body>
 </html>

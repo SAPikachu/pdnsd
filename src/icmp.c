@@ -62,7 +62,7 @@ volatile int icmp_errs=0; /* This is only here to minimize log output. Since the
 			     consequences of a race is only one log message more/less
 			     (out of ICMP_MAX_ERRS), no lock is required. */
 
-volatile int ping_isocket;
+volatile int ping_isocket=-1;
 #ifdef ENABLE_IPV6
 volatile int ping6_isocket=-1;
 #endif

@@ -348,13 +348,13 @@ int init_rng()
 	return 1;
 }
 
-void free_rng()
+/* void free_rng()
 {
 #ifdef RANDOM_DEVICE
 	if (rand_file)
 		fclose(rand_file);
 #endif
-}
+} */
 
 /* generate a (more or less) random number. */
 unsigned short get_rand16()

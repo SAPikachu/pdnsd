@@ -202,9 +202,11 @@ If you want to download pdnsd, please visit the download page.
 Authors
 
 pdnsd was written by Thomas Moestl <tmoestl@gmx.net>
-Note:Recently, some people have reported problems with that email address. If
-it does not work for you, or you suspect that I have not received a mail you
-have sent me, please try to mail to t.moestl@tu-bs.de.
+Note added by Paul Rombouts: I have revised the code and added a few new
+features. See README.par and the ChangeLog in the source directory (or /usr/
+share/doc/pdnsd-<version> if you have installed an RPM) for more details. If
+you have questions about my modifications, you can find my email address at the
+end of README.par.
 
 Daniel Smolik has contributed RedHat RPM's.
 Torben Janssen contributed start scripts for Red Hat Linux.
@@ -273,5 +275,5 @@ Eelco Vriezekolk
 Thomas Moestl
 
 
-$Id: index.html,v 1.71 2002/01/03 16:48:23 tmm Exp $
+Last revised: 27 July 2003 by Paul Rombouts
 

@@ -94,7 +94,13 @@ const char *socka2str(struct sockaddr *a, char *buf, int maxlen);
 #endif
 
 int init_rng(void);
-void free_rng(void);
+inline static void free_rng(void)
+{
+#ifdef RANDOM_DEVICE
+	if (rand_file)
+		fclose(rand_file);
+#endif
+}
 unsigned short get_rand16(void);
 
 int fsprintf(int fd, const char *format, ...) printfunc(2, 3);

@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 extern char *sock_path;
+extern int stat_sock;
 
 /* The commands for pdnsd-ctl */
 #define CTL_STATS    1 /* Give out stats (like the "traditional" status pipe) */

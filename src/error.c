@@ -51,7 +51,7 @@ void crash_msg(char *msg)
 {
 	log_error("%s", msg);
 	log_error("pdnsd probably crashed due to a bug. Please consider sending a bug");
-	log_error("report to tmoestl@gmx.net");
+	log_error("report to p.a.rombouts@home.nl or tmoestl@gmx.net");
 }
 
 /* Log an error. If we are a daemon, use the syslog. s is a format string like

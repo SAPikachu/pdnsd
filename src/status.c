@@ -161,6 +161,7 @@ static void *status_thread (void *p)
 	if (listen(stat_sock,5)==-1) {
 		log_warn("Error: could not listen on socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(stat_sock);
+		stat_pipe=0;
 		return NULL;
 	}
 	for(;;) {
@@ -484,12 +485,13 @@ void init_stat_sock()
 	stpcpy(stpcpy(sa->sun_path,global.cache_dir),"/pdnsd.status");
 
 	if (unlink(sa->sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
-		log_warn("Failed to unlink %s: %s.",sa->sun_path, strerror(errno));
-		pdnsd_exit();
+		log_warn("Failed to unlink %s: %s.\nStatus readback will be disabled",sa->sun_path, strerror(errno));
+		stat_pipe=0;
+		return;
 	}
 	if ((stat_sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
-		if (errno!=EINTR)
-			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+		log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+		stat_pipe=0;
 		return;
 	}
 	sa->sun_family=AF_UNIX;
@@ -502,11 +504,12 @@ void init_stat_sock()
 	  if (bind(stat_sock,(struct sockaddr *)sa,sa_size)==-1) {
 	    log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 	    close(stat_sock);
+	    stat_pipe=0;
 	  }
 	  umask(old_mask);
 	}
 
-	sock_path= strdup(sa->sun_path);
+	if(stat_pipe) sock_path= strdup(sa->sun_path);
 }
 
 /*

@@ -1,9 +1,9 @@
-
 The pdnsd FAQ
 
 Q:  There are complete and well-tested name servers around, such as the BIND.  
     These do also perform caching. Why should I use pdnsd?                     
-A:  pdnsd does not aim to be a complete name server implementation, such as the
+                                                                               
+    pdnsd does not aim to be a complete name server implementation, such as the
     BIND. It is optimized for caching, and you can only specify a small subset 
     of all dns record types pdnsd knows in your local "zone" definitions. This 
     of course reduces the code size drastically, and such the memory footprint.
@@ -11,47 +11,54 @@ A:  pdnsd does not aim to be a complete name server implementation, such as the
     ordinary (non-server) internet hosts and computers that are often not      
     connected to to their network, e.g. notebooks (I originally wrote this     
     program for use with my notebook). These features are:                     
-                                                                               
-      * permanent disk cache (useful for frequent power-offs/reboots)          
-      * usually smaller memory footprint (depends on cache size) (see next     
+A:                                                                             
+      * permanent disk cache (useful for frequent power-offs/reboots)          
+      * usually smaller memory footprint (depends on cache size) (see next     
         question)                                                              
-      * offline-detection prevents hangs (e.g. the typical hang on startup of  
+      * offline-detection prevents hangs (e.g. the typical hang on startup of  
         some Netscape Navigator versions if not dialled in)                    
-      * better control about timeouts (also to prevent hangs)                  
-      * better control over the cache                                          
-      * better run-time control                                                
-                                                                               
+      * better control about timeouts (also to prevent hangs)                  
+      * better control over the cache                                          
+      * better run-time control                                                
+
 -------------------------------------------------------------------------------
-Q:  When I look at the process size with ps, top, gtop, or a similar tool, I   
-    see some processes with a total size well above 3.5 MB. This is much more  
+
+    When I look at the process size with ps, top, gtop, or a similar tool, I   
+Q:  see some processes with a total size well above 3.5 MB. This is much more  
     than e.g. BIND named (about 1.4 MB). Why?                                  
-A:  Really, it is not. pdnsd uses multithreading, not multiprocessing. That    
+                                                                               
+    Really, it is not. pdnsd uses multithreading, not multiprocessing. That    
     means that the processes share most of their process space. In the         
     LinuxThreads library (which is used by pdnsd on Linux), in fact the total  
     process address space is shared (although the processes have different     
-    stacks, these are in one process address space). You may check this by     
+A:  stacks, these are in one process address space). You may check this by     
     looking at the at the process sizes of the pdnsd threads: all should be the
     same. The effective size that pdnsd occupies is thus the size of any of the
     processes, not the sum of those. So, pdnsd with empty cache occupies about 
     800 kB, and the maximum size should be about the cache size plus this size 
     (in fact, ca 5-10% more).                                                  
+
 -------------------------------------------------------------------------------
+
 Q:  What do I need the status control (option -s) for?                         
-A:  It enables you to do some things you might or might not need. With it, you 
+                                                                               
+    It enables you to do some things you might or might not need. With it, you 
     can:                                                                       
                                                                                
-      * query pdnsd's settings at runtime to debug configuration files and     
-        see which servers are regarded to be available                         
-      * mark servers as available or unavailable, or force a status retest -   
+      * query pdnsd's settings at runtime to debug configuration files and see 
+A:      which servers are regarded to be available                             
+      * mark servers as available or unavailable, or force a status retest -   
         very handy if you want to control which servers pdnsd queries, e.g for 
         muliple dial-up accounts                                               
-      * delete, invalidate or add DNS records - useful e.g. when you want to   
+      * delete, invalidate or add DNS records - useful e.g. when you want to   
         build records for dynamically assigned IP addresses or domain names.   
-                                                                               
+
 -------------------------------------------------------------------------------
+
 Q:  What do I need local records (rr- and source-sections in the config file)  
     for?                                                                       
-A:  Some resolver programs, e.g. nslookup, want to look up the name of the     
+                                                                               
+    Some resolver programs, e.g. nslookup, want to look up the name of the     
     server they are using before doing anything else. This option is for       
     defining a PTR record for your IP such that those programs get an answer   
     even if the name server you are caching is not available or does not offer 
@@ -61,7 +68,7 @@ A:  Some resolver programs, e.g. nslookup, want to look up the name of the
     but VERY small networks. Alternatively, you may start a named on another   
     host or on the same host on another port and cache it with pdnsd in        
     addition to other (more distant) name servers.                             
-    The source source section allows you to let pdnsd read in your /etc/hosts  
+A:  The source source section allows you to let pdnsd read in your /etc/hosts  
     file on startup and serve its contents. This file is used by your local    
     resolver before it even tries the name servers and usually contains        
     fully-qualified domain names (FQDNs) for all of the internet addresses your
@@ -73,11 +80,14 @@ A:  Some resolver programs, e.g. nslookup, want to look up the name of the
     If you don't know what this answer was all about, you should just take the 
     source section in the sample config file that comes with pdnsd, copy it    
     into your config file and forget about it.                                 
+
 -------------------------------------------------------------------------------
-Q:  When compiling, I get an error message like                                
-    Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN           
+
+    When compiling, I get an error message like                                
+Q:  Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN           
     What's up?                                                                 
-A:  Normally, this macros should be defined in your C library's header files.  
+                                                                               
+    Normally, this macros should be defined in your C library's header files.  
     There are two different methods, most C libraries support both (and pdnsd  
     honors both): either __BYTE_ORDER is set to __LITTLE_ENDIAN or             
     __BIG_ENDIAN, or __LITTLE_ENDIAN or __BIG_ENDIAN are directly defined as   
@@ -86,7 +96,7 @@ A:  Normally, this macros should be defined in your C library's header files.
     just have to know whether your machine is little-endian or big-endian, this
     means wheter your machine saves the least significant byte of a word or    
     double-word first in memory (little-endian) or the most significant first  
-    (big-endian). All intel x86 and Alpha machines are little-endian, for      
+A:  (big-endian). All intel x86 and Alpha machines are little-endian, for      
     example, while SPARC and PowerPC architectures are big-endian. If your     
     machine is little-endian, add the following line to your config.h:         
     #define __BYTE_ORDER __LITTLE_ENDIAN                                       
@@ -96,67 +106,78 @@ A:  Normally, this macros should be defined in your C library's header files.
     However, for the place the endianess is needed, __LITTLE_ENDIAN should do  
     (it deals only with 16 bits; for all other occurances, ntoh[sl]/hton[sl] is
     used).                                                                     
+
 -------------------------------------------------------------------------------
-Q:  At startup, I get a warning saying:                                        
-    Uptest command [...] will implicitely be executed as root                  
+
+    At startup, I get a warning saying:                                        
+Q:  Uptest command [...] will implicitely be executed as root                  
     What does that mean?                                                       
-A:  This warning only occurs if you use the uptest=exec option in your         
+                                                                               
+    This warning only occurs if you use the uptest=exec option in your         
     configuration. It means that the uptest command is run as root because     
     pdnsd is running as root, and this was not explicitely specified. The idea 
     is that it may introduce security holes (in the programs being run) when   
-    they run as root, and so they shouldn't do that if possible. You can       
+A:  they run as root, and so they shouldn't do that if possible. You can       
     specify the user that shall run the command by appending its name          
     comma-separated as string to the uptest_cmd line:                          
     uptest_cmd="<your command>","<user>";                                      
     If it is correctly running as root, just append the user string "root" to  
     the command and the warning will not occur again.                          
+
 -------------------------------------------------------------------------------
+
 Q:  I cannot run my uptest_cmd command as root (it says permission denied),    
     although the pdnsd executable is setuid root. Why?                         
-A:  pdnsd will drop privileges gained through setuid/setgid before executing   
+                                                                               
+    pdnsd will drop privileges gained through setuid/setgid before executing   
     the uptest commands (you shouldn't set the pdnsd executable setuid/setgid  
-    anyway). The reason is clear: if you install the pdnsd executable as setuid
+A:  anyway). The reason is clear: if you install the pdnsd executable as setuid
     root and this wouln't be done, any user could execute shellcode with root  
     privileges using that option!                                              
+
 -------------------------------------------------------------------------------
-Q:  At startup, I get an error saying:                                         
-    Bad config file permissions: the file must be only writeable by the user   
+
+    At startup, I get an error saying:                                         
+Q:  Bad config file permissions: the file must be only writeable by the user   
     Why that?                                                                  
-A:  pdnsd has an option (uptest=exec) that allows the execution of arbitrary   
+                                                                               
+    pdnsd has an option (uptest=exec) that allows the execution of arbitrary   
     shell code (for testing whether an interface is up). This must be of course
     secured against unauthorized use. One of these protection is the one that  
     produces the error message: if you routinely run pdnsd, e.g. at system     
     startup, and your config file is editable for others, someone could change 
-    it and insert shell code that is executed in the next pdnsd run -- with    
+A:  it and insert shell code that is executed in the next pdnsd run -- with    
     your user privileges! To prevent this, pdnsd will exit if the config file  
     is writeable by others than the owner. To get rid of this message, just do 
     chmod go-w <filename>                                                      
     on your config file (for the default file: chmod go-w /etc/pdnsd.conf). You
     should also check that the ownership is set correct.                       
+
 -------------------------------------------------------------------------------
+
 Q:  serve_aliases does not seem to work.                                       
-A:  Some resolvers (e.g. of the glibc 2.1) seem sometimes not to look up       
+                                                                               
+    Some resolvers (e.g. of the glibc 2.1) seem sometimes not to look up       
     unmodified names, but the names with an entry of the search path already   
-    appended. Since pdnsd will serve short names with this option anyway, you  
+A:  appended. Since pdnsd will serve short names with this option anyway, you  
     can delete the search an domain options from your /etc/resolv.conf. This is
     reported to work in some cases.                                            
+
 -------------------------------------------------------------------------------
+
 Q:  Some queries for domains that have many records (e.g. www.gmx.de) fail     
     mysteriously.                                                              
-A:  pdnsd versions prior to 1.1.0 had the tcp server thread disabled by        
+                                                                               
+    pdnsd versions prior to 1.1.0 had the tcp server thread disabled by        
     default. Most resolvers repeat their query using tcp when they receive a   
-    truncated answer (the answer is truncated when it exceeds a length of 512  
+A:  truncated answer (the answer is truncated when it exceeds a length of 512  
     bytes). You need to recompile pdnsd with the option --enable-tcp-server to 
     fix this.                                                                  
--------------------------------------------------------------------------------
-If your question was not answered here, or you experience crashes or           
-malfunctions, please mail me at tmoestl@gmx.net!                               
-Note:Recently, some people have reported problems with that email address. If  
-it does not work for you, or you suspect that I have not received a mail you   
-have sent me, please try to mail to t.moestl@tu-bs.de.                         
+
 -------------------------------------------------------------------------------
 
 Thomas Moestl
 
 
-$Id: faq.html,v 1.8 2001/01/08 22:23:04 thomas Exp $
+$Id: faq.html,v 1.9 2003/04/06 23:19:14 tmm Exp $
+
