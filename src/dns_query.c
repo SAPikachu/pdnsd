@@ -19,6 +19,8 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
+#include <sys/types.h>
+#include <sys/poll.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <errno.h>
@@ -39,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.15 2000/10/19 16:38:15 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.16 2000/10/19 21:51:00 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY

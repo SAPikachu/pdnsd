@@ -33,6 +33,8 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 #include <pthread.h>
 #include <sys/uio.h>
+#include <sys/types.h>
+#include <sys/poll.h>
 #include <netdb.h>
 #include <signal.h>
 #include <time.h>
@@ -50,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.14 2000/10/19 12:21:57 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.15 2000/10/19 21:51:00 thomas Exp $";
 #endif
 
 /*

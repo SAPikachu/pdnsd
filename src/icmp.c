@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.5 2000/10/18 16:21:34 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.6 2000/10/19 21:51:00 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -254,9 +254,9 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			}
 #else
 			pfd[0].fd=osock;
-			pfd[0].events=POLL_IN;
+			pfd[0].events=POLLIN;
 			pfd[1].fd=isock;
-			pfd[1].events=POLL_IN;
+			pfd[1].events=POLLIN;
 			printf("to: %li\n",timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0);
 			if (poll(pfd,2,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
@@ -269,7 +269,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #ifdef NO_POLL
 			if (FD_ISSET(osock,&fds)) {
 #else
-			if (pfd[0].revents&POLL_IN) {
+			if (pfd[0].revents&POLLIN) {
 #endif
 				memset(&msg,0,sizeof(msg));
 				msg.msg_control=buf;
@@ -288,7 +288,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds)) {
 #else
-			if (pfd[1].revents&POLL_IN) {
+			if (pfd[1].revents&POLLIN) {
 #endif
 				sl=sizeof(from);
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
@@ -419,9 +419,9 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			}
 #else
 			pfd[0].fd=osock;
-			pfd[0].events=POLL_IN;
+			pfd[0].events=POLLIN;
 			pfd[1].fd=isock;
-			pfd[1].events=POLL_IN;
+			pfd[1].events=POLLIN;
 			if (poll(pfd,2,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
 					icmp_errs++;
@@ -435,7 +435,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #ifdef NO_POLL
 			if (FD_ISSET(osock,&fds)) {
 #else
-			if (pfd[0].revents&POLL_IN) {
+			if (pfd[0].revents&POLLIN) {
 #endif
 				memset(&msg,0,sizeof(msg));
 				msg.msg_control=buf;
@@ -454,7 +454,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds)) {
 #else
-			if (pfd[1].revents&POLL_IN) {
+			if (pfd[1].revents&POLLIN) {
 #endif
 				sl=sizeof(from);
 /*	        		printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
