@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.10 2000/06/24 18:58:06 thomas Exp $ */
+/* $Id: config.h.templ,v 1.11 2000/06/25 12:13:11 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -89,12 +89,12 @@
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG
  * to 0. This will increase speed (although only marginally) and save space 
- * in the executable (only about 4kB).
+ * in the executable (only about 5kB).
  * However, it may be an aid when debugging config files. 
  * The only defined debug levels by now are 0 (off) and 1 (on).
  * Defining this larger than 1 does no harm.
  * When in doubt, leave it defined to 1. */
-#define DEBUG 9
+#define DEBUG 9 
 
 /* This defines the default verbosity of informational messages you will get. 
    This has nothing to to with the debug option (-g), but may be set with -v 
