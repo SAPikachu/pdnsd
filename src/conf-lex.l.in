@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.9 2000/10/16 21:23:54 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.10 2000/10/19 12:49:46 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -33,11 +33,11 @@ int br_level=0;
 %}
 
 /* In the location below, %option yylineno is inserted by
- * exec-flex.sh in some cases.
+ * configure in some cases.
  * It causes yylineno to be available in flex, which I prefer
  * for error reporting. It is a little hairy, though, because
  * it is neither part of the POSIX nor offcially documented in
- * the AT&T lex. Look into the Makefile and exec-flex.sh for the 
+ * the AT&T lex. Look into the configure.in for the 
  * implementation.In short, if your lexer generator chokes on this, 
  * well, you won't get line numbers in the output.*/
 @yylineno_option@
@@ -77,6 +77,7 @@ C_CLOSE \*\/
 <INITIAL>"proc_limit"			{return C_PROC_LIMIT;}
 <INITIAL>"procq_limit"			{return C_PROCQ_LIMIT;}
 <INITIAL>"tcp_qtimeout"			{return TCP_QTIMEOUT;}
+<INITIAL>"par_queries"			{return C_PAR_QUERIES;}
 
 <INITIAL>"ip"				{return IP;}
 <INITIAL>"port"				{return PORT;}

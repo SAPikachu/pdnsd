@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.13 2000/10/16 21:23:54 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.14 2000/10/19 12:49:46 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -101,6 +101,7 @@ unsigned char *nm;
 %token <num> C_PROC_LIMIT
 %token <num> C_PROCQ_LIMIT
 %token <num> TCP_QTIMEOUT
+%token <num> C_PAR_QUERIES
 
 %token <num> IP
 %token <num> PORT
@@ -364,6 +365,10 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| TCP_QTIMEOUT '=' NUMBER ';'
 			{
 				global.tcp_qtimeout=$3;
+			}
+		| C_PAR_QUERIES '=' NUMBER ';'
+			{
+				global.par_queries=$3;
 			}
 		;
 

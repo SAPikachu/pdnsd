@@ -1,9 +1,9 @@
-# $Id: Makefile.am,v 1.9 2000/08/28 19:41:04 thomas Exp $
+# $Id: Makefile.am,v 1.10 2000/10/19 12:49:43 thomas Exp $
 
 SUBDIRS = src
 
 EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
-file-list.base.in ChangeLog.old \
+file-list.base.in ChangeLog.old HACKING \
 doc/pdnsd.conf.in doc/html/dl.html doc/html/doc.html doc/html/faq.html \
 doc/html/index.html doc/txt/faq.txt doc/txt/intro.txt doc/txt/manual.txt
 
