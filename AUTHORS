@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.19 2000/11/25 23:09:51 thomas Exp $
+$Id: AUTHORS,v 1.20 2001/01/27 00:14:03 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -30,6 +30,7 @@ Lyonel Vincent		extended the serve_aliases option to support an
 Paul Wagland		contributed a patches for bind9-compatability
 			and for some memory leaks on error paths.
 Sverker Wiberg		contributed IPv6 build fixes
+Michael Wiedmann	contributed the pdnsd-ctl.8 man page.
 Ron Yorston		contributed the dev-uptest for Linux ppp dial-
 			on-demand devices
 Nikita V. Youshchenko	contributed extensions to the "if" uptest
