@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.4 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: cache.h,v 1.5 2000/06/05 17:40:17 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -108,7 +108,6 @@ void report_cache_stat(FILE *f);
  *  add_cache expects the dns_cent_t to be filled.
  */
 void add_cache(dns_cent_t ent);
-int have_cent_rr(dns_cent_t *cent, int tp, void *data, int dlen, time_t ttl, time_t ts, short flags);
 int have_cached(unsigned char *name);
 dns_cent_t *lookup_cache(unsigned char *name);
 void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases);

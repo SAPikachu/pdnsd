@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.9 2000/06/04 21:22:18 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.10 2000/06/05 17:40:17 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -444,7 +444,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 				if (!(*rri=copy_rr(rr))) {
 					free_cent(*ic);
 					free(ic);
-				return NULL;
+					return NULL;
 				}
 				lrr=*rri;
 				rri=(rr_bucket_t **)&(*rri)->next;
@@ -454,40 +454,6 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 	}
 	return ic;
 }
-
-#if 0 /* FIXME: this will die... at least modifications!!*/
-/*
- * See if an rr with that data is present in the dns_cent_t
- * if the cent is in the cache, this must be called with rw-locks applied 
- * If the record is present, it is "touched" with the timestamp information
- * and new ttl.
- */
-int have_cent_rr(dns_cent_t *cent, int tp, void *data, int dlen, time_t ttl, time_t ts, short flags)
-{
-	rr_bucket_t *rr;
-	/* Checking is done the easy way here, by comparing rlen and the data section 
-	 * (bytewise). oname MUST actually be the same on call. 
-	 * All domain names were converted to lower case here.
-	 * this does not include the ttls and other changing data.
-	 * However, a record-aware compare would be nice, but this method should
-	 * hold unless we are sent complete crap (in which case we would probably not
-	 * be able to return anything actually useful anyway).
-	 */
-	rr=cent->rr[tp-T_MIN];
-	while (rr) {
-		if (rr->rdlen==dlen && memcmp((char *)(rr+1),data,dlen)==0) {
-			if (rr->ttl+rr->ts<ts+ttl && !(rr->flags&CF_LOCAL)) {
-				rr->ttl=ttl;
-				rr->ts=ts;
-				rr->flags=flags;
-			}
-			return 1;
-		}
-		rr=rr->next;
-	}
-	return 0;
-}
-#endif
 
 /* 
  * Remove all timed out entries of a given rr row.
@@ -504,6 +470,7 @@ static INLINE int purge_rrset(dns_cent_t *cent, int tp)
 	if (cent->rr[tp-T_MIN] && !(cent->rr[tp-T_MIN]->flags&CF_NOPURGE || cent->rr[tp-T_MIN]->flags&CF_LOCAL) &&
 	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl<time(NULL)) {
 		/* well, it must go. */
+		remove_rrl(cent->rr[tp-T_MIN]->lent);
 		return del_cent_rrset(cent,tp);
 	}
 	return 0;
@@ -823,20 +790,33 @@ void add_cache(dns_cent_t cent)
 	if (!(ce=dns_lookup(&dns_hash,cent.qname))) {
 		if(!(ce=(dns_cent_t *)copy_cent(&cent))) {
 			log_warn("Out of cache memory.");
-			free_cent(cent);
+			free_cent(*ce);
 			unlock_cache_rw();
 			return;
 		}
 		add_dns_hash(&dns_hash,cent.qname,ce);
+		/* Add the rrs to the rr list */
+		for (i=0;i<T_MAX;i++) {
+			if (ce->rr[i]) 
+				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+					log_warn("Out of cache memory.");
+					free_cent(*ce);
+					unlock_cache_rw();
+					return;
+				}
+			
+		}
 		ent_num++;
-		cache_size+=cent.cs;
+		cache_size+=ce->cs;
 	} else {
 		/* We have a record; add the rrsets replacing old ones */
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
 			if (cent.rr[i]) {
-				if (ce->rr[i])
-					del_cent_rrset(ce,i);
+				if (ce->rr[i]) {
+					remove_rrl(ce->rr[i]->lent);
+					del_cent_rrset(ce,i+T_MIN);
+				}
 				rr=cent.rr[i]->rrs;
 				while (rr) {
 					if (!(rrb=create_rr(rr->rdlen, rr+1))) {
@@ -844,26 +824,20 @@ void add_cache(dns_cent_t cent)
 						unlock_cache_rw();
 						return;
 					} else {
-						add_cent_rr_int(ce,rrb,i+T_MIN,ce->rr[i]->ttl, ce->rr[i]->ts, ce->rr[i]->flags,0);
+						add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0);
 					}
 					rr=rr->next;
+				}
+				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+					log_warn("Out of cache memory.");
+					unlock_cache_rw();
+					return;
 				}
 			}
 		}
 		cache_size+=ce->cs;
 	}
 
-	/* Add the rrs to the rr list */
-	for (i=0;i<T_MAX;i++) {
-		if (ce->rr[i]) 
-			if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
-				log_warn("Out of cache memory.");
-				free_cent(cent);
-				unlock_cache_rw();
-				return;
-			}
-				
-	}
 
 	purge_cache((long)global.perm_cache*1024+MCSZ);
 	unlock_cache_rw();
@@ -875,14 +849,13 @@ void add_cache(dns_cent_t cent)
 void del_cache_int(dns_cent_t *cent)
 {
 	int i;
-	rr_bucket_t *rr;
 
 	/* Delete from the hash */
 	del_dns_hash(&dns_hash,cent->qname);
 	/* delete rrs from the rrl */
 	for (i=0;i<T_MAX;i++) {
 		remove_rrl(cent->rr[i]->lent);
-		rr=rr->next;
+		del_cent_rrset(cent,i+T_MIN);
 	}
 	/* free the cent ptrs and rrs */
 	cache_size-=cent->cs;
@@ -928,6 +901,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	dns_cent_t *ret;
 	rr_bucket_t *rrb;
 	int rv;
+	int had=0;
 	lock_cache_rw();
 	if ((ret=dns_lookup(&dns_hash,name))) {
 		/* purge the record. */
@@ -935,9 +909,13 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 		if (ret->rr[tp-T_MIN] &&  
 		    ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
 		     (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && !ret->rr[tp-T_MIN]->serial==serial) || 
-		     (ret->rr[tp-T_MIN]->serial==serial && ret->rr[tp-T_MIN]->ttl!=ttl)))
+		     (ret->rr[tp-T_MIN]->serial==serial && ret->rr[tp-T_MIN]->ttl!=ttl))) {
+			remove_rrl(ret->rr[tp-T_MIN]->lent);
 			del_cent_rrset(ret,tp);
+		}
 		if (!ret->rr[tp-T_MIN] || ret->rr[tp-T_MIN]->serial==serial) {
+			if (ret->rr[tp-T_MIN])
+				had=1;
 			if (!(rrb=create_rr(dlen,data)))
 				rv=0;
 			else {
@@ -946,12 +924,14 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 					free(rrb);
 					rv=0;
 				} else {
-					if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp))
-						rv=0;
-					else {
-						purge_cent(ret);
-						rv=1;
+					if (had) {
+						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp)) {
+							unlock_cache_rw();
+							return rv;
+						}
 					}
+					purge_cent(ret);
+					rv=1;
 				}
 			}
 		} else
