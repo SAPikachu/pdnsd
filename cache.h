@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.6 2000/06/06 12:16:24 thomas Exp $ */
+/* $Id: cache.h,v 1.7 2000/06/22 11:34:52 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -97,7 +97,7 @@ typedef struct rr_lent_s {
  * This is the time in secs any record remains at least in the cache before it is purged.
  * (exception is that the cache is full)
  */
-#define CACHE_LAT 60
+#define CACHE_LAT 120
 
 void init_cache(void);
 void destroy_cache(void);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.6 2000/06/22 09:57:34 thomas Exp $
+$Id: NEWS,v 1.7 2000/06/22 11:34:52 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -24,8 +24,8 @@ Version 0.9.10 fixes some bugs and improves build on Red Hat.
 
 Version 0.9.11 fixes a security hole. Please see ChangeLog for details.
 
-Version 1.0.0 has a lot of changes compared to the 0.9.x tree, but much of them 
-"under the hood":
+Version 1.0.0 has a lot of changes compared to the 0.9.x tree, but much of 
+them "under the hood":
 - IPv6 support (experimental; compile- and run-time configurable)
 - FreeBSD (and such hopefully *BSD) support
 - better rfc2181 compatability

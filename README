@@ -1,4 +1,4 @@
-$Id: README,v 1.2 2000/06/03 19:59:34 thomas Exp $
+$Id: README,v 1.3 2000/06/22 11:34:52 thomas Exp $
 
 You can find the documentation for pdnsd in the doc/ directory. The html
 documentation (which I recommend) is in the doc/html/ subdirectory.
@@ -11,5 +11,5 @@ doc.html / doc.txt		Building, installation and usage instructions
 faq.html / faq.txt		The FAQ
 
 Share and enjoy!
-	Thomas
+	Thomas <tmoestl@gmx.net>
 

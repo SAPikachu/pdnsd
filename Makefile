@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.16 2000/06/13 12:12:27 thomas Exp $
+# $Id: Makefile,v 1.17 2000/06/22 11:34:52 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -22,15 +22,15 @@ YACC=bison -y
 # strict C compiler flags. Note that some warnings are normal.
 STRICT_CF=-Wstrict-prototypes -Wall -pedantic # -Wmissing-prototypes  -Wpointer-arith
 # The flags given in the C compiler call (these are for gcc)
-CFLAGS=-g -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
+CFLAGS=-O2 -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
 # The flags given for bison/yacc; OK for bison and yacc
 YACCFLAGS=-d
 # the flags given for lex; should be OK for lex and flex
 LEXFLAGS=-i
 # The needed libraries.
-# Using flex, I don't need to do -lfl if I provide both yywrap() and main(), and
-# so I rather don't do it because it may not be thread-safe (the lexer is not 
-# used multithreaded, but that may change). Does anyone know if under that
+# Using flex, I don't need to do -lfl if I provide both yywrap() and main(), 
+# and so I rather don't do it because it may not be thread-safe (the lexer is 
+# not used multithreaded, but that may change). Does anyone know if under that
 # conditions I do not need -ll when using lex?
 #
 # The following line is for linux: 
