@@ -5,9 +5,10 @@
 # options to pdsnd in RPM configuration. If you do not use RPM but compile
 # manually, uncomment the following line to change the cache directory to
 # anything other than /var/cache/pdnsd
-# The following line is e.g. suitable for Red Hat:
+# The following line is e.g. suitable for Red Hat, if you do not want
+# a /var/cache directory only for pdnsd:
 #PDNSD_CACHEDIR=/var/spool/pdnsd
-# the standard directory
+# the standard directory (FSSTND compliant):
 PDNSD_CACHEDIR=/var/cache/pdnsd
 # your C compiler command. If gcc doesn't work, try cc. However note that you 
 # NEED gcc (but it's named cc on some systems). See README
@@ -55,7 +56,9 @@ dep: .deps
 
 # The .c to .o rules are in .deps, which is made by make deps. Have a look at
 # the deps rule if you want to change something.
-include .deps
+# .deps in turn is dependent on $(CSOURCES) and $(CHEADERS).
+$(OBJS): .deps 
+	make -f .deps CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' $(OBJS)
 
 pdnsd: .deps $(OBJS)  
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o pdnsd
@@ -67,7 +70,7 @@ lex.yy.c lex.inc.h: conf.l.templ
 	./exec-flex.sh $(LEX) $(CC) conf.l conf.l.templ $(LEXFLAGS) 
 
 config.h: version config.h.templ
-	v=`cat version` ; sed config.h.templ -e "s/\\/\\*VERSION-INSERT-LOC\\*\\//#define VERSION \"$$v\"/" > config.h
+	v=`cat version` ; sed -e "s/\\/\\*VERSION-INSERT-LOC\\*\\//#define VERSION \"$$v\"/" config.h.templ > config.h
 
 .PHONY: all clean mclean distclean dist install
 

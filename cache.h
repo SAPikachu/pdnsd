@@ -50,7 +50,7 @@ typedef struct {
 	time_t           ts;
 	short            flags;
 	unsigned short   rdlen;
-} rr_hdr_t;
+} rr_set_t;
 
 typedef struct {
 	time_t           ttl;
