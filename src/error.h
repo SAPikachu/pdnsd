@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.13 2001/06/02 23:08:13 tmm Exp $ */
+/* $Id: error.h,v 1.14 2001/07/02 19:30:31 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -55,9 +55,47 @@ void log_info(int level, char *s, ...) printfunc(2, 3);
 #if DEBUG>0
 /* from main.c */
 extern FILE *dbg_file;
+#endif
 
+#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
+/*
+ * Older GCC versions do not know about the new ANSI variadic macros, so use the
+ * old GCC style. I suspect the first version to support the ANSI variant was
+ * egcs 2.95, but I could be wrong, corrections welcome.
+ */
+# if DEBUG > 0
 /* XXX: The timestamp generation makes this a little heavy-weight */
-#define DEBUG_MSG_(c,...)								\
+#  define DEBUG_MSG_(c,args...)								\
+	do {										\
+		if (debug_p) {								\
+			char DM_ts[32];							\
+			time_t DM_tt = time(NULL);					\
+			struct tm DM_tm;						\
+			int *DM_id;							\
+			localtime_r(&DM_tt, &DM_tm);					\
+			if (!c && strftime(DM_ts, sizeof(DM_ts), "%m/%d %T",		\
+			    &DM_tm) > 0 &&						\
+			    (DM_id = (int *)pthread_getspecific(thrid_key)) != NULL)	\
+				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);		\
+			fprintf(dbg_file,args);						\
+			fflush(dbg_file);						\
+		}									\
+	} while (0)
+#  define DEBUG_MSG(args...)	DEBUG_MSG_(0,args)
+#  define DEBUG_MSGC(args...)	DEBUG_MSG_(1,args)
+# else
+#  define DEBUG_MSG(args...)
+#  define DEBUG_MSGC(args...)
+# endif	/* DEBUG > 0 */
+#else
+/* ANSI style. */
+# if DEBUG > 0
+/*
+ * XXX: The timestamp generation makes this a little heavy-weight
+ * XXX: The ANSI and GCC variadic macros should be merged as far as possible, but that
+ *      might make things even more messy...
+ */
+#  define DEBUG_MSG_(c,...)								\
 	do {										\
 		if (debug_p) {								\
 			char DM_ts[32];							\
@@ -74,11 +112,12 @@ extern FILE *dbg_file;
 		}									\
 	} while (0)
 
-#define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
-#define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
-#else
-#define DEBUG_MSG(...)
-#define DEBUG_MSGC(...)
+#  define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
+#  define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
+# else
+#  define DEBUG_MSG(...)
+#  define DEBUG_MSGC(...)
+# endif	/* DEBUG > 0 */
 #endif
 
 /*
