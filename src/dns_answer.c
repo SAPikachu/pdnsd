@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.33 2001/01/24 19:47:01 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.34 2001/02/15 23:17:56 thomas Exp $";
 #endif
 
 /*
@@ -1223,7 +1223,7 @@ int init_udp_socket()
 # endif
 #endif
 	if (bind(sock,sin,sinl)!=0) {
-		log_error("Could bind to udp socket: %s",strerror(errno));
+		log_error("Could not bind to udp socket: %s",strerror(errno));
 		close(sock);
 		return -1;
 	}

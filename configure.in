@@ -1,8 +1,8 @@
-dnl $Id: configure.in,v 1.23 2001/01/27 00:11:10 thomas Exp $
+dnl $Id: configure.in,v 1.24 2001/02/15 23:17:49 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -g"
+test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -O"
 
 CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"@sysconfdir@\\\"\""
 
@@ -306,20 +306,20 @@ if test "$target" = "autodetect" ; then
   fi
 fi
 
-if test "$target" = BSD ; then
-  uname_sys=`uname`
-  if test "$uname_sys" = FreeBSD ; then
-    AC_MSG_CHECKING([for FreeBSD version])
-    osrel=`sysctl -n kern.osreldate`
-    if test $osrel -ge 500016 ; then
-      AC_MSG_RESULT([5.0 (>= 500016)])
-      freebsd_pthread="5"
-    else
-      AC_MSG_RESULT([<=5.0 (< 500016)])
-      freebsd_pthread="4"
-    fi
-  fi
-fi	
+#if test "$target" = BSD ; then
+#  uname_sys=`uname`
+#  if test "$uname_sys" = FreeBSD ; then
+#    AC_MSG_CHECKING([for FreeBSD version])
+#    osrel=`sysctl -n kern.osreldate`
+#    if test $osrel -ge 500016 ; then
+#      AC_MSG_RESULT([5.0 (>= 500016)])
+#      freebsd_pthread="5"
+#    else
+#      AC_MSG_RESULT([<=5.0 (< 500016)])
+#      freebsd_pthread="4"
+#    fi
+#  fi
+#fi	
 
 AC_MSG_CHECKING([whether lexer supports line numbers in debugging])
 yylineno_option=""
@@ -339,13 +339,13 @@ if test $target = "Linux"; then
   AC_CHECK_LIB(pthread, pthread_kill)
 fi
 if test $target = "BSD" ; then
-  if test $freebsd_pthread = 4 ; then
+#  if test $freebsd_pthread = 4 ; then
     CFLAGS="$CFLAGS -pthread"
     AC_SUBST(CFLAGS)
-  else
-    AC_CHECK_LIB(c_r, pthread_kill, , 
-      AC_MSG_ERROR([You must have libc_r installed to build/run pdnsd!]))
-  fi;
+#  else
+#    AC_CHECK_LIB(c_r, pthread_kill, , 
+#      AC_MSG_ERROR([You must have libc_r installed to build/run pdnsd!]))
+#  fi;
 fi
 
 if test "$cachegdbm" = "gdbm"; then
