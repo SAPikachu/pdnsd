@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.21 2001/01/24 17:06:42 thomas Exp $
+dnl $Id: configure.in,v 1.22 2001/01/24 18:57:21 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -311,7 +311,7 @@ if test "$target" = BSD ; then
   if test "$uname_sys" = FreeBSD ; then
     AC_MSG_CHECKING([for FreeBSD version])
     osrel=`sysctl -n kern.osreldate`
-    if test osrel -ge 500016 ; then
+    if test $osrel -ge 500016 ; then
       AC_MSG_RESULT([5.0 (>= 500016)])
       freebsd_pthread="5"
     else
