@@ -19,7 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #ifndef lint
-static char rcsid[]="$Id: dns_answer.c,v 1.5 2000/06/03 21:15:11 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.6 2000/06/04 15:36:23 thomas Exp $";
 #endif
 
 /*
@@ -424,7 +424,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 			if (!add_rr(ans, sz,b ,qe.qtype,S_ANSWER,cb,udp,queryts,rrn,cached->rr[qe.qtype-T_MIN]->ts,
 				    cached->rr[qe.qtype-T_MIN]->ttl,cached->rr[qe.qtype-T_MIN]->flags)) 
 				return 0;
-			if (svan && sva && (i==T_NS || i==T_A || i==T_AAAA)) {
+			if (svan && sva && (qe.qtype==T_NS || qe.qtype==T_A || qe.qtype==T_AAAA)) {
 				/* mark it as added */
 				(*svan)++;
 				if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
@@ -462,7 +462,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 {
 	char aa=1;
 	unsigned char buf[256],bufr[256],oname[256];
-	sva_t *sva;
+	sva_t *sva=NULL;
 	int i,j,rc,rc6,hops,cont,cnc,svan=0;
 	unsigned long queryts=time(NULL);
 	rr_bucket_t *rr,*rr2,*at;
@@ -633,55 +633,59 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 		au=au->next;
 	}
 	/* Add the additional section */
-	sva=NULL;
-	svan=0;
 	for (i=0;i<AR_NUM;i++) {
-		at=cached->rr[ar_recs[i]-T_MIN]->rrs;
-		while (at) {
-			rhn2str(((unsigned char *)(at+1))+ar_offs[i],buf);
-			if ((ae=lookup_cache(buf))) {
+		if (cached->rr[ar_recs[i]-T_MIN]) {
+			at=cached->rr[ar_recs[i]-T_MIN]->rrs;
+			while (at) {
+				rhn2str(((unsigned char *)(at+1))+ar_offs[i],buf);
+				if ((ae=lookup_cache(buf))) {
 				/* Check if already added; no double additionals */
-				rc=1;
-				for (j=0;j<svan;j++) {
-					if (sva[j].tp==T_A && strcmp((char *)sva[j].nm,(char *)buf)==0) {
-						rc=0;
-						break;
+					rc=1;
+					for (j=0;j<svan;j++) {
+						if (sva[j].tp==T_A && strcmp((char *)sva[j].nm,(char *)buf)==0) {
+							rc=0;
+							break;
+						}
 					}
-				}
-				rc6=1;
-				for (j=0;j<svan;j++) {
-					if (sva[j].tp==T_AAAA && strcmp((char *)sva[j].nm,(char *)buf)==0) {
-						rc6=0;
-						break;
+					rc6=1;
+					for (j=0;j<svan;j++) {
+						if (sva[j].tp==T_AAAA && strcmp((char *)sva[j].nm,(char *)buf)==0) {
+							rc6=0;
+							break;
+						}
 					}
-				}
-				if (rc || rc6) {
-                                        /* add_rr will do nothing when sz>512 bytes. */
-					if ((rr=ae->rr[T_A-T_MIN]->rrs) && rc)
-						add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,(unsigned char *)(at+1),
-						       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
+					if (rc || rc6) {
+						/* add_rr will do nothing when sz>512 bytes. */
+						if (ae->rr[T_A-T_MIN] && rc) {
+							rr=ae->rr[T_A-T_MIN]->rrs;
+							add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,(unsigned char *)(at+1),
+							       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
+						}
 #ifdef DNS_NEW_RRS
-					if ((rr=ae->rr[T_AAAA-T_MIN]->rrs) && rc6)
-						add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,(unsigned char *)(at+1),
+						if (ae->rr[T_AAAA-T_MIN] && rc6) {
+							rr=ae->rr[T_AAAA-T_MIN]->rrs;
+							add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,(unsigned char *)(at+1),
 						       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
+						}
 #endif
-				        /* mark it as added */
-					svan++;
-					if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
-						free_cent(*cached);
-						free(cached);
-						if (cb)
-							free(cb);
-						return NULL;
+						/* mark it as added */
+						svan++;
+						if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+							free_cent(*cached);
+							free(cached);
+							if (cb)
+								free(cb);
+							return NULL;
+						}
+						sva[svan-1].tp=T_A;
+						strcpy((char *)sva[svan-1].nm,(char *)buf);
 					}
-					sva[svan-1].tp=T_A;
-					strcpy((char *)sva[svan-1].nm,(char *)buf);
-				}
-				free_cent(*ae);
-				free(ae);
+					free_cent(*ae);
+					free(ae);
 					
+				}
+				at=at->next;
 			}
-			at=at->next;
 		}
 	}
 	/*ar=cached->auth;*/
@@ -705,13 +709,17 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			}
 			if (rc || rc6) {
 				/* add_rr will do nothing when sz>512 bytes. */
-				if ((rr=ae->rr[T_A-T_MIN]->rrs) && rc)
+				if (ae->rr[T_A-T_MIN] && rc) {
+					rr=ae->rr[T_A-T_MIN]->rrs;
 					add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,ar->buf,
 					       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
+				}
 #ifdef DNS_NEW_RRS
-				if ((rr=ae->rr[T_AAAA-T_MIN]->rrs) && rc6)
+				if (ae->rr[T_AAAA-T_MIN] && rc6) {
+					rr=ae->rr[T_AAAA-T_MIN]->rrs;
 					add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,ar->buf,
 					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
+				}
 #endif
 				/* mark it as added */
 				svan++;

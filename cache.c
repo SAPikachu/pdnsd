@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #ifndef lint
-static char rcsid[]="$Id: cache.c,v 1.5 2000/06/03 21:15:11 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.6 2000/06/04 15:36:23 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -834,25 +834,35 @@ void add_cache(dns_cent_t cent)
 		/* We have a record; add the rrsets replacing old ones */
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
-			if (ce->rr[i]) {
-				del_cent_rrset(ce,i);
+			if (cent.rr[i]) {
+				if (ce->rr[i])
+					del_cent_rrset(ce,i);
+				rr=cent.rr[i]->rrs;
+				while (rr) {
+					if (!(rrb=create_rr(rr->rdlen, rr+1))) {
+						log_warn("Out of cache memory.");
+						unlock_cache_rw();
+						return;
+					} else {
+						add_cent_rr_int(ce,rrb,i+T_MIN,ce->rr[i]->ttl, ce->rr[i]->ts, ce->rr[i]->flags,0);
+					}
+					rr=rr->next;
+				}
 			}
-			if (!(rrb=create_rr(rr->rdlen, rr+1))) {
-				log_warn("Out of cache memory.");
-				unlock_cache_rw();
-				return;
-			} else {
-				add_cent_rr_int(ce,rrb,i+T_MIN,ce->rr[i]->ttl, ce->rr[i]->ts, ce->rr[i]->flags,0);
-			}
-			rr=rr->next;
 		}
 		cache_size+=ce->cs;
 	}
 
 	/* Add the rrs to the rr list */
 	for (i=0;i<T_MAX;i++) {
-		insert_rrl(ce->rr[i],ce,i+T_MIN);
-		rr=rr->next;
+		if (ce->rr[i]) 
+			if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+				log_warn("Out of cache memory.");
+				free_cent(cent);
+				unlock_cache_rw();
+				return;
+			}
+				
 	}
 
 	purge_cache((long)global.perm_cache*1024+MCSZ);
