@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.31 2001/05/22 18:04:59 tmm Exp $
+dnl $Id: configure.in,v 1.32 2001/09/23 13:41:23 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -262,25 +262,24 @@ if test "$target" = "autodetect" ; then
     AC_MSG_RESULT([failed])
     AC_MSG_ERROR([uname failed or was not found in path])
   else
-    if test "$uname_sys" = Linux ; then
+    case "${uname_sys}" in
+    Linux)
       AC_MSG_RESULT(Linux)
       AC_DEFINE(TARGET, TARGET_LINUX)
       target="Linux"
-    elif test "$uname_sys" = FreeBSD ; then
-      AC_MSG_RESULT(FreeBSD)
+      ;;
+    FreeBSD|NetBSD|OpenBSD)
+      AC_MSG_RESULT("${uname_sys}")
       AC_DEFINE(TARGET, TARGET_BSD)
       target="BSD"
-    elif test "$uname_sys" = OpenBSD -o $sys = NetBSD ; then
-      AC_MSG_RESULT([*BSD])
-      AC_MSG_WARN([pdnsd may not work with BSD Unices other than FreeBSD])
-      AC_DEFINE(TARGET, TARGET_BSD)
-      target="BSD"
-    else 
+      ;;
+    *)
       AC_MSG_RESULT([failed])
       AC_MSG_ERROR(
 [Your system type could not be identified. Try setting it manually using 
 --with-target])
-    fi	
+      ;;
+    esac	
   fi
 fi
 
