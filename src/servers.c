@@ -38,11 +38,12 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.2 2000/07/29 18:45:06 thomas Exp $";
 #endif
 
 /*
  * We may be a little over-strict with locks here. Never mind...
+ * Also, there may be some code-redundancy regarding uptests. It saves some locks, though.
  */
 
 pthread_t stt;
@@ -99,6 +100,24 @@ int uptest (servparm_t serv)
 	return ret;
 }
 
+/* Internal server test. Call with locks applied */
+static void retest(int i)
+{
+	int j;
+	time_t s_ts;
+	servparm_t srv;
+
+        /* Unlock the mutex because some of the tests may take a while. */
+	srv=servers[i];
+	pthread_mutex_unlock(&servers_lock);
+	s_ts=time(NULL);
+	j=uptest(srv);
+	pthread_mutex_lock(&servers_lock);
+	servers[i].is_up=j;
+	servers[i].i_ts=s_ts;
+	
+}
+
 /*
  * Refresh the server status by pinging or testing the interface in the given interval.
  * Note that you may get inaccuracies in the dimension of the ping timeout or the runtime
@@ -110,8 +129,7 @@ int uptest (servparm_t serv)
 void *servstat_thread(void *p)
 {
 	int i,j,all_none=1;
-	long s_ts;
-	servparm_t srv;
+	time_t s_ts;
 
 	(void)p; /* To inhibit "unused variable" warning */
 
@@ -135,14 +153,7 @@ void *servstat_thread(void *p)
 			pthread_mutex_lock(&servers_lock);
 			if (servers[i].interval>0 && (time(NULL)-servers[i].i_ts>servers[i].interval ||
 						      servers[i].i_ts>time(NULL))) { /* kluge for clock skew */
-				/* Unlock the mutex because some of the tests may take a while. */
-				srv=servers[i];
-				pthread_mutex_unlock(&servers_lock);
-				s_ts=time(NULL);
-				j=uptest(srv);
-				pthread_mutex_lock(&servers_lock);
-				servers[i].is_up=j;
-				servers[i].i_ts=s_ts;
+				retest(i);
 			}
 			pthread_mutex_unlock(&servers_lock);
 		}
@@ -171,9 +182,6 @@ void start_servstat_thread()
  */ 
 void mark_server_down(int idx)
 {
-	int j;
-	long s_ts;
-	servparm_t srv;
 	if (idx>=serv_num) {
 #if DEBUG>0
 		log_warn("Internal: server index out of range.");
@@ -185,14 +193,34 @@ void mark_server_down(int idx)
 		servers[idx].is_up=0;
 		servers[idx].i_ts=time(NULL);
 	} else if (servers[idx].uptest!=C_NONE) {
-		srv=servers[idx];
-		s_ts=time(NULL);
-		pthread_mutex_unlock(&servers_lock);
-		j=uptest(srv); /* retest */
-		pthread_mutex_lock(&servers_lock);
-		servers[idx].is_up=j;
-		servers[idx].i_ts=s_ts;
+		retest(idx);
 	}
+	pthread_mutex_unlock(&servers_lock);
+}
+
+/* Put a server up or down */
+void mark_server(int idx, int up)
+{
+	pthread_mutex_lock(&servers_lock);
+	servers[idx].is_up=up;
+	servers[idx].i_ts=time(NULL);
+	pthread_mutex_unlock(&servers_lock);
+}
+
+void perform_uptest(int idx)
+{
+	servparm_t srv;
+	time_t s_ts;
+	int j;
+
+	pthread_mutex_lock(&servers_lock);
+	srv=servers[idx];
+	s_ts=time(NULL);
+	pthread_mutex_unlock(&servers_lock);
+	j=uptest(srv);
+	pthread_mutex_lock(&servers_lock);
+	servers[idx].is_up=j;
+	servers[idx].i_ts=s_ts;
 	pthread_mutex_unlock(&servers_lock);
 }
 
@@ -201,20 +229,12 @@ void mark_server_down(int idx)
  */
 void test_onquery()
 {
-	int i,j;
-	long s_ts;
-	servparm_t srv;
+	int i;
 	
 	pthread_mutex_lock(&servers_lock);
 	for (i=0;i<serv_num;i++) {
 		if (servers[i].interval<0) {
-			srv=servers[i];
-			s_ts=time(NULL);
-			pthread_mutex_unlock(&servers_lock);
-			j=uptest(srv);
-			pthread_mutex_lock(&servers_lock);
-			servers[i].is_up=j;
-			servers[i].i_ts=s_ts;
+			retest(i);
 		}
 	}
 	pthread_mutex_unlock(&servers_lock);

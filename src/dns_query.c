@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.3 2000/07/29 18:45:06 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -739,7 +739,7 @@ static int p_query_sm(query_stat_t *st)
 		st->nstate=QSN_UDPTRANSMIT;
 		
 	case QSN_UDPTRANSMIT:
-		if (sendto(st->sock,st->hdr,ntohs(st->transl),MSG_DONTWAIT,st->sin,st->sinl)==-1) {
+		if (sendto(st->sock,st->hdr,ntohs(st->transl),0,st->sin,st->sinl)==-1) {
 			if (errno!=EAGAIN) {
 				close(st->sock);
 				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
@@ -1098,6 +1098,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		q->qs[q->num-1].a.sin4.sin_family=AF_INET;
 		q->qs[q->num-1].a.sin4.sin_port=htons(port);
 		q->qs[q->num-1].a.sin4.sin_addr=a->ipv4;
+		memset(&q->qs[q->num-1].a.sin4.sin_zero,0,sizeof(q->qs[q->num-1].a.sin4.sin_zero));
 		SET_SOCKA_LEN4(q->qs[q->num-1].a.sin4);
 		q->qs[q->num-1].s_offs=((char *)&q->qs[q->num-1].a.sin4)-((char *)&q->qs[q->num-1]);
 		q->qs[q->num-1].sinl=sizeof(struct sockaddr_in);
@@ -1109,6 +1110,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		q->qs[q->num-1].a.sin6.sin6_port=htons(port);
 		q->qs[q->num-1].a.sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		q->qs[q->num-1].a.sin6.sin6_addr=a->ipv6;
+		memset(&q->qs[q->num-1].a.sin6.sin6_zero,0,sizeof(q->qs[q->num-1].a.sin6.sin6_zero));
 		SET_SOCKA_LEN6(q->qs[q->num-1].a.sin6);
 		q->qs[q->num-1].s_offs=((char *)&q->qs[q->num-1].a.sin6)-((char *)&q->qs[q->num-1]);
 		q->qs[q->num-1].sinl=sizeof(struct sockaddr_in6);

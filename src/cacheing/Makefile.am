@@ -1,5 +1,11 @@
-# $Id: Makefile.am,v 1.2 2000/07/21 20:15:04 thomas Exp $
+# $Id: Makefile.am,v 1.3 2000/07/29 18:45:08 thomas Exp $
 
 EXTRA_DIST = cache.h
 
-SUBDIRS = native gdbm
+SUBDIRS = $(cachedbm)
+
+dist-hook:
+	for dbm in $(unuseddbms); do \
+	  cd $$dbm ; make distclean ; cd .. ; \
+	  cp -pr $$dbm $(distdir) ; \
+	done

@@ -32,22 +32,22 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.3 2000/07/29 18:45:05 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
 #ifdef ENABLE_IPV4
-globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600};
+globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme"};
 #else
-globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600};
+globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme"};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};
 #else
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","",0,0,1,1,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
 #endif
 
 int serv_num=0;
@@ -132,7 +132,7 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
 	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	for(i=0;i<serv_num;i++) {
-		fsprintf(f,"Server %i:\n------\n",i+1);
+		fsprintf(f,"Server %i:\n------\n",i);
 		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
 		fsprintf(f,"\tport: %hu\n",servers[i].port);
 		fsprintf(f,"\tuptest: %i\n",servers[i].uptest);
@@ -143,9 +143,11 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tinterface: %s\n",servers[i].interface);
 		fsprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
 		fsprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
+		if (servers[i].scheme[0])
+			fprintf(f,"\tscheme: %s\n", servers[i].scheme);
 		fsprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
 		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
-		fsprintf(f,"\tlean query: %i\n",!servers[i].lean_query);
+		fsprintf(f,"\tlean query: %i\n",servers[i].lean_query);
 		fsprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
 	}
 }

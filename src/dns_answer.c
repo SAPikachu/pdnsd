@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.3 2000/07/29 18:45:06 thomas Exp $";
 #endif
 
 /*
@@ -1055,6 +1055,7 @@ int init_udp_socket()
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
+		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 		sin=(struct sockaddr *)&sin4;
 		sinl=sizeof(sin4);
@@ -1070,6 +1071,7 @@ int init_udp_socket()
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=global.a.ipv6;
+		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 		sin=(struct sockaddr *)&sin6;
 		sinl=sizeof(sin6);
@@ -1127,6 +1129,7 @@ void *udp_server_thread(void *dummy)
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
+		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 	}
 #endif
@@ -1136,6 +1139,7 @@ void *udp_server_thread(void *dummy)
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=global.a.ipv6;
+		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 	}
 #endif
@@ -1147,7 +1151,7 @@ void *udp_server_thread(void *dummy)
 		if (da_udp_errs<UDP_MAX_ERRS) {
 			da_udp_errs++;
 			log_error("Could not set options on udp socket: %s",strerror(errno));
-			}
+		}
 		close(sock);
 		udp_socket=-1;
 		udp_up=0;
@@ -1415,6 +1419,7 @@ int init_tcp_socket()
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
+		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 		sin=(struct sockaddr *)&sin4;
 		sinl=sizeof(sin4);
@@ -1431,6 +1436,7 @@ int init_tcp_socket()
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=in6addr_any;
 		sin6.sin6_addr=global.a.ipv6;
+		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 		sin=(struct sockaddr *)&sin6;
 		sinl=sizeof(sin6);

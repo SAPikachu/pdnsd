@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#if CACHE_DBM==DBM_NATIVE
+/*#if CACHE_DBM==DBM_NATIVE*/
 
 #include <config.h>
 #include <stdlib.h>
@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.2 2000/07/21 21:55:46 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.3 2000/07/29 18:45:11 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -957,7 +957,7 @@ void del_cache(unsigned char *name)
 	dns_cent_t *ce;
 	
 	lock_cache_rw();
-	if ((ce=lookup_cache(name))) {
+	if ((ce=dns_lookup(&dns_hash,name))) {
 		del_cache_int(ce);
 	}
 	unlock_cache_rw();
@@ -972,7 +972,7 @@ void invalidate_record(unsigned char *name)
 	int i;
 	
 	lock_cache_rw();
-	if ((ce=lookup_cache(name))) {
+	if ((ce=dns_lookup(&dns_hash,name))) {
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i+T_MIN]) {
 				ce->rr[i+T_MIN]->ts=0;
@@ -1072,4 +1072,4 @@ void report_cache_stat(int f)
 	fsprintf(f,"%li of %lu bytes (%lu%%) memory cache used in %lu entries.\n",cache_size,mc,csz,ent_num);
 }
 
-#endif
+/*#endif*/

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.3 2000/07/29 18:45:05 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -50,6 +50,7 @@ unsigned char c_name[256];
 unsigned long c_ttl;
 int c_aliases;
 unsigned char buf[532];
+char errbuf[256];
 int sz,tp;
 struct in_addr ina4;
 
@@ -82,6 +83,7 @@ unsigned char *nm;
 %token <num> CACHE_DIR
 %token <num> SERVER_PORT
 %token <num> SERVER_IP
+%token <num> SCHEME_FILE
 %token <num> LINKDOWN_KLUGE
 %token <num> MAX_TTL
 %token <num> RUN_AS
@@ -99,6 +101,7 @@ unsigned char *nm;
 
 %token <num> IP
 %token <num> PORT
+%token <num> SCHEME
 %token <num> UPTEST
 %token <num> TIMEOUT
 %token <num> PING_TIMEOUT
@@ -109,6 +112,7 @@ unsigned char *nm;
 %token <num> PURGE_CACHE
 %token <num> CACHING
 %token <num> LEAN_QUERY
+%token <num> PRESET
 
 %token <num> A
 %token <num> PTR
@@ -228,6 +232,11 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					YYERROR;
 				}
  			}
+		| SCHEME_FILE '=' STRING ';'
+                        {
+                                strncpy(global.scheme_file,(char *)$3,MAXPATH-1);
+                                global.scheme_file[MAXPATH-1]='\0';
+                        }
 		| LINKDOWN_KLUGE '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {
@@ -353,6 +362,12 @@ serv_el:	IP '=' STRING ';'
 			{
 				server.port=$3;
 			}
+		| SCHEME '=' STRING ';'
+			{
+				strncpy(server.scheme,(char *)$3,32);
+				server.scheme[31]='\0';
+
+			}
 		| UPTEST '=' CONST ';'
 			{
 				if ($3==C_PING || $3==C_NONE || $3==C_IF || $3==C_EXEC) {
@@ -427,10 +442,19 @@ serv_el:	IP '=' STRING ';'
 			}
 		| LEAN_QUERY '=' CONST ';'
 			{
-				if ($3==C_ON || $3==C_OFF) {
+				if ($3==C_ON || $3==C_ON) {
 					server.lean_query=($3==C_OFF);
 				} else {
 					yyerror("bad qualifier in lean_query= option.");
+					YYERROR;
+				}
+			}
+		| PRESET '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_ON) {
+					server.is_up=($3==C_OFF);
+				} else {
+					yyerror("bad qualifier in is_up= option.");
 					YYERROR;
 				}
 			}
@@ -577,7 +601,8 @@ source_el:	OWNER '=' STRING ';'
 					yyerror("you must specify owner before file= in source records.");
 					YYERROR;
 				}
-				read_hosts((char *)$3, c_owner, c_ttl, c_aliases);
+				if (!read_hosts((char *)$3, c_owner, c_ttl, c_aliases,errbuf,256))
+					fprintf(stderr,errbuf);
 			}
 		| SERVE_ALIASES '=' CONST ';'
 			{

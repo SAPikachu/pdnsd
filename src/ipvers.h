@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
+/* $Id: ipvers.h,v 1.3 2000/07/29 18:45:06 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 # error "You need to define either or both of ENABLE_IPV4 and ENABLE_IPV6. Look into your config.h.templ"
 #endif
 
-#if DEFAULT_IPV4==0 && DEFAULT_IPV6==1
+#if DEFAULT_IPV4==0 && DEFAULT_IPV6==0
 # error "You need to set either IPV4_DEFAULT or IPV6_DEFAULT to 1. Look into your config.h.templ"
 #endif
 

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#if CACHE_DBM==DBM_NATIVE
+/*#if CACHE_DBM==DBM_NATIVE*/
 
 #include "config.h"
 #include <stdlib.h>
@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.1 2000/07/21 20:04:41 thomas Exp $";
+static char rcsid[]="$Id: hash.c,v 1.2 2000/07/29 18:45:11 thomas Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
@@ -230,5 +230,5 @@ dns_cent_t *fetch_next(dns_hash_t *hash, dns_hash_pos_t *pos)
 	return NULL;
 }
 
-#endif
+/*#endif*/
 

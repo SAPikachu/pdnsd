@@ -1,8 +1,9 @@
-$Id: THANKS,v 1.11 2000/07/21 20:04:35 thomas Exp $
+$Id: THANKS,v 1.12 2000/07/29 18:45:02 thomas Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
 
+Stephan Boettcher
 Joachim Dorner
 Bert Frederiks
 Mike Hammer

@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.3 2000/07/29 18:45:05 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -313,7 +313,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 /*
  * Read a file in /etc/hosts-format and add generate rrs for it.
  */
-void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
+char *read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize)
 {
 	FILE *f;
 	unsigned char buf[1025];
@@ -326,8 +326,8 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 
 	buf[1023]='\0';
 	if (!(f=fopen(fn,"r"))) {
-		fprintf(stderr, "Failed to source %s: %s\n", fn, strerror(errno));
-		return;
+		snprintf(errbuf, errsize, "Failed to source %s: %s\n", fn, strerror(errno));
+		return 0;
 	}
 	while (!feof(f)) {
 		fgets((char *)buf,1023,f);
@@ -401,6 +401,7 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 		}
 	}
 	fclose(f);
+	return 1;
 }
 
 

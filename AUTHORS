@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.8 2000/07/21 20:04:35 thomas Exp $
+$Id: AUTHORS,v 1.9 2000/07/29 18:45:02 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -10,6 +10,7 @@ others. The GNU C library (glibc) is copyright by the Free Software
 Foundation.
 
 The following people have contributed code:
+Stephan Boettcher	contributed the SCHEME= option.
 Torben Janssen		contributed RedHat rc scripts
 Sourav K. Mandal	contributed the autoconf/automake code, gdbm
 			caching facility and many suggestions

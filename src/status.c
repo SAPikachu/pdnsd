@@ -33,10 +33,11 @@ Boston, MA 02111-1307, USA.  */
 #include "status.h"
 #include "cacheing/cache.h"
 #include "error.h"
+#include "servers.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.3 2000/07/21 21:55:35 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.4 2000/07/29 18:45:06 thomas Exp $";
 #endif
 
 char fifo_path[1024]="/tmp/.pdnsd-status";
@@ -50,7 +51,53 @@ void print_serr(int rs, char *msg)
 
 	cmd=htons(1);
 	write(rs,&cmd,sizeof(cmd));
-	fsprintf(rs,"Server index out of range.");
+	fsprintf(rs,msg);
+}
+
+/* Print an success msg socket */
+void print_succ(int rs)
+{
+	short cmd;
+
+	cmd=htons(0);
+	write(rs,&cmd,sizeof(cmd));
+}
+
+/* Read a cmd short */
+short read_cmd(int fh)
+{
+	short cmd;
+
+	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd))
+		return -2;
+	return ntohs(cmd);
+}
+
+/* Read a cmd long */
+long read_long(int fh)
+{
+	long cmd;
+
+	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd))
+		return -2;
+	return ntohl(cmd);
+}
+
+/* Read a zero-terminated string of maximum len. Len must be >1 */
+short fsgets(int fh, char *buf, int len)
+{
+	int i=0;
+	char c='a';
+
+	do {
+		if (read(fh,&c,sizeof(c))!=sizeof(c))
+			return 0;
+		buf[i]=c;
+		i++;
+		if (i>=len && c!='\0')
+			return 0;
+	} while (c!='\0');
+	return 1;
 }
 
 /*
@@ -59,11 +106,17 @@ void print_serr(int rs, char *msg)
  */
 void *status_thread (void *p)
 {
-	int sock,rs;
+	int sock,rs,sz,i;
 	socklen_t res;
 	struct utsname nm;
 	short cmd,cmd2;
 	struct sockaddr_un a,ra;
+	char fn[1025];
+	char buf[257],dbuf[256];
+	char errbuf[256];
+	char owner[256];
+	long ttl;
+	dns_cent_t cent;
 
 	THREAD_SIGINIT;
 
@@ -113,13 +166,158 @@ void *status_thread (void *p)
 				report_conf_stat(rs);
 				break;
 			case CTL_SERVER:
-				read(rs,&cmd,sizeof(cmd));
-				cmd=ntohs(cmd);
-				read(rs,&cmd2,sizeof(cmd2));
-				cmd2=ntohs(cmd2);
-				if (cmd<0 || cmd>=serv_num) {
+				DEBUG_MSG1("Received SERVER command.\n");
+				if ((cmd=read_cmd(rs))<-1)
+					break;
+				if ((cmd2=read_cmd(rs))<0)
+					break;
+				if (cmd<-1 || cmd>=serv_num) {
 					print_serr(rs,"Server index out of range.");
 				}
+				switch (cmd2) {
+				case CTL_S_UP:
+					if (cmd==-1) 
+						for (i=0;i<serv_num;i++) {
+							mark_server(i,1);
+						}
+					else 
+						mark_server(cmd,1);
+					print_succ(rs);
+					break;
+				case CTL_S_DOWN:
+					if (cmd==-1) 
+						for (i=0;i<serv_num;i++) {
+							mark_server(i,0);
+						}
+					else
+						mark_server(cmd,0);
+					print_succ(rs);
+					break;
+				case CTL_S_RETEST:
+					if (cmd==-1) 
+						for (i=0;i<serv_num;i++) {
+							perform_uptest(i);
+						}
+					else
+						perform_uptest(cmd);
+					print_succ(rs);
+					break;
+				default:
+					print_serr(rs,"Bad command.");
+				}
+				break;
+			case CTL_RECORD:
+				DEBUG_MSG1("Received RECORD command.\n");
+				if ((cmd=read_cmd(rs))<0)
+					break;
+				if (!fsgets(rs,buf,256)) {
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if (buf[strlen(buf)-1]!='.') {
+					buf[strlen(buf)+1]='\0';
+					buf[strlen(buf)]='.';
+				}					
+				switch (cmd) {
+				case CTL_R_DELETE:
+					del_cache((unsigned char*)buf);
+					print_succ(rs);
+					break;
+				case CTL_R_INVAL:
+					invalidate_record((unsigned char*)buf);
+					print_succ(rs);
+					break;
+				default:
+					print_serr(rs,"Bad command.");
+				}
+				break;
+			case CTL_SOURCE:
+				DEBUG_MSG1("Received SOURCE command.\n");
+				if (!fsgets(rs,fn,1024)) {
+					print_serr(rs,"Bad filename name.");
+					break;
+				}
+				if (!fsgets(rs,buf,256)) {
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if (buf[strlen(buf)-1]!='.') {
+					buf[strlen(buf)+1]='\0';
+					buf[strlen(buf)]='.';
+				}					
+				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if ((ttl=read_long(rs))<0)
+					break;
+				if ((cmd=read_cmd(rs))<0)
+					break;
+				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd,errbuf,256))
+					print_succ(rs);
+				else
+					print_serr(rs,errbuf);
+				break;
+			case CTL_ADD:
+				DEBUG_MSG1("Received ADD command.\n");
+				if ((cmd=read_cmd(rs))<0)
+					break;
+				if (!fsgets(rs,buf,256)) {
+					print_serr(rs,"Bad owner name.");
+					break;
+				}
+				if (buf[strlen(buf)-1]!='.') {
+					buf[strlen(buf)+1]='\0';
+					buf[strlen(buf)]='.';
+				}
+				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if ((ttl=read_long(rs))<0)
+					break;
+
+				sz=-1;
+				switch (cmd) {
+				case T_A:
+					if (read(rs,dbuf,sizeof(struct in_addr))<sizeof(struct in_addr)) {
+						print_serr(rs,"Bad arg.");
+					}
+					sz=sizeof(struct in_addr);
+					break;
+#ifdef ENABLE_IPV6
+				case T_AAAA:
+					if (read(rs,dbuf,sizeof(struct in6_addr))<sizeof(struct in6_addr)) {
+						print_serr(rs,"Bad arg.");
+					}
+					sz=sizeof(struct in6_addr);
+					break;
+#endif
+				case T_PTR:
+					if (!fsgets(rs,owner,256)) {
+						print_serr(rs,"Bad domain name.");
+						break;
+					}
+					if (!str2rhn((unsigned char *)owner,(unsigned char *)dbuf)) {
+						print_serr(rs,"Bad domain name.");
+						break;
+					}
+					sz=strlen(dbuf)+1;;
+					break;
+				default:
+					print_serr(rs,"Bad arg.");
+					break;
+				}
+				if (sz<0)
+					break;
+			
+				if (!init_cent(&cent, (unsigned char *)buf)) {
+					print_serr(rs,"Out of memory");
+					break;
+				}
+				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd);
+				add_cache(cent);
+				print_succ(rs);
 				break;
 			default:
 				print_serr(rs,"Unknown command.");

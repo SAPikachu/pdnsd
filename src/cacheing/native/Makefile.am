@@ -1,8 +1,7 @@
-# $Id: Makefile.am,v 1.2 2000/07/21 20:15:09 thomas Exp $
+# $Id: Makefile.am,v 1.3 2000/07/29 18:45:11 thomas Exp $
 
-EXTRA_DIST = cache.c hash.h hash.c
+CFLAGS += -I.. -I../..
 
-all: cache.o hash.o
+noinst_LIBRARIES = libcache.a
 
-%o: %c
-	$(CC) $(DEFS) -I../.. -I../../.. $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o $@ $<
+libcache_a_SOURCES = cache.c hash.c hash.h
