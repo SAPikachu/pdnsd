@@ -2,7 +2,12 @@
 #
 # Server regression testing for pdnsd.
 #
-# $Id: srv-test.sh,v 1.1 2001/04/12 01:29:36 tmm Exp $
+# $Id: srv-test.sh,v 1.2 2001/05/19 15:14:25 tmm Exp $
+
+err() {
+    echo 'Failed.'
+    exit 1;
+};
 
 DIR=`dirname $0`
 if [ -z "DIR" ] ; then
@@ -12,8 +17,7 @@ fi
 TMPFILE=`mktemp /tmp/pdnsd.conf.XXXXXX`
 if [ $? -ne 0 ]; then
     echo "$0: Can't create temp file, exiting..."
-    echo "Failed."
-    exit 1
+    err
 fi
 
 cat > $TMPFILE <<EOF
@@ -98,12 +102,12 @@ $DIR/../pdnsd -d -c $TMPFILE -s
 
 sleep 5
 
-$DIR/../pdnsd-ctl/pdnsd-ctl status || echo 'Failed.'; exit 1;
+$DIR/../pdnsd-ctl/pdnsd-ctl status || err
 
 if ps aux | grep pdnsd | grep -v grep > /dev/null ; then
     killall pdnsd
 else
-    echo 'Failed.'; exit 1; 
+    err
 fi
 
 rm $TMPFILE

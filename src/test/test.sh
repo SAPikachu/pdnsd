@@ -2,9 +2,12 @@
 #
 # Regression testing for pdnsd.
 #
-# $Id: test.sh,v 1.1 2001/04/12 01:29:36 tmm Exp $
+# $Id: test.sh,v 1.2 2001/05/19 15:14:25 tmm Exp $
 
-ERR="{ echo 'Failed.'; exit 1; }"
+err() {
+    echo 'Failed.'
+    exit 1;
+};
 
 DIR=`dirname $0`
 if [ -z "DIR" ] ; then

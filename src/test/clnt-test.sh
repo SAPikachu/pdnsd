@@ -2,27 +2,40 @@
 #
 # Client regression testing for pdnsd.
 #
-# $Id: clnt-test.sh,v 1.3 2001/04/12 18:48:56 tmm Exp $
+# $Id: clnt-test.sh,v 1.4 2001/05/19 15:14:25 tmm Exp $
 
+SERVER=192.168.0.50
+
+# The following programs are needed:
+# dig   - queries
+# nmap  - test the effect of immediately closed connections
+# dd/nc - pipe some random data as query to pdnsd (robustness test)
 DIG=/usr/bin/dig
-ERR="{ echo "Failed."; exit 1; }"
+NMAP=/usr/local/bin/nmap
+DD=/bin/dd
+NC=/usr/local/bin/nc
 
-$DIG www.gmx.de || $ERR
-$DIG gmx.net NS || $ERR
-$DIG www.dents.org || $ERR
-$DIG slashdot.org MX || $ERR
-$DIG www.v6.itojun.org AAAA || $ERR
+err() {
+    echo 'Failed.'
+    exit 1;
+};
+
+$DIG @$SERVER www.gmx.de || $ERR
+$DIG @$SERVER gmx.net NS || $ERR
+$DIG @$SERVER www.dents.org || $ERR
+$DIG @$SERVER slashdot.org MX || $ERR
+$DIG @$SERVER www.v6.itojun.org AAAA || $ERR
 
 # Some things that should not work.
-$DIG version.bind chaos txt
-$DIG local AXFR
-$DIG local IXFR
+$DIG @$SERVER version.bind chaos txt
+$DIG @$SERVER local AXFR
+$DIG @$SERVER local IXFR
 
-nmap -sT 192.168.0.50
+$NMAP -sT $SERVER
 
-dd if=/dev/random | nc 192.168.0.50 53
+$DD if=/dev/random | $NC $SERVER 53
 
 # Test that the server is still alive.
-$DIG www.gmx.de A || $ERR
+$DIG @$SERVER www.gmx.de A || $ERR
 
 echo "Succeeded."
