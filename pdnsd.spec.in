@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.6 2000/11/25 23:09:51 thomas Exp $
+# $Id: pdnsd.spec.in,v 1.7 2001/02/09 23:14:11 thomas Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -39,9 +39,14 @@ FILES=$(find . | sed 's/^\.//' \
   | grep -v pdnsd.conf \
   | grep -v '/usr/doc' \
   | grep -v '/usr/share/doc' \
-  | grep -v '/var') ; \
+  | grep -v '/var') ;
 for FILE in $FILES; do \
-  [ ! -d "$FILE" ] && echo $FILE >> $CURDIR/file-list ; \
+  if [ ! -d "$FILE" ] ; then \
+    if echo $FILE | grep -v '\.gz$' | grep -q man ; then \
+      FILE="$FILE.gz" ; \
+    fi ; \
+    echo $FILE >> $CURDIR/file-list ; \
+  fi ; \
 done
 
 %clean
@@ -64,6 +69,9 @@ if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then
 fi
 
 %changelog
+* Fri Feb 09 2001 Thomas Moestl <tmoestl@gmx.net>
+- Merged in a spec fix for mapage inclusion contributed by Sourav K.
+  Mandal
 * Sun Nov 26 2000 Thomas Moestl <tmoestl@gmx.net>
 - Added some patches contributed by Bernd Leibing
 * Tue Aug 15 2000 Thomas Moestl <tmoestl@gmx.net>
