@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# $Id: pdnsd,v 1.1 2000/07/20 20:03:17 thomas Exp $
+#
+#	/etc/rc.d/init.d/pdnsd
+#
+# Starts the Proxy DNS Daemon
+#
+# tested on Redhat 6.1 should work on 5.0+
+# chkconfig: 345 87 14
+# description: Proxy DNS Daemon
+#
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+test -x /usr/sbin/pdnsd || exit 0
+
+RETVAL=0
+
+#
+#	See how we were called.
+#
+case "$1" in
+  start)
+	echo -n 'Starting pdnsd: '
+	daemon /usr/sbin/pdnsd -d
+	RETVAL=$? 
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/pdnsd
+	echo
+	;;
+  stop)
+	echo -n 'Shutting down pdnsd: '
+	killproc pdnsd 
+	RETVAL=$? 
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/pdnsd
+	echo
+	;;
+  status)
+    status pdnsd
+  	exit $?
+	;;
+  reload|restart)
+	$0 stop
+	$0 start
+	RETVAL=$?
+  	;;
+  *)
+	echo "Usage: /etc/rc.d/init.d/pdnsd {start|stop|status|restart|reload}"
+	exit 1
+esac
+
+exit $RETVAL

@@ -1,0 +1,44 @@
+// $Id: pdnsd.conf.in,v 1.1 2000/07/20 20:03:08 thomas Exp $
+
+global {
+	perm_cache=512;
+	cache_dir=@cachedir@;
+	max_ttl=604800;
+	run_as=@def_id@;
+	paranoid=on;
+#	server_port=53;
+#	server_ip="127.0.0.1";
+}
+
+server {
+	ip="192.168.0.1";
+	timeout=30;
+	interval=30;
+	uptest=ping;
+	ping_timeout=50;
+	purge_cache=off;
+}
+
+source {
+	ttl=86400;
+	owner="localhost.";
+#	serve_aliases=on;
+	file="/etc/hosts";
+}
+
+/*
+rr {
+	ttl=86400;
+	owner="localhost.";
+	name="localhost.";
+	a="127.0.0.1";
+	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+}
+
+rr {
+	ttl=86400;
+	owner="localhost.";
+	name="1.0.0.127.in-addr.arpa.";
+	ptr="localhost.";
+	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+} */

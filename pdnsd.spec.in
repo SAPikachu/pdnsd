@@ -1,0 +1,67 @@
+# $Id: pdnsd.spec.in,v 1.1 2000/07/20 20:03:05 thomas Exp $
+%define name  @PACKAGE@
+%define ver      @VERSION@
+%define rel 1
+%define prefix  /usr
+%define distro @distribution@
+
+Summary: A caching dns proxy for small networks or dialin accounts
+Name: %{name}
+Version: %ver
+Release: %rel
+Copyright: GPL
+Group:  Daemons
+Source: %{name}-%{ver}.tar.gz
+URL: http://home.t-online.de/home/Moestl/
+Vendor: Thomas Moestl
+Distribution: %{distro}
+Prefix: %{prefix} 
+BuildRoot: /var/tmp/%{name}-%{ver}-%{rel}-rpm-buildroot
+
+%description
+pdnsd is a proxy DNS daemon with permanent (disk-)cache and the ability
+to serve local records. It is designed to detect network outages or hangups
+and to prevent DNS-dependent applications like Netscape Navigator from hanging.
+
+%prep
+%setup
+
+%build
+./configure --prefix=%{prefix}
+%__make
+
+%install
+%__make DESTDIR=${RPM_BUILD_ROOT} install; \
+cp -f file-list.base file-list ; \
+CURDIR=`pwd`; cd ${RPM_BUILD_ROOT} ; \
+FILES=$(find . | sed 's/^\.//' \
+  | grep -v pdnsd.conf \
+  | grep -v '/usr/doc' \
+  | grep -v '/var') ; \
+for FILE in $FILES; do \
+  [ ! -d "$FILE" ] && echo $FILE >> $CURDIR/file-list ; \
+done
+
+%clean
+if [ -O "$RPM_BUILD_ROOT" -a "$RPM_BUILD_ROOT" != "/" -a "$RPM_BUILD_ROOT" != "$HOME" ]; then
+  echo "Deleting build root $RPM_BUILD_ROOT"
+  rm -rf "$RPM_BUILD_ROOT"
+fi
+rm -rf ${RPM_BUILD_DIR}/%{name}-%{ver}
+
+%files -f file-list
+
+%post
+if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then 
+  grep "START_PDNSD" /etc/rc.config > /dev/null
+  if [ $$? -ne 0 ] ; then
+    echo -e \
+"\n\n#\n# Set to yes to start pdnsd at boot time\n#\nSTART_PDNSD=yes" \
+>> /etc/rc.config
+  fi
+fi
+
+%changelog
+* Tue Jul 11 2000 Sourav K. Mandal <smandal@mit.edu>
+- autoconf/automake modifications
+

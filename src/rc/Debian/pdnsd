@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# $Id: pdnsd,v 1.1 2000/07/20 20:03:15 thomas Exp $
+#
+# This script was written and contributed by Markus Mohr, and
+# slightly modified by me for version 1.0.6.
+#
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+test -x /usr/sbin/pdnsd || exit 0
+
+case "$1" in
+    start)
+	echo -n "Starting domain name service: pdnsd"
+	if start-stop-daemon --test --quiet  --pidfile /var/run/pdnsd.pid
+        then
+		echo " already running."
+		exit
+	fi
+	start-stop-daemon --start --quiet --exec /usr/sbin/pdnsd -- --daemon -p /var/run/pdnsd.pid 
+	echo "."	
+    ;;
+
+    stop)
+	echo -n "Stopping domain name service: pdnsd"
+        if start-stop-daemon --stop --quiet  --pidfile /var/run/pdnsd.pid
+        then
+                echo " not running."
+                exit
+        fi
+#	start-stop-daemon --stop --quiet  --exec /usr/sbin/pdnsd
+	echo "."	
+    ;;
+
+    restart)
+        $0 stop
+	$0 start
+    ;;
+    
+    *)
+	echo "Usage: /etc/init.d/pdns {start|stop|restart}" >&2
+	exit 1
+    ;;
+esac
+
+exit 0
