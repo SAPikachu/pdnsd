@@ -32,13 +32,13 @@ Boston, MA 02111-1307, USA.  */
 #include "y.tab.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.5 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.6 2000/06/12 14:37:06 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
-globparm_t global={2048,CACHEDIR,53};
+globparm_t global={2048,CACHEDIR,53,0};
 servparm_t server;
 #ifdef ENABLE_IPV4
 servparm_t serv_presets={53,C_NONE,120,900,600,"","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};
@@ -108,13 +108,9 @@ void report_conf_stat(FILE *f)
 	fprintf(f,"\tCache size: %li kB\n",global.perm_cache);
 	fprintf(f,"\tServer directory: %s\n",global.cache_dir);
 	fprintf(f,"\tServer port: %i\n",global.port);
+	fprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
 	for(i=0;i<serv_num;i++) {
-		fprintf(f,"Server %i:\n---------",i+1);
-		if (i>=9)
-			fprintf(f,"-");
-		if (i>=99)
-			fprintf(f,"-");
-		fprintf(f,"\n");
+		fprintf(f,"Server %i:\n------\n",i+1);
 		fprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
 		fprintf(f,"\tport: %hu\n",servers[i].port);
 		fprintf(f,"\tuptest: %i\n",servers[i].uptest);
@@ -124,11 +120,7 @@ void report_conf_stat(FILE *f)
 		fprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
 		fprintf(f,"\tinterface: %s\n",servers[i].interface);
 		fprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
-		if (servers[i].uptest_usr[0]=='\0') {
-			fprintf(f,"\tuptest user: (process owner)\n");
-		} else {
-			fprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr);
-		}
+		fprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
 		fprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
 		fprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
 		fprintf(f,"\tlean query: %i\n",!servers[i].lean_query);

@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.11 2000/06/05 19:01:02 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.12 2000/06/12 14:37:06 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -124,7 +124,7 @@ void del_cache_int(dns_cent_t *cent);
  * read operations do not have to wait for the read lock to clear and thus stuff the readlock close.
  * Lets see.
  */
-static INLINE void lock_cache_r(void)
+static void lock_cache_r(void)
 {
 	int lk=0;
 	while (!lk)  {
@@ -139,7 +139,7 @@ static INLINE void lock_cache_r(void)
 	}
 }
 
-static INLINE void unlock_cache_r(void)
+static void unlock_cache_r(void)
 {
 	pthread_mutex_lock(&lock_mutex);
 	if (cache_r_lock>0) 
@@ -153,7 +153,7 @@ static INLINE void unlock_cache_r(void)
  * DO NOT MIX THE LOCK TYPES UP WHEN LOCKING/UNLOCKING!
  * (cant say it often enough)
  */
-static INLINE void lock_cache_rw(void)
+static void lock_cache_rw(void)
 {
 	int lk=0;
 	while (!lk)  {
@@ -168,7 +168,7 @@ static INLINE void lock_cache_rw(void)
 	}
 }
 
-static INLINE void unlock_cache_rw(void)
+static void unlock_cache_rw(void)
 {
 	pthread_mutex_lock(&lock_mutex);
 	cache_w_lock=0;
@@ -465,7 +465,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
  * If the record is in the cache, we need rw-locks applied.
  * returns the size of the freed memory.
  */
-static INLINE int purge_rrset(dns_cent_t *cent, int tp)
+static int purge_rrset(dns_cent_t *cent, int tp)
 {
 	if (cent->rr[tp-T_MIN] && !(cent->rr[tp-T_MIN]->flags&CF_NOPURGE || cent->rr[tp-T_MIN]->flags&CF_LOCAL) &&
 	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl<time(NULL)) {
@@ -902,7 +902,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 {
 	dns_cent_t *ret;
 	rr_bucket_t *rrb;
-	int rv;
+	int rv=0;
 	int had=0;
 	lock_cache_rw();
 	if ((ret=dns_lookup(&dns_hash,name))) {
@@ -918,18 +918,15 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 		if (!ret->rr[tp-T_MIN] || ret->rr[tp-T_MIN]->serial==serial) {
 			if (ret->rr[tp-T_MIN])
 				had=1;
-			if (!(rrb=create_rr(dlen,data)))
-				rv=0;
-			else {
+			if ((rrb=create_rr(dlen,data))) {
 				if (!add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial)) {
 					free_rr(*rrb);
 					free(rrb);
-					rv=0;
 				} else {
 					if (had) {
 						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp)) {
 							unlock_cache_rw();
-							return rv;
+							return 0;
 						}
 					}
 					purge_cent(ret);
@@ -938,8 +935,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 			}
 		} else
 			rv=1;
-	} else
-		rv=0;
+	}
 	unlock_cache_rw();
 	return rv;
 }

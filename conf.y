@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.4 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.5 2000/06/12 14:37:06 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -80,6 +80,7 @@ unsigned char *nm;
 %token <num> PERM_CACHE
 %token <num> CACHE_DIR
 %token <num> SERVER_PORT
+%token <num> LINKDOWN_KLUGE
 
 %token <num> IP
 %token <num> PORT
@@ -197,6 +198,15 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			{
 				global.port=$3;
 			}
+		| LINKDOWN_KLUGE '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					global.lndown_kluge=($3==C_ON);
+				} else {
+					yyerror("bad qualifier in linkdown_kluge= option.");
+					YYERROR;
+				}
+			}
 		;
 
 serv_s:		/* empty */		{}
@@ -281,7 +291,7 @@ serv_el:	IP '=' STRING ';'
 				if ($3==C_ON || $3==C_OFF) {
 					server.nocache=($3==C_OFF);
 				} else {
-					yyerror("Bad qualifier in caching= option.");
+					yyerror("bad qualifier in caching= option.");
 					YYERROR;
 				}
 			}
@@ -290,7 +300,7 @@ serv_el:	IP '=' STRING ';'
 				if ($3==C_ON || $3==C_OFF) {
 					server.lean_query=($3==C_OFF);
 				} else {
-					yyerror("Bad qualifier in lean_query= option.");
+					yyerror("bad qualifier in lean_query= option.");
 					YYERROR;
 				}
 			}
@@ -321,7 +331,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				if (!str2rhn($3,c_owner)) {
-					yyerror("Bad domain name - must end in root domain.");
+					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
 				if (c_name[0]!='\0') {

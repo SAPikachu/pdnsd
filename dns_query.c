@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.8 2000/06/10 12:50:03 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.9 2000/06/12 14:37:06 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -962,7 +962,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	int aa_needed;
 	pdnsd_a serva;
 	int aa=0;
-	int i,j,k,rv,ad,mc,qo,se,done,nons;
+	int i,j,k,ad,mc,qo,se,done,nons;
+	int rv=0;
 	dns_cent_t *nent,*servent;
 	query_serv_t serv;
 	unsigned char nsbuf[256],nsname[256];
@@ -1123,7 +1124,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 /* 
  * following the resolvers. Some take a list of servers for parallel query. The others query the servers supplied by the user.
  */
-int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
+static int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
 	int dummy;
 	if (p_recursive_query(q, rrn, name,cached, &dummy, hops, thint)==RC_OK) {
@@ -1132,17 +1133,15 @@ int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned char *rrn 
 	return RC_NAMEERR;          /* Could not find a record on any server */
 } 
 
-int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
+static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
 	int i,rc;
 	int one_up=0;
 	query_serv_t serv;
-	/* first, update records set onquery */
-	test_onquery();
 	/* try the servers in the order of their definition */
 	init_qserv(&serv);
 	for (i=0;i<serv_num;i++) {
-		if (servers[i].is_up==1) {
+		if (servers[i].is_up) {
 			add_qserv(&serv, &servers[i].a, servers[i].port, servers[i].timeout, i, mk_flag_val(&servers[i]),servers[i].nocache,thint,servers[i].lean_query);
 			one_up=1;
 		}
@@ -1180,6 +1179,19 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	int i,nopurge=0;
 	short flags=0;
 
+	/* first, update server records set onquery */
+	test_onquery();
+	if (global.lndown_kluge) {
+		rc=1;
+		for (i=0;i<serv_num;i++) {
+			if (servers[i].is_up)
+				rc=0;
+		}
+		if (rc) {
+			DEBUG_MSG1("Link is down.\n");
+			return RC_SERVFAIL;
+		}
+	}
 	DEBUG_MSG3("Starting cached resolve for: %s, query %s\n",name,get_tname(thint));
 	if ((*cached=lookup_cache(name))) {
 		DEBUG_MSG1("Record found in cache.\n");
@@ -1249,7 +1261,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					timed=1;
 			}
 		}
-		DEBUG_MSG6("Requery decision: req=%i, auth=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,auth,timed,flags,ttl-queryts);
+		DEBUG_MSG5("Requery decision: req=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,timed,flags,ttl-queryts);
 	}
 	if (!(*cached) || need_req || (timed && !(flags&CF_LOCAL))) {
 		bcached=*cached;

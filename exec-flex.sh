@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: exec-flex.sh,v 1.2 2000/06/03 19:59:35 thomas Exp $
+# $Id: exec-flex.sh,v 1.3 2000/06/12 14:37:07 thomas Exp $
 
 # This is a script to run lex or flex and determine whether yylineno is available
 
@@ -58,7 +58,7 @@ int main()
 }
 EOF
 
-$cc .yylineno.test.c -o .foo >/dev/null 2>/dev/null
+$cc .yylineno.test.c -o .foo >/dev/null 
 
 if [ $? -ne 0 ] ; then
     #failed. We may not use yylineno then.

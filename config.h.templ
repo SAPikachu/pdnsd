@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.7 2000/06/10 12:50:03 thomas Exp $ */
+/* $Id: config.h.templ,v 1.8 2000/06/12 14:37:06 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -114,16 +114,6 @@
 
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT
-
-/* The following is for defining inline optimizations for compilers that
- * support it. This is, of course, non-ANSI C. GCC, for example, supports it.
- * if your compiler does that, too, add a directive for it. In other cases, 
- * this should be safe and you should not need to change it */
-#if defined(__GNUC__)
-# define INLINE inline 
-#else
-# define INLINE 
-#endif
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */

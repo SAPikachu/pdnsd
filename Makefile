@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.14 2000/06/10 20:23:24 thomas Exp $
+# $Id: Makefile,v 1.15 2000/06/12 14:37:06 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -22,7 +22,7 @@ YACC=bison -y
 # strict C compiler flags. Note that some warnings are normal.
 STRICT_CF=-Wstrict-prototypes -Wall -pedantic # -Wmissing-prototypes  -Wpointer-arith
 # The flags given in the C compiler call (these are for gcc)
-CFLAGS=-g -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
+CFLAGS=-O2 -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
 # The flags given for bison/yacc; OK for bison and yacc
 YACCFLAGS=-d
 # the flags given for lex; should be OK for lex and flex
@@ -34,7 +34,7 @@ LEXFLAGS=-i
 # conditions I do not need -ll when using lex?
 #
 # The following line is for linux: 
-LIBS=-lpthread -lefence
+LIBS=-lpthread
 # and this for BSD (just leave it empty):
 #LIBS=
 # OS-specific C compiler flags for the linking stage.
@@ -77,7 +77,7 @@ pdnsd: .deps $(OBJS)
 y.tab.c y.tab.h: conf.y
 	$(YACC) conf.y  $(YACCFLAGS)
 
-lex.yy.c lex.inc.h: conf.l.templ
+lex.yy.c lex.inc.h: conf.l.templ config.h
 	./exec-flex.sh $(LEX) $(CC) conf.l conf.l.templ $(LEXFLAGS) 
 
 config.h: version config.h.templ
