@@ -22,6 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #include <signal.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -39,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.12 2000/10/11 21:06:39 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.13 2000/10/13 18:18:36 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -147,6 +148,7 @@ void print_help (void)
 int main(int argc,char *argv[])
 {
 	int i,sig,pfd;
+	struct passwd *pws;
 	char *conf_file="/etc/pdnsd.conf";
 #if DEBUG>0
 	char dbgdir[1024];
@@ -269,14 +271,18 @@ int main(int argc,char *argv[])
 #endif
 		} else if (strcmp(argv[i],"--nodebug")==0) {
 			debug_p=0;
-		} else  if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
-			if (i<argc-1) {
-				i++;
+		} else if (strcmp(argv[i],"--pdnsd-user")==0) {
+			if (global.run_as[0]) {
+				printf("%s\n",global.run_as);
 			} else {
-				fprintf(stderr,"Error: file name expected after -c option.\n");
-				exit(1);
+				if ((pws=getpwuid(getuid()))) {
+					printf("%s\n",pws->pw_name);
+				} else {
+					printf("%i\n",getuid());
+				}
 			}
-		} else {
+			exit(0);
+		} else  if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")!=0) {
 			fprintf(stderr,"Error: unknown option: %s\n",argv[i]);
 			exit(1);
 		}
