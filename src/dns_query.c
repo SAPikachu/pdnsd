@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.29 2000/11/18 14:56:30 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.30 2001/02/07 13:38:56 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -886,7 +886,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		}		
 	}
 	
-	if (lcnt<5) {
+	if (lcnt<4) {
 		free(st->recvbuf);
 		return RC_SERVFAIL; /* mock error code */
 	}
