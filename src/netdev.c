@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.3 2000/08/26 11:33:34 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.4 2000/08/27 12:27:51 thomas Exp $";
 #endif
 
 /*
@@ -118,7 +118,7 @@ int dev_up(char *ifname, char *devname)
 		return 0;
 	/* Test whether pppd is still alive */
 	rv=kill(pidi,0);
-	return (rv==0 || (rv==-1 && errno==ESRCH));
+	return (rv==0 || (rv==-1 && errno!=ESRCH));
 }
  
 

@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.3 2000/08/26 12:12:36 thomas Exp $
+# $Id: pdnsd.spec.in,v 1.4 2000/08/27 12:27:48 thomas Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -62,7 +62,7 @@ if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then
 fi
 
 %changelog
-* Tue Jul 11 2000 Sourav K. Mandal <smandal@mit.edu>
-- autoconf/automake modifications
 * Tue Aug 15 2000 Thomas Moestl <tmoestl@gmx.net>
 - Added the distro for configure
+* Tue Jul 11 2000 Sourav K. Mandal <smandal@mit.edu>
+- autoconf/automake modifications

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.7 2000/08/26 11:33:34 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.8 2000/08/27 12:27:51 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -316,7 +316,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 				if ($3==TCP_ONLY || $3==UDP_ONLY || $3==TCP_UDP) {
 					query_method=$3;
 				} else {
-					yyerror("bad qualifier in tcp_server= option.");
+					yyerror("bad qualifier in query_method= option.");
 					YYERROR;
 				}
 			}
@@ -324,22 +324,22 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-					run_ipv4=($3==C_OFF);
-					run_ipv6=($3!=C_OFF);
+					run_ipv4=($3==C_ON);
+					run_ipv6=($3!=C_ON);
 #else
 					yyerror("the run_ipv4 option is only available when pdnsd is compiled with IPv4 AND IPv6 support.");
 #endif
 				} else {
-					yyerror("bad qualifier in tcp_server= option.");
+					yyerror("bad qualifier in run_ipv4= option.");
 					YYERROR;
 				}
 			}
 		| C_DEBUG '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {
-					debug_p=($3==C_OFF);
+					debug_p=($3==C_ON);
 				} else {
-					yyerror("bad qualifier in tcp_server= option.");
+					yyerror("bad qualifier in debug= option.");
 					YYERROR;
 				}
 			}
@@ -449,8 +449,8 @@ serv_el:	IP '=' STRING ';'
 			}
 		| LEAN_QUERY '=' CONST ';'
 			{
-				if ($3==C_ON || $3==C_ON) {
-					server.lean_query=($3==C_OFF);
+				if ($3==C_ON || $3==C_OFF) {
+					server.lean_query=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in lean_query= option.");
 					YYERROR;
@@ -467,7 +467,7 @@ serv_el:	IP '=' STRING ';'
 			}
 		| PROXY_ONLY '=' CONST ';'
 			{
-				if ($3==C_ON || $3==C_ON) {
+				if ($3==C_ON || $3==C_OFF) {
 					server.is_proxy=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in proxy_only= option.");
