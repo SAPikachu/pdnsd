@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.5 2000/11/04 23:15:00 thomas Exp $ */
+/* $Id: cache.h,v 1.6 2000/11/06 21:19:11 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -64,7 +64,7 @@ typedef struct {
 
 typedef struct {
 	unsigned char    *qname;                  /* Name of the query in dotted notation*/
-	int              num_rr;                  /* The number of rrs. When this decreases to 0, the cent is deleted. */
+	int              num_rrs;                 /* The number of rrs. When this decreases to 0, the cent is deleted. */
 	unsigned long    cs;                      /* size of the rrs*/
 	short            flags;                   /* Flags for the whole cent */
 	time_t           ts;                      /* Timestamp (only for negative cached records) */

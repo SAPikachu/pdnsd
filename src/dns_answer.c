@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.24 2000/11/04 00:08:03 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.25 2000/11/06 21:19:08 thomas Exp $";
 #endif
 
 /*
@@ -357,7 +357,7 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *
 	rr_bucket_t *b;
 	rr_bucket_t *first;
 	int cnt;
-	if (cached->rr[tp-T_MIN]) {
+	if (cached->rr[tp-T_MIN] && cached->rr[tp-T_MIN]->rrs) {
 		b=cached->rr[tp-T_MIN]->rrs;
 		if (global.rnd_recs) {
 			/* in order to have equal chances for each records to be the first, we have to count first. */

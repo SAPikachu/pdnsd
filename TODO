@@ -1,4 +1,4 @@
-$Id: TODO,v 1.23 2000/11/05 23:08:31 thomas Exp $
+$Id: TODO,v 1.24 2000/11/06 21:19:04 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -218,18 +218,21 @@ Make parallel queries configureable			       [-tm, 2000-10-19]
 --------------------------------------------------------------------------------
 min_ttl option						       [-tm, 2000-11-05]
 --------------------------------------------------------------------------------
-Negative cacheing for domains and RR types		       [open	       ]
+Negative cacheing for domains and RR types		       [-tm, 2000-11-05]
 --------------------------------------------------------------------------------
-Grab neg_ttl from SOA, if present?			       [open	       ]
+Grab neg_ttl from SOA, if present?			       [-tm, 2000-11-06]
 --------------------------------------------------------------------------------
-Are the requerying policy in p_recursive_query (aa_needed...)  [open	       ]
+Are the requerying policy in p_recursive_query (aa_needed...)  [-tm, 2000-11-06]
 conflicting in some cases?				     
---------------------------------------------------------------------------------
-Document negative (problems with QT_ALL, problems without      [open	       ]
-lean_query, policy options, neg_ttl, min_ttl)
 --------------------------------------------------------------------------------
 Extend pdnsd-ctl to support creating negative cached records   [open	       ]
 (and maybe for setting some other options). 		    
+--------------------------------------------------------------------------------
+Extend config file format to support creating negative cached  [open	       ]
+records.
+--------------------------------------------------------------------------------
+Document negative (problems with QT_ALL, problems without      [open	       ]
+lean_query, policy options, neg_ttl, min_ttl)
 --------------------------------------------------------------------------------
 ================================================================================
 After 1.1.0

@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.9 2000/11/05 23:08:39 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.10 2000/11/06 21:19:15 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -122,6 +122,7 @@ int use_cache_lock=0;
  */
 static void purge_cache(unsigned long sz);
 static void del_cache_int(dns_cent_t *cent);
+static void del_cache_int_rrl(dns_cent_t *cent);
 static void remove_rrl(rr_lent_t *le);
 
 /*
@@ -308,9 +309,16 @@ void init_cache_lock()
 /* Delete the cache. Call only once */
 void destroy_cache()
 {
+	dns_cent_t *ce;
+	dns_hash_pos_t pos;
+
 	/* lock the cache, in case that any thread is still accssing. */
 	softlock_cache_rw();
-	purge_cache(0);
+	ce=fetch_first(&dns_hash, &pos);
+	while (ce) {
+		del_cache_int(ce);
+		ce=fetch_next(&dns_hash,&pos);
+	}
 	free_dns_hash(&dns_hash);
 #if TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
@@ -344,7 +352,7 @@ int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, ti
 		return 0;
 	strcpy((char *)cent->qname,(char *)qname);
 	cent->cs=sizeof(dns_cent_t)+strlen((char *)qname)+1;
-	cent->num_rr=0;
+	cent->num_rrs=0;
 	cent->flags=flags;
 	cent->ts=ts;
 	cent->ttl=ttl;
@@ -387,6 +395,7 @@ int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, 
 	cent->rr[tp-T_MIN]->flags=flags;
 	cent->rr[tp-T_MIN]->serial=serial;
 	cent->cs+=sizeof(rr_set_t);
+	cent->num_rrs++;
 	return 1;
 }
 
@@ -414,11 +423,10 @@ static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl
 	rr->next=cent->rr[tp-T_MIN]->rrs;
 	cent->rr[tp-T_MIN]->rrs=rr;
 #if DEBUG>0
-	if (cent->rr[tp-T_MIN]->flags&DF_NEGATIVE) {
-		DEBUG_MSG2("Tried to add rr to a rrset with DF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
+	if (cent->rr[tp-T_MIN]->flags&CF_NEGATIVE) {
+		DEBUG_MSG2("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
 	}
 #endif
-	cent->num_rr++;
 	return 1;
 }
 
@@ -455,13 +463,13 @@ int del_cent_rrset(dns_cent_t *cent, int tp)
 
 	rrb=cent->rr[tp-T_MIN]->rrs;
 	while (rrb) {
-		cent->num_rr--;
 		rv+=sizeof(rr_bucket_t)+rrb->rdlen;
 		rrn=rrb->next;
 		free_rr(*rrb);
 		free(rrb);
 		rrb=rrn;
 	}
+	cent->num_rrs--;
 	rv+=sizeof(rr_set_t);
 	cent->cs-=rv;
 	free(cent->rr[tp-T_MIN]);
@@ -490,6 +498,13 @@ void free_cent(dns_cent_t cent)
 	free (cent.qname);
 }
 
+static long get_rrlent_ts(rr_lent_t *le)
+{
+	if (le->rrset)
+		return le->rrset->ts;
+	return le->cent->ts;
+}
+
 /* insert a rrset into the rr_l list. This modifies the rr_set_t if rrs is not NULL! 
  * The rrset address needs to be constant afterwards 
  * call with locks applied*/
@@ -510,7 +525,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 	 * like binary search.*/
 	le=rrset_l_tail;
 	while (le) {
-		if (ts>=le->rrset->ts && (le->next==NULL || ts<le->next->rrset->ts)) {
+		if (ts>=get_rrlent_ts(le) && (le->next==NULL || ts<get_rrlent_ts(le->next))) {
 			if (le->next)
 				le->next->prev=ne;
 			ne->next=le->next;
@@ -642,8 +657,8 @@ static int purge_cent(dns_cent_t *cent, int delete)
 		rv+=purge_rrset(cent,i);
 	}
 	/* if the record was purged empty, delete it from the cache. */
-	if (cent->num_rr==0 && delete && (!cent->flags&DF_NEGATIVE || time(NULL)-cent->ts>cent->ttl+CACHE_LAT)) {
-		del_cache_int(cent); /* this will subtract the cent's left size from cache_size */
+	if (cent->num_rrs==0 && delete && (!cent->flags&DF_NEGATIVE || time(NULL)-cent->ts>cent->ttl+CACHE_LAT)) {
+		del_cache_int_rrl(cent); /* this will subtract the cent's left size from cache_size */
 	}
 	return rv;
 }
@@ -670,12 +685,13 @@ static void purge_cache(unsigned long sz)
 	 * records are kept in any case.*/
 	le=&rrset_l;
 	while (*le && cache_size>sz) {
-		if (!((*le)->rrset->flags&CF_LOCAL)) {
+		if (!(((*le)->rrset && ((*le)->rrset->flags&CF_LOCAL)) || 
+		      (*le)->cent->flags&CF_LOCAL)) {
 			/*next=(*le)->next;*/
 			if ((*le)->rrset)
 				cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
 			/* this will also delete negative cache entries */
-			if ((*le)->cent->num_rr==0) {
+			if ((*le)->cent->num_rrs==0) {
 				del_cache_int((*le)->cent);
 			}
 			remove_rrl(*le);
@@ -975,7 +991,7 @@ void add_cache(dns_cent_t cent)
 		}
 		/* If this record is negative cached, add the cent to the rr list. */
 		if (cent.flags&DF_NEGATIVE) {
-			if (!insert_rrl(NULL,ce,-1,cent.ts)) {
+			if (!(ce->lent=insert_rrl(NULL,ce,-1,cent.ts))) {
 				log_warn("Out of cache memory.");
 				free_cent(*ce);
 				unlock_cache_rw();
@@ -988,7 +1004,7 @@ void add_cache(dns_cent_t cent)
 		if (cent.flags&DF_NEGATIVE) {
 			/* the new entry is negative. So, we need to delete the whole cent,
 			 * and then generate a new one. */
-			del_cache_int(ce);
+			del_cache_int_rrl(ce);
 			unlock_cache_rw();
 			add_cache(cent);
 			return;
@@ -1038,7 +1054,7 @@ void add_cache(dns_cent_t cent)
 /*
  * Delete a cent from the cache. Call with write locks applied.
  */
-void del_cache_int(dns_cent_t *cent)
+static void del_cache_int(dns_cent_t *cent)
 {
 	int i;
 
@@ -1052,9 +1068,6 @@ void del_cache_int(dns_cent_t *cent)
 			del_cent_rrset(cent,i+T_MIN);
 		}
 	}
-	/* Free the lent for negative cached records */
-	if (cent->flags&DF_NEGATIVE && cent->lent) 
-		remove_rrl(cent->lent);
 	/* free the cent ptrs and rrs */
 	free_cent(*cent);
 	free(cent);
@@ -1062,6 +1075,14 @@ void del_cache_int(dns_cent_t *cent)
 	ent_num--;
 }
 
+/* Same as above, but delete the cent from the rr list if it was registered (for negative cacheing)*/
+static void del_cache_int_rrl(dns_cent_t *cent) 
+{
+	/* Free the lent for negative cached records */
+	if (cent->flags&DF_NEGATIVE && cent->lent) 
+		remove_rrl(cent->lent);
+	del_cache_int(cent);
+}
 
 /* Delete a cached record. Performs locking. Call this from the outside, NOT del_cache_int */
 void del_cache(unsigned char *name)
@@ -1070,7 +1091,7 @@ void del_cache(unsigned char *name)
 	
 	lock_cache_rw();
 	if ((ce=dns_lookup(&dns_hash,name))) {
-		del_cache_int(ce);
+		del_cache_int_rrl(ce);
 	}
 	unlock_cache_rw();
 }

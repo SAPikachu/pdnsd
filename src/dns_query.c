@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.25 2000/11/05 23:08:35 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.26 2000/11/06 21:19:08 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -743,7 +743,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	int i,j,rv;
 	unsigned long queryts;
 	long lcnt;
+	time_t ttl;
 	unsigned char *rrp;
+	unsigned char *soa;
 	unsigned char nbuf[256];
 #if DEBUG>0
 	char buf[ADDRSTR_MAXLEN];
@@ -920,9 +922,10 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	/* negative cacheing for domains */
 	if (st->recvbuf->rcode==RC_NAMEERR) {
-		DEBUG_MSG3("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(rv));
-		/* We did not get what we wanted. Cache accoding to policy */
+		DEBUG_MSG3("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(st->recvbuf->rcode));
+		/* We did not get what we wanted. Cache according to policy */
 		if (global.neg_domain_pol==C_ON || (global.neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
+			DEBUG_MSG2("Cacheing domain %s negative\n",name);
 			if (!init_cent(*ent,name, DF_NEGATIVE, queryts, global.neg_ttl)) {
 				free(*ent);
 				return RC_SERVFAIL; /* mock error code */
@@ -981,7 +984,22 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	if (st->qt>=T_MIN && st->qt<=T_MAX && !(*ent)->rr[st->qt-T_MIN]) {
 		/* We did not get what we wanted. Cache accoding to policy */
 		if (global.neg_rrs_pol==C_ON || (global.neg_rrs_pol==C_AUTH && st->recvbuf->aa)) {
-			if (!add_cent_rrset(*ent,  st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial)) {
+			ttl=global.neg_ttl;
+			/* If we received a SOA, we should take the ttl that is in there. */
+			if ((*ent)->rr[T_SOA-T_MIN] && (*ent)->rr[T_SOA-T_MIN]->rrs) {
+				soa=(char *)((*ent)->rr[T_SOA-T_MIN]->rrs+1);
+				/* Skip owner and maintainer. Lengths are validated in cache */
+				while (*soa)
+					soa+=*soa+1;
+				soa++;
+				while (*soa)
+					soa+=*soa+1;
+				soa++;
+				ttl=((soa_r_t *)soa)->expire;
+			}
+			ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
+			DEBUG_MSG4("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,ttl);
+			if (!add_cent_rrset(*ent, st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial)) {
 			    free_cent(**ent);
 			    free(*ent);
 			    free(st->recvbuf);
@@ -1308,6 +1326,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	if (thint>=QT_MIN && thint<=QT_MAX)
 		aa_needed=1;
 	else if (thint>=T_MIN && thint<=T_MAX) {
+		/* This test will also succeed if we have a negative cached record. This is purposely. */
 		if (!(*ent)->rr[thint-T_MIN] && !(*ent)->rr[T_CNAME-T_MIN])
 			aa_needed=1;
 	}
@@ -1514,7 +1533,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		auth=0;
 		nopurge=0;
 		if ((*cached)->flags&DF_NEGATIVE) {
-			if ((*cached)->ts+(*cached)->ttl<=queryts+CACHE_LAT) {
+			if ((*cached)->ts+(*cached)->ttl>=queryts+CACHE_LAT) {
 				neg=1;
 			} else {
 				need_req=1;
@@ -1603,7 +1622,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			return RC_SERVFAIL;
 		}
 	}
-	if (!(*cached) || need_req || neg || (timed && !(flags&CF_LOCAL))) {
+	if (!(*cached) || !neg && (need_req || (timed && !(flags&CF_LOCAL)))) {
 		bcached=*cached;
 		DEBUG_MSG1("Trying name servers.\n");
 		if (q) 
