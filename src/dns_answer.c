@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.20 2000/10/23 20:31:42 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.21 2000/10/23 21:55:37 thomas Exp $";
 #endif
 
 /*
@@ -408,8 +408,9 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 {
 	int i;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
-	if (!add_rrset(cached,T_CNAME, ans, sz, cb, udp, queryts, rrn, sva, svan))
-		return 0;
+	if (qe.qtype!=T_CNAME)
+		if (!add_rrset(cached,T_CNAME, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
 
 	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
 	if (qe.qtype==QT_AXFR || qe.qtype==QT_IXFR) {
@@ -658,7 +659,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			 * We only do this for the last record in a cname chain, to prevent answer bloat.*/
 			if (!cont) {
 				if (cached->rr[T_NS-T_MIN]) {
-					rr=cached->rr[T_NS-T_MIN]->rrs;;
+					rr=cached->rr[T_NS-T_MIN]->rrs;
 					while (rr) {
 						if (!add_ar(rr, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
 							    cached->rr[T_NS-T_MIN]->flags)) {

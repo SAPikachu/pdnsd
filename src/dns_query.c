@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.19 2000/10/21 11:28:38 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.20 2000/10/23 21:55:37 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -767,7 +767,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr->aa=0;
 		st->hdr->tc=0;
 		st->hdr->rd=1;
-		st->hdr->ra=1;
+		st->hdr->ra=0;
 		st->hdr->z1=0;
 		st->hdr->au=0;
 		st->hdr->z2=0;
@@ -1116,6 +1116,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				 * longer anyway, why not for more servers) and is therefore still there.*/
 				maxto=0;
 				pc=0;
+				rv=RC_SERVFAIL;
 				
 # ifdef NO_POLL
 				FD_ZERO(&reads);
@@ -1243,7 +1244,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 						} 
 					}
 				}
-			} while (!qo);
+			} while (!qo && !done);
 		}
 		if (done)
 			break;
@@ -1352,7 +1353,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			}
 			if (serv.num>0) {
 				rv=p_dns_cached_resolve(&serv,  name, rrn, &nent,hops-1,thint,time(NULL));
-				if (rv==RC_OK || rv==RC_NAMEERR) {
+				/* return the answer in any case. */
+/*				if (rv==RC_OK || rv==RC_NAMEERR) {*/
 					del_qserv(&serv);
 					free_cent(**ent);
 					free(*ent);
@@ -1360,7 +1362,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 					
 					free(ns);
 					return rv;
-				}
+/*				}*/
 			}
 		}
 		del_qserv(&serv);
@@ -1527,10 +1529,10 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			/*A CNAME as answer is also correct. */
 			if (ttl==0 && !(*cached)->rr[T_CNAME-T_MIN])
 				need_req=!auth;
-			else {
+/*			else {*/
 				if (ttl-queryts+CACHE_LAT<=0)
 					timed=1;
-			}
+/*			}*/
 		}
 		DEBUG_MSG5("Requery decision: req=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,timed,flags,ttl-queryts);
 	}
