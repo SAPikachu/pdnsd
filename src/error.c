@@ -19,22 +19,21 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <syslog.h>
 #include <pthread.h>
-#include <sys/types.h>
 #include <signal.h>
 #include "error.h"
 #include "helpers.h"
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.2 2000/10/31 13:18:59 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.3 2000/11/01 19:05:31 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
-int waiting=0; /* Has the main thread already done sigwait() ? */
 int use_lock=0;
 
 /*
@@ -46,30 +45,6 @@ void init_log(void)
 	pthread_mutex_init(&loglock,NULL);
 	use_lock=1;
 }
-
-/* This is a handler for signals to the threads. We just hand the sigs on to the main thread.
- * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads
- * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
- * softlocks (see below) in any functions called after sigwait from main(). */
-#if TARGET==TARGET_LINUX
-void thread_sig(int sig)
-{
-	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {
-		/* nonfatal signal. Ignore, because proper handling is very difficult. */
-		return;
-	}
-	if (waiting) {
-		log_warn("Caught signal %i.",sig);
-		if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
-			crash_msg("A fatal signal occured.");
-		pthread_kill(main_thread,SIGTERM);
-		pthread_exit(NULL);
-	} else {
-		crash_msg("An error occured at startup.");
-		_exit(1);
-	}
-}
-#endif
 
 /* We crashed? Ooops... */
 void crash_msg(char *msg)

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.3 2000/10/25 18:46:17 thomas Exp $ */
+/* $Id: error.h,v 1.4 2000/11/01 19:05:31 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -42,29 +42,6 @@ void log_error(char *s,...);
 void log_warn(char *s, ...);
 void log_info(int level, char *s, ...);
 
-/* These are macros for setting up the signal handling of a new thread. They
- * are needed because the LinuxThreads implementation obviously has some
- * problems in signal handling, which makes the recommended solution (doing
- * sigwait() in one thread and blocking the signals in all threads) impossible.
- * So, for Linux, we have to install the fatal_sig handler. 
- * It seems to me that signal handlers in fact aren't shared between threads
- * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
-#if TARGET==TARGET_LINUX
-#define THREAD_SIGINIT	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL); \
-                        signal(SIGILL,thread_sig); \
-	                signal(SIGABRT,thread_sig); \
-	                signal(SIGFPE,thread_sig); \
-	                signal(SIGSEGV,thread_sig); \
-	                signal(SIGTSTP,thread_sig); \
-                        signal(SIGTTOU,thread_sig); \
-                    	signal(SIGTTIN,thread_sig); \
-                        signal(SIGPIPE, SIG_IGN);
-
-#else
-#define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)
-#endif
-
-
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.
  * Of course, those messages could be done in a function, but I
@@ -79,29 +56,29 @@ void log_info(int level, char *s, ...);
 /* from main.c */
 extern FILE *dbg;
 
-#define DEBUG_MSG1(x)           if (debug_p) {\
-                                   fprintf(dbg,x);\
-                                   fflush(dbg);\
+#define DEBUG_MSG1(x)           if (debug_p) {                             \
+                                   fprintf(dbg,x);                         \
+                                   fflush(dbg);                            \
                                 }
-#define DEBUG_MSG2(x,y)         if (debug_p) {\
-                                   fprintf(dbg,x,y);\
-                                   fflush(dbg);\
+#define DEBUG_MSG2(x,y)         if (debug_p) {                             \
+                                   fprintf(dbg,x,y);                       \
+                                   fflush(dbg);                            \
                                 }
-#define DEBUG_MSG3(x,y,z)       if (debug_p) {\
-                                   fprintf(dbg,x,y,z);\
-                                   fflush(dbg);\
+#define DEBUG_MSG3(x,y,z)       if (debug_p) {                             \
+                                   fprintf(dbg,x,y,z);                     \
+                                   fflush(dbg);                            \
                                 }
-#define DEBUG_MSG4(x,y,z,a)     if (debug_p) {\
-                                   fprintf(dbg,x,y,z,a);\
-                                   fflush(dbg);\
+#define DEBUG_MSG4(x,y,z,a)     if (debug_p) {                             \
+                                   fprintf(dbg,x,y,z,a);                   \
+                                   fflush(dbg);                            \
                                 }
-#define DEBUG_MSG5(x,y,z,a,b)   if (debug_p) {\
-                                   fprintf(dbg,x,y,z,a,b);\
-                                   fflush(dbg);\
+#define DEBUG_MSG5(x,y,z,a,b)   if (debug_p) {                             \
+                                   fprintf(dbg,x,y,z,a,b);                 \
+                                   fflush(dbg);                            \
                                 }
-#define DEBUG_MSG6(x,y,z,a,b,c) if (debug_p) {\
-                                   fprintf(dbg,x,y,z,a,b,c);\
-                                   fflush(dbg);\
+#define DEBUG_MSG6(x,y,z,a,b,c) if (debug_p) {                             \
+                                   fprintf(dbg,x,y,z,a,b,c);               \
+                                   fflush(dbg);                            \
                                 }
 #else
 #define DEBUG_MSG1(x) 

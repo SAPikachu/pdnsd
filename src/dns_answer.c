@@ -44,6 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include "thread.h"
 #include "dns.h"
 #include "dns_answer.h"
 #include "dns_query.h"
@@ -52,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.22 2000/10/30 18:22:16 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.23 2000/11/01 19:05:31 thomas Exp $";
 #endif
 
 /*
@@ -1011,7 +1012,7 @@ void *udp_answer_thread(void *data)
 		i=procs;
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
-			usleep(50000);
+			usleep_r(50000);
 	} while (i>global.proc_limit); 
 
 	pthread_mutex_lock(&proc_lock);
@@ -1308,7 +1309,7 @@ void *udp_server_thread(void *dummy)
 						log_error("Could not discover udp destination address");
 					}
 					free(buf);
-					usleep(50000);
+					usleep_r(50000);
 					continue;
 				}
 			} else if (errno!=EINTR) {
@@ -1351,7 +1352,7 @@ void *udp_server_thread(void *dummy)
 							log_error("Could not discover udp destination address");
 						}
 						free(buf);
-						usleep(50000);
+						usleep_r(50000);
 						continue;
 					}
 				}
@@ -1394,7 +1395,7 @@ void *udp_server_thread(void *dummy)
 
 		if (qlen<0) {
 			free(buf);
-			usleep(50000);
+			usleep_r(50000);
 /*			if (errno==EINTR) {
 			close(sock);
 			return NULL;
@@ -1412,7 +1413,7 @@ void *udp_server_thread(void *dummy)
 			} else {
 				pthread_mutex_unlock(&proc_lock);
 				free(buf);
-				usleep(50000);
+				usleep_r(50000);
 			}
 		}
 	}
@@ -1456,7 +1457,7 @@ void *tcp_answer_thread(void *csock)
 		i=procs;
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
-			usleep(50000);
+			usleep_r(50000);
 	} while (i>global.proc_limit);
 
 	pthread_mutex_lock(&proc_lock);
@@ -1693,7 +1694,7 @@ void *tcp_server_thread(void *p)
 				tcp_socket=-1;
 				return NULL;
 			}
-			usleep(50000);
+			usleep_r(50000);
 		} else {
 			/*
 			 * With creating a new thread, we follow recommendations
@@ -1710,7 +1711,7 @@ void *tcp_server_thread(void *p)
 				pthread_mutex_unlock(&proc_lock);
 				close(*csock);
 				free(csock);
-				usleep(50000);
+				usleep_r(50000);
 			}
 		}
 	}

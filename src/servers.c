@@ -33,6 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <string.h>
+#include "thread.h"
 #include "error.h"
 #include "servers.h"
 #include "conff.h"
@@ -42,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.6 2000/10/08 12:16:08 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.7 2000/11/01 19:05:31 thomas Exp $";
 #endif
 
 /*
@@ -194,7 +195,7 @@ void *servstat_thread(void *p)
 			}
 			pthread_mutex_unlock(&servers_lock);
 		}
-		usleep(500000);
+		usleep_r(500000);
 	}
 	return NULL;
 }

@@ -31,13 +31,14 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "status.h"
+#include "thread.h"
 #include "cacheing/cache.h"
 #include "error.h"
 #include "servers.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.7 2000/08/13 13:53:17 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.8 2000/11/01 19:05:31 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -323,7 +324,7 @@ void *status_thread (void *p)
 				print_serr(rs,"Unknown command.");
 			}
 			close(rs);
-			usleep(100000); /* sleep some time. I do not want the query frequency to be too high. */
+			usleep_r(100000); /* sleep some time. I do not want the query frequency to be too high. */
 		} else {
 			if (errno!=EINTR)
 				log_warn("Failed to open fifo: %s. Status readback will be impossible",strerror(errno));

@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.1 2000/07/20 20:03:25 thomas Exp $
+# $Id: Makefile.am,v 1.2 2000/11/01 19:06:16 thomas Exp $
 .PHONY: all clean distclean
 
 noinst_PROGRAMS = if_up is_local_addr tping random
@@ -6,9 +6,9 @@ noinst_PROGRAMS = if_up is_local_addr tping random
 ## Dirty trick:  I demand that these objects be built; then, with the knowledge
 ## that the object files will end up here, I redefine the link chain. 
 
-TESTDEPS = ../netdev.o ../error.o ../helpers.o ../icmp.o
+TESTDEPS = ../netdev.o ../error.o ../thread.o ../helpers.o ../icmp.o
 
-TESTOBJS = netdev.o error.o helpers.o icmp.o
+TESTOBJS = netdev.o error.o thread.o helpers.o icmp.o
 
 if_up_SOURCES = if_up.c
 if_up_LDADD =  $(TESTOBJS)

@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.18 2000/10/31 13:18:59 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.19 2000/11/01 19:05:31 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -449,7 +449,7 @@ int main(int argc,char *argv[])
 		signal(SIGINT,bsd_sighnd);
 		signal(SIGQUIT,bsd_sighnd);
 	}
-	while (!sigr) usleep(250000);
+	while (!sigr) usleep_r(250000);
 	sig=sigr;*/
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
