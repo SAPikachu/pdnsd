@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.23 2000/11/15 17:27:02 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.24 2000/12/07 12:33:57 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -321,6 +321,18 @@ int main(int argc,char *argv[])
 		}
 	}
 	
+	if (!(global.run_as[0] && global.strict_suid)) {
+		struct passwd *pws=getpwuid(getuid());
+		char *un=pws?pws->pw_name:"(unknown)";
+		for (i=0; i<serv_num; i++) {
+			if (server.uptest=C_EXEC && server.uptest_usr[0]=='\0') {
+				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
+				 * this is safe. If not - warn. */
+				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user %s!\n",server.uptest_cmd, un);
+			}
+		}
+	}
+
 	/* init_log() initializes a mutex. This is done best once we are daemon.
 	 * so this initialization is deferred, and log_* can now do without a mutex
 	 * initially */

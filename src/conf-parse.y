@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.19 2000/11/11 20:33:03 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.20 2000/12/07 12:33:57 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -183,9 +183,6 @@ spec:		GLOBAL '{'
 					if (server.uptest_cmd[0]=='\0') {
 						yyerror("you must specify uptest_cmd if you specify uptest=exec!");
 						YYERROR;
-					}
-					if (getuid()==0 && server.uptest_usr[0]=='\0') {
-						fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as root!\n",server.uptest_cmd);
 					}
 				}
 				add_server(server);
