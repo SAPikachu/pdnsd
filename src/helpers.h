@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.3 2000/10/15 19:50:13 thomas Exp $ */
+/* $Id: helpers.h,v 1.4 2001/03/10 12:50:29 tmm Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
@@ -34,7 +34,6 @@ int run_as(char *user);
 void pdnsd_exit(void);
 int softlock_mutex(pthread_mutex_t *mutex);
 
-void strtolower(unsigned char *a);
 int isdchar (unsigned char c);
 
 void rhn2str(unsigned char *rhn, unsigned char *str);

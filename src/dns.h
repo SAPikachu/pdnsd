@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.6 2000/11/11 14:24:48 thomas Exp $ */
+/* $Id: dns.h,v 1.7 2001/03/10 12:50:29 tmm Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/types.h>
+#include <inttypes.h>
 #include "rr_types.h"
 
 /* Deal with byte orders */
@@ -90,32 +91,32 @@ Boston, MA 02111-1307, USA.  */
  * positive (which is ensured in the code */
 typedef struct {
 	/* the name is the first field. It has variable length, so it can't be put in the struct */
-	unsigned short type      __attribute__((packed));
-	unsigned short class     __attribute__((packed)); 
-	long           ttl       __attribute__((packed));
-	unsigned short rdlength  __attribute__((packed));
+	uint16_t type      __attribute__((packed));
+	uint16_t class     __attribute__((packed)); 
+	uint32_t ttl       __attribute__((packed));
+	uint16_t rdlength  __attribute__((packed));
 	/* rdata follows */
 } rr_hdr_t;
 
 typedef struct {
 	/* The server name and maintainer mailbox are the first two fields. It has variable length, */
 	/* so they can't be put in the struct */
-	unsigned long  serial    __attribute__((packed));
-	unsigned long  refresh   __attribute__((packed));
-	unsigned long  retry     __attribute__((packed));
-	unsigned long  expire    __attribute__((packed));
-	unsigned long  minimum   __attribute__((packed));
+	uint32_t serial    __attribute__((packed));
+	uint32_t refresh   __attribute__((packed));
+	uint32_t retry     __attribute__((packed));
+	uint32_t expire    __attribute__((packed));
+	uint32_t minimum   __attribute__((packed));
 } soa_r_t;
 
 
 typedef struct {
 /*	char           qname[];*/
-	unsigned short qtype     __attribute__((packed));
-	unsigned short qclass    __attribute__((packed));
+	uint16_t qtype     __attribute__((packed));
+	uint16_t qclass    __attribute__((packed));
 } std_query_t;
 
 typedef struct {
-	unsigned short id        __attribute__((packed));
+	uint16_t id        __attribute__((packed));
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	unsigned int   rd:1;
 	unsigned int   tc:1;
@@ -141,10 +142,10 @@ typedef struct {
 #else
 # error	"Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN"
 #endif
-	unsigned short qdcount   __attribute__((packed));
-	unsigned short ancount   __attribute__((packed));
-	unsigned short nscount   __attribute__((packed));
-	unsigned short arcount   __attribute__((packed));
+	uint16_t qdcount   __attribute__((packed));
+	uint16_t ancount   __attribute__((packed));
+	uint16_t nscount   __attribute__((packed));
+	uint16_t arcount   __attribute__((packed));
 } dns_hdr_t;
 
 /* Recursion depth. */
