@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.16 2000/10/19 21:51:00 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.17 2000/10/20 08:58:58 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -768,7 +768,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr->tc=0;
 		st->hdr->rd=1;
 		st->hdr->ra=1;
-		st->hdr->z=0;
+		st->hdr->z1=0;
+		st->hdr->au=0;
+		st->hdr->z2=0;
 		st->hdr->rcode=RC_OK;
 		st->hdr->qdcount=htons(1);
 		st->hdr->ancount=0;
@@ -814,8 +816,11 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 
 		/* Basic sanity checks */
-		if (st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid || st->recvbuf->qr!=QR_RESP || 
-		    st->recvbuf->opcode!=OP_QUERY || st->recvbuf->z || 
+		if (st->recvl<sizeof(dns_hdr_t) || 
+		    ntohs(st->recvbuf->id)!=st->myrid || 
+		    st->recvbuf->qr!=QR_RESP || 
+		    st->recvbuf->opcode!=OP_QUERY ||
+		    st->recvbuf->z1 || st->recvbuf->z2 ||
 		    (st->recvbuf->rcode!=RC_OK && !(st->hdr->rd && st->recvbuf->rcode==RC_NOTSUPP))) {
 			free(st->hdr);
 			rv=st->recvbuf->rcode;

@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.19 2000/10/19 13:10:14 thomas Exp $
+$Id: THANKS,v 1.20 2000/10/20 08:58:54 thomas Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -27,6 +27,7 @@ Milan P. Stanic
 Norbert Steinl
 Alan Swanson
 Lyonel Vincent
+Paul Wagland
 Sverker Wiberg
 Ron Yorston
 Nikita V. Youshchenko

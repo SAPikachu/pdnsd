@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.16 2000/10/19 22:14:01 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.17 2000/10/20 08:58:57 thomas Exp $";
 #endif
 
 /*
@@ -542,7 +542,9 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	ans->tc=0; /* If tc is needed, it is set when the response is sent in udp_answer_thread. */
 	ans->rd=hdr->rd;
 	ans->ra=1;
-	ans->z=0;
+	ans->z1=0;
+	ans->au=0;
+	ans->z2=0;
 	ans->rcode=RC_OK;
 	ans->qdcount=htons(q->num);
 	ans->ancount=0; /* this is first filled in and will be modified */
@@ -825,7 +827,9 @@ static dns_hdr_t mk_error_reply(unsigned short id, unsigned short opcode,unsigne
 	rep.tc=0;
 	rep.rd=0;
 	rep.ra=1;
-	rep.z=0;
+	rep.z1=0;
+	rep.au=0;
+	rep.z2=0;
 	rep.rcode=rescode;
 	rep.qdcount=0;
 	rep.ancount=0;
@@ -888,7 +892,7 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 		DEBUG_MSG1("No query.\n");
 		return (unsigned char *)resp;
 	}
-	if (hdr->z!=0) {
+	if (hdr->z1!=0 || hdr->z2!=0) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_FORMAT);
 		DEBUG_MSG1("Malformed query.\n");

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.4 2000/08/13 13:53:16 thomas Exp $ */
+/* $Id: dns.h,v 1.5 2000/10/20 08:58:57 thomas Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
@@ -169,7 +169,9 @@ typedef struct {
 	unsigned int   opcode:4;
 	unsigned int   qr:1;
 	unsigned int   rcode:4;
-	unsigned int   z:3;
+	unsigned int   z1:1;
+	unsigned int   au:1;
+	unsigned int   z2:1;
 	unsigned int   ra:1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
 	unsigned int   qr:1;
@@ -178,7 +180,9 @@ typedef struct {
 	unsigned int   tc:1;
 	unsigned int   rd:1;
 	unsigned int   ra:1;
-	unsigned int   z:3;
+	unsigned int   z2:1;
+	unsigned int   au:1;
+	unsigned int   z1:1;
 	unsigned int   rcode:4;
 #else
 # error	"Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN"
