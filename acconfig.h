@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.6 2000/10/08 12:16:02 thomas Exp $ */
+/* $Id: acconfig.h,v 1.7 2000/10/08 20:50:44 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -162,7 +162,7 @@
  
 #undef NO_IN_PKTINFO
 #define SOCKET_LOCKING
-#define TCP_TIMEOUT 30
+#define TCP_TIMEOUT 30000
 #define TCP_NOSUBSEQ
 
 /* -- End of User-Configureable Options ------------------------------------- */

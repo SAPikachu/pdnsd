@@ -40,6 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include "dns.h"
 #include "dns_answer.h"
@@ -49,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.7 2000/10/08 12:16:08 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.8 2000/10/08 20:50:46 thomas Exp $";
 #endif
 
 /*
@@ -895,13 +896,13 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 		return NULL; /* discard (may cause error storms) */
 	}
 
-	free(resp);
 	res=decode_query(data,*rlen,&q);
 	if (res) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,res);
 		return (unsigned char *)resp;
 	}
+	free(resp);
 
 #if DEBUG>0
 	if (debug_p) {
@@ -1377,8 +1378,7 @@ void *tcp_answer_thread(void *csock)
 	 * TCP server.*/
 	while (1) {
 #ifdef NO_POLL
-		/* FIXME: we need this also for the second read.
-		 * also, we need to see how much we actually got (Nonblocking read &
+		/* FIXME: we need to see how much we actually got (Nonblocking read &
 		 * return checking) */
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
@@ -1396,11 +1396,12 @@ void *tcp_answer_thread(void *csock)
 			break;
 		}
 #endif
+/*		fcntl(sock,F_SETFL,O_NONBLOCK);*/
 		if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 			/*
 			 * If the socket timed or was closed before we even received the 
 			 * query length, we cannot return an error. So exit silently.
-				 */
+			 */
 			close(sock);
 			return NULL; 
 		}
@@ -1414,7 +1415,25 @@ void *tcp_answer_thread(void *csock)
 			close (sock);
 			return NULL;
 		}
+#ifdef NO_POLL
+		FD_ZERO(&fds);
+		FD_SET(sock, &fds);
+		tv.tv_usec=(TCP_TIMEOUT%1000)*1000;
+		tv.tv_sec=TCP_TIMEOUT/1000;
+		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
+			close(sock);
+			break;
+		}
+#else
+		pfd.fd=sock;
+		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
+		if (poll(&pfd,1,TCP_TIMEOUT)<1) {
+			close(sock);
+			break;
+		}
+#endif
 		if ((olen=read(sock,buf,rlen))<rlen) {
+/*			fcntl(sock,F_SETFL,0);*/
 				/*
 				 * If the promised length was not sent, we should return an error message,
 				 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
@@ -1436,6 +1455,7 @@ void *tcp_answer_thread(void *csock)
 				
 			}
 		} else {
+/*			fcntl(sock,F_SETFL,0);*/
 			nlen=rlen;
 			if (!(resp=process_query(buf,&nlen,0))) {
 				/*
