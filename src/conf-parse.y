@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.17 2000/11/05 14:59:44 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.18 2000/11/11 20:11:00 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -52,6 +52,7 @@ int c_aliases;
 unsigned char buf[532];
 char errbuf[256];
 int sz,tp;
+int hdtp, htp;
 struct in_addr ina4;
 
 int idx;
@@ -77,6 +78,7 @@ unsigned char *nm;
 %token <num> GLOBAL
 %token <num> SERVER
 %token <num> RR
+%token <num> RRNEG
 %token <num> SOURCE
 
 %token <num> PERM_CACHE
@@ -134,10 +136,14 @@ unsigned char *nm;
 %token <num> NAME
 %token <num> OWNER
 %token <num> TTL
+%token <num> TYPES
 %token <num> FILET
 %token <num> SERVE_ALIASES
 
+%token <num> NDOMAIN
+
 %token <num> CONST
+%token <num> RRTYPE
 
 %type <num>  file
 %type <num>  spec
@@ -145,6 +151,11 @@ unsigned char *nm;
 %type <num>  glob_el
 %type <num>  serv_s
 %type <num>  serv_el
+%type <num>  rr_s
+%type <num>  rr_el
+%type <num>  rrneg_s
+%type <num>  rrneg_el
+%type <num>  rr_type_list
 
 %%
 file:		/* nothing */		{}
@@ -196,6 +207,16 @@ spec:		GLOBAL '{'
 				/* add the authority */
 				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen((char *)c_owner)+1, c_owner, T_NS);
 				add_cache(c_cent);
+			}
+		| RRNEG '{' 
+				{
+					htp=0;
+					hdtp=0;
+					c_name[0]='\0';
+					c_ttl=86400;
+				} 
+			rrneg_s '}'
+			{
 			}
 		| SOURCE '{'
 				{
@@ -740,6 +761,79 @@ source_el:	OWNER '=' STRING ';'
 				}
 			}
 		;
+
+
+rrneg_s:	/* empty */		{}
+		| rrneg_s rrneg_el	{}
+		;
+
+
+rrneg_el:	NAME '=' STRING ';'
+			{
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
+				strcpy((char *)c_name,(char *)$3);
+				if (c_owner[0]!='\0') {
+					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
+						fprintf(stderr,"Out of memory.\n");
+						YYERROR;
+					}
+				}
+			}			
+		| TTL '=' NUMBER ';'
+			{
+				c_ttl=$3;
+			}
+                | TYPES '=' NDOMAIN ';'
+			{
+				if (htp) {
+					yyerror("You may not specify types=domain together with other types!.");
+					YYERROR;
+				}
+				if (!c_name[0]) {
+					yyerror("you must specify a name before the types= option.");
+					YYERROR;
+				}
+				hdtp=1;
+				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl)) {
+					fprintf(stderr,"Out of memory");
+					YYERROR;
+				}
+				add_cache(c_cent);
+			}
+                | TYPES '=' rr_type_list ';'
+			{
+			}
+		;
+
+rr_type_list:   RRTYPE
+                        {
+				if (hdtp) {
+					yyerror("You may not specify types=domain together with other types!.");
+					YYERROR;
+				}
+				htp=1;
+				if (!c_name[0]) {
+					yyerror("you must specify a name before the types= option.");
+					YYERROR;
+				}
+				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0)) {
+					fprintf(stderr,"Out of memory");
+					YYERROR;
+				}
+				if (!add_cent_rrset(&c_cent,$1,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0)) {
+					free_cent(c_cent);
+					fprintf(stderr,"Out of memory");
+					YYERROR;
+				}
+				add_cache(c_cent);
+				
+			}
+                | rr_type_list ',' rr_type_list 
+                        {}
+                ; 
 
 errnt:		ERROR		 	{YYERROR;}
 %%

@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.27 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.28 2000/11/11 20:11:00 thomas Exp $";
 #endif
 
 /*
@@ -452,7 +452,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 		if (!add_rrset(cached, qe.qtype , ans, sz, cb, udp, queryts, rrn, sva, svan))
 			return 0;
 	}
-	if (ntohs((*ans)->ancount)) {
+	if (!ntohs((*ans)->ancount)) {
 		/* Add a SOA if we have one and no other records are present in the answer.
 		 * This is to aid caches so that they have a ttl. */
 		if (!add_rrset(cached, T_SOA , ans, sz, cb, udp, queryts, rrn, sva, svan))

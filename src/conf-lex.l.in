@@ -22,9 +22,10 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include "conf-parse.h"
 #include "consts.h"
+#include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.13 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.14 2000/11/11 20:11:00 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -53,6 +54,7 @@ C_CLOSE \*\/
 <INITIAL>"global"			{return GLOBAL;}
 <INITIAL>"server"			{return SERVER;}
 <INITIAL>"rr"			        {return RR;}
+<INITIAL>"rrneg"		        {return RRNEG;}
 <INITIAL>"source"			{return SOURCE;}
 
 <INITIAL>"perm_cache"			{return PERM_CACHE;}
@@ -110,12 +112,22 @@ C_CLOSE \*\/
 <INITIAL>"name"				{return NAME;}
 <INITIAL>"owner"			{return OWNER;}
 <INITIAL>"ttl"			        {return TTL;}
+<INITIAL>"types"			{return TYPES;}
 <INITIAL>"file"			        {return FILET;}
 <INITIAL>"serve_aliases"	        {return SERVE_ALIASES;}
 
-<INITIAL>[a-zA-Z]+			{yylval.num=lookup_const(yytext); return CONST;}
+<INITIAL>"domain"		        {return NDOMAIN;}
 
-<INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
+<INITIAL>[a-zA-Z]+			{if ((yylval.num=lookup_const(yytext))!=-1)
+						 return CONST; 
+					 else if ((yylval.num=rr_tp_byname(yytext))!=-1)
+						 return RRTYPE;
+					 else {
+						 return ERROR;					     
+					 }}
+
+<INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;
+					 yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}
 <INITIAL>{C_COMM}[^\n]*			/*munch munch*/
 

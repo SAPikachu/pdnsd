@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.10 2000/11/11 16:21:27 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.11 2000/11/11 20:11:00 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -355,7 +355,11 @@ void *status_thread (void *p)
 						print_serr(rs,"Out of memory");
 						break;
 					}
-					add_cent_rrset(&cent,cmd,ttl,0,CF_LOCAL|CF_NEGATIVE,0);
+					if (!add_cent_rrset(&cent,cmd,ttl,0,CF_LOCAL|CF_NEGATIVE,0)) {
+						free_cent(cent);
+						print_serr(rs,"Out of memory");
+						break;
+					}
 				}
 				add_cache(cent);
 				print_succ(rs);
