@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.6 2000/10/08 20:50:45 thomas Exp $
+dnl $Id: configure.in,v 1.7 2000/10/11 22:29:02 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -355,7 +355,10 @@ src/cacheing/native/Makefile
 src/cacheing/gdbm/Makefile
 src/rc/Makefile
 src/rc/RedHat/Makefile
+src/rc/RedHat/pdnsd
 src/rc/SuSE/Makefile
+src/rc/SuSE/pdnsd
 src/rc/Debian/Makefile
+src/rc/Debian/pdnsd
 src/test/Makefile
 ])

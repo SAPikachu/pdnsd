@@ -1,7 +1,7 @@
 #! /bin/sh
 # Copyright (c) 1995-1998 SuSE GmbH Nuernberg, Germany.
 #
-# $Id: pdnsd,v 1.1 2000/07/20 20:03:19 thomas Exp $
+# $Id: pdnsd.in,v 1.1 2000/10/11 22:29:08 thomas Exp $
 #
 # Modified 2000 from SuSE Linux 6.3 /sbin/init.d/skeleton by Thomas Moestl
 #
@@ -30,7 +30,7 @@ case "$1" in
 	## Start daemon with startproc(8). If this fails
 	## the echo return value is set appropriate.
 
-	startproc /usr/sbin/pdnsd -d || return=$rc_failed
+	startproc @prefix@/sbin/pdnsd -d || return=$rc_failed
 	
 	echo -e "$return"
 	;;
@@ -39,7 +39,7 @@ case "$1" in
 	## Stop daemon with killproc(8) and if this fails
 	## set echo the echo return value.
 
-	killproc -TERM /usr/sbin/pdnsd || return=$rc_failed
+	killproc -TERM @prefix@/sbin/pdnsd || return=$rc_failed
 
 	echo -e "$return"
 	;;
@@ -56,7 +56,7 @@ case "$1" in
 	## Check status with checkproc(8), if process is running
 	## checkproc will return with exit status 0.
 
-	checkproc /usr/sbin/pdnsd && echo OK || echo No process
+	checkproc @prefix@/sbin/pdnsd && echo OK || echo No process
 	;;
     *)
 	echo "Usage: $0 {start|stop|status|restart|reload}"

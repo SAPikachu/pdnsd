@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: pdnsd,v 1.1 2000/07/20 20:03:17 thomas Exp $
+# $Id: pdnsd.in,v 1.1 2000/10/11 22:29:07 thomas Exp $
 #
 #	/etc/rc.d/init.d/pdnsd
 #
@@ -14,7 +14,7 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-test -x /usr/sbin/pdnsd || exit 0
+test -x @prefix@/sbin/pdnsd || exit 0
 
 RETVAL=0
 
@@ -24,7 +24,7 @@ RETVAL=0
 case "$1" in
   start)
 	echo -n 'Starting pdnsd: '
-	daemon /usr/sbin/pdnsd -d
+	daemon @prefix@/sbin/pdnsd -d
 	RETVAL=$? 
 	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/pdnsd
 	echo
