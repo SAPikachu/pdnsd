@@ -1,0 +1,101 @@
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+/* ONLY EDIT config.h.templ, NEVER config.h!
+ * config.h MAY BE OVERWRITTEN BY make! */
+
+/* This is for various debugging facilities that produce debug output and
+ * double-check some values. You can enable debug messages with the -g option.
+ * Normally, you can switch this off safely by setting the number after DEBUG
+ * to 0. This will increase speed (although only marginally) and save space 
+ * in the executable (only about 4kB).
+ * However, it may be an aid when debugging config files. 
+ * The only defined debug levels by now are 0 (off) and 1 (on).
+ * Defining this larger than 1 does no harm.
+ * When in doubt, leave it defined to 1. */
+#define DEBUG 9
+
+/* This defines the default verbosity of informational messages you will get. 
+   This has nothing to to with the debug option (-g), but may be set with -v 
+   option.0 is for normal operation, up to 3 for debugging.
+   Unlike the debug messages, these messages will also be written to the syslog.*/
+#define VERBOSITY 0
+
+/* change the #undef to #define if you do not want to compile with ISDN support.
+ * note that the ISDN support will not compile ok on unpatched kernerls earlier 
+ * than 2.2.12 (if you did apply newer isdn patches, it may work fine). 
+ * This is not on by default because it will cause compile problems on some
+ * systems */
+#define ISDN_SUPPORT
+
+/* The following regulates the IP Protocol support. Supported types are IPv4
+ * and IPv6 (aka IPng). You may enable either or both of these protocols. 
+ * Enabling in this context means that support for the respective protocol
+ * will be in the binary. When running the binary, one of the protocols may
+ * be activated via command line switches. Note that activating both IPv4 and
+ * IPv6 is pointless (and will not work because two UDP and two TCP threads
+ * will be started that concur for ports). Because of that, it is not allowed.
+ * When pdnsd runs with IPv6 activated it should be able to service queries
+ * from IPv6 as well as from IPv4 hosts, provided that you host is configured
+ * properly.
+ * For each of the protocols there are two options: ENABLE_IPV4 and ENABLE_IPV6
+ * control whether support for the respective protocol is available in the 
+ * binary. DEFAULT_IPV4 and DEFAULT_IPV6 select whether is enabled on pdnsd
+ * startup by default. 1 means enabled, while 0 means disabled. If support for
+ * a protocol was included in the executable, you can specify command line
+ * parameters to activate or deactivate that protocol (the options are -4 and 
+ * -6).
+ * Make your choice. Note that IPv6 support is experimental in pdnsd. 
+ * In normal operation, you will currently only need IPv4. 
+ * If you activete IPv6, you should also activate DNS_NEW_RRS below. */
+#define ENABLE_IPV4
+#define DEFAULT_IPV4 1
+#define ENABLE_IPV6
+#define DEFAULT_IPV6 0
+
+/* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
+ * unsure about what this means, just leave this as it is.*/
+#undef NO_POLL
+
+/* Define this if you want to compile with support for the new
+ * rrs defined in various rfcs (see rfc1700 for an (incomplete) 
+ * listing and pointers). These are normally not needed and consume 
+ * some memory even if no records are present. You should delete the cache
+ * files before you use a version with this option changed.
+ * If you consider using IPv6, you will probably need the AAAA
+ * (IPv6 address) record type and should enable this option. 
+ * See dns.h for the definitions.
+ * In short, these RRs are:
+ * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
+ * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
+#define DNS_NEW_RRS
+
+/* Define your Target here. Currently defined are LINUX (any architecture)
+ * and FREEBSD (experimental; hopefully works for other BSD variants*/
+#define TARGET LINUX
+
+/* Set this to debug the hash tables. Turn this off normally, or you will get
+ * flooded with diagnostic messages */
+#undef DEBUG_HASH
+
+/* Define this if you need to debug the config file parser. Will generate lots
+ * of diagnostic messages.  */
+#undef DEBUG_YY
+
+/* The following is needed for using LinuxThreads. Better don't touch. */
+#define _REENTRANT
+
+/* The following is for defining inline optimizations for compilers that
+ * support it. This is, of course, non-ANSI C. GCC, for example, supports it.
+ * if your compiler does that, too, add a directive for it. In other cases, 
+ * this should be safe and you should not need to change it */
+/*#if defined(__GNUC__)
+# define INLINE inline
+#else*/
+# define INLINE 
+/*#endif*/
+
+/* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
+ * contents of ./version */
+/*VERSION-INSERT-LOC*/
+#endif

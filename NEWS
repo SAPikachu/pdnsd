@@ -1,0 +1,20 @@
+Version 0.9.4 was the first to be released to the public. For information on 
+changes, see ChangeLog.
+
+Version 0.9.5 introduces uptest=exec, and a modified config file syntax (cache
+sizes are now specified in kB).
+
+The versions 0.9.6 and 0.9.7 are bugfix releases.
+
+Version 0.9.8 fixes a minor bug some build problems with glibc2.0 systems.
+
+When compiling versions after 0.9.8, you will probably get more compiler warnings
+than before. This is because the C compiler settings have been made stricter.
+
+Version 0.9.9 contains the rc scripts for Red Hat Linux contributed by Torben 
+Janssen, in addition to code cleanups and bugfixes.
+The meaning of the option -v has changed in this release.
+There is also a new config file option "lean_query" that is on by default. It 
+is an optimization, so please look in the docs when updating whether you want 
+it switched on or not.
+

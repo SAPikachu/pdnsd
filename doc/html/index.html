@@ -1,0 +1,325 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+  <head>
+    <title>pdnsd homepage</title>
+    <style type="text/css">
+      <!--
+      #small { font-family:helvetica; font-size:small; text-align:center; }
+      // -->
+    </style>
+  </head>
+
+  <body bgcolor="#EEEEEE">
+    <!-- This html code is used for the homepage and for the pdnsd documentation. Since there are some sections that
+    are unwanted in the documentation (particularly the link section with non-local images), and some things that shall
+    not appear in the textified version (some links etc), I introduce 4 tags: the homepage html code is translated to
+    documentation html code by replacing the "nodoc(" comment with the html start comment tag, and the ")nodoc" comment
+    with the html end comment tag.
+    Likewise, before the doc html version is translated to text, the "notext(" and ")notext" comments are translated to
+    html comment tags.
+    -->
+    <!--notext(-->
+    <table width="100%">
+      <tr>
+	<td> <span id="small">
+	    <a href="index.html">pdnsd Homepage</a>
+	  </span></td> 
+	<td> <span id="small">
+	    <a href="faq.html">pdnsd FAQ</a>
+	  </span></td>
+	<td> <span id="small">
+	    <a href="doc.html">Documentation</a>
+	  </span></td>
+	<td> <span id="small">
+	    <a href="COPYING">GNU GPL (pdnsd's License)</a>
+	  </span> </td>
+	<td><span id="small">
+	    <a href="dl.html">Download Section</a>
+	  </span></td>
+      </tr>
+    </table> 
+    <center><h1>The pdnsd Homepage</h1></center>
+    <center><h2>News</h2></center>
+    <table width="100%" cellspacing=1 cellpadding=7>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-05-08</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.11 has been released.</b> 
+	  This fixes a locally exploitable security problem (<code>pdnsd.cache</code> was world-writeable when it was created by pdnsd). 
+	  This problem existed in pdnsd versions 0.9.9 and 0.9.10.
+	  This is actually a one-line fix;  the danger is that any local user may create forged dns records that pdnsd will serve
+	  when it is run. This opens a possibility for DoS and replacement attacks. The danger exists only when
+	  pdnsd does not run, because pdnsd will overwrite the pdnsd cache file on exit.<br>
+	  If you suspect that this hole has been exploited on your machine, please stop pdnsd and remove the <code>pdnsd.cache</code> file
+	  before restarting the fixed version pdnsd.<br>
+	  Otherwise, you have to change permissions of your <code>pdnsd.cache</code> to eliminate the security risk.<br>
+	  Also fixed the SuSE rc <code>make install</code> to create a link for people using xdm.
+	  Thanks to Alan Swanson for reporting both.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-05-06</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.10 has been released.</b> 
+	  This fixes a bug in uptest=if. Red Hat and configuration fixes suggested by Soeren J. Peters
+	  were included.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-05-05</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>My email address has changed.</b> 
+	  It is now tmoestl@gmx.net. Please do not use the old one any more.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-05-05</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.9 has been released.</b> 
+	  This fixes some bugs and some unclean code. Documentation was updated.<br>
+	  Red Hat rc scripts contributed by Torben Janssen were added.
+	  The option <code>-v</code> was added (for setting the verbosity level).
+	  Versioning information is now given using <code>-V</code> instead of <code>-v</code>.<br>
+	  There is a new config file option, <code>lean_query</code>, and <code>interval</code> was changed.
+	  The isdn interface uptest was fixed, thanks to Joachim Dorner for reporting
+	  errors and giving solutions.
+	  Do not reuse the old config.h.templ, as there are new options.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-04-29</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.8 has been released.</b> 
+	  This fixes some build problems for glibc2.0 systems and a minor bug.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-04-20</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.7 has been released.</b> This again is a pure bugfix release.</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-04-07</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Version 0.9.6 has been released.</b> This is a pure bugfix release.</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%"><b>2000-03-17</b></td>
+	<td bgcolor="#CCFFFF" width="80%"><b>Source and i386 binary RPMs are available for SuSE Linux.</b> <br>
+	  These RPMs are currently beta; they may or may not work for you. Feedback is appreciated! </td>
+      </tr>
+    </table>
+    <!--)notext-->
+    <hr>
+    <h2>About pdnsd</h2>
+    pdnsd is a  proxy dns server with permanent caching (the cache contents
+    are written to hard disk on exit) that is designed to cope with unreacheable
+    or down dns servers (for example in dial-in networking).
+    <br>
+    It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="COPYING">GPL</A><!--notext(-->, 
+    <a HREF="http://www.gnu.org/copyleft/gpl.html">also available in html</A> and 
+    <a HREF="http://www.gnu.org/copyleft/copyleft.html#translations">translated into various languages</A>.<!--)notext-->).
+    This, in short, means that the sources are distributed togehter with the program, and
+    that you are free to modify the sources and redistribute them as long as you
+    also license them under the GPL. You do not need to pay anything for pdnsd.
+    It also means that there is <b>ABSOLUTELY NO WARRANTY</b> for pdnsd or any part
+    of it. For details, please <a href="COPYING">read the GPL</a>.
+    <p>
+      pdnsd can be used with applications that do dns lookups, eg on startup, and 
+      can't be configured to change that behaviour, to prevent the often minute-long
+      hangs (or even crashes) that result from stalled dns queries. Some Netscape Navigator 
+      versions for Unix, for example, expose this behaviour.
+    </p>
+    pdnsd is configurable via a file and supports run-time status readback over
+    a named pipe.
+    <br>
+    Parallel name server queries are supported. This is a technique that allows
+    querying several servers at the same time so that very slow or unavailable
+    servers will not block the answer for one timeout interval.
+    <p>
+      There is also a limited support for local zone records, intended for defining
+      1.0.0.127.in-addr.arpa. and localhost. , since some clients request that 
+      information and it must be served even if the cached servers are not available
+      or do not serve these records. pdnsd may also read your /etc/hosts file
+      (this file is normally used by your local resolver and usually contains
+      information for localhost as well as for your machines FQDN) and serve its
+      contents.
+    </p> <p>
+      pdnsd was primarily designed for Linux (mostly because I lack experience with
+      other Unix flavors), but 90% of the source code should be portable to POSIX- 
+      and BSD-compatible systems, provided that those systems support the POSIX threads (pthreads).
+      However, Linux is the only supported OS for now.
+    </p><p>
+      Currently, pdnsd is only compileable by gcc. This should be easy to fix, but I just
+      do not have documentation for other compilers. If you are not able or do not want
+      to use gcc, I would recommend you just try to do the minor changes.
+    </p>
+    <p>
+      pdnsd must be started as root in some cases (raw sockets are needed for icmp 
+      echoes for the option <code>uptest=ping</code>, and the default port is 53, this must be 
+      &gt;1024 to allow non-root execution). 
+    </p> <p>
+      The server should support the full standard dns queries following the rfcs 1034
+      and 1035, and (I hope) the recommendations in rfc 2181. It does not support the
+      following features, of which most are marked optional, experimental or obsolete
+      in these rfcs:
+    </p>
+    <ul>
+      <li> Inverse queries
+      <li> Status queries
+      <li> Completion queries
+      <li> Namespaces other than IN (Internet)
+      <li> AXFR and IXFR queries (whole zone transfers); since pdnsd does not maintain  zones, that should not violate the standard
+    </ul>
+    The following record types, that are extensions to the original DNS standard, are supported for caching at a compile time option
+    (if you do not need them, you do not need to compile support for them into pdnsd and save cache and executable space):
+    <ul>
+      <li> RP (<i>responsible person</i>, RFC 1183)
+      <li> AFSDB (<i>AFS database location</i>, RFC 1183)
+      <li> X25 (<i>X25 address</i>, RFC 1183)
+      <li> ISDN (<i>ISDN number/address</i>, RFC 1183)
+      <li> RT (<i>route through</i>, RFC 1183)
+      <li> NSAP (<i>Network Service Access Protocol address </i>, RFC 1348)
+      <li> PX (<i>X.400/RFC822 mapping information</i>, RFC 1995)
+      <li> GPOS (<i>geographic position</i>, deprecated)
+      <li> AAAA (<i>IPv6 address</i>, RFC 1886)
+      <li> LOC (<i>location</i>, RFC 1876)
+      <li> EID (<i>Nimrod EID</i>)
+      <li> NIMLOC (<i>Nimrod locator</i>)
+      <li> SRV (<i>service record</i>, RFC 2052)
+      <li> ATMA (<i>ATM address</i>)
+      <li> NAPTR (<i>URI mapping</i>, RFC 2168)
+      <li> KX (<i>key exchange</i>, RFC 2230)
+    </ul>
+    <p>
+      The current status of pdnsd is beta, and there might be still some features
+      to come.
+      If you have questions left, you should take a look into the <a HREF="faq.html">FAQ</a>.
+      <br>
+      Bugfixes, patches and compatability fixes for other OSs are very welcome!
+    </p>
+    <h2>Features in detail</h2>
+    <p>
+      This section describes some of pdnsds features in detail. Most of the options are set
+      in the config file. For more information on the configuration file, see 
+      <a href="doc.html">the documenation page</a>.
+    </p><br>
+      
+    <h3>Uptests</h3>
+    pdnsd provides several methods to test whether a remote dns server should be regarded available (so that
+    pdnsd can query it), in
+    addition to the obvious &quot;p.d.&quot; definition (the server is always regarded available).
+    These tests are:
+    <ul>
+      <li><b>ping:</b> a given adress is ping'ed in a given interval. If it there is no response
+	  or the host is unreacheable, the server is seen to be not available (for those who don't know:
+	  pinging is sending a certain Internet packet type to a host to which any standard-conformant
+	  host is required to reply).
+      <li><b>if:</b> a given network interface is tested whether it is existent, up and running. If
+	  it is not, the server is regarded to be not available. This is especially useful for ppp and 
+	  similar interfaces. A special case test for isdn (ippp*) interfaces is integrated, so that the uptests
+	  should also work for these.
+      <li><b>exec:</b> a given shell command line is executed and the exit status of the whole command line (which
+	  is normally the exit status of the last command) is evaluated. If it is not zero, the server is regarded
+	  to be not available. This is a very flexible testing method with which it should be able to perform
+	  virtually any needed test.
+    </ul>
+    <br>
+    <h3>Local Records (&quot;Zones&quot;)</h3>
+    As mentioned above, there are only very basic local record types (ie the record types that you may use in record
+    declarations in your local configuration for records that pdnsd shall serve in addion to the cached ones).
+    They are organized roughly in zones but have not complete zone declarations, so I generally do not use the
+    term &quot;zone&quot; for them, but rather &quot;local records&quot;.
+    These are the local record types pdnsd can understand:
+    <ul>
+      <li> <b>SOA</b> (information about the name server)
+      <li> <b>A</b> (domain-name-to-address mapping)
+      <li> <b>PTR</b> (pointer, used normally for address-to-domain-name mapping)
+      <li> <b>NS</b> (name server, generated automatically by pdnsd for any local record set)
+    </ul>
+    You can specify this records in the configuration file. <br>
+    You may &quot;source&quot; a file in a format like that used in the <code>/etc/hosts</code> file, that means
+    that pdnsd reads this file, extracts addresses and domain names from it and automatically generates
+    A records for name to address mapping, PTR records for address to name mapping and NS records (name
+    server specifiation) for each entry in the file.
+    <br>
+    <h1>System requirements</h1>
+    As mentioned, pdnsd currently runs only under Linux. The system and software requirements under Linux are:
+    <ul>
+      <li> Kernel version &gt;2.2.0 
+      <li> glibc version >2.0.1 (aka libc6) with LinuxThreads (normally included)<br>
+	Due to a bug, pdnsd 0.9.8 does not run with glibc2.1.1. This behaviour was
+	fixed in pdnsd 0.9.9.
+      <li> GCC, preferably egcs-2.* (other compilers are currently not supported; the needed patch for another compiler 
+	should not be difficult, however)
+      <li> lex/flex (not needed to build pdnsd, only for hacking)
+	pdnsd comes with the C files output by flex for the lex input file conf.l, so
+	you don't have to have flex/lex to build pdnsd. If you plan hacking on pdnsd,
+	you should use flex or a lex implementation that has yylineno (others will 
+	work, but the config file parser won't output any line number information on
+	errors then).
+      <li> yacc/bison (not needed to build pdnsd, only for hacking)
+	pdnsd comes with the C files output by bison for the yacc input file conf.y, 
+	so you don't have to have bison/yacc to build pdnsd. If you plan hacking on 
+	pdnsd, bison is recommended.
+      <li> GNU make
+      <li> the standard commands install, grep, sed, awk, touch and which (along with the REALLY 
+	standard ones mv, cp, ln, rm, pwd, test, echo, cat, mkdir, chown, chmod, tar). In
+	any standard Unix installation, this should be no problem.
+      <li> for hacking and building own packages, you will also need gzip, bzip2 and rpm
+    </ul>
+    <br>
+    <h1>Download</h1>
+    If you want to download pdnsd, please visit the <a href="dl.html">download page</a>.
+    <br>
+    <h1>Author</h1>
+    <p>
+      pdnsd was written by Thomas Moestl <a href="mailto:tmoestl@gmx.net">&lt;tmoestl@gmx.net&gt;</a>
+    </p>
+    <p>
+      Torben Janssen contributed start scripts for Red Hat Linux. Soeren J. Peters contributed patches and
+      suggestions for Red Hat compatability.
+    </p>
+    <p>
+      Thanks to Byrial Jensen, Fraser McCrossan, Joachim Dorner, Bert Frederiks and Alan Swanson for reporting bugs and being helpful!
+    </p>
+    <!--
+    <h1>Links</h1>
+    Well, this is the obligatory link section.
+    <br>
+    <br>
+    <table width="100%" cellpadding=7>
+      <tr>
+	<td><center>
+	    <a href="http://www.gnu.org">
+	      <img src="http://www.gnu.org/graphics/gnu-head-sm.jpg"alt="http://www.gnu.org"><br>
+	      The GNU homepage - read all about free Software
+	    </a>
+	</center></td> 
+	<td><center>
+	    <a href="http://freshmeat.net">
+	      <img src="http://freshmeat.net/images/fm.mini.jpg"alt="http://freshmeat.net"><br>
+	      freshmeat - huge free software index
+	    </a>
+	  </center></td>
+      </tr>
+      <tr>
+	<td><center>
+	    <a href="http://www.linux-directory.com" target="_top">
+	      <IMG SRC="http://www.linux-directory.com/button_88x31.gif"
+		WIDTH=88 HEIGHT=31 BORDER=0 ALT="http://www.linux-directory.com"><br>
+	      www.linux-directory.com
+	    </a>
+	</center></td> 
+	<td><center>
+	    <a href="http://slashdot.org">
+	      <img src="http://images.slashdot.org/banners/topicslashdot.gif" alt="http://slashdot.org"><br>
+	      slashdot.org - News for Nerds, Stuff That Matters
+	    </a>
+	  </center></td>
+      </tr>
+    </table> 
+    -->
+    <br>
+    <hr>
+    <address><a href="mailto:Moestl@t-online.de">Thomas Moestl</a></address>
+    <br>
+<!-- Created: Fri Mar 17 15:14:35 MET 2000 -->
+<!-- hhmts start -->
+Last modified: Thu May 18 09:23:54 MEST 2000
+<!-- hhmts end -->
+  </body>
+</html>

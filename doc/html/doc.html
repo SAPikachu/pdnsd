@@ -1,0 +1,843 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+  <head>
+    <title>pdnsd Documentation</title>
+    <style type="text/css">
+      <!--
+      #small { font-family:helvetica; font-size:small; text-align:center; }
+      // -->
+    </style>
+  </head>
+
+  <body bgcolor="#EEEEEE">
+    <!--notext(-->
+    <table width="100%">
+      <tr>
+	<td> <span id="small">
+	    <a href="index.html">pdnsd Homepage</a>
+	  </span></td> 
+	<td> <span id="small">
+	    <a href="faq.html">pdnsd FAQ</a>
+	  </span></td>
+	<td> <span id="small">
+	    <a href="doc.html">Documentation</a>
+	  </span></td>
+	<td> <span id="small">
+	    <a href="COPYING">GNU GPL (pdnsd's License)</a>
+	  </span> </td>
+	<td><span id="small">
+	    <a href="dl.html">Download Section</a>
+	  </span></td>
+      </tr>
+    </table> 
+    <!--)notext-->
+    <center><h1>pdnsd Documentation</h1></center>
+    <h2>0. Installation</h2>
+    <h3>0.1 Installing binary RPM's</h3>
+    To install a binary RPM, just do<br>
+    <code>rpm -i pdnsd-&lt;version&gt;.rpm</code><br>
+    This should install pretty much everything automatically. The only thing left
+    for you to do is adatpt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
+    according to your needs (see below). 
+    In the SuSE RPMs, a start script is also installed; read the section <i>0.4, Start at Boot Time</i>
+    about that.
+
+    <br>
+    <h3>0.2 Installing source RPM's</h3>
+    To install a source RPM, just do<br>
+    <code>rpm --recompile pdnsd-&lt;version&gt;.rpm</code><br>
+    This should install pretty much everything automatically. The only thing left
+    for you to do is adatpt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
+    according to your needs. 
+    In the SuSE RPMs, a start script is also installed; read the section <i>Start at Boot Time</i>
+    about that.
+
+    <br>
+    <h3>0.3 Installing from the pure sources (tar archives)</h3>
+    <h4>0.3.1 Decompressing</h4>
+    pdsnsd comes in two different packed archives: the standard gzip'ed version
+    pdnsd-&lt;version&gt;.tar.gz, and the bzip2-packed version (about 10% smaller)
+    pdnsd-&lt;version&gt;.tar.bz2. If you have bunzip2 installed on your computer, I 
+    recommed you save bandwidth and get the .bz2-version.
+    To decompress it (using a modern tar) do<br>
+    <code>tar -xzf pdnsd-&lt;version&gt;.tar.gz</code><br>
+    <i>--or--</i><br>
+    <code>tar -xIf pdnsd-&lt;version&gt;.tar.bz2</code><br><br>
+    If your tar doesn't do this, use:<br>
+    <code>gunzip pdnsd-&lt;version&gt;.tar.gz<br>
+      tar -xf pdnsd-&lt;version&gt;.tar</code><br>
+    <i>--or--</i><br>
+    <code>bunzip2 pdnsd-&lt;version&gt;.tar.bz2<br>
+      tar -xf pdnsd-&lt;version&gt;.tar</code>
+
+
+    <br>
+    <h4>0.3.2 Setup </h4>
+    Before building, you should look into <code>config.h.templ</code> and <code>Makefile</code>, and customize
+    defines/variables there if needed. They are usually commented.
+    
+    <br>
+    <h4>0.3.3 Building &amp; installing </h4>
+    Type <code>make</code> in the source directory. <i>Should</i> work by now.<br>
+    To install, type <code>make install</code> or do the installation by hand (see <i>0.3.4</i>).<br>
+    <code>make install</code> will do the following:<br>
+    <ol>
+      <li> copies pdnsd to <code>/usr/sbin/</code>
+      <li> copies docs/pdnsd.conf (a sample configuration) to <code>/etc/</code> (and backs up 
+	<code>/etc/pdnsd.conf</code> to <code>/etc/pdnsd.conf.old</code>. If you <b>have</b> an <code>/etc/pdnsd.conf.old</code>
+	you do not want to be overwritten, save it to another place/name before doing
+	<code>make install</code>!
+      <li> creates <code>/var</code>, if not there (unusual case).
+      <li> creates <code>/var/cache</code> if not there
+      <li> creates <code>/var/cache/pdnsd</code> if not there.
+	After installation, you should check the file permissions and edit 
+	<code>/etc/pdnsd.conf</code> to fit your needs (see below).
+    </ol>
+    You must be root for this installation!
+    <br>
+    <h4>0.3.4 Manual installation </h4>
+    For a manual installation, you need to do the following steps:
+    <ol>
+      <li> Copy pdnsd from your build directory to an appropriate location (e.g. <code>/usr/sbin</code>).
+      <li> Copy <code>docs/pdnsd.conf</code> into the directory you want it to reside (<code>/etc</code> by default, 
+	    and change it according to your needs (see below).
+      <li> Create your caching directory; default is <code>/var/cache/pdnsd</code> (you may change this
+	in your <code>pdnsd.conf</code>); Permisions should be at max <code>rwxr-xr-x</code> (if you want to
+	protect your cache and status pipe, make it <code>rwx------</code>).
+	If you want your status pipe to have different permissions than <code>r--------</code>, do:<br>
+	<code>mkfifo &lt;your cache directory&gt;/status -m &lt;your desired permissions&gt;</code><br>
+    </ol>
+    Thats it! 
+    <br>
+
+    <h3>0.4 Start at boot time</h3>
+    In the <code>rc</code> folder of the pdnsd distribution are start scripts
+    for pdnsd designed for different Linux distros. There are scripts
+    for SuSE  and Redhat Linux now.<br>
+    The start scripts are automatically installed during RPM install.
+    <h4>0.4.1 SuSE Linux startup</h4>
+    <code>rc/SuSE/pdnsd</code> is a start script for SuSE Linux. It was tested for 6.? but should run on some
+    versions below. You can do <code>make install</code> as root in the <code>rc/SuSE</code> 
+    directory to install it, or you can install manually:<br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=5>
+      <tr>
+	<td>
+	  <b>manual installation</b>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  For manual installation, copy <code>rc/SuSE/pdnsd</code> into <code>/sbin/init.d/</code>, go to
+	  <code>/sbin/init.d/rc2.d/</code> and create there the following two symlinks:<br>
+	  S11pdnsd to ../pdnsd (do <code>ln -s ../pdnsd S11pdnsd</code> in that dir) <br>
+	  K34pdnsd to ../pdnsd (do <code>ln -s ../pdnsd K34pdnsd</code> in that dir) <br>
+	  The numbers dictate the order different services are started and 
+	  might need to be modified. Then edit your <code>/etc/rc.config</code> file and
+	  add the line <code>START_PDNSD=yes</code> to start pdnsd at boot time.
+	</td>
+      </tr>
+    </table>
+    <p>
+      If you used the <code>make install</code> command, <code>START_PDNSD=yes</code> has been
+      appended to your <code>/etc/rc.config</code> file, causing pdnsd to be started
+      at boot time. If you don't want that, change the <code>yes</code> into <code>no</code>.
+    </p>
+    This start script was created from <code>/sbin/init.d/skeleton</code> by me, so the
+    most is copyrighted by SuSE. They put it under the GPL, however, so
+    the license stated in <a href="COPYING">COPYING</a> also applies to this script.
+    There is NO WARRANTY OF ANY KIND on these scripts.
+    This is no official SuSE script, and SuSE naturally does NO support 
+    for it.
+    <h4>0.4.2 Red Hat Linux startup</h4>
+    <code>rc/Redhat/pdnsd</code> is a start script for Red Hat Linux. It was contibuted by Torben
+    Janssen. <br>
+    This was tested for 6.1 but should run on 5.0+. You can do <code>make install</code> as root in the 
+    <code>rc/Redhat</code> directory to install it, or you can install manually:<br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=5>
+      <tr>
+	<td>
+	  <b>manual installation</b>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  For manual installation, copy <code>rc/Redhat/pdnsd</code> into <code>/etc/rc.d/init.d/</code><br>
+	  Then go to <code>/etc/rc.d/rc3.d</code> and create there the following symlink:<br>
+	  S78pdnsd -> ../init.d/pdnsd 
+	  (do <code>ln -f -s ../init.d/pdnsd S78pdnsd</code> in that dir)<br>
+		
+	  Then go to <code>/etc/rc.d/rc0.d</code> and create there the following symlink:<br>
+	  K78pdnsd -> ../init.d/pdnsd 
+	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)<br>
+		
+	  Then go to /etc/rc.d/rc6.d and create there the following symlink:<br>
+	  K78pdnsd -> ../init.d/pdnsd 
+	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)
+	</td>
+      </tr>
+    </table>
+    This script is also covered by license stated in <a href="COPYING">COPYING</a>.
+    Again, there is NO WARRANTY OF ANY KIND on these scripts.
+    This is no offical Redhat script, and Redhat naturally does NO support
+    for it
+    <br>
+    <br>
+    <h2>1 Invocation</h2>
+    <p>
+      pdnsd <b>--help</b> (or <b>-h</b>) gives you an overview of the pdnsd command line options.
+    </p>
+    <p>
+      pdnsd <b>--version</b> (or <b>-V</b> for short) prints licence and version information.
+    </p>
+    <p>
+      To start pdnsd as background daemon, specifiy <b>--daemon</b> (or <b>-d</b> for short) on
+      the command line. Diagnostic and error messages after the actual daemon start
+      will be printed to the syslog instead of the console.
+    </p>
+    <p>
+      If you want to specify a configuration file other that /etc/pdnsd.conf, specify
+      <b>-c</b> or <b>--config-file</b> on the command line, followed by a filename.
+    </p>
+    <p>
+      If pdnsd was compiled with debugging options enabled, you may specify <b>-g</b> or
+      <b>--debug</b> on the command line. This will cause extra diagnostic messages to be
+      printed. This will only work if pdnsd does not run in daemon mode.
+    </p>
+    <p>
+      pdnsd <b>-vn</b> sets the verbosity level of pdnsd. n may be a digit from 0 to 3,
+      where 0 means normal operation, while 3 will most verbose. Example is <code>-v2</code>
+    </p>
+    <p>
+      The option <b>-s</b> or <b>--status</b> enables the status pipe. This is a named pipe in
+      the server directory called <code>status</code>. You can read the server status by doing <br>
+      <code>cat &lt;your cache directory&gt;/status</code>
+    </p>
+
+    <h2>2 The configuration file</h2>
+    This section describes the layout of the configuration file and the available
+    configuration options.
+    The default location of the file is <code>/etc/pdnsd.conf</code>. This may be changed
+    with the -c command line option.
+    An example pdnsd.conf comes with the pdnsd distribution in the docs directory
+    and will be installed to <code>/etc/</code> by <code>make install</code>.
+    
+    <br>
+    <h3>2.1 Layout</h3>
+    The configuration file is divided into sections. Each section is prefixed with
+    the section name and opening curlies ({) and closed with closing curlies (}).
+    In each section, configuration options can be given in the form <br>
+    <code>
+      option_name=option_value;
+    </code><br>
+    Option value may be a string literal (enclosed in &quot;), a number or a constant.
+    Constants are noted in the section description in &lt;&gt; signs, but are written
+    in the file without these signs. Some options take more than one value; in this
+    case, the values are separated with commas. <br>
+    If you may supply one of a set of possible values to an option, this is noted
+    in the documentation as <br>
+    <code>(option1|option2|option3|...)</code><br>
+    Comments may be onclosed in /* and */, nested comments are possible. If the 
+    # sign or two slashes (//) appear in the configuration file, everything from 
+    these signs to the end of the current line is regarded as a comment and ignored.<br>
+    There are examples for nearly all options in the sample config file.
+    <br>
+    <h3>2.1.1 <code>global</code> Section</h3>
+    The global section specifies parameters that affect the overall behaviour of the
+    server. If you specify multiple global sections, the settings of those later in
+    the file will overwrite the earlier given values.<br>
+    These are the possible options:<br><br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
+      <tr>
+	<td>
+	  <b><code>perm_cache=(number|&lt;off&gt;);</code></b><br>
+	  Switch the disk cache off or supply a maximum cache size in kB. If the disk 
+	  cache is switched off, 4 bytes will still be written to disk.
+	  The memory cache is always 10kB larger than the file cache.
+	  This value is 2048 (2 MB) by default.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>cache_dir=string;</code></b><br>
+	  Set the directory you want to keep the cache in.
+	  The default is <code>&quot;/var/cache/pdnsd&quot;</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>server_port=number;</code></b><br>
+	  Set the server port. This is especially useful when you want to start the
+	  server and are not root. Note that you may also not specify uptest=ping in
+	  the server section as non-root.<br>
+	  The default port is 53, the RFC-standard one. Note that you should only use 
+	  non-standard ports when you only need clients on your machine to communicate
+	  with the server; others will probably fail if the try to contact the server
+	  on the basis of an NS record, since the A record that supplies the address for
+	  (among others) name servers does not have a port number specification.
+	</td>
+      </tr>
+    </table>
+
+    <br>
+    <h3>2.1.2 <code>server</code> Section</h3>
+    Each server section specifies a name server that pdnsd should try to get 
+    resource records or authoritative name server information from. The servers a 
+    queried in the order of their appearance (or parallel to a limited extend). 
+    If one fails, the next one is taken and so on.<br>
+    You probably want to specify  the dns server in your LAN, the caching dns server
+    of your internet provider or even one of the root servers using server records.<br>
+    The supported options in this section are:<br><br>
+
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
+      <tr>
+	<td>
+	  <b><code>ip=string;</code></b><br>
+	  Give the ip (the ip, _not_ the hostname) of the server.
+	  Must be specified.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> port=number;</code></b><br>
+	  Give the port the remote name server listens on. Default is 53 (the official
+	  dns port)
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> uptest=(&lt;ping&gt;|&lt;none&gt;|&lt;if&gt;);</code></b><br>
+	  Determine the method to check whether the server is available. Currently
+	  defined methods are:
+
+	  <ul>
+	    <li><b><code>ping</code></b>: Send an ICMP_ECHO request to the server. If it doesn't respond
+	      in timeout, it is regarded to be unavailable until the next probe.
+	    <li> <b><code>none</code></b>: The server is p.d. up
+	    <li> <b><code>if</code></b>: Check whether the interface (specified in the <code>interface=</code> option) is
+	      existent, up and running. This currently works for all &quot;ordinary&quot;
+	      network interfaces, interfaces that disappear when down (eg ppp?),
+	      and additionally for Linux isdn interfaces (as of kernel 2.2). Note that
+	      you need a <code>/dev/isdninfo</code> device file (major#45, minor#255), or the
+	      isdn uptest will always fail.
+	    <li> <b><code>exec</code></b>: Executes a given command in the <code>/bin/sh</code> shell 
+	      (as <code>/bin/sh -c &lt;command&gt;</code>)
+	      and evaluates the result (the retur code of the last command) in the shell's way of handling return codes,
+	      i.e. 0 indicates success, all other indicate failure. The shell's process name will be
+	      <code>uptest_sh</code>. The command is given with the <code>uptest_cmd</code> option (see below).
+	      For secuity issues, also see that entry.
+	  </ul>
+	  <p>
+	    The default value is <b><code>none</code></b>.
+	    <br><br>
+	    <b>NOTE</b>: If you use demand dialling, use none, if or exec, since ping will
+	    send packets in the specified interval and the interface will thus
+	    frequently dial!
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> ping_timeout=number;</code></b><br>
+	  Sets the timeout for the ping test in tenth of seconds. The default is 600.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> ping_ip=string;</code></b><br>
+	  The ip for the ping test. The default is the ip of the name server.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> uptest_cmd=string,string;</code></b><br>
+	  or<br>
+	  <b><code> uptest_cmd=string;</code></b><br>
+	  Sets the command for the uptest=exec function to the first string.
+	  If the second string is given, it specifies a user with whose user 
+	  id and primary group id the command is executed.<br>
+	  This is especially useful if you are executing the server as root,
+	  but do not want the uptest to be performed with root privileges.
+	  In fact, you should never execute the uptest as root if you can help
+	  it.<br>
+	  If the server is running setuid or setgid, the privileges gained such
+	  are dropped even before changin identity to the specified user to
+	  prevent setuid/gid security holes (otherwise, any user might execute
+	  commands as root if you setuid the executable).<br>
+	  The command is executed using <code>/bin/sh</code>, so you should be able to use
+	  shell builtin commands.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> interval=number;</code></b><br>
+	  Sets the interval for the server-up-test in seconds. The default is 
+	  900; however, a test is forced when a query times out. The interval
+	  timeout is reset then.<br>
+	  If you specify onquery instead of a timeout, the interface will be
+	  tested before every query. This is to prevent automatically dialling
+	  interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
+	  used in connection with a interface testing uptest ;-) <br>
+	  Note that using uptest=exec, you might run into performance problems
+	  on slow machines when you use that option.
+	  DON'T use this option with ping, as it may cause delays if the server
+	  does not answer (btw, it doesn't make sense anyway).
+	  Note also that using that option is no guarantee that the interface
+	  will not be used. When another (reachable) dns server tells pdnsd
+	  to query a third dns server for data, pdnsd will do that and has 
+	  no means of checking whether this will dial up the interface or not.
+	  This however should be a rare configuration.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> interface=string;</code></b><br>
+	  The network interface (or network device, eg <code>&quot;eth0&quot;</code>) for the <code>uptest=if</code> option.
+	  Must be specified if <code>uptest=if</code> is given.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> timeout=number;</code></b><br>
+	  Set the timeout for the dns query in seconds. The default is 120. You probably want to set this lower.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> purge_cache=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
+	  In every fetched dns record, there is a cache timeout given, which 
+	  specifies how long the fetched data may be cached until it needs to be 
+	  reloaded. If <code>purge_cache</code> is set to <code>no</code>, the cached records are not purged 
+	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
+	  Instead, they are still served if they cannot succesfully be
+	  updated (eg. because all servers are down).       
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> caching=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
+	  Specifies if caching shall be performed for this server at all. Default is
+	  on.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code> lean_query=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
+	  Specifies whether to use the &quot;lean&quot; query mode. In this mode, only the
+	  information actually queried from pdnsd is resolved and cached. This has
+	  the advantage that usually less cache space is used and the query is
+	  usually faster. In 90% of the cases, only address (A) records are needed
+	  anyway. If switched off, pdnsd will always cache all data about a host
+	  it can find (well, at least it is a good approximation for what it really
+	  does ;-)<br>
+	  Some buggy name servers may not deliver CNAME records when not asked for
+	  all records. I do not know if such servers are around, but if you have
+	  trouble resolving certain hostnames, try turning this option off.<br>
+	  A last note: If you use multiple pdnsd's that access each other, turning
+	  this option on is probably a big win.<br>
+	  This on by default.
+	</td>
+      </tr>
+    </table>
+    <br>
+    <h3>2.1.3 <code>rr</code> Section</h3>
+    Every rr section specifies a dns resource record that is stored locally. It
+    allows you to specify own dns records that are served by pdnsd in a limited way.
+    Only PTR, A and SOA records are implemented.<br>
+    This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
+    and localhost. (and perhaps even one or two hosts) without having to start an
+    extra named if your cached name servers do not serve those records.
+    It is <b>NOT</b> intended and not capable to work as a full-featured name server.
+    <br><br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
+      <tr>
+	<td>
+	  <b><code>name=string;</code></b><br>
+	  Specifies the name of the resource records, i.e. the domain name of the resource
+	  the record describes. This option must be specified before
+	  any a, soa or ptr records. Only absolute domain names (names ending in the root
+	  domain, in dotted notation ending with a dot) are allowed. For this and all
+	  following arguments that take domain names, you need to specify domain names in
+	  dotted notation (example venera.isi.edu.). Do not forget the dot at the end!
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>owner=string;</code></b><br>
+	  Specifies the name of the host pdnsd runs on and that is specified in dns 
+	  answers (specifically, nameserver records).
+	  Must be specified before any <code>a</code>, <code>ptr</code> and <code>soa</code> entries.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>ttl=number;</code></b><br>
+	  Specifies the ttl (time to live) for all resource records in this section after this entry.
+	  This may be redefined. The default is 86400 seconds (=1 day).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>a=string;</code></b><br>
+	  Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
+	  this adrress for the hostname given in the name option.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>ptr=string;</code></b><br>
+	  Defines a PTR (domain name pointer) record. The argument is a host name in 
+	  dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
+	  you want to have the adress 127.0.0.1 into localhost, and localhost into 127.0.0.1, you need something 
+	  like the following sections:<br>
+	  <code>
+	    rr {<br>
+	    owner=&quot;localhost.&quot;;<br>
+	    name=&quot;localhost.&quot;;<br>
+	    a=&quot;127.0.0.1&quot;;<br>
+	    soa=&quot;localhost.&quot;,&quot;root.localhost.&quot;,42,86400,900,86400,86400;<br>
+	    }<br>
+	    rr {<br>
+	    owner=&quot;localhost.&quot;;<br>
+	    name=&quot;1.0.0.127.in-addr.arpa.&quot;;<br>
+	    ptr=&quot;localhost.&quot;;<br>
+	    soa=&quot;localhost.&quot;,&quot;root.localhost.&quot;,42,86400,900,86400,86400;<br>
+	    }<br>
+	  </code>
+	  The second section is for reverse resolving and uses the ptr option. There is something special
+	  about the name in the second section: when a resolver wants to get a hostname from an internet
+	  address, it composes an adress that is build of the IP address in reverse byte order 
+	  (<code>1.0.0.127</code> instead of <code>127.0.0.1</code>) where each byte of the adress written 
+	  as number constitutes a sub-domain under the domain <code>in-addr.arpa.</code> <br>
+	  So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (eg <code>1.2.3.4</code>),
+	  reverse the byte order (<code>4.3.2.1</code>) and append in-addr.arpa. (<code>4.3.2.1.in-addr.arpa.</code>) 
+	  Then, define an <code>rr</code> section giving this address as <code>name</code> and the domain name corresponding to
+	  that ip in the <code>ptr</code> option.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>soa=string,string,number,number,number,number,number;</code></b><br>
+	  This defines a soa (record source information) record. The first string is the 
+	  domain name of the server and should be equal to the name you specified as 
+	  owner. <br>
+	  The second string specifies the email address of the maintainer of the name 
+	  server. It is also specified as a domain name, so you will have to replace the 
+	  @ sign in the name with a dot (.) to get the name you have to specify here.
+	  The next parameter (the first number) is the serial number of the record. You 
+	  should increment this number if you change the record.<br>
+	  The 4th parameter (the 2nd number) is the refresh timeout. It specifies after 
+	  what amount of time a caching server should attempt to refresh the cached 
+	  record.<br>
+	  The 5th parameter specifies a time after which a caching server should attempt 
+	  to refresh the record after a refresh failure.<br>
+	  The 6th parameter defines the timeout after which a cached record expires if it
+	  has not been refreshed.<br>
+	  The 7th parameter is the ttl that is specified in every rr and should be the 
+	  same as given with the ttl option (if you do not specify a ttl, use the default 86400)<br>
+	  All time parameters must be specified in seconds.
+	</td>
+      </tr>
+    </table>
+    <br>
+    <h3>2.1.4 <code>source</code> Section</h3>
+    Every source section allows you to let pdnsd read the records from a file in an
+    <code>/etc/hosts</code>-like format. pdnsd will generate records to resolve the entries 
+    address from its host name and vice versa for every entry in the file. This is 
+    normally easier than defining an rr for every of your addresses, since localhost
+    and your other FQDNs are normally given in <code>/etc/hosts</code>.<br>
+    The accepted format is as follows: The #-sign initiates a comment, the rest of 
+    the line from the first occurence of this character on is ignored. Empty lines 
+    are tolerated.<br>
+    The first entry on a line (predeceded by an arbitrary number of tabs and spaces)
+    is the IP in dotted notation, the second entry on one line (separated by the 
+    first by an arbitrary number of tabs and spaces) is the FQDN (fully qualified 
+    domain name) for that ip. The rest of the line is ignored (in the original 
+    <code>/etc/hosts</code>, it may contain information not needed by pdnsd).
+    <br><br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
+      <tr>
+	<td>
+	  <b><code>owner=string;</code></b><br>
+	  Specifies the name of the host pdnsd runs on and that are specified in dns 
+	  answers (specifically, nameserver records).
+	  Must be specified before any file entries.<br>
+	  Only absolute domain names (names ending in the root domain, in dotted notation 
+	  ending with a dot) are allowed. Example: venera.isi.edu.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>ttl=number;</code></b><br>
+	  Specifies the ttl (time to live) for all resource records in this section after 
+	  this entry. This may be redefined. The default is 86400 seconds (=1 day).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>file=string;</code></b><br>
+	  The string specifies a file name. For every file entry in a source section, 
+	  pdnsd will try to load the given file as described above. Failure is indicated 
+	  only when the file cannot be opened, malformed entries will be ignored.
+	</td>
+      </tr>
+    </table>
+    <br>
+    <h2>3 Problems...</h2>
+    If you have problems with configuring or tunning pdnsd, be sure to read th <a href="faq.html">FAQ</a>. If this does not 
+    help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.
+    <br>
+    <br>
+    <h2>4 Hacking</h2>
+    Here comes some information you might find useful for hacking on pdnsd.
+    <br>
+    <h3>4.1 Makefile rules</h3>
+    <table width="100%" cellspacing=1 cellpadding=7>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">all</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Does a complete build of pdnsd.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">clean</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Cleans all user-rebuildable files.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">mclean</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Cleans all generated files. You will need lex or flex and yacc or bison to be able to build pdnsd again.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">distclean</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Cleans up for a distribution. Similar to clean, but will delete some backup files.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">dist</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Makes tar.gz and tar.bz2 distribution archive in the directory above the pdnsd source directory.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">suserpm</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Makes a set of RPMs for SuSE Linux, a source RPM and a binary RPM for your machine's configuration.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">rhrpm</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Makes a set of RPMs for Red Hat Linux, a source RPM and a binary RPM for your machine's configuration.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">install</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Standard installation.
+	</td>
+      </tr>
+    </table>
+    
+    <br>
+    <h3>4.2 Source files</h3>
+    <table width="100%" cellspacing=1 cellpadding=7>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">cache.c, cache.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  These files contain the cache handler functions and their prototypes.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">conf.l.templ</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The lex/flex source file for the config file lexer. This is a template because the comment
+	  /*YYLINENO-OPTION-LOCATION*/ gets in some cases replaced by &quot;%option yylineno&quot; for
+	  proper flex support.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">conf.l.</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  This is automatically generated by exec-flex.sh from conf.l.templ. It may be overwritten
+	  in any make, so never modify this, but conf.l.templ instead!
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">conf.y</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The yacc/bison source of the config file parser.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">conff.c, conff.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The configuration handler functions and their prototypes. The parser is called from here.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">config.h.templ</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The template for config.h. It contains configuration options.
+	  &quot;/*VERSION-INSERT-LOC*/&quot; is replaced by a #define in order for the macro
+	  VERSION to have the value of the correct version number.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">config.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  This is automatically generated from config.h.templ, so never edit it! The definition of the VERSION
+	  macro is put in place during the make process.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">consts.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Some constants used by lexer, parser, config file handler functions and in the server status thread,
+	  among others.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">dns.c, dns.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define dns message structures, constants, and some common dns data handlers. dns.h contains gcc-specific
+	  code (in praticular, &quot;__attribute__((packed))&quot;).
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">dns_answer.c, dns_answer.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions that answer incoming dns queries.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">dns_query.c, dns_query.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions to manage outgoing dns queries.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">error.c, error.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Functions for error output to stderr or the syslog.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">exec-flex.sh</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  A wrapper script that executes lex and flex. It is needed because the variable yylineno is not documented in
+	  lex and needs a special option in flex. With this script, it is tried to get yylineno support, but if this
+	  is not possible, pdnsd will compile anyway (but will not display line number information on errors in the
+	  config file).
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">hash.c, hash.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions to manage hash buckets for faster cache access. This is mainly used in cache.c.<br>
+	  For the cache, a mixed storage approach was chosen: the cache contents are stored in doubly linked lists
+	  (for easy and fast access to oldest records for purging) and are additionally indexed by a hash table for
+	  fast cache access.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">helpers.c, helpers.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define miscellaneous helper functions.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">icmp.c, icmp.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define a function for performing a ping test. This contains OS-specific code.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">lex.inc.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  This file is automatically generated by exec-flex.sh and contains &quot;#define NO_YYLINENO&quot; if
+	  yylineno is not defined in the lexer (otherwise, it is empty).
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">lex.yy.c</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The C code generated by lex/flex from conf.l
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">main.c</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Contains main(), which holds the command line parser, performs initialisations and signal handling.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">netdev.c, netdev.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions for network device handling. OS-specific.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">pdnsd-suse.spec.templ</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The template for the rpm spec file for building RPMs for SuSE linux. Several occurances of 
+	  &quot;/*VERSION-INSERT-LOC*/&quot; are replaced with the program version string.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">pdnsd-suse.spec</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Automatically generated from pdnsd-suse.spec. 
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">pdnsd-redhat.spec.templ</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The template for the rpm spec file for building RPMs for Red Hat linux. Several occurances of 
+	  &quot;/*VERSION-INSERT-LOC*/&quot; are replaced with the program version string.<br>
+	  This file is untested. If you have Red Hat and want to do create rpms, just give them a try...
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">pdnsd-redhat.spec</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Automatically generated from pdnsd-redhat.spec. 
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">servers.c, servers.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions for the server status thread that performs the periodical uptests.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">status.c, status.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Define functions for the status pipe thread.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">version</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Contains only the program version string. Needed for several templates.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">y.tab.c, y.tab.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The C code generated by yacc/bison from conf.y
+	</td>
+      </tr>
+    </table>
+
+    <br>
+    <hr>
+    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
+<!-- Created: Fri Mar 17 16:10:33 MET 2000 -->
+<!-- hhmts start -->
+Last modified: Thu May 18 09:25:56 MEST 2000
+<!-- hhmts end -->
+  </body>
+</html>

@@ -1,0 +1,13 @@
+You can find the documentation for pdnsd in the doc/ directory. The html
+documentation (which I recommend) is in the doc/html/ subdirectory.
+The pure text documentation (which is generated automatically from the 
+html documentation) is in doc/txt/.
+The following documents are available:
+
+index.html / index.txt		Overview, system requirements
+doc.html / doc.txt		Building, installation and usage instructions
+faq.html / faq.txt		The FAQ
+
+Share and enjoy!
+	Thomas
+

@@ -1,0 +1,35 @@
+Summary: A caching dns proxy for small networks or dialin accounts
+Name: pdnsd
+Version: /*VERSION-INSERT-LOC*/
+Release: 1
+Copyright: GPL
+Group: Daemons
+Source: pdnsd-/*VERSION-INSERT-LOC*/.tar.gz
+vendor: Thomas Moestl
+distribution: Red Hat Linux
+packager: Thomas Moestl <tmoestl@gmx.net>
+URL: http://home.t-online.de/home/Moestl/
+%description
+pdnsd is a proxy DNS daemon with permanent (disk-)cache and the ability
+to serve local records. It is designed to detect network outages or hangups
+and to prevent DNS-dependent applications like Netscape Navigator from hanging.
+%prep
+%setup
+%build
+set PDNSD_CACHEDIR=/var/spool/pdnsd ; make
+
+%install
+make install
+make -C rc/Redhat/ install
+
+%files
+%doc AUTHORS COPYING THANKS ChangeLog FAQ INSTALL NEWS README TODO doc
+%config /etc/pdnsd.conf
+%dir /var/spool/pdnsd
+
+/usr/sbin/pdnsd
+/etc/rc.d/init.d/pdnsd
+/etc/rc.d/rc3.d/K78pdnsd
+/etc/rc.d/rc3.d/S78pdnsd
+
+

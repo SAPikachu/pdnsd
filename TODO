@@ -1,0 +1,194 @@
+The pdnsd TODO list.
+
+Task									 status
+================================================================================
+================================================================================
+Versions 0.2 to 0.9.x
+================================================================================
+--------------------------------------------------------------------------------
+Replace cent in hash (as data) with the list entry	       [-tm, 2000-02-14]
+--------------------------------------------------------------------------------
+Implement disk storage					       [-tm, 2000-02-14]
+--------------------------------------------------------------------------------
+Implement queries, query-to-cache       	               [-tm, 2000-02-15]
+--------------------------------------------------------------------------------
+Return Q in answer					       [-tm, 2000-02-16]
+--------------------------------------------------------------------------------
+Implement replacement/timeout requery			       [-tm, 2000-02-16]
+--------------------------------------------------------------------------------
+Decompress answer rrs					       [-tm, 2000-02-16]
+--------------------------------------------------------------------------------
+C lint							       [-tm, 2000-02-17]
+--------------------------------------------------------------------------------
+Implement timeout					       [-tm, 2000-02-17]
+--------------------------------------------------------------------------------
+Implement disk cache size difference (purge before write)      [-tm, 2000-02-17]
+--------------------------------------------------------------------------------
+Save space in the dns_cent_t and rr_bucket_t types by 
+implementing dynamic names.
+The following things need update then: init_cent(x), 
+add_to_cent(), copy_cent(), free_cent(), 
+write_disk_cache(), read_disk_cache(). 
+The rest thinks of an array and will thus accept a pointer, 
+or, even better, uses the access functions.		       [-tm, 2000-02-17]
+--------------------------------------------------------------------------------
+Implement simple zone records (SOA, A, PTR) for local use (so 
+that programs can do inquiries about the server)
+You need to move init_cache before read_config_file to do that. 
+Do an extra flag that prevents purging and reloading _and_ 
+saving in the disk cache! Best to do an extra counter for 
+those private cache elements. So, if add_cache sees that flag 
+value...
+Also add an extra line to report_cache_stat. Modify purge_cache 
+to not delete the local zone records			       [-tm, 2000-02-17]
+--------------------------------------------------------------------------------
+Caching-off-flag					       [-tm, 2000-02-18]
+--------------------------------------------------------------------------------
+Implement recursion (if ancount==0 and nscount>0. Limited 
+number of hops. No caching of intermediate results. Also if not 
+rd.)						               [-tm, 2000-02-19]
+--------------------------------------------------------------------------------
+Implement reaction on cname (if q!=cname, recurse, but save the
+cname in the answer. Enter those cnames into the cache. Limited 
+number of hops. Only if rd) 			               [-tm, 2000-02-19]
+--------------------------------------------------------------------------------
+Implement the command line options -d (--daemon), -g (--debug) 
+and the long options --config-file and --status in addition to 
+the existing -c and -s					       [-tm, 2000-02-19]
+--------------------------------------------------------------------------------
+Implement additional information storage and handling (no 
+outgoing additionals for now)				       [-tm, 2000-02-20]
+--------------------------------------------------------------------------------
+Implement compression for outgoing answers.		       [-tm, 2000-02-22]
+--------------------------------------------------------------------------------
+ISDN interface-up detection				       [-tm, 2000-02-23]
+--------------------------------------------------------------------------------
+Implement new record/query types RP, AFSDB, X25, ISDN, RT (all 
+rfc1183) NSAP, NSAP-PTR (rfc 1348), SIG, KEY (rfc 2065), PX 
+(rfc2163), GPOS, (?? no rfc ??), AAAA (rfc 1886), IXFER 
+(rfc1995) SRV (rfc2052). See rfc 2181, 2065, 1464, 1876, 2168.
+(optional, see config.h)
+NSAP-PTR doesn't not work because it is particularly 
+ill-designed (it starts with a text string, and _not_ a domain
+name, and it is not clearly possible to determine in
+read-ahead which RR type we have in such cases.)	       [-tm, 2000-02-23]
+--------------------------------------------------------------------------------
+Implement parallel nameserver query (in one thread to inhibit 
+thread herds growing over 10 in normal usage)		       [-tm, 2000-02-26]
+--------------------------------------------------------------------------------
+Implement outgoing Authority (NS) records.		       [-tm, 2000-02-27]
+--------------------------------------------------------------------------------
+Is there a method for better cache usage? Perhaps pass on the 
+record type and check whether the record is present; Check 
+cache values whether they contain the requested records, if 
+not, requery and add the new ones to the cache.
+UPDATE: See ChangeLog entry for 0.8.7 for the actual method.   [-tm, 2000-02-28]
+--------------------------------------------------------------------------------
+Implement outgoing additionals (only if we have them cached, 
+the rfc leaves it open, and the querier may not actually need 
+this information. If he does, he may requery).
+Incoming additionals are added to the cache.
+Only A additionals are mentioned in the rfc, and are for: 
+NS, MD, MF, MB, MX.
+If DNS_NEW_RRS is defined, we also try to provide AAAA 
+(IPv6 Adress) if possible.
+Follow the rfc2181 recommendation not to add additionals if we 
+hit the size limits, rather than doing it and cut it again 
+setting tc.					               [-tm, 2000-03-01]
+--------------------------------------------------------------------------------
+================================================================================
+Version 1.0.x
+================================================================================
+--------------------------------------------------------------------------------
+rewrite purge_cache. Purge at rr-row granularity, take care
+that rrs timed out are kicked, likewise timed out CF_NOPURGE 
+entries that have been replaced. Purge periodically (trigger
+by server status thread) with low priority and lock returns.
+Perhaps introduce a dirty flag?				       [-tm, 2000-05-12]
+--------------------------------------------------------------------------------
+Modify add_cache so that the old cent is not deleted, but new
+records are added to it. After doing so, do an rr-row-wise 
+purge only for that cent. That cache overhead is not used
+in answers, so just do it to lower cache requirements. When
+we run scarce in memory, perhaps trigger purge?		       [-tm, 2000-05-12]
+--------------------------------------------------------------------------------
+purge rr row after adding a rr?				       [-tm, 2000-05-12]
+--------------------------------------------------------------------------------
+Introduce coherent function naming ;-)			       [-tm, 2000-05-12]
+--------------------------------------------------------------------------------
+IPv6 support						       [-tm, 2000-05-12]
+Subtasks:
+-[X] config.h.templ
+-[X] main.c
+-[X] dns_answer.c
+-[X] dns_query.c
+-[X] conf.y
+-[X] conff.h
+-[X] conff.c
+-[X] icmp.c
+-[X] servers.c
+-[X] netdev.c
+--------------------------------------------------------------------------------
+accept ipv4/ipv6 records in hosts/conf in any mode	       [-tm, 2000-05-13]
+--------------------------------------------------------------------------------
+Seed some inlines and statics into the code.		       [-tm, 2000-05-14]
+--------------------------------------------------------------------------------
+Bert Frederiks' suggestions for helping buggy clients (read
+the second name in the hosts file (the alias) and serve records
+under this alias name also				       [-tm, 2000-05-16]
+--------------------------------------------------------------------------------
+Automatic deps						       [-tm, 2000-05-17]
+--------------------------------------------------------------------------------
+When retrieve cached records, always do purge_cent!!	       [open           ]
+--------------------------------------------------------------------------------
+rfc2181 again.						       [itw 	       ]
+-[X] 4.1 UDP Source address selection
+---- 4.2 Port number selection (was ok)
+---- 5.1 Sending RRs from an RRSet (was ok)
+-[ ] 5.2 TTLs of RRs in an RRSet
+---- 5.3 DNSSEC special cases (no DNSSEC support)
+-[ ] 5.4 Receiving RRSets
+-[ ] 5.5 Sending RRSets
+---- 6	 Zone cuts (not applicable)
+---- 7.1 Placements of SOA RRs in authoritative answers (na)
+---- 7.2 TTLs on SOA RRs (was ok)
+---- 7.3 The SOA.MNAME field (was ok in the docs)
+---- 8   Time to Live (TTL) (was ok)
+---- 9   The TC (truncated) header bit (was ok)
+--------------------------------------------------------------------------------
+FreeBSD support						       [open	       ]
+--------------------------------------------------------------------------------
+Documentation updates					       [open           ]
+--------------------------------------------------------------------------------
+================================================================================
+After 1.0.0
+================================================================================
+--------------------------------------------------------------------------------
+Implement a use count to ensure that newly entered records are
+not purged immediately?					       [open	       ]
+--------------------------------------------------------------------------------
+Perhaps do a two-step form of recursive query: first query
+those servers we have got cached, then (if unsuccessful) look
+the others up and query again.
+The impact of this optimization may not be very big, because
+all sane servers give A records for NS records (as do we ;-)   [open           ]
+--------------------------------------------------------------------------------
+Introduce debug levels with compile time preset to save space?
+This is deferred to the time it might be really useful (debug
+msgs have only 4kB overhead by now).			       [open           ]
+--------------------------------------------------------------------------------
+Use Autoconf for configuration				       [open           ]
+--------------------------------------------------------------------------------
+Test for compatibility on other Unix-like Systems other than 
+Linux; rewrite the functions in netdev.c and icmp.c for those 
+OSs if necessary.
+Also try to get compatibility for other compilers than gcc, for
+I need to use __attribute__((packed)) for some structures 
+declared in the header files, and I also use it in some just
+to reduce memory/disk requirements (well, since I need it, I
+may as well use it in other places).
+(Needed, but I can't do that by myself)			       [open	       ]
+--------------------------------------------------------------------------------
+
+Maintainers:
+-tm   Me myself ;-)

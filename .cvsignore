@@ -1,0 +1,4 @@
+conf.l
+config.h
+pdnsd-redhat.spec
+pdnsd-suse.spec
