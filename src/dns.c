@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.17 2001/04/10 22:21:04 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.18 2001/04/12 02:46:23 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -60,7 +60,7 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 		if (!jumped)
 			if (*sz<=0)
 				return RC_FORMAT;
-		if (tpos>=255)
+		if (tpos>255)
 			return RC_FORMAT;
 		if (!jumped)
 			(*sz)--;
@@ -130,10 +130,11 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
 {
 	unsigned char sbuf[257],dbuf[257];
 	int offs, slen, dlen, cnt, nc;
+
 	sbuf[0]='.';          /* Prefix the names with '.' : This is done for the special case that */
 	dbuf[0]='.';          /* the domains match exactly, or one is a complete subdomain of another */
-	rhn2str(ms,&sbuf[1]); /* Change to dotted notation since processing starts from behind, */
-	rhn2str(md,&dbuf[1]); /* and so it's much easier that way. */
+	rhn2str(ms,sbuf+1); /* Change to dotted notation since processing starts from behind, */
+	rhn2str(md,dbuf+1); /* and so it's much easier that way. */
 	/* If this is the root domain, we have two dots. bad. so this special case test: */
 	if (strcmp((char *)&sbuf[1],".")==0) {
 		*o=0;
@@ -222,8 +223,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 		rhn2str(in,buf1);
 		printf("%s not compressed.\n",buf1);
 #endif
-		strcpy((char *)out,(char *)in);
-		rl=strlen((char *)out)+1;
+		rl=rhncpy(out,in);
 	}
 
 	/* part 2: addition to the cache structure */
@@ -264,17 +264,21 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 		return 0;
 #ifdef ENABLE_IPV4
 	if (tp==T_A) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp))
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp)) {
+ 			free_cent(ce);
 			return 0;
+		}
 	}
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 	if (tp==T_AAAA) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp))
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp)) {
+ 			free_cent(ce);
 			return 0;
+		}
 	}
 #endif
-	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)rns)+1,rns,T_NS)) {
+	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS)) {
 		free_cent(ce);
 		return 0;
 	}
@@ -292,7 +296,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 # endif
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-		if (tp==T_AAAA) {/* means T_AAAA*/
+		if (tp==T_AAAA) {
 			b2[0]='\0';
 			for (i=15;i>=0;i--) {
 				sprintf((char *)b4,"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
@@ -305,10 +309,12 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 			return 0;
 		if (!init_cent(&ce, b2, 0, time(NULL), 0))
 			return 0;
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)b3)+1,b3,T_PTR))
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR)) {
+ 			free_cent(ce);
 			return 0;
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)rns)+1,rns,T_NS)) {
-			free_cent(ce);
+		}
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS)) {
+ 			free_cent(ce);
 			return 0;
 		}
 		add_cache(ce);
@@ -337,7 +343,13 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errb
 		return 0;
 	}
 	while (!feof(f)) {
-		fgets((char *)buf,1023,f);
+		if (fgets((char *)buf,1023,f)==NULL) {
+			if (feof(f))
+				break;
+			snprintf(errbuf, errsize, "Failed to source %s: %s\n", fn, strerror(errno));
+			fclose(f);
+			return 0;
+		}
 		buf[1023]='\0';
 /*		printf("read: %s\n", buf);*/
 		p=buf;

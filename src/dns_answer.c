@@ -55,7 +55,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.44 2001/04/11 17:54:57 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.45 2001/04/12 02:46:23 tmm Exp $";
 #endif
 
 /*
@@ -138,7 +138,8 @@ typedef struct {
 int sva_add(darray *sva, unsigned char *name, unsigned char *rhn, int tp, rr_bucket_t *b)
 {
 	sva_t *st;
-	
+
+	PDNSD_ASSERT(b->rdlen<=256,"Unexpected type to sva_add");
 	if (sva) {
 		if (*sva==NULL) {
 			if ((*sva=DA_CREATE(sva_t))==NULL) {
@@ -171,14 +172,16 @@ int sva_add(darray *sva, unsigned char *name, unsigned char *rhn, int tp, rr_buc
  * belongs logically. Note that you still have to add the rrs in the right order (answer rrs first,
  * then authority and last additional).
  */
-static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, darray *cb, char udp, time_t queryts, unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
+static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, darray *cb, char udp, time_t queryts,
+    unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
 {
 	unsigned char nbuf[256];
 	int nlen,ilen,blen,osz;
+	rr_hdr_t rrh;
+	unsigned char *rrht;
 #ifdef DNS_NEW_RRS
 	int j,k,wlen;
 #endif
-	rr_hdr_t *rrh;
 
 	osz=*sz;
 	if (!(nlen=compress_name(rrn,nbuf,*sz,cb))) {
@@ -193,16 +196,16 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		return 0;
 	memcpy((unsigned char *)(*ans)+*sz,nbuf,nlen); 
 	*sz+=nlen;
-	rrh=(rr_hdr_t *)(((unsigned char *)(*ans))+(*sz));
-	rrh->type=htons(type);
-	rrh->class=htons(C_IN);
+	rrht=((unsigned char *)(*ans))+(*sz);
+	rrh.type=htons(type);
+	rrh.class=htons(C_IN);
 	if (flags&CF_LOCAL)
-		rrh->ttl=htonl(ttl);
+		rrh.ttl=htonl(ttl);
 	else {
-		rrh->ttl=queryts-ts;
-		rrh->ttl=htonl(rrh->ttl>ttl?0:ttl-rrh->ttl);
+		rrh.ttl=queryts-ts;
+		rrh.ttl=htonl(rrh.ttl>ttl?0:ttl-rrh.ttl);
 	}
-	rrh->rdlength=0;
+	rrh.rdlength=0;
 	*sz+=sizeof(rr_hdr_t);
 	
 	switch (type) {
@@ -214,27 +217,27 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	case T_MR:
 	case T_NS:
 	case T_PTR:
-		if (!(rrh->rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
+		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		*sz+=rrh->rdlength;
+		*sz+=rrh.rdlength;
 		break;
 	case T_MINFO:
 #ifdef DNS_NEW_RRS
 	case T_RP:
 #endif
-		if (!(rrh->rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
+		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		*sz+=rrh->rdlength;
-		ilen=strlen((char *)(rr+1))+1;
+		*sz+=rrh.rdlength;
+		ilen=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength+=blen;
+		rrh.rdlength+=blen;
 		*sz+=blen;
 		break;
 	case T_MX:
@@ -249,26 +252,26 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength=2+blen;
+		rrh.rdlength=2+blen;
 		*sz+=blen;
 		break;
 	case T_SOA:
-		if (!(rrh->rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
+		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		*sz+=rrh->rdlength;
-		ilen=strlen((char *)(rr+1))+1;
+		*sz+=rrh.rdlength;
+		ilen=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength+=blen;
+		rrh.rdlength+=blen;
 		*sz+=blen;
 		ilen+=strlen(((char *)(rr+1))+ilen)+1;
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,sizeof(soa_r_t));
 		*sz+=sizeof(soa_r_t);
-		rrh->rdlength+=sizeof(soa_r_t);
+		rrh.rdlength+=sizeof(soa_r_t);
 		break;
 #ifdef DNS_NEW_RRS
 	case T_PX:
@@ -279,14 +282,14 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength=2+blen;
+		rrh.rdlength=2+blen;
 		*sz+=blen;
-		ilen+=strlen((char *)(rr+1))+1;
+		ilen+=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength+=blen;
+		rrh.rdlength+=blen;
 		*sz+=blen;
 		break;
 	case T_SRV:
@@ -296,7 +299,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength=6+blen;
+		rrh.rdlength=6+blen;
 		*sz+=blen;
 		break;
 	case T_NXT:
@@ -304,14 +307,13 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength=blen;
+		rrh.rdlength=blen;
 		*sz+=blen;
-		ilen=strlen(((char *)(rr+1)))+1;
+		ilen=rhnlen((unsigned char *)(rr+1));
 		wlen=(rr->rdlen-ilen)<0?0:(rr->rdlen-ilen);
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,wlen);
 		*sz+=wlen;
-		rrh->rdlength+=wlen;
-
+		rrh.rdlength+=wlen;
 		break;
 	case T_NAPTR:
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),4);
@@ -327,19 +329,21 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength=ilen+blen;
+		rrh.rdlength=ilen+blen;
 		*sz+=blen;
 		break;
 #endif
 	default:
-		rrh->rdlength=rr->rdlen;
+		rrh.rdlength=rr->rdlen;
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1)),rr->rdlen);
 		*sz+=rr->rdlen;
 	}
+
 	if (udp && (*sz)>512 && section==S_ADDITIONAL) /* only add the record if we do not increase the length over 512 */
 		*sz=osz;                               /* in additionals for udp answer*/
 	else {
-		rrh->rdlength=htons(rrh->rdlength);
+		rrh.rdlength=htons(rrh.rdlength);
+		memcpy(rrht,&rrh,sizeof(rrh));
 		switch (section) {
 		case S_ANSWER:
 			(*ans)->ancount=htons(ntohs((*ans)->ancount)+1);
@@ -352,176 +356,8 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			break;
 		}
 	}
+
 	return 1;
-}
-
-/* This adds an rrset, optionally randomizing the first element it adds.
- * if that is done, all rrs after the randomized one appear in order, starting from
- * that one and wrapping over if needed. */
-static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, darray *cb, char udp, time_t queryts, unsigned char *rrn, darray *sva)
-{
-	rr_bucket_t *b;
-	rr_bucket_t *first;
-	int cnt;
-	if (cached->rr[tp-T_MIN] && cached->rr[tp-T_MIN]->rrs) {
-		b=cached->rr[tp-T_MIN]->rrs;
-		if (global.rnd_recs) {
-			/* in order to have equal chances for each records to be the first, we have to count first. */
-			first=b;
-			cnt=0;
-			while (b) {
-				b=b->next;
-				cnt++;
-			}
-			/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
-			 * and we do not need any good PRNG here). */
-			cnt=random()%cnt;
-			while (cnt) {
-				cnt--;
-				first=first->next;
-			}
-			b=first;
-		}
-		while (b) {
-			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,cached->rr[tp-T_MIN]->ts,
-				    cached->rr[tp-T_MIN]->ttl,cached->rr[tp-T_MIN]->flags)) 
-				return 0;
-			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
-				/* mark it as added */
-				if (!sva_add(sva,NULL,rrn,tp,b))
-					return 0;
-			}
-			b=b->next;
-			if (global.rnd_recs && !b) {
-				/* wraparound */
-				b=cached->rr[tp-T_MIN]->rrs;
-			}
-			if (global.rnd_recs && b==first)
-				break;
-		}
-	}
-	return 1;
-}
-
-/*
- * Add the fitting elements of the cached record to the message in ans, where ans
- * is grown to fit, sz is the size of the packet and is modified to be the new size.
- * The query is in qe. 
- * cb is the buffer used for message compression. *cb should be NULL if you call add_to_response
- * the first time. It gets filled with a pointer to compression information that can be
- * reused in subsequent calls to add_to_response.
- */
-static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent_t *cached, darray *cb, char udp, unsigned char *rrn, time_t queryts, darray *sva)
-{
-	int i;
-	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
-	if (qe.qtype!=T_CNAME)
-		if (!add_rrset(cached,T_CNAME, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-
-	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
-	if (qe.qtype==QT_AXFR || qe.qtype==QT_IXFR) {
-		/* I do not know what to do in this case. Since we do not maintain zones (and since we are
-		   no master server, so it is not our task), I just return a not implemeted message. If anyone
-		   knows how to do this better, please notify me. 
-		   Anyway, this feature is rarely used in client communication, and there is no need for
-		   other name servers to ask pdnsd. Btw: many bind servers reject an ?XFR query for security
-		   reasons. */
-		return RC_NOTSUPP; 
-	} else if (qe.qtype==QT_MAILB) {
-		if (!add_rrset(cached,T_MB, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-		if (!add_rrset(cached,T_MG, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-		if (!add_rrset(cached,T_MR, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-	} else if (qe.qtype==QT_MAILA) {
-		if (!add_rrset(cached,T_MD, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-		if (!add_rrset(cached,T_MF, ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-	} else if (qe.qtype==QT_ALL) {
-		for (i=T_MIN;i<=T_MAX;i++) {
-			if (i==T_CNAME)
-				continue; /* cnames are added above without name filtering */
-			if (!add_rrset(cached,i, ans, sz, cb, udp, queryts, rrn, sva))
-				return 0;
-		}
-	} else {
-		/* Unsupported elements have been filtered.*/
-		if (!add_rrset(cached, qe.qtype , ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-	}
-	if (!ntohs((*ans)->ancount)) {
-		/* Add a SOA if we have one and no other records are present in the answer.
-		 * This is to aid caches so that they have a ttl. */
-		if (!add_rrset(cached, T_SOA , ans, sz, cb, udp, queryts, rrn, sva))
-			return 0;
-	}
-	return 1;
-}
-
-/*
- * Add an additional
- */
-static int add_additional_rr(unsigned char *rhn, unsigned char *buf, darray *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, darray *cb,
-    int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
-{
-	int rc;
-	int j;
-	sva_t *st;
-
-	if (!rr)
-		return 1;
-
-	/* Check if already added; no double additionals */
-	rc=1;
-	/* We do NOT look at the data field for addresses, because I feel one address is enough. */
-	for (j=0;j<da_nel(*sva);j++) {
-		st=DA_INDEX(*sva,j,sva_t);
-		if (st->tp==tp && strcmp((char *)st->nm,(char *)buf)==0 && (
-		    tp==T_A || tp==T_AAAA || memcmp(st->data,(unsigned char *)(rr+1), rr->rdlen)==0)) {
-			rc=0;
-			break;
-		}
-	}
-	if (rc) {
-		/* add_rr will do nothing when sz>512 bytes. */
-		add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn,
-		       ts,ttl,flags); 
-			/* mark it as added */
-		if (!sva_add(sva,buf,NULL,tp,rr)) {
-			return 0;
-		}
-	}
-	return 1;
-}
-
-/*
- * The code below actually handles A and AAAA additionals.
- */
-static int add_additional_a(unsigned char *rhn, darray *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, darray *cb) 
-{
-	unsigned char  buf[256]; /* this is buffer space for the ns record */
-	dns_cent_t *ae;
-	int retval = 1;
-
-	rhn2str(rhn,buf);
-	if ((ae=lookup_cache(buf))) {
-		if (ae->rr[T_A-T_MIN])
-		    if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
-					   ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
-			    retval = 0;
-#ifdef DNS_NEW_RRS
-		if (ae->rr[T_AAAA-T_MIN])
-			if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
-					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
-			    retval = 0;
-#endif
-		free_cent(*ae);
-		free(ae);
-	}
-	return retval;
 }
 
 typedef struct rre_s {
@@ -553,13 +389,199 @@ static int add_ar(void *tnm, int tsz, darray *ar, unsigned char *nm, time_t ts, 
 	re->flags=flags;
 	re->tp=tp;
 	re->sz=tsz;
-	memcpy(re->nm,tnm,tsz);
+	memcpy(re->tnm,tnm,tsz);
 	return 1;
 }
 
 #define AR_NUM 5
 int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX}; 
 int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server name */
+
+/* This adds an rrset, optionally randomizing the first element it adds.
+ * if that is done, all rrs after the randomized one appear in order, starting from
+ * that one and wrapping over if needed. */
+static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, darray *cb, char udp, time_t queryts, unsigned char *rrn, darray *sva,
+    darray *ar)
+{
+	rr_bucket_t *b;
+	rr_bucket_t *first;
+	int cnt,i;
+
+	if (cached->rr[tp-T_MIN] && cached->rr[tp-T_MIN]->rrs) {
+		b=cached->rr[tp-T_MIN]->rrs;
+		if (global.rnd_recs) {
+			/* in order to have equal chances for each records to be the first, we have to count first. */
+			first=b;
+			cnt=0;
+			while (b) {
+				b=b->next;
+				cnt++;
+			}
+			/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
+			 * and we do not need any good PRNG here). */
+			cnt=random()%cnt;
+			while (cnt) {
+				cnt--;
+				first=first->next;
+			}
+			b=first;
+		}
+		while (b) {
+			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,cached->rr[tp-T_MIN]->ts,
+				    cached->rr[tp-T_MIN]->ttl,cached->rr[tp-T_MIN]->flags)) 
+				return 0;
+			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
+				/* mark it as added */
+				if (!sva_add(sva,NULL,rrn,tp,b)) {
+					free(*ans);
+					return 0;
+				}
+			}
+			/* Mark for additional address records. XXX: this should be a more effective algorithm; at least the list is small*/
+			for (i=0;i<AR_NUM;i++) {
+				if (ar_recs[i]==tp) {
+					if (!add_ar(((unsigned char *)(b+1))+ar_offs[i], b->rdlen-ar_offs[i],ar, (unsigned char *)"",
+					    0,0,0,RRETP_ADD)) {
+						free(*ar);
+						return 0;
+					}
+					break;
+				}
+			}
+			b=b->next;
+			if (global.rnd_recs && !b) {
+				/* wraparound */
+				b=cached->rr[tp-T_MIN]->rrs;
+			}
+			if (global.rnd_recs && b==first)
+				break;
+		}
+	}
+	return 1;
+}
+
+/*
+ * Add the fitting elements of the cached record to the message in ans, where ans
+ * is grown to fit, sz is the size of the packet and is modified to be the new size.
+ * The query is in qe. 
+ * cb is the buffer used for message compression. *cb should be NULL if you call add_to_response
+ * the first time. It gets filled with a pointer to compression information that can be
+ * reused in subsequent calls to add_to_response.
+ */
+static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent_t *cached, darray *cb, char udp, unsigned char *rrn, time_t queryts,
+    darray *sva, darray *ar)
+{
+	int i;
+	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
+	if (qe.qtype!=T_CNAME)
+		if (!add_rrset(cached,T_CNAME, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+
+	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
+	if (qe.qtype==QT_AXFR || qe.qtype==QT_IXFR) {
+		/* I do not know what to do in this case. Since we do not maintain zones (and since we are
+		   no master server, so it is not our task), I just return an error message. If anyone
+		   knows how to do this better, please notify me. 
+		   Anyway, this feature is rarely used in client communication, and there is no need for
+		   other name servers to ask pdnsd. Btw: many bind servers reject an ?XFR query for security
+		   reasons. */
+		return 0; 
+	} else if (qe.qtype==QT_MAILB) {
+		if (!add_rrset(cached,T_MB, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+		if (!add_rrset(cached,T_MG, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+		if (!add_rrset(cached,T_MR, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+	} else if (qe.qtype==QT_MAILA) {
+		if (!add_rrset(cached,T_MD, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+		if (!add_rrset(cached,T_MF, ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+	} else if (qe.qtype==QT_ALL) {
+		for (i=T_MIN;i<=T_MAX;i++) {
+			if (i==T_CNAME)
+				continue; /* cnames are added above without name filtering */
+			if (!add_rrset(cached,i, ans, sz, cb, udp, queryts, rrn, sva, ar))
+				return 0;
+		}
+	} else {
+		/* Unsupported elements have been filtered.*/
+		if (!add_rrset(cached, qe.qtype , ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+	}
+	if (!ntohs((*ans)->ancount)) {
+		/* Add a SOA if we have one and no other records are present in the answer.
+		 * This is to aid caches so that they have a ttl. */
+		if (!add_rrset(cached, T_SOA , ans, sz, cb, udp, queryts, rrn, sva, ar))
+			return 0;
+	}
+	return 1;
+}
+
+/*
+ * Add an additional
+ */
+static int add_additional_rr(unsigned char *rhn, unsigned char *buf, darray *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, darray *cb,
+    int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
+{
+	int rc;
+	int j;
+	sva_t *st;
+
+	if (!rr)
+		return 1;
+
+	/* Check if already added; no double additionals */
+	rc=1;
+	/* We do NOT look at the data field for addresses, because I feel one address is enough. */
+	for (j=0;j<da_nel(*sva);j++) {
+		st=DA_INDEX(*sva,j,sva_t);
+		if (st->tp==tp && stricomp((char *)st->nm,(char *)buf) && 
+		    (memcmp(st->data,(unsigned char *)(rr+1), rr->rdlen)==0)) {
+			rc=0;
+			break;
+		}
+	}
+	if (rc) {
+		/* add_rr will do nothing when sz>512 bytes. */
+		add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn,
+		       ts,ttl,flags); 
+		/* mark it as added */
+		if (!sva_add(sva,buf,NULL,tp,rr)) {
+			free(*ans);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/*
+ * The code below actually handles A and AAAA additionals.
+ */
+static int add_additional_a(unsigned char *rhn, darray *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, darray *cb) 
+{
+	unsigned char buf[256]; /* this is buffer space for the ns record */
+	dns_cent_t *ae;
+	int retval = 1;
+
+	rhn2str(rhn,buf);
+	if ((ae=lookup_cache(buf))) {
+		if (ae->rr[T_A-T_MIN])
+		    if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
+					   ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
+			    retval = 0;
+#ifdef DNS_NEW_RRS
+		if (ae->rr[T_AAAA-T_MIN])
+			if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
+					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
+			    retval = 0;
+#endif
+		free_cent(*ae);
+		free(ae);
+	}
+	return retval;
+}
 
 /*
  * Compose an answer message for the decoded query in q, hdr is the header of the dns requestm
@@ -572,7 +594,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	darray sva=NULL;
 	int i,rc,hops,cont,cnc=0;
 	time_t queryts=time(NULL);
-	rr_bucket_t *rr,*at;
+	rr_bucket_t *rr;
 	darray ar;
 	rr_ext_t *rre;
 	darray cb=NULL;
@@ -605,7 +627,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	/* first, add the query to the response */
 	for (i=0;i<da_nel(q);i++) {
 		qe=DA_INDEX(q,i,dns_queryel_t);
-		if (!(ans=(dns_hdr_t *)realloc(ans,*rlen+strlen((char *)qe->query)+5)))
+		if (!(ans=(dns_hdr_t *)realloc(ans,*rlen+rhnlen(qe->query)+4)))
 			return NULL;
 		*rlen+=rhncpy(((unsigned char *)ans)+*rlen,qe->query);
 		temp_q.qtype=htons(qe->qtype);
@@ -647,7 +669,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 			}
 			aa=0;
 			strcpy((char *)oname,(char *)buf);
-			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva))
+			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&ar))
 				goto error_cached;
 			cnc=follow_cname_chain(cached,buf,bufr);
 			hops--;
@@ -668,21 +690,11 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 					rr=cached->rr[T_NS-T_MIN]->rrs;
 					while (rr) {
 						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
-							    cached->rr[T_NS-T_MIN]->flags,RRETP_AUTH))
+						    cached->rr[T_NS-T_MIN]->flags,RRETP_AUTH)) {
+							free(ans);
 							goto error_cached;
-						rr=rr->next;
-					}
-				}
-				/* Add the rest of the additional A and AAAA records */
-				for (i=0;i<AR_NUM;i++) {
-					if (cached->rr[ar_recs[i]-T_MIN]) {
-						rr=cached->rr[ar_recs[i]-T_MIN]->rrs;
-						while (rr) {
-							if (!add_ar(((unsigned char *)(rr+1))+ar_offs[i], rr->rdlen-ar_offs[i],&ar, (unsigned char *)"",
-							    0,0,0,RRETP_ADD))
-								goto error_cached;
-							at=at->next;
 						}
+						rr=rr->next;
 					}
 				}
 			}
@@ -696,8 +708,12 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	for (i=0;i<da_nel(ar);i++) {
 		rre=DA_INDEX(ar,i,rr_ext_t);
 		if (rre->tp == RRETP_AUTH) {
-			if ((rr=create_rr(rre->sz,rre->tnm))==NULL ||
-			    !add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
+			if ((rr=create_rr(rre->sz,rre->tnm))==NULL) {
+				free(ans);
+				goto error_ans;
+			}
+			rhn2str(rre->nm,buf);
+			if (!add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
 				rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY))
 				goto error_ans;
 		}
@@ -713,6 +729,8 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	
 	if (cb)
 		da_free(cb);
+	if (sva)
+		da_free(sva);
 	if (aa)
 		ans->aa=1;
 	return (unsigned char *)ans;
@@ -722,8 +740,7 @@ error_cached:
 	free_cent(*cached);
 	free(cached);
 error_ans:
-	free(ans);
-	ans=NULL;
+	ans=NULL; /* already freed if we get here */
 error_ar:
 	da_free(ar);
 	if (cb)

@@ -31,7 +31,7 @@
 #include "list.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: list.c,v 1.1 2001/04/10 22:31:39 tmm Exp $";
+static char rcsid[]="$Id: list.c,v 1.2 2001/04/12 02:46:24 tmm Exp $";
 #endif
 
 darray da_create(int sz)
@@ -75,7 +75,8 @@ char *da_index(darray a, int i)
 
 int da_nel(darray a)
 {
-	PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
+	if (a==NULL)
+		return 0;
 	return a->nel;
 }
 

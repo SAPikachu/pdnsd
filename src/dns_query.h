@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.4 2001/04/06 18:11:34 tmm Exp $ */
+/* $Id: dns_query.h,v 1.5 2001/04/12 02:46:24 tmm Exp $ */
 
 #ifndef DNS_QUERY_H
 #define DNS_QUERY_H
@@ -72,11 +72,6 @@ typedef struct {
 	char                lean_query;
 } query_stat_t;
 
-typedef struct {
-	int           num;
-	query_stat_t  *qs;
-} query_serv_t;
-
 #define QS_INITIAL       0  /* This is the initial state. Set this before starting. */
 #define QS_QUERY         1
 #define QS_DONE         11  /* done, resources freed, result is in stat_t */
@@ -100,6 +95,6 @@ typedef struct {
 #define QEV_READ         2
 
 /* --- parallel query */
-int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);
+int p_dns_cached_resolve(darray q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);
 
 #endif

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.20 2001/04/11 17:54:57 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.21 2001/04/12 02:46:24 tmm Exp $";
 #endif
 
 /*
@@ -112,7 +112,6 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 	int i=0;
 	int cnt=0;
 	unsigned char buf[64];
-	unsigned char b2[2];
 	int lb;
 	int tcnt=0;
 	
