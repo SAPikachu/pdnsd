@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.15 2000/10/21 11:28:35 thomas Exp $
+$Id: NEWS,v 1.16 2001/02/09 23:23:30 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -23,7 +23,8 @@ it switched on or not.
 
 Version 0.9.10 fixes some bugs and improves build on Red Hat.
 
-Version 0.9.11 fixes a security hole. Please see ChangeLog for details.
+Version 0.9.11 fixes a locally exploitable security hole (the cache file was
+world writeable by default). Please see ChangeLog.old for details.
 
 Version 1.0.0 has a lot of changes compared to the 0.9.x tree, but much of 
 them "under the hood":
@@ -76,3 +77,22 @@ on FreeBSD and older Linux systems.
 
 Version 1.0.15 is mostly a bugfix release. It also has a new option:
 randomize_recs in the global section.
+
+Version 1.1.0 introduces negative cacheing, pdnsd-ctl enhancements and
+a much improved FreeBSD support. The cache file format has changed from
+prior releases. Some configuration defaults have changed, too.
+
+Version 1.1.1 fixes a possible race condition in status socket creation.
+This race might be used by a local attacker to change the access 
+permissions of a certain file in /tmp. The risk of this is probably 
+negligible. The default setup uses a non-privileged user, default mode 
+0600, and the status socket is disabled normally, so this should be 
+relatively safe. I don't see any possibility to exploit this, it is
+more of a paranoia fix.
+There are also some other minor fixes and documentation improvements. 
+Upgrade is recommended. 
+
+Version 1.1.2 has a fix for a bug that could cause SERVFAIL to be 
+returned when NXDOMAIN would be appropriate. The bug surfaced only when
+pdnsd queried name servers with a behaviour different from BIND's in the
+NXDOMAIN case, e.g. pdnsd querying another pdnsd or e.g. djbdns. 
