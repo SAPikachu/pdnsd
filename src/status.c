@@ -38,10 +38,11 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.13 2001/01/24 19:47:01 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.14 2001/01/24 22:29:13 thomas Exp $";
 #endif
 
 char sock_path[1024];
+char sock_dir[1024];
 
 pthread_t st;
 
@@ -132,12 +133,20 @@ void *status_thread (void *p)
 	(void)p; /* To inhibit "unused variable" warning */
 	strncpy(sock_path, TEMPDIR, 1024);
 	sock_path[1023]='\0';
-	strncat(sock_path, "/.pdnsd.status", 1024-strlen(sock_path));
+	strcpy(sock_dir, sock_path);
+	strncat(sock_dir, "/.pdnsd.status", 1024-strlen(sock_dir));
+	strncat(sock_path, "/.pdnsd.status/socket", 1024-strlen(sock_path));
 	sock_path[1023]='\0';
 	unlink(sock_path); /* Delete the socket */
+	rmdir(sock_dir);
+	if (mkdir(sock_dir, (global.ctl_perms&(S_IRGRP|S_IROTH))|S_IRWXU)==-1) {
+		log_warn("Could not create temp dir %s: %s. Status readback will be impossible",sock_dir, strerror(errno));
+		return NULL;
+	}
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
 		if (errno!=EINTR)
 			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+		return NULL;
 	}
 	a.sun_family=AF_UNIX;
 	strncpy(a.sun_path,sock_path,99);

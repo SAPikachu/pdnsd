@@ -22,8 +22,8 @@ Boston, MA 02111-1307, USA.  */
 #define _GNU_SOURCE
 
 #include "config.h"
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.26 2001/01/24 19:47:01 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.27 2001/01/24 22:29:12 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -184,6 +184,9 @@ int main(int argc,char *argv[])
 	char dbgdir[1024];
 #endif
 	FILE *pf;
+#ifndef O_NOFOLLOW
+	struct stat so, sn;
+#endif
 
 	main_thread=pthread_self();
 	
@@ -312,7 +315,7 @@ int main(int argc,char *argv[])
 				}
 			}
 			exit(0);
-		} else if (strcmp(argv[i],"-c")!=0 || strcmp(argv[i],"--config-file")!=0) {
+		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
 			/* at this point, it is already checked that a file name arg follows. */
 			i++;
 		} else {
@@ -340,13 +343,50 @@ int main(int argc,char *argv[])
 	if (daemon_p && pidfile[0]) {
 		unlink(pidfile);
 #ifdef O_NOFOLLOW		
-		if (!(pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600))) {
-#else
-		if (!(pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))) {
-#endif
+		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600))==-1) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
+#else
+		/* 
+		 * No O_NOFOLLOW. Use lstat to be sure. Nevertheless, this not
+		 * a hole, since the directory for pidfiles should not be world
+		 * writeable. Pure paranoia.
+		 * OS's that do not support O_NOFOLLOW are currently not 
+		 * supported, this is just-in-case code. Also note
+		 */
+		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))==-1) {
+			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+			exit(1);
+		}
+		close(pfd);
+		/* We should now have it. */
+		if (lstat(pidfile, &so)==-1) {
+			log_error("Error: lstat on %s failed (should be there!): %s\n", pidfile, strerror(errno));
+			exit(1);
+		}
+		if (S_ISLNK(so.st_mode)) {
+			log_error("Error: huh - %s is a symlink! Possible link attack?\n", pidfile);
+			exit(1);
+		}
+		if ((pfd=open(pidfile,O_WRONLY, 0600))==-1) {
+			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+			exit(1);
+		}
+		if (fstat(pfd, &sn)==-1) {
+			log_error("Error: fstat failed: %s\n", strerror(errno));
+			exit(1);
+		}
+		/* 
+		 * We check whether this has out uid as owner. This should 
+		 * elimnate the last doubt.
+		 */
+		if (so.st_dev!=sn.st_dev || so.st_ino!=sn.st_ino || so.st_uid!=getuid() || so.st_mtime!=sn.st_mtime ||
+		    so.st_ctime!=sn.st_ctime || so.st_size!=sn.st_size) {
+			log_error("Error: huh - %s has changed under my feet! Possible link attack?\n", pidfile);
+			exit(1);
+		}
+#endif
 		if (!(pf=fdopen(pfd,"w"))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);

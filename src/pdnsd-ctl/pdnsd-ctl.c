@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.4 2000/11/18 14:56:33 thomas Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.5 2001/01/24 22:29:18 thomas Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 
 	strncpy(sock_path, TEMPDIR, MAXPATH);
 	sock_path[MAXPATH-1]='\0';
-	strncat(sock_path, "/.pdnsd.status", MAXPATH-1-strlen(sock_path));
+	strncat(sock_path, "/.pdnsd.status/socket", MAXPATH-1-strlen(sock_path));
 	sock_path[MAXPATH-1]='\0';
 
 	if (argc<2) {
