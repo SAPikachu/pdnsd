@@ -1,7 +1,7 @@
 #! /bin/sh
 # Copyright (c) 1995-1998 SuSE GmbH Nuernberg, Germany.
 #
-# $Id: pdnsd.in,v 1.1 2000/10/11 22:29:08 thomas Exp $
+# $Id: pdnsd.in,v 1.2 2001/04/11 03:32:15 tmm Exp $
 #
 # Modified 2000 from SuSE Linux 6.3 /sbin/init.d/skeleton by Thomas Moestl
 #
@@ -39,7 +39,7 @@ case "$1" in
 	## Stop daemon with killproc(8) and if this fails
 	## set echo the echo return value.
 
-	killproc -TERM @prefix@/sbin/pdnsd || return=$rc_failed
+	killproc -TERM pdnsd || return=$rc_failed
 
 	echo -e "$return"
 	;;
