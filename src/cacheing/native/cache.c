@@ -18,8 +18,6 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/*#if CACHE_DBM==DBM_NATIVE*/
-
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.6 2000/10/31 13:19:02 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.7 2000/11/04 15:09:25 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1104,5 +1102,3 @@ void report_cache_stat(int f)
 	fsprintf(f,"%li kB maximum disk cache size.\n",global.perm_cache);
 	fsprintf(f,"%li of %lu bytes (%lu%%) memory cache used in %lu entries.\n",cache_size,mc,csz,ent_num);
 }
-
-/*#endif*/

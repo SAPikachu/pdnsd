@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.3 2000/11/01 19:06:16 thomas Exp $ */
+/* $Id: cache.h,v 1.4 2000/11/04 15:09:20 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -44,7 +44,8 @@ typedef struct {
 	time_t           ttl;
 	time_t           ts;
 	short            flags;
-	unsigned long    serial;                  /* we use the serial to determine whether additional records belonged to one answer */
+	unsigned long    serial;                  /* we use the serial to determine whether additional records 
+						   * belonged to one answer */
 	rr_bucket_t      *rrs;
 } rr_set_t;
 
@@ -62,14 +63,20 @@ typedef struct {
 
 
 typedef struct {
-	unsigned char    *qname;                  /*Name of the query in dotted notation*/
-	int              num_rr;                  /*The number of rrs. When this decreases to 0, the cent is deleted. */
-	unsigned long    cs;                      /*size of the rrs*/
-	rr_set_t         *(rr[T_NUM]);            /*The records. Use the type id-T_MIN as index, */
+	unsigned char    *qname;                  /* Name of the query in dotted notation*/
+	int              num_rr;                  /* The number of rrs. When this decreases to 0, the cent is deleted. */
+	unsigned long    cs;                      /* size of the rrs*/
+	short            flags;                   /* Flags for the whole cent */
+	time_t           ts;                      /* Timestamp (only for negative cached records) */
+	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */ 
+	rr_set_t         *(rr[T_NUM]);            /* The records. Use the type id-T_MIN as index, */
 } dns_cent_t;
 
 typedef struct {
 	unsigned char    qlen;
+	short            flags;                   /* Flags for the whole cent */
+	time_t           ts;                      /* Timestamp (only for negative cached records) */
+	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */ 
 /*      qname (with length qlen) follows here */
 } dns_file_t;
 
@@ -82,18 +89,25 @@ typedef struct rr_lent_s {
 } rr_lent_t;
 
 /*
- * the flag values
+ * the flag values for RR sets in the cache
  */
 #define CF_NOPURGE     1       /* Do not purge this record */
 #define CF_LOCAL       2       /* Local zone entry */
 #define CF_NOAUTH      4       /* Non-authoritative record */
-#define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written to cache records, but used
-			          by add_cent_rr */
+#define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written 
+				* to cache records, but used by add_cent_rr */
 #define CF_ADDITIONAL 16       /* This was fetched as an additional or "off-topic" record. */
-#define CF_NEGATIVE   32       /* reserved for negative cacheing (to come later) 
-				* this one is for whole-domain negative cacheing (created on NXDOMAIN)*/
+#define CF_NEGATIVE   32       /* this one is for per-RRset negative cacheing*/
 
-#define CFF_NOINHERIT (CF_LOCAL | CF_NOAUTH | CF_ADDITIONAL | CF_NEGATIVE) /* not to be inherited on requery */
+#define CFF_NOINHERIT (CF_LOCAL | CF_NOAUTH | CF_ADDITIONAL) /* not to be inherited on requery */
+
+/*
+ * the flag values for whole domains in the cache
+ */
+#define DF_NEGATIVE    1       /* this one is for whole-domain negative cacheing (created on NXDOMAIN)*/
+
+#define DFF_NOINHERIT (DF_NEGATIVE) /* not to be inherited on requery */
+
 
 /*
  * This is the time in secs any record remains at least in the cache before it is purged.
