@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.24 2001/05/22 16:20:45 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.25 2001/06/02 18:07:50 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -339,14 +339,14 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 
 	buf[1023]='\0';
 	if (!(f=fopen(fn,"r"))) {
-		snprintf(errbuf, errsize, "Failed to source %s: %s\n", fn, strerror(errno));
+		snprintf(errbuf, errsize, "Failed to source %s: %s", fn, strerror(errno));
 		return 0;
 	}
 	while (!feof(f)) {
 		if (fgets((char *)buf,1023,f)==NULL) {
 			if (feof(f))
 				break;
-			snprintf(errbuf, errsize, "Failed to source %s: %s\n", fn, strerror(errno));
+			snprintf(errbuf, errsize, "Failed to source %s: %s", fn, strerror(errno));
 			fclose(f);
 			return 0;
 		}
