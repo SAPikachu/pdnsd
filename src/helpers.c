@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.22 2001/04/12 19:51:39 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.23 2001/04/30 15:39:46 tmm Exp $";
 #endif
 
 /*
@@ -342,7 +342,7 @@ unsigned short get_rand16()
 	unsigned short rv;
 
 	if (rand_file) {
-		if (fread(&rv,sizeof(rv),1, rand_file)!=sizeof(rv)) {
+		if (fread(&rv,sizeof(rv),1, rand_file)!=1) {
 			log_error("Error while reading from random device: %s", strerror(errno));
 			pdnsd_exit();
 		}
