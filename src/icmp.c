@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.14 2001/01/24 19:47:01 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.15 2001/02/09 23:15:03 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -207,7 +207,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			icmp_errs++;
 			log_warn("icmp ping: setsockopt() failed: %s", strerror(errno));
 		}
-		close(isock);
 		return -1;
 	}
 #endif
