@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.25 2001/05/22 16:33:00 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.26 2001/05/22 17:24:03 tmm Exp $";
 #endif
 
 /*
@@ -151,6 +151,7 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
  * first part of the name, ..., followed by a 0 lenght byte), and return a string (in str,
  * length is the same as rhn) in the usual dotted notation. Length checking is done 
  * elsewhere (in decompress_name), this takes names from the cache which are validated.
+ * The buffer str points to is assumed to be 255 bytes in size.
  */
 void rhn2str(unsigned char *rhn, unsigned char *str)
 {
@@ -186,7 +187,7 @@ int rhnlen(unsigned char *rhn)
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
- * Returns number of characters copied. dst is assumed to be 255 bytes in size.
+ * Returns number of characters copied. The buffer dst points to is assumed to be 255 bytes in size.
  */
 int rhncpy(unsigned char *dst, unsigned char *src)
 {

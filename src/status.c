@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.26 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.27 2001/05/22 17:24:03 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -176,6 +176,10 @@ void *status_thread (void *p)
 		close(sock);
 		return NULL;
 	}
+	/* We cannot use the umask here, because we are threaded and it is shared. The socket cannot be used
+	 * before connect, so there is no danger if we tighten permissions (which, by the way, are 0500
+	 * initally so they won't be). The directory is our cache directory, which is assumed not to be writable
+	 * for untrusted users, so there is no race. */
 	chmod(sock_path,global.ctl_perms);
 	if (listen(sock,5)==-1) {
 		log_warn("Error: could not listen on socket: %s.\nStatus readback will be impossible",strerror(errno));
