@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.16 2001/03/13 00:26:24 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.17 2001/03/13 00:29:15 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -78,6 +78,7 @@ volatile int ping6_isocket=-1;
 # define ip_saddr  saddr
 # define ip_daddr  daddr
 # define ip_ihl    ihl
+# define ip_p	   protocol
 #endif
 
 #if TARGET==TARGET_LINUX
