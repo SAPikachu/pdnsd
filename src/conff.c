@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.18 2001/04/06 21:30:35 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.19 2001/04/11 03:30:10 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -67,13 +67,13 @@ void set_serv_presets(servparm_t *server)
 }
 
 /*
- * Add a server (with parameters contained in serv) into the internal server-list
+ * Add a server (with parameters contained in serv) into the internal server list
  * (in the pointer servers)
  */
 void add_server(servparm_t serv)
 {
 	if (!servers) {
-		if (!(servers=DA_CREATE(servparm_t))) {
+		if ((servers=DA_CREATE(servparm_t))==NULL) {
 			fprintf(stderr,"Error: out of memory.\n");
 			exit(1);
 		}
@@ -91,12 +91,12 @@ char *slist_add(servparm_t *sp, char *nm, int tp)
 	slist_t *sl;
 					
 	if (sp->alist!=NULL) {
-		if ((sp->alist=DA_CREATE(slist_t))!=NULL) {
-			return "out of memory!.";
+		if ((sp->alist=DA_CREATE(slist_t))==NULL) {
+			return "out of memory!";
 		}
 	}
-	if ((sp->alist=da_grow(sp->alist,1)) != NULL) {
-		return "out of memory!.";
+	if ((sp->alist=da_grow(sp->alist,1))==NULL) {
+		return "out of memory!";
 	}
 	sl=DA_LAST(sp->alist,slist_t);
 	sl->rule=C_INCLUDED;

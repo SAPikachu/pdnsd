@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.2 2001/04/03 19:38:39 tmm Exp $";
+static char rcsid[]="$Id: rr_types.c,v 1.3 2001/04/11 03:30:11 tmm Exp $";
 #endif
 
 char *rr_info[]={"A",
@@ -67,7 +67,7 @@ char *rr_info[]={"A",
 
 /*
  * OK, this is ineffective. But it is used _really_ seldom (only in some cases while parsing the
- * config file or by pdnsd-ctl), so it is much more effective to sort by name.
+ * config file or by pdnsd-ctl), so it is much more effective to sort by id.
  */
 int rr_tp_byname(char *name)
 {

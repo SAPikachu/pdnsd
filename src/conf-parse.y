@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.29 2001/04/10 22:21:04 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.30 2001/04/11 03:30:10 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -51,7 +51,7 @@ time_t c_ttl;
 int c_aliases;
 unsigned char buf[532];
 char errbuf[256];
-int sz,tp;
+int sz,tp,err;
 int hdtp, htp;
 struct in_addr ina4;
 uint16_t ts;
@@ -641,9 +641,14 @@ rr_el:		NAME '=' STRING ';'
 #endif
 				} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-					if (!inet_pton(AF_INET6,(char *)$3,&c_a.ipv6)) {
-						yyerror("bad ip in a= option.");
-						YYERROR;
+					if ((err=inet_pton(AF_INET6,(char *)$3,&c_a.ipv6))!=1) {
+						if (err==0) {
+							yyerror("bad ip in a= option.");
+							YYERROR;
+						} else {
+							perror("inet_pton");
+							YYERROR;
+						}
 					} else {
 						tp=T_AAAA;
 						sz=sizeof(struct in6_addr);
@@ -855,9 +860,9 @@ errnt:		ERROR		 	{YYERROR;}
 int yyerror (char *s)
 {
 #ifdef NO_YYLINENO
-	printf("Error in config file: %s\n",s);
+	fprintf(stderr, "Error in config file: %s\n",s);
 #else
-	printf("Error in config file (line %i): %s\n",yylineno,s);
+	fprintf(stderr, "Error in config file (line %i): %s\n",yylineno,s);
 #endif
 	return 0;
 }

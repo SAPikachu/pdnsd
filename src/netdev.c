@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
 #include "config.h"
 #include "ipvers.h"
 #include <sys/stat.h>
@@ -33,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.8 2001/04/03 21:10:55 tmm Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.9 2001/04/11 03:30:11 tmm Exp $";
 #endif
 
 /*
@@ -73,9 +74,8 @@ int statusif(char *name)
 		
 	memset(&phone, 0, sizeof(phone));
 	strncpy(phone.name, name, sizeof(phone.name)-1);
-	if (ioctl(isdninfo, IIOCNETGPN, &phone)==0) {
+	if (ioctl(isdninfo, IIOCNETGPN, &phone)==0)
 		rc=1;
-	}
 	close(isdninfo);
 	return rc;
 }
@@ -94,9 +94,8 @@ int dev_up(char *ifname, char *devname)
 	
  	if (snprintf(buffer, sizeof(buffer), "/var/run/%s.pid", ifname)>=sizeof(buffer))
 		return 0;
- 	if ((fd=fopen(buffer, "r")) == NULL ) {
+ 	if ((fd=fopen(buffer, "r")) == NULL )
  		return 0;
- 	}
 
  	if (fscanf(fd, "%d", &pidi) != 1 ) {
 		fclose(fd) ;
@@ -106,15 +105,14 @@ int dev_up(char *ifname, char *devname)
  
  	if (snprintf(buffer, sizeof(buffer), "/var/lock/LCK..%s", devname)>=sizeof(buffer))
 		return 0;
- 	if ((fd=fopen(buffer, "r")) == NULL ) {
-		return 0 ;
- 	}
+ 	if ((fd=fopen(buffer, "r")) == NULL)
+		return 0;
 	
- 	if (fscanf(fd, "%d", &pidd) != 1 ) {
-		fclose(fd) ;
-		return 0 ;
+ 	if (fscanf(fd, "%d", &pidd) != 1) {
+		fclose(fd);
+		return 0;
  	}
- 	fclose(fd) ;
+ 	fclose(fd);
 	
  	if (pidi != pidd)
 		return 0;
@@ -170,9 +168,7 @@ int if_up(char *devname)
 		return 0;
 	}
 	close(sock);
-	if (!(ifr.ifr_flags&IFF_UP) || !(ifr.ifr_flags&IFF_RUNNING))
-		return 0;
-	return 1;
+	return (ifr.ifr_flags&IFF_UP) && (ifr.ifr_flags&IFF_RUNNING);
 }
 
 # if TARGET==TARGET_LINUX
@@ -239,10 +235,11 @@ int is_local_addr(pdnsd_a *a)
 				if (i<7)
 					buf[i*5+4]=':';
 			}
-			inet_pton(AF_INET6,buf,&b);
-			if (IN6_ARE_ADDR_EQUAL((&a->ipv6),(&b))) {
-				fclose(f);
-				return 1;
+			if (inet_pton(AF_INET6,buf,&b) == 1) {
+				if (IN6_ARE_ADDR_EQUAL((&a->ipv6),(&b))) {
+					fclose(f);
+					return 1;
+				}
 			}
 			while ((res=fgetc(f))!='\n' && res!=EOF) ;
 		}
@@ -275,8 +272,10 @@ int is_local_addr(pdnsd_a *a)
 	        return 0;
 	}
 	ad=buf;
-	while(cnt<ifc.ifc_len) {
+	while(cnt<=ifc.ifc_len-sizeof(struct ifreq)) {
 		ir=(struct ifreq *)ad;
+		if (cnt+_SIZEOF_ADDR_IFREQ(*ir)>=ifc.ifc_len)
+			break;
 #  ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			if (ir->ifr_addr.sa_family==AF_INET &&

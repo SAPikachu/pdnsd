@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,7 @@ Boston, MA 02111-1307, USA.  */
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "ipvers.h"
 #include "status.h"
 #include "thread.h"
 #include "cacheing/cache.h"
@@ -38,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.19 2001/04/06 21:30:36 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.20 2001/04/11 03:30:11 tmm Exp $";
 #endif
 
 char sock_path[99];
@@ -69,8 +71,10 @@ short read_short(int fh)
 {
 	short cmd;
 
-	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd))
+	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd)) {
+		print_serr(fh,"Bad arg.");
 		return -2;
+	}
 	return ntohs(cmd);
 }
 
@@ -79,8 +83,10 @@ long read_long(int fh)
 {
 	long cmd;
 
-	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd))
+	if (read(fh,&cmd,sizeof(cmd))!=sizeof(cmd)) {
+		print_serr(fh,"Bad arg.");
 		return -2;
+	}
 	return ntohl(cmd);
 }
 
@@ -88,16 +94,34 @@ long read_long(int fh)
 short fsgets(int fh, char *buf, int len)
 {
 	int i=0;
-	char c='a';
+	char c;
 
 	do {
+		if (i>=len)
+			return 0;
 		if (read(fh,&c,sizeof(c))!=sizeof(c))
 			return 0;
 		buf[i]=c;
 		i++;
-		if (i>=len && c!='\0')
-			return 0;
 	} while (c!='\0');
+	return 1;
+}
+
+int read_domain(int fh, char *buf, int buflen)
+{
+	PDNSD_ASSERT(buflen>0, "bad read_domain call");
+	if (!fsgets(fh,buf,buflen-1)) {
+		print_serr(fh,"Bad domain name.");
+		return 0;
+	}
+	if (buf[strlen(buf)-1]!='.') {
+		buf[strlen(buf)+1]='\0';
+		buf[strlen(buf)]='.';
+	}
+	if (strlen(buf)>255) {
+		print_serr(fh,"Bad domain name.");
+		return 0;
+	}
 	return 1;
 }
 
@@ -107,7 +131,7 @@ short fsgets(int fh, char *buf, int len)
  */
 void *status_thread (void *p)
 {
-	int sock,rs,sz,i;
+	int sock,rs,sz,i,updown;
 	socklen_t res;
 	struct utsname nm;
 	short cmd,cmd2;
@@ -130,19 +154,23 @@ void *status_thread (void *p)
 
 	uname(&nm);
 	(void)p; /* To inhibit "unused variable" warning */
-	if (snprintf(sock_path, sizeof(sock_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(sock_path)) {
+	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(a.sun_path)) {
 		log_warn("cache directory name too long");
 		return NULL;
 	}
-	unlink(sock_path); /* Delete the socket */
+	if (unlink(a.sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
+		log_warn("Failed to unlink %s: %s.",strerror(errno));
+		pdnsd_exit();
+	}
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
 		if (errno!=EINTR)
 			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
 		return NULL;
 	}
 	a.sun_family=AF_UNIX;
-	strncpy(a.sun_path,sock_path,99);
-	a.sun_path[98]='\0';
+#ifdef BSD44_SOCKA
+	a.sun_len=SUN_LEN(&a);
+#endif
 	if (bind(sock,(struct sockaddr *)&a,sizeof(a))==-1) {
 		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(sock);
@@ -157,7 +185,7 @@ void *status_thread (void *p)
 	do {
 		res=sizeof(ra);
 		if ((rs=accept(sock,(struct sockaddr *)&ra,&res))!=-1) {
-			DEBUG_MSG1("Pipe query pending.\n");
+			DEBUG_MSG1("Status socket query pending.\n");
 			read(rs,&cmd,sizeof(cmd));
 			switch(ntohs(cmd)) {
 			case CTL_STATS:
@@ -170,29 +198,23 @@ void *status_thread (void *p)
 				DEBUG_MSG1("Received SERVER command.\n");
 				if ((cmd=read_short(rs))<-1)
 					break;
-				if ((cmd2=read_short(rs))<0)
+				if ((cmd2=read_short(rs))<-1)
 					break;
 				if (cmd<-1 || cmd>=da_nel(servers)) {
 					print_serr(rs,"Server index out of range.");
 					break;
 				}
+				updown=0;
 				switch (cmd2) {
 				case CTL_S_UP:
-					if (cmd==-1) 
-						for (i=0;i<da_nel(servers);i++) {
-							mark_server(i,1);
-						}
-					else 
-						mark_server(cmd,1);
-					print_succ(rs);
-					break;
+					updown=1;
+					/* fall though */
 				case CTL_S_DOWN:
 					if (cmd==-1) 
-						for (i=0;i<da_nel(servers);i++) {
-							mark_server(i,0);
-						}
+						for (i=0;i<da_nel(servers);i++)
+							mark_server(i,updown);
 					else
-						mark_server(cmd,0);
+						mark_server(cmd,updown);
 					print_succ(rs);
 					break;
 				case CTL_S_RETEST:
@@ -210,16 +232,10 @@ void *status_thread (void *p)
 				break;
 			case CTL_RECORD:
 				DEBUG_MSG1("Received RECORD command.\n");
-				if ((cmd=read_short(rs))<0)
+				if ((cmd=read_short(rs))<-1)
 					break;
-				if (!fsgets(rs,buf,256)) {
-					print_serr(rs,"Bad domain name.");
+				if (!read_domain(rs, buf, sizeof(buf)))
 					break;
-				}
-				if (buf[strlen(buf)-1]!='.') {
-					buf[strlen(buf)+1]='\0';
-					buf[strlen(buf)]='.';
-				}					
 				switch (cmd) {
 				case CTL_R_DELETE:
 					del_cache((unsigned char*)buf);
@@ -239,21 +255,15 @@ void *status_thread (void *p)
 					print_serr(rs,"Bad filename name.");
 					break;
 				}
-				if (!fsgets(rs,buf,256)) {
-					print_serr(rs,"Bad domain name.");
+				if (!read_domain(rs, buf, sizeof(buf)))
 					break;
-				}
-				if (buf[strlen(buf)-1]!='.') {
-					buf[strlen(buf)+1]='\0';
-					buf[strlen(buf)]='.';
-				}					
 				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
 					print_serr(rs,"Bad domain name.");
 					break;
 				}
-				if ((ttl=read_long(rs))<0)
+				if ((ttl=read_long(rs))<-1)
 					break;
-				if ((cmd=read_short(rs))<0)
+				if ((cmd=read_short(rs))<-1)
 					break;
 				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd,errbuf,256))
 					print_succ(rs);
@@ -262,16 +272,10 @@ void *status_thread (void *p)
 				break;
 			case CTL_ADD:
 				DEBUG_MSG1("Received ADD command.\n");
-				if ((cmd=read_short(rs))<0)
+				if ((cmd=read_short(rs))<-1)
 					break;
-				if (!fsgets(rs,buf,256)) {
-					print_serr(rs,"Bad owner name.");
+				if (!read_domain(rs, buf, sizeof(buf)))
 					break;
-				}
-				if (buf[strlen(buf)-1]!='.') {
-					buf[strlen(buf)+1]='\0';
-					buf[strlen(buf)]='.';
-				}
 				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
 					print_serr(rs,"Bad domain name.");
 					break;
@@ -299,34 +303,29 @@ void *status_thread (void *p)
 #endif
 				case T_CNAME:
 				case T_PTR:
-					if (!fsgets(rs,owner,256)) {
-						print_serr(rs,"Bad domain name.");
+					if (!read_domain(rs, owner, sizeof(owner)))
 						break;
-					}
 					if (!str2rhn((unsigned char *)owner,(unsigned char *)dbuf)) {
 						print_serr(rs,"Bad domain name.");
 						break;
 					}
-					sz=strlen(dbuf)+1;;
+					sz=rhnlen((unsigned char *)dbuf);
 					break;
 				case T_MX:
 					if (read(rs,dbuf,sizeof(short))<sizeof(short)) {
 						print_serr(rs,"Bad arg.");
 						break;
 					}
-					if (!fsgets(rs,owner,256)) {
-						print_serr(rs,"Bad domain name.");
+					if (!read_domain(rs, owner, sizeof(owner)))
 						break;
-					}
 					if (!str2rhn((unsigned char *)owner,(unsigned char *)dbuf+2)) {
 						print_serr(rs,"Bad domain name.");
 						break;
 					}
-					sz=strlen(dbuf+2)+3;;
+					sz=rhnlen((unsigned char *)(dbuf+2))+2;;
 					break;
 				default:
 					print_serr(rs,"Bad arg.");
-					break;
 				}
 				if (sz<0)
 					break;
@@ -341,26 +340,19 @@ void *status_thread (void *p)
 				break;
 			case CTL_NEG:
 				DEBUG_MSG1("Received NEG command.\n");
-				if (!fsgets(rs,buf,256)) {
-					DEBUG_MSG1("pipe NEG: received bad domain name.\n");
-					print_serr(rs,"Bad domain name.");
+				if (!read_domain(rs, buf, sizeof(buf)))
 					break;
-				}
-				if (buf[strlen(buf)-1]!='.') {
-					buf[strlen(buf)+1]='\0';
-					buf[strlen(buf)]='.';
-				}
 				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
-					DEBUG_MSG1("pipe NEG: received bad domain name.\n");
+					DEBUG_MSG1("NEG: received bad domain name.\n");
 					print_serr(rs,"Bad domain name.");
 					break;
 				}
-				if ((cmd=read_short(rs))<0)
+				if ((cmd=read_short(rs))<-1)
 					break;
-				if ((ttl=read_long(rs))<0)
+				if ((ttl=read_long(rs))<-1)
 					break;
 				if (cmd!=255 && (cmd<T_MIN || cmd>T_MAX)) {
-					DEBUG_MSG1("pipe NEG: received bad record type.\n");
+					DEBUG_MSG1("NEG: received bad record type.\n");
 					print_serr(rs,"Bad record type.");
 					break;
 				}
@@ -409,5 +401,5 @@ void init_stat_fifo()
 	if (pthread_create(&st,&attr,status_thread,NULL))
 		log_warn("Failed to start status thread. The status fifo will be unuseable");
 	else
-		log_info(2,"Status pipe thread started.");
+		log_info(2,"Status thread started.");
 }

@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.18 2001/04/10 22:21:04 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.19 2001/04/11 03:30:10 tmm Exp $";
 #endif
 
 /*
@@ -221,7 +221,7 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		return inet_pton(AF_INET6,addr,&a->ipv6);
+		return inet_pton(AF_INET6,addr,&a->ipv6)==1;
 	}
 #endif
 	return 0;
