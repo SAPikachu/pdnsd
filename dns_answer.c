@@ -19,7 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #ifndef lint
-static char rcsid[]="$Id: dns_answer.c,v 1.4 2000/06/03 19:59:35 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.5 2000/06/03 21:15:11 thomas Exp $";
 #endif
 
 /*
@@ -113,6 +113,12 @@ typedef struct {
 #define S_ANSWER     1
 #define S_AUTHORITY  2
 #define S_ADDITIONAL 3
+
+/* T_AAAA is translated to T_A (always added in combination) */
+typedef struct {
+	unsigned short tp;
+	unsigned char nm[256];
+} sva_t; 
 
 /*
  * Add an rr from a rr_bucket_t (as in cache) into a dns message in ans. Ans is growed
@@ -328,8 +334,9 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
  * the first time. It gets filled with a pointer to compression information that can be
  * reused in subsequent calls to add_to_response.
  */
-static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz, dns_cent_t *cached, compbuf_t **cb, char udp, unsigned char *rrn, unsigned long queryts)
+static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz, dns_cent_t *cached, compbuf_t **cb, char udp, unsigned char *rrn, unsigned long queryts, sva_t **sva, int *svan)
 {
+	unsigned char buf[256];
 	int i;
 	rr_bucket_t *b;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
@@ -397,6 +404,16 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 				if (!add_rr(ans, sz,b ,i,S_ANSWER,cb,udp,queryts,rrn,cached->rr[i-T_MIN]->ts,
 					    cached->rr[i-T_MIN]->ttl,cached->rr[i-T_MIN]->flags)) 
 					return 0;
+				if (svan && sva && (i==T_NS || i==T_A || i==T_AAAA)) {
+				        /* mark it as added */
+					(*svan)++;
+					if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
+						return 0;
+					}
+					(*sva)[*svan-1].tp=i;
+					rhn2str(rrn,buf);
+					strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+				}
 				b=b->next;
 			}
 		}
@@ -407,6 +424,16 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 			if (!add_rr(ans, sz,b ,qe.qtype,S_ANSWER,cb,udp,queryts,rrn,cached->rr[qe.qtype-T_MIN]->ts,
 				    cached->rr[qe.qtype-T_MIN]->ttl,cached->rr[qe.qtype-T_MIN]->flags)) 
 				return 0;
+			if (svan && sva && (i==T_NS || i==T_A || i==T_AAAA)) {
+				/* mark it as added */
+				(*svan)++;
+				if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
+					return 0;
+				}
+				(*sva)[*svan-1].tp=qe.qtype;
+				rhn2str(rrn,buf);
+				strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+			}
 			b=b->next;
 		}
 	}
@@ -416,10 +443,6 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 #define AR_NUM 5
 int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX}; 
 int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server name */
-
-typedef struct {
-	unsigned char nm[256];
-} sva_t;
 
 typedef struct rre_s {
 	unsigned char  nm[256];
@@ -440,7 +463,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	char aa=1;
 	unsigned char buf[256],bufr[256],oname[256];
 	sva_t *sva;
-	int i,j,rc,hops,cont,cnc,svan=0;
+	int i,j,rc,rc6,hops,cont,cnc,svan=0;
 	unsigned long queryts=time(NULL);
 	rr_bucket_t *rr,*rr2,*at;
 	rr_ext_t *ar,*au,**tmp;
@@ -504,7 +527,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 /*			if (!(cached->flags&CF_LOCAL))*/
 			aa=0;
 			strcpy((char *)oname,(char *)buf);
-			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts)) {
+			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&svan)) {
 				while (ar) {
 					au=ar->next;
 					free_rr(*ar);
@@ -574,18 +597,38 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
         /* Add the authority section */
 	au=ar;
 	while (au) {
-		if (!add_rr(&ans, rlen, &au->rr, T_NS, S_AUTHORITY, &cb,udp,queryts,au->nm,au->ts,au->ttl,au->flags)) {
-			free_cent(*cached);
-			free(cached);
-			while (ar) {
-				au=ar->next;
-				free_rr(ar->rr);
-				free(ar);
-				ar=au;
+		rc=1;
+		for (j=0;j<svan;j++) {
+			if (sva[j].tp==T_NS && strcmp((char *)sva[j].nm,(char *)buf)==0) {
+				rc=0;
+				break;
 			}
-			if (cb)
-				free(cb);
-			return NULL;
+		}
+		if (rc) {
+			if (!add_rr(&ans, rlen, &au->rr, T_NS, S_AUTHORITY, &cb,udp,queryts,au->nm,au->ts,au->ttl,au->flags)) {
+				free_cent(*cached);
+				free(cached);
+				while (ar) {
+					au=ar->next;
+					free_rr(ar->rr);
+					free(ar);
+					ar=au;
+				}
+				if (cb)
+					free(cb);
+				return NULL;
+			}
+			/* mark it as added */
+			svan++;
+			if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+				free_cent(*cached);
+				free(cached);
+				if (cb)
+					free(cb);
+				return NULL;
+			}
+			sva[svan-1].tp=T_NS;
+			strcpy((char *)sva[svan-1].nm,(char *)buf);
 		}
 		au=au->next;
 	}
@@ -600,18 +643,25 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 				/* Check if already added; no double additionals */
 				rc=1;
 				for (j=0;j<svan;j++) {
-					if (strcmp((char *)sva[j].nm,(char *)buf)==0) {
+					if (sva[j].tp==T_A && strcmp((char *)sva[j].nm,(char *)buf)==0) {
 						rc=0;
 						break;
 					}
 				}
-				if (rc) {
+				rc6=1;
+				for (j=0;j<svan;j++) {
+					if (sva[j].tp==T_AAAA && strcmp((char *)sva[j].nm,(char *)buf)==0) {
+						rc6=0;
+						break;
+					}
+				}
+				if (rc || rc6) {
                                         /* add_rr will do nothing when sz>512 bytes. */
-					if ((rr=ae->rr[T_A-T_MIN]->rrs))
+					if ((rr=ae->rr[T_A-T_MIN]->rrs) && rc)
 						add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,(unsigned char *)(at+1),
 						       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
 #ifdef DNS_NEW_RRS
-					if ((rr=ae->rr[T_AAAA-T_MIN]->rrs))
+					if ((rr=ae->rr[T_AAAA-T_MIN]->rrs) && rc6)
 						add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,(unsigned char *)(at+1),
 						       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
 #endif
@@ -624,6 +674,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 							free(cb);
 						return NULL;
 					}
+					sva[svan-1].tp=T_A;
 					strcpy((char *)sva[svan-1].nm,(char *)buf);
 				}
 				free_cent(*ae);
@@ -640,18 +691,25 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 		if ((ae=lookup_cache(buf))) {
 			rc=1;
 			for (i=0;i<svan;i++) {
-				if (strcmp((char *)sva[i].nm,(char *)buf)==0) {
+				if (sva[j].tp==T_A && strcmp((char *)sva[i].nm,(char *)buf)==0) {
 					rc=0;
 					break;
 				}
 			}
-			if (rc) {
+			rc6=1;
+			for (i=0;i<svan;i++) {
+				if (sva[j].tp==T_AAAA && strcmp((char *)sva[i].nm,(char *)buf)==0) {
+					rc6=0;
+					break;
+				}
+			}
+			if (rc || rc6) {
 				/* add_rr will do nothing when sz>512 bytes. */
-				if ((rr=ae->rr[T_A-T_MIN]->rrs))
+				if ((rr=ae->rr[T_A-T_MIN]->rrs) && rc)
 					add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,ar->buf,
 					       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
 #ifdef DNS_NEW_RRS
-				if ((rr=ae->rr[T_AAAA-T_MIN]->rrs))
+				if ((rr=ae->rr[T_AAAA-T_MIN]->rrs) && rc6)
 					add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,ar->buf,
 					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
 #endif
@@ -664,6 +722,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 						free(cb);
 					return NULL;
 				}
+				sva[svan-1].tp=T_A;
 				strcpy((char *)sva[svan-1].nm,(char *)buf);
 			}
 			free_cent(*ae);

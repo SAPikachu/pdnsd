@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #ifndef lint
-static char rcsid[]="$Id: cache.c,v 1.4 2000/06/03 19:59:34 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.5 2000/06/03 21:15:11 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -923,7 +923,8 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 		/* purge the record. */
 		purge_cent(ret);
 		if ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
-		    (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL))
+		    (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && !ret->rr[tp-T_MIN]->serial==serial) || 
+		    (ret->rr[tp-T_MIN]->serial==serial && ret->rr[tp-T_MIN]->ttl!=ttl))
 			del_cent_rrset(ret,tp);
 		if (!ret->rr[tp-T_MIN] || ret->rr[tp-T_MIN]->serial==serial) {
 			if (!(rrb=create_rr(dlen,data)))

@@ -1,4 +1,4 @@
-$Id: TODO,v 1.2 2000/06/03 19:59:34 thomas Exp $
+$Id: TODO,v 1.3 2000/06/03 21:15:11 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -143,14 +143,14 @@ Automatic deps						       [-tm, 2000-05-17]
 --------------------------------------------------------------------------------
 FreeBSD support						       [-tm, 2000-06-01]
 --------------------------------------------------------------------------------
-rfc2181 again.						       [itw 	       ]
+rfc2181 again.						       [-tm, 2000-06-03]
 -[X] 4.1 UDP Source address selection
 ---- 4.2 Port number selection (was ok)
 ---- 5.1 Sending RRs from an RRSet (was ok)
--[ ] 5.2 TTLs of RRs in an RRSet
+-[X] 5.2 TTLs of RRs in an RRSet
 ---- 5.3 DNSSEC special cases (no DNSSEC support)
--[ ] 5.4 Receiving RRSets
--[ ] 5.5 Sending RRSets
+-[X] 5.4 Receiving RRSets
+-[X] 5.5 Sending RRSets
 ---- 6	 Zone cuts (not applicable)
 ---- 7.1 Placements of SOA RRs in authoritative answers (na)
 ---- 7.2 TTLs on SOA RRs (was ok)
@@ -180,8 +180,8 @@ msgs have only 4kB overhead by now).			       [open           ]
 Use Autoconf for configuration				       [open           ]
 --------------------------------------------------------------------------------
 Test for compatibility on other Unix-like Systems other than 
-Linux; rewrite the functions in netdev.c and icmp.c for those 
-OSs if necessary.
+Linux and FreeBSD; rewrite the functions in netdev.c and icmp.c
+for those OSs if necessary.
 Also try to get compatibility for other compilers than gcc, for
 I need to use __attribute__((packed)) for some structures 
 declared in the header files, and I also use it in some just
