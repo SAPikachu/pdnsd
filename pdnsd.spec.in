@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.8 2001/03/25 18:09:56 tmm Exp $
+# $Id: pdnsd.spec.in,v 1.9 2001/05/17 14:14:27 tmm Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -28,7 +28,7 @@ and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 %setup
 
 %build
-./configure --prefix=%{prefix} --sysconfdir=%{confdir} --with-distribution=%{distro} --mandir=%{_mandir}
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix} --sysconfdir=%{confdir} --with-distribution=%{distro} --mandir=%{_mandir} --enable-specbuild=yes
 %__make
 
 %install
@@ -66,9 +66,29 @@ if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then
 "\n\n#\n# Set to yes to start pdnsd at boot time\n#\nSTART_PDNSD=yes" \
 >> /etc/rc.config
   fi
+elif [ "%{distro}" = "RedHat" ]; then
+  if [ $1 = 1 ]; then
+    /sbin/chkconfig --add pdnsd
+  fi
+fi
+
+%preun
+if [ "%{distro}" = "RedHat" ]; then
+  if [ $1 = 0 ]; then
+    /sbin/chkconfig --del pdnsd
+  fi
+fi
+
+%postun
+if [ "%{distro}" = "RedHat" ]; then
+  if [ $1 -ge 1 ]; then
+    /sbin/service pdnsd condrestart >/dev/null 2>&1
+  fi
 fi
 
 %changelog
+* Sun May 16 2001 Thomas Moestl <tmoestl@gmx.net>
+- Make use of chkconfig for Red Hat (patch by Christian Engstler)
 * Sun Mar 25 2001 Thomas Moestl <tmoestl@gmx.net>
 - Merged SuSE fixes by Christian Engstler
 * Fri Feb 09 2001 Thomas Moestl <tmoestl@gmx.net>

@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.29 2001/05/09 17:51:49 tmm Exp $
+dnl $Id: configure.in,v 1.30 2001/05/17 14:14:27 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -27,6 +27,7 @@ tcp_queries="no"
 tempdir="/tmp";
 randomdev=default
 freebsd_pthread="4"
+specbuild=no
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
@@ -220,7 +221,7 @@ AC_ARG_ENABLE(rcsids,
 test $have_rcsids != "yes" && AC_DEFINE(NO_RCSIDS)
 
 AC_ARG_WITH(tcp-qtimeout,
-[  --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30) ],
+[  --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30)],
   AC_DEFINE_UNQUOTED(TCP_TIMEOUT, $withval))
 
 AC_ARG_ENABLE(tcp-subseq,
@@ -229,8 +230,14 @@ AC_ARG_ENABLE(tcp-subseq,
   test $enableval = "yes" && AC_DEFINE(TCP_SUBSEQ))
 
 AC_ARG_WITH(par-queries,
-[  --with-tcp-qtimeout=secs    Specify default parallel query number (default=2) ],
+[  --with-tcp-qtimeout=secs    Specify default parallel query number (default=2)],
   AC_DEFINE_UNQUOTED(PAR_QUERIES, $withval))
+
+AC_ARG_ENABLE(specbuild,
+[  --enable-specbuild          Only used when build pdnsd from spec files],
+  specbuild = $enableval)
+
+AC_SUBST(specbuild)
 
 dnl Checks for programs.
 AC_PROG_CC
