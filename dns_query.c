@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.19 2000/07/04 22:00:40 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.20 2000/07/06 21:55:24 thomas Exp $";
 #endif
 
 /*
@@ -986,6 +986,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		q->qs[q->num-1].sinl=sizeof(struct sockaddr_in6);
 	}
 #endif
+	q->qs[q->num-1].sin=NULL;
 	q->qs[q->num-1].timeout=timeout;
 	q->qs[q->num-1].si=si;
 	q->qs[q->num-1].flags=flags;
@@ -1146,7 +1147,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 						nons=0;
 					if (nons) {
 						for (i=0;i<q->num;i++) {
-							if (ADDR_EQUIV(SOCKA_A(q->qs[i].sin),&serva)) {
+							/* q->qs[i].sin is initialized in p_exec_query, and may thus not be
+							   initialized */
+							if (q->qs[i].sin && ADDR_EQUIV(SOCKA_A(q->qs[i].sin),&serva)) {
 								nons=0;
 								break;
 							}

@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.19 2000/07/06 17:45:17 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.20 2000/07/06 21:55:24 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -351,6 +351,15 @@ static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl
 int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp)
 {
 	rr_bucket_t *rrb;
+	/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
+	if (cent->rr[tp-T_MIN]) {
+		rrb=cent->rr[tp-T_MIN]->rrs;
+		while (rrb) {
+			if (rrb->rdlen==dlen && memcmp(rrb+1,data,dlen)==0)
+				return 1;
+			rrb=rrb->next;
+		}
+	}
 	if (!(rrb=create_rr(dlen,data)))
 		return 0;
 	return add_cent_rr_int(cent,rrb,tp,ttl,ts,flags,0);
