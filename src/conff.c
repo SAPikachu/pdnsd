@@ -32,15 +32,16 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.24 2001/06/02 20:12:45 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.25 2001/07/01 21:03:15 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
 globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
-		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
+		   20,30,TCP_TIMEOUT,PAR_QUERIES,1,0,65535};
 #else
 globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
 		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
++		   20,30,TCP_TIMEOUT,PAR_QUERIES,1,0,65535};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
@@ -172,6 +173,8 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
 	fsprintf(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
 	fsprintf(f,"\tRandomize records in answer: %i\n",global.rnd_recs);
+	fsprintf(f,"\tQuery port start: %i\n",global.query_port_start);
+	fsprintf(f,"\tQuery port end: %i\n",global.query_port_end);
 	for(i=0;i<da_nel(servers);i++) {
 		st=DA_INDEX(servers,i,servparm_t);
 		fsprintf(f,"Server %i:\n------\n",i);

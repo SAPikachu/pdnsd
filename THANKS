@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.34 2001/06/08 20:13:27 tmm Exp $
+$Id: THANKS,v 1.35 2001/07/01 21:03:13 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -36,6 +36,7 @@ Daniel Smolik
 Milan P. Stanic
 Michael Steiner
 Norbert Steinl
+Andreas Steinmetz	
 Marko Stolle
 Markus Storm
 Michael Ströder

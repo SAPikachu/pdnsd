@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.48 2001/06/08 20:13:30 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.49 2001/07/01 21:03:15 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -423,6 +423,70 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 	return RC_OK;
 }
 
+/*
+ * Try to bind the socket to a port in the given port range. Returns 1 on success, or 0 on failure.
+ */
+static int bind_socket(int s)
+{
+	int range = global.query_port_end-global.query_port_start+1;
+#ifdef ENABLE_IPV4
+	struct sockaddr_in sin4;
+#endif
+#ifdef ENABLE_IPV6
+	struct sockaddr_in6 sin6;
+#endif
+	struct sockaddr *sin;
+	int sinl;
+	int i,j;
+
+	/*
+	 * 0, as a special value, denotes that we let the kernel select an address when we
+	 * first use the socket, which is the default.
+	 */
+	if (global.query_port_start > 0) {
+		for (j=i=(get_rand16()%range)+global.query_port_start;;) {
+#ifdef ENABLE_IPV4
+			if (run_ipv4) {
+				memset(&sin4,0,sizeof(sin4));
+				sin4.sin_family=AF_INET;
+				sin4.sin_port=htons(i);
+				SET_SOCKA_LEN4(sin4);
+				sin=(struct sockaddr *)&sin4;
+				sinl=sizeof(sin4);
+			}
+#endif
+#ifdef ENABLE_IPV6
+			if (run_ipv6) {
+				memset(&sin6,0,sizeof(sin6));
+				sin6.sin6_family=AF_INET6;
+				sin6.sin6_port=htons(global.port);
+				sin6.sin6_flowinfo=IPV6_FLOWINFO;
+				SET_SOCKA_LEN6(sin6);
+				sin=(struct sockaddr *)&sin6;
+				sinl=sizeof(sin6);
+			}
+#endif			
+			if (bind(s,sin,sinl)==-1) {
+				if (errno!=EADDRINUSE &&
+				    errno!=EADDRNOTAVAIL) { /* EADDRNOTAVAIL should not happen here... */
+					log_warn("Could not bind to socket: %s\n", strerror(errno));
+					return 0;
+				}
+				/* If the address is in use, we continue. */
+			} else
+				break;	/* done. */
+			if (++i>global.query_port_end)
+				i=global.query_port_start;
+			if (i==j) {
+				/* Wraparound, scanned the whole range. Give up. */
+				log_warn("Out of ports in the given range, dropping query!\n");
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
 /* ------ following is the parallel query code.
  * It has been observed that a whole lot of name servers are just damn lame, with response time
  * of about 1 min. If that slow one is by chance the first server we try, serializing that tries is quite
@@ -482,6 +546,13 @@ static int p_query_sm(query_stat_t *st)
 			/* sin6 is intialized, hopefully. */
 		}
 # endif
+		/* maybe bind */
+		if (!bind_socket(st->sock)) {
+			close(st->sock);
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL;
+		}
+
 		/* transmit query by tcp*/
 		/* make the socket non-blocking for connect only, so that connect will not
 		 * hang */
@@ -592,6 +663,13 @@ static int p_query_sm(query_stat_t *st)
 			}
 		}
 # endif
+		/* maybe bind */
+		if (!bind_socket(st->sock)) {
+			close(st->sock);
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL;
+		}
+
 		/* connect */
 		if (connect(st->sock,st->sin,st->sinl)==-1) {
 			close(st->sock);

@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.28 2001/06/13 17:28:31 tmm Exp $
+$Id: AUTHORS,v 1.29 2001/07/01 21:03:12 tmm Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -33,6 +33,9 @@ Soenke J. Peters	contributed patches and suggestions for RedHat
 			compatability
 Roman Shterenzon	contributed many helpful hints and patches for
 			FreeBSD compatability.
+Andreas Steinmetz	contributed the code for the query_port_start and
+			query_port_end options (which I changed slightly,
+			so blame any breakage on me ;)
 Marko Stolle		contributed the contrib/pdnsd_update.pl script that
 			makes pdnsd usable in a DHCP setup.
 Lyonel Vincent		extended the serve_aliases option to support an

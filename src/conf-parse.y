@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.35 2001/06/02 18:07:15 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.36 2001/07/01 21:03:15 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -119,6 +119,8 @@ unsigned char *nm;
 %token <num> NEG_TTL
 %token <num> NEG_RRS_POL
 %token <num> NEG_DOMAIN_POL
+%token <num> QUERY_PORT_START
+%token <num> QUERY_PORT_END
 
 %token <num> IP
 %token <num> PORT
@@ -439,6 +441,30 @@ glob_el:	PERM_CACHE '=' CONST ';'
 				} else {
 					yyerror("bad qualifier in neg_domain_pol= option.");
 					YYERROR;
+				}
+			}
+		| QUERY_PORT_START '=' NUMBER ';'
+			{
+				if($3>65536||$3<1024) {
+					yyerror("bad value for query_port_start.");
+					YYERROR;
+				} else if (global.query_port_end <= $3) {
+					yyerror("query_port_end must be greater than query_port_start.");
+					YYERROR;
+				} else {
+					global.query_port_start=$3;
+				}
+			}
+		| QUERY_PORT_END '=' NUMBER ';'
+			{
+				if($3>65536||$3<1024) {
+					yyerror("bad value for query_port_end.");
+					YYERROR;
+				} else if (global.query_port_start >= $3) {
+					yyerror("query_port_end must be greater than query_port_start.");
+					YYERROR;
+				} else {
+					global.query_port_end=$3;
 				}
 			}
 		;
