@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../cacheing/cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.13 2001/04/30 17:02:01 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.14 2001/04/30 17:14:58 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 				print_help();
 				exit(2);
 			}
-			send_string(pf,argv[2]);
+			send_string(pf,argv[1]);
 			send_short(match_cmd(argv[2],server_cmds),pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
