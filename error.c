@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.8 2000/06/22 22:42:02 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.9 2000/06/23 14:06:36 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -53,7 +53,6 @@ void thread_sig(int sig)
 {
 	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {
 		/* nonfatal signal. */
-		kill(main_thread,sig);
 		return;
 	}
 	if (waiting) {
