@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.28 2001/05/09 22:52:17 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.29 2001/05/10 22:15:53 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -437,11 +437,12 @@ int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, u
 	cent->rr[tp-T_MIN]=cache_calloc(sizeof(rr_set_t),1,dbg);
 	if (cent->rr[tp-T_MIN]==NULL)
 		return 0;
+	ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
 	if (flags&CF_NOCACHE) {
 		flags&=~CF_NOCACHE;
 		ttl=0;
 	}
-	cent->rr[tp-T_MIN]->ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
+	cent->rr[tp-T_MIN]->ttl=ttl;
 	cent->rr[tp-T_MIN]->ts=ts;
 	cent->rr[tp-T_MIN]->flags=flags;
 	cent->rr[tp-T_MIN]->serial=serial;

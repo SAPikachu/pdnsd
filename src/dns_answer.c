@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.47 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.48 2001/05/10 22:15:53 tmm Exp $";
 #endif
 
 /*
@@ -176,6 +176,7 @@ int sva_add(darray *sva, unsigned char *name, unsigned char *rhn, int tp, rr_buc
 static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, darray *cb, char udp, time_t queryts,
     unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
 {
+	time_t tleft;
 	unsigned char nbuf[256];
 	int nlen,ilen,blen,osz;
 	rr_hdr_t rrh;
@@ -207,8 +208,8 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	if (flags&CF_LOCAL)
 		rrh.ttl=htonl(ttl);
 	else {
-		rrh.ttl=queryts-ts;
-		rrh.ttl=htonl(rrh.ttl>ttl?0:ttl-rrh.ttl);
+		tleft=queryts-ts;
+		rrh.ttl=htonl(tleft>ttl?0:ttl-tleft);
 	}
 	rrh.rdlength=0;
 	*sz+=sizeof(rr_hdr_t);

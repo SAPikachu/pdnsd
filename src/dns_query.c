@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.41 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.42 2001/05/10 22:15:53 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -74,7 +74,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 		 * however, make sure there are no double records. This is done by
 		 * add_cent_rr */
 #ifdef RFC2181_ME_HARDER
-		if (cent->rr[tp-T_MIN] && cent->rr[tp-T_MIN]->ttl!=(ttl>global.max_ttl?global.max_ttl:ttl))
+		if (cent->rr[tp-T_MIN] && cent->rr[tp-T_MIN]->ttl!=(ttl>global.max_ttl?global.max_ttl:(ttl<global.min_ttl?global.min_ttl:ttl)))
 			return 0;
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp,1);
@@ -1473,8 +1473,10 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 				free_cent(**cached, 1);
 				pdnsd_free(*cached);
 				*cached=tc;
-			}
-		}
+			} else
+				DEBUG_MSG1("p_dns_resolve: using local cent copy.\n");
+		} else
+			DEBUG_MSG1("p_dns_resolve: nocache\n");
 		del_qserv(serv);
 		return RC_OK;
 	}
