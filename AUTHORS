@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.2 2000/06/03 19:59:34 thomas Exp $
+$Id: AUTHORS,v 1.3 2000/06/13 12:15:17 thomas Exp $
 
 pdnsd was written by Thomas Moestl (tmoestl@gmx.net)
 
@@ -11,4 +11,4 @@ Torben Janssen contributed the files in rc/Redhat.
 Soeren J. Peters contributed patches and suggestions for Red Hat compatability.
 
 Thanks to Byrial Jensen, Fraser McCrossan, Joachim Dorner, Alan Swanson,
-Bert Frederiks and Jonathan Hudson for reporting bugs!
+Bert Frederiks, Jonathan Hudson and Daniel Smolik for reporting bugs!

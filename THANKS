@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.3 2000/06/03 19:59:34 thomas Exp $
+$Id: THANKS,v 1.4 2000/06/13 12:15:17 thomas Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -10,5 +10,6 @@ Torben Janssen		teejot@teejot.net
 Byrial Jensen		byrial@image.dk
 Fraser McCrossan	fraserm@gtn.net
 Soenke J. Peters	peters@simprovement.com
+Daniel Smolik		Smolik@corpus.cz
 Alan Swanson		swanson@uklinux.net
 
