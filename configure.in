@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.20 2001/01/15 23:10:12 thomas Exp $
+dnl $Id: configure.in,v 1.21 2001/01/24 17:06:42 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -27,6 +27,7 @@ tcp_queries="no"
 allcachedbms="native gdbm" ; cachedbm="native" ; unuseddbms="" ;
 tempdir="/tmp";
 randomdev=default
+freebsd_pthread="4"
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
@@ -277,33 +278,48 @@ dnl For dbm subsystem libraries
 AC_PROG_RANLIB
 
 if test "$target" = "autodetect" ; then
-	AC_MSG_CHECKING("for autodetect build target")
-	uname_sys=`uname`;
-	if test $? -ne 0 ; then
-		AC_MSG_RESULT(failed)
-		AC_MSG_ERROR([uname failed or was not found in path])
-	else
-		if test "$uname_sys" = Linux ; then
-		    AC_MSG_RESULT(Linux)
-		    AC_DEFINE(TARGET, TARGET_LINUX)
-		    target="Linux"
-		elif test "$uname_sys" = FreeBSD ; then
-	            AC_MSG_RESULT(FreeBSD)
-		    AC_DEFINE(TARGET, TARGET_BSD)
-		    target="BSD"
-		elif test "$uname_sys" = OpenBSD -o $sys = NetBSD ; then
-		    AC_MSG_RESULT([*BSD])
-		    AC_MSG_WARN([pdnsd may not work with BSD Unices other than FreeBSD])
-		    AC_DEFINE(TARGET, TARGET_BSD)
-		    target="BSD"
-		else 
-		    AC_MSG_RESULT(failed)
-		    AC_MSG_ERROR(
+  AC_MSG_CHECKING([for autodetect build target])
+  uname_sys=`uname`
+  if test $? -ne 0 ; then
+    AC_MSG_RESULT([failed])
+    AC_MSG_ERROR([uname failed or was not found in path])
+  else
+    if test "$uname_sys" = Linux ; then
+      AC_MSG_RESULT(Linux)
+      AC_DEFINE(TARGET, TARGET_LINUX)
+      target="Linux"
+    elif test "$uname_sys" = FreeBSD ; then
+      AC_MSG_RESULT(FreeBSD)
+      AC_DEFINE(TARGET, TARGET_BSD)
+      target="BSD"
+    elif test "$uname_sys" = OpenBSD -o $sys = NetBSD ; then
+      AC_MSG_RESULT([*BSD])
+      AC_MSG_WARN([pdnsd may not work with BSD Unices other than FreeBSD])
+      AC_DEFINE(TARGET, TARGET_BSD)
+      target="BSD"
+    else 
+      AC_MSG_RESULT([failed])
+      AC_MSG_ERROR(
 [Your system type could not be identified. Try setting it manually using 
 --with-target])
-		fi	
-	fi
+    fi	
+  fi
 fi
+
+if test "$target" = BSD ; then
+  uname_sys=`uname`
+  if test "$uname_sys" = FreeBSD ; then
+    AC_MSG_CHECKING([for FreeBSD version])
+    osrel=`sysctl -n kern.osreldate`
+    if test osrel -ge 500016 ; then
+      AC_MSG_RESULT([5.0 (>= 500016)])
+      freebsd_pthread="5"
+    else
+      AC_MSG_RESULT([<=5.0 (< 500016)])
+      freebsd_pthread="4"
+    fi
+  fi
+fi	
 
 AC_MSG_CHECKING([whether lexer supports line numbers in debugging])
 yylineno_option=""
@@ -323,17 +339,13 @@ if test $target = "Linux"; then
   AC_CHECK_LIB(pthread, pthread_kill)
 fi
 if test $target = "BSD" ; then
-#  AC_CHECK_LIB(pthread, pthread_kill)
-#  LDFLAGS="-pthread $LDFLAGS"
-#  AC_SUBST(LDFLAGS)
-  CFLAGS="$CFLAGS -pthread"
-  AC_SUBST(CFLAGS)
-#  LDFLAGS="-L/usr/local/lib $LDFLAGS"
-#  AC_SUBST(LDFLAGS)
-#  AC_CHECK_LIB(lthread, pthread_kill)
-#  AC_CHECK_LIB(gcc_r, free)
-#  INCLUDES="-I/usr/local/include/pthread/linuxthreads"
-#  AC_SUBST(INCLUDES)
+  if test $freebsd_pthread = 4 ; then
+    CFLAGS="$CFLAGS -pthread"
+    AC_SUBST(CFLAGS)
+  else
+    AC_CHECK_LIB(c_r, pthread_kill, , 
+      AC_MSG_ERROR([You must have libc_r installed to build/run pdnsd!]))
+  fi;
 fi
 
 if test "$cachegdbm" = "gdbm"; then
