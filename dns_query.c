@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.6 2000/06/06 11:57:01 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.7 2000/06/06 12:16:24 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -1082,8 +1082,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 						}
 					}
 					if (nons) {
-						/* lean query mode is inherited */
-						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags, 0,thint,q->qs[se].lean_query)) {
+						/* lean query mode is inherited. CF_NOAUTH and CF_ADDITIONAL are not (as specified
+						 * in CFF_NOINHERIT). */
+						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags&~CFF_NOINHERIT, 0,thint,q->qs[se].lean_query)) {
 							free_cent(**ent);
 							free(*ent);
 							free(ns);
@@ -1187,7 +1188,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		for (i=0;i<T_MAX;i++) {
 			if ((*cached)->rr[i] && ((*cached)->rr[i]->flags&CF_LOCAL || 
 						 (*cached)->rr[i]->ttl>=time(NULL)-(*cached)->rr[i]->ts)) {
-				if (!(*cached)->rr[i]->flags&CF_NOAUTH) {
+				if (!((*cached)->rr[i]->flags&CF_NOAUTH)) {
 					auth=1;
 				}
 				if ((*cached)->rr[i]->flags&CF_NOPURGE) {
@@ -1248,7 +1249,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					timed=1;
 			}
 		}
-		DEBUG_MSG5("Requery decision: req=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,timed,flags,ttl-queryts);
+		DEBUG_MSG6("Requery decision: req=%i, auth=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,auth,timed,flags,ttl-queryts);
 	}
 	if (!(*cached) || need_req || (timed && !(flags&CF_LOCAL))) {
 		bcached=*cached;

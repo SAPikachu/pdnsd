@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.5 2000/06/05 17:40:17 thomas Exp $ */
+/* $Id: cache.h,v 1.6 2000/06/06 12:16:24 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -90,6 +90,8 @@ typedef struct rr_lent_s {
 #define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written to cache records, but used
 			          by add_cent_rr */
 #define CF_ADDITIONAL 16       /* This was fetched as an additional or "off-topic" record. */
+
+#define CFF_NOINHERIT (CF_LOCAL | CF_NOAUTH | CF_ADDITIONAL) /* not to be inherited on requery */
 
 /*
  * This is the time in secs any record remains at least in the cache before it is purged.
