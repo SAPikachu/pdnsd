@@ -32,8 +32,8 @@ Boston, MA 02111-1307, USA.  */
 #include "netdev.h"
 #include "error.h"
 
-#ifndef lint
-static char rcsid[]="$Id: netdev.c,v 1.5 2000/06/03 19:59:35 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: netdev.c,v 1.6 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 /*

@@ -18,8 +18,8 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#ifndef lint
-static char rcsid[]="$Id: dns_answer.c,v 1.6 2000/06/04 15:36:23 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: dns_answer.c,v 1.7 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 /*

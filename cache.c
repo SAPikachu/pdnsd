@@ -36,8 +36,8 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "ipvers.h"
 
-#ifndef lint
-static char rcsid[]="$Id: cache.c,v 1.6 2000/06/04 15:36:23 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: cache.c,v 1.7 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -975,13 +975,18 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 
 	if (!init_cent(&ce, pn))
 		return 0;
+#ifdef ENABLE_IPV4
 	if (tp==T_A) {
 		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp))
 			return 0;
-	} else {
+	}
+#endif
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+	if (tp==T_AAAA) {
 		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp))
 			return 0;
 	}
+#endif
 	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)rns)+1,rns,T_NS)) {
 		free_cent(ce);
 		return 0;
@@ -989,16 +994,18 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 	add_cache(ce);
 	free_cent(ce);
 	if (reverse) {
+#ifdef ENABLE_IPV4
 		if (tp==T_A) 
-#if TARGET==TARGET_BSD
+# if TARGET==TARGET_BSD
 			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
-#else
+# else
 			snprintf((char *)b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+# endif
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-		else {/* means T_AAAA*/
+		if (tp=T_AAAA) {/* means T_AAAA*/
 			b2[0]='\0';
 			for (i=15;i>=0;i--) {
 				sprintf((char *)b4,"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
@@ -1032,6 +1039,7 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 	unsigned char buf[1025];
 	unsigned char b3[256];
 	unsigned char *p,*pn,*pi;
+	struct in_addr ina4;
 	int tp;
 	int sz;
 	pdnsd_a a;
@@ -1074,7 +1082,7 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 /*		printf("i: %s, n: %s--\n",pi,pn);*/
 		if (!str2rhn(pn,b3))
 			continue;
-		if (!inet_aton((char *)pi,&a.ipv4)) {
+		if (!inet_aton((char *)pi,&ina4)) {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
 			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)) {
 				tp=T_AAAA;
@@ -1085,8 +1093,13 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 			continue;
 #endif
 		} else {
+#ifndef ENABLE_IPV4
+			continue;
+#else
+			a.ipv4=ina4;
 			tp=T_A;
 			sz=sizeof(struct in_addr);
+#endif
 		}
 		if (!add_host(pn, rns, b3, &a, sz, ttl, tp,1))
 			continue;

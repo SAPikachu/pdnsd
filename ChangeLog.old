@@ -147,17 +147,15 @@
 	Fixed several bugs in the old and in the new source tree.
 	Use time_t instead of long for internal time storage for compatibility.
 
-????-??-??
-	Version 1.0.0 released.
-	The list of changes is rather big:
-	- cache-code reorganization
-	- only one unified hash (of variable depth) now
-	- IPv6 support (compile- and run-time configurable)
-	- optimized code
-	- many cleanups
-	- better rfc2181 compatability
-	- Automatic deps (only interesting for developers ;-)
-	- FreeBSD (and such hopefully *BSD) support
-	Overall, you should get an only marginally bigger executable (about 
-	1.5k) with a "christmas tree compile" (all options turned on) than 
-	you did with a 0.9.11 compile using default options.
+
+2000-05-06
+	Version 0.9.10.
+	This fixes a bug in uptest=if. Red Hat and configuration fixes 
+	suggested by Soeren J. Peters were included.
+
+2000-05-08
+	Version 0.9.11
+	This fixes a locally exploitable security problem (pdnsd.cache was 
+	world-writeable). This is actually a one-line fix; for a description of
+	possible dangers, please refer to the html documentation.
+	Thanks to Alan Swanson for reporting.

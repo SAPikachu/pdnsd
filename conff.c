@@ -31,8 +31,8 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 #include "y.tab.h"
 
-#ifndef lint
-static char rcsid[]="$Id: conff.c,v 1.4 2000/06/03 19:59:35 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: conff.c,v 1.5 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR

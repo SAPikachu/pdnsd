@@ -36,8 +36,8 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 #include "netdev.h"
 
-#ifndef lint
-static char rcsid[]="$Id: servers.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: servers.c,v 1.3 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 pthread_t stt;

@@ -35,8 +35,8 @@ Boston, MA 02111-1307, USA.  */
  * NO_YYLINENO if we may not use yylineno */
 #include "lex.inc.h"
 
-#ifndef lint
-static char rcsid[]="$Id: conf.y,v 1.3 2000/06/03 19:59:35 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: conf.y,v 1.4 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -52,6 +52,7 @@ unsigned long c_ttl;
 int c_aliases;
 unsigned char buf[532];
 int sz,tp;
+struct in_addr ina4;
 
 int idx;
 
@@ -340,7 +341,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("you must specify owner and name before a,ptr and soa records.");
 					YYERROR;
 				}
-				if (!inet_aton((char *)$3,&c_a.ipv4)) {
+				if (!inet_aton((char *)$3,&ina4)) {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 					if (!inet_pton(AF_INET6,(char *)$3,&c_a.ipv6)) {
 						yyerror("bad ip in a= option.");
@@ -354,8 +355,14 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 #endif
 				} else {
+#if !defined(ENABLE_IPV4) 
+					yyerror("bad ip in a= option.");
+					YYERROR;
+#else
+					c_a.ipv4=ina4;
 					sz=sizeof(struct in_addr);
 					tp=T_A;
+#endif
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp);
 			}

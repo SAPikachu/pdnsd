@@ -26,8 +26,8 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "helpers.h"
 
-#ifndef lint
-static char rcsid[]="$Id: hash.c,v 1.3 2000/06/03 19:59:35 thomas Exp $";
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: hash.c,v 1.4 2000/06/04 16:50:08 thomas Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
