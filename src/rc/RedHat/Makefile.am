@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.5 2000/10/16 21:44:35 thomas Exp $
+# $Id: Makefile.am,v 1.6 2001/04/10 01:36:23 tmm Exp $
 #EXTRA_DIST = pdnsd
 
 DISTRO = @distribution@
@@ -15,6 +15,12 @@ install-exec-local:
 	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/rc3.d; \
 	  cd $(DESTDIR)/etc/rc.d/rc3.d; \
 	  ln -fs ../init.d/pdnsd K45pdnsd; ln -s ../init.d/pdnsd S12pdnsd; \
+	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/rc0.d; \
+	  cd $(DESTDIR)/etc/rc.d/rc3.d; \
+	  ln -fs ../init.d/pdnsd K45pdnsd; \
+	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/rc6.d; \
+	  cd $(DESTDIR)/etc/rc.d/rc3.d; \
+	  ln -fs ../init.d/pdnsd K45pdnsd; \
 	  cd $$CURDIR ; \
 	fi
 
