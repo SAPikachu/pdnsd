@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.47 2001/06/03 21:11:43 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.48 2001/06/08 20:13:30 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -663,7 +663,7 @@ static int p_query_sm(query_stat_t *st)
  */
 static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, darray *ns, unsigned long serial) 
 {
-	int i,j,rv;
+	int i,j,rv,dummy;
 	time_t queryts;
 	long lcnt;
 	time_t ttl;
@@ -810,7 +810,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	}
 	/* check & skip the query record. We can ignore undersocres here, because they will be
 	 * detected in the name comparison */
-	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, NULL))!=RC_OK)
+	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, &dummy))!=RC_OK)
 		return rv==RC_TRUNC?RC_FORMAT:rv;
 
 	i=0;
