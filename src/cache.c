@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.33 2001/06/02 20:12:45 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.34 2001/06/21 23:58:10 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -233,7 +233,7 @@ static void unlock_cache_rw(void)
 	/* always reset r suspension (r locking code will set it again) */
 	r_susp=0;
 	/* wakeup threads waiting to read or write */
-	if (rw_pend>SUSP_THRESH(r_pend))
+	if (rw_pend>SUSP_THRESH(r_pend) || r_pend == 0)
 		pthread_cond_signal(&rw_cond); /* schedule another rw proc */
 	else
 		pthread_cond_broadcast(&r_cond); /* let 'em all read */
@@ -749,7 +749,7 @@ static void purge_cache(long sz, int lazy)
 		if (!(((*le)->rrset && ((*le)->rrset->flags&CF_LOCAL)) || 
 		      (*le)->cent->flags&DF_LOCAL)) {
 			ce = (*le)->cent;
-			/* Side effect: if rv!=0, del_cent_rrset was called and *le has advanced on entry.
+			/* Side effect: if rv!=0, del_cent_rrset was called and *le has advanced one entry.
 			 * ce, however, is still guaranteed to be valid. */
 			if ((*le)->rrset) {
 				deleted=purge_rrset(ce, (*le)->tp);
