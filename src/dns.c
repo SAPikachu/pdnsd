@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.11 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.12 2001/01/24 18:39:10 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -287,8 +287,8 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 #ifdef ENABLE_IPV4
 		if (tp==T_A) 
 # if TARGET==TARGET_BSD
-			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
-				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xffl,(ntohl(a->ipv4.s_addr)>>8)&0xffl,
+				 (ntohl(a->ipv4.s_addr)>>16)&0xffl, (ntohl(a->ipv4.s_addr)>>24)&0xffl);
 # else
 			snprintf((char *)b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);

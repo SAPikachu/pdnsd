@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.11 2000/11/11 20:11:00 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.12 2001/01/24 18:39:10 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -155,7 +155,7 @@ void *status_thread (void *p)
 	}
 	do {
 		res=sizeof(ra);
-		if ((rs=accept(sock,&ra,&res))!=-1) {
+		if ((rs=accept(sock,(struct sockaddr *)&ra,&res))!=-1) {
 			DEBUG_MSG1("Pipe query pending.\n");
 			read(rs,&cmd,sizeof(cmd));
 			switch(ntohs(cmd)) {

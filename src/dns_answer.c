@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.31 2001/01/16 22:30:00 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.32 2001/01/24 18:39:10 thomas Exp $";
 #endif
 
 /*
@@ -1047,7 +1047,7 @@ void *udp_answer_thread(void *data)
 	DEBUG_MSG4("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,((dns_hdr_t *)resp)->tc,get_ename(((dns_hdr_t *)resp)->rcode));
 
 
-	v.iov_base=resp;
+	v.iov_base=(char *)resp;
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
@@ -1306,7 +1306,7 @@ void *udp_server_thread(void *dummy)
 		
 		buf->sock=sock;
 
-		v.iov_base=buf->buf;
+		v.iov_base=(char *)buf->buf;
 		v.iov_len=512;
 		msg.msg_iov=&v;
 		msg.msg_iovlen=1;
