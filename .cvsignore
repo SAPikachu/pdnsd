@@ -3,3 +3,7 @@ conf.l
 config.h
 pdnsd-redhat.spec
 pdnsd-suse.spec
+lex.yy.x
+lex.inc.h
+yy.tab.c
+yy.tab.h 

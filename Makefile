@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.8 2000/06/03 19:59:34 thomas Exp $
+# $Id: Makefile,v 1.9 2000/06/03 21:17:57 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -100,6 +100,7 @@ mclean: clean
 	-rm -f y.tab.c
 	-rm -f y.tab.h
 	-rm -f lex.yy.c
+	-rm -f lex.inc.h
 	-rm -f .deps
 
 distclean: clean
