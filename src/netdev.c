@@ -18,6 +18,41 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
+/*
+ * Portions are under the following copyright and taken from FreeBSD
+ * (clause 3 deleted as it no longer applies):
+ *
+ * Copyright (c) 1982, 1986, 1989, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *	@(#)if.h	8.1 (Berkeley) 6/10/93
+ * $FreeBSD: src/sys/net/if.h,v 1.58.2.1 2000/05/05 13:37:04 jlemon Exp $
+ */
+
 #include <config.h>
 #include "ipvers.h"
 #include <sys/stat.h>
@@ -34,8 +69,14 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.10 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.11 2001/06/13 17:28:04 tmm Exp $";
 #endif
+
+/* Taken from FreeBSD net/if.h rev. 1.58.2.1 */
+#define	SIZEOF_ADDR_IFREQ(ifr) \
+	((ifr).ifr_addr.sa_len > sizeof(struct sockaddr) ? \
+	 (sizeof(struct ifreq) - sizeof(struct sockaddr) + \
+	  (ifr).ifr_addr.sa_len) : sizeof(struct ifreq))
 
 /*
  * These portion is Linux/FreeBSD specific. Please write interface-detection routines for other
@@ -274,7 +315,7 @@ int is_local_addr(pdnsd_a *a)
 	ad=buf;
 	while(cnt<=ifc.ifc_len-sizeof(struct ifreq)) {
 		ir=(struct ifreq *)ad;
-		if (cnt+_SIZEOF_ADDR_IFREQ(*ir)>=ifc.ifc_len)
+		if (cnt+SIZEOF_ADDR_IFREQ(*ir)>=ifc.ifc_len)
 			break;
 #  ifdef ENABLE_IPV4
 		if (run_ipv4) {
@@ -292,8 +333,8 @@ int is_local_addr(pdnsd_a *a)
 			}
 		}
 #  endif
-		cnt+=_SIZEOF_ADDR_IFREQ(*ir);
-		ad+=_SIZEOF_ADDR_IFREQ(*ir);
+		cnt+=SIZEOF_ADDR_IFREQ(*ir);
+		ad+=SIZEOF_ADDR_IFREQ(*ir);
 	        
 	}
 	close(sock);
