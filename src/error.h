@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.4 2000/11/01 19:05:31 thomas Exp $ */
+/* $Id: error.h,v 1.5 2000/11/01 21:24:33 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -27,15 +27,10 @@ Boston, MA 02111-1307, USA.  */
 #include <stdio.h>
 #include <signal.h>
 
-/* --- from main.c */
-extern sigset_t sigs_msk;
 /* --- from error.c */
 extern int waiting;
 /* --- */
 
-#if TARGET==TARGET_LINUX
-void thread_sig(int sig);
-#endif
 void crash_msg(char *msg);
 void init_log(void);
 void log_error(char *s,...);

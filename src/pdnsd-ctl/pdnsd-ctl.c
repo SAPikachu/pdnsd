@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.1 2000/10/31 13:20:32 thomas Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.2 2000/11/01 21:24:35 thomas Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -54,12 +54,12 @@ cmd_s rectype_cmds[5]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME
 cmd_s rectype_cmds[4]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{NULL,0}};
 #endif
 
-void print_version()
+void print_version(void)
 {
 	printf("pdnsd-ctl, version pdnsd-%s\n",VERSION);
 }
 
-void print_help()
+void print_help(void)
 {
 	printf("Usage: pdnsd-ctl <command> [options]\n\n");
 
