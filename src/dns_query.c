@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.13 2000/10/19 15:40:32 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.14 2000/10/19 16:18:08 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1169,9 +1169,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 # endif
 				if (srv<0) {
 					log_warn("poll/select failed: %s",strerror(errno));
-/*					for (k=0;k<mc;k++) {
+					for (k=0;k<mc;k++) {
 						p_cancel_query(&q->qs[global.par_queries*j+k]);
-						}*/
+					}
 					rv=RC_SERVFAIL;
 					done=1;
 					break;
@@ -1242,7 +1242,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	free(polls);
 #endif
 	if (rv!=RC_OK) {
-		DEBUG_MSG1("No query succeeded.\n");
+		DEBUG_MSG2("No query succeeded. Returning error code \"%s\"\n",get_ename(rv));
 		return rv;
 	}
 	
@@ -1341,14 +1341,15 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				}
 			}
 			if (serv.num>0) {
-				if (p_dns_cached_resolve(&serv,  name, rrn, &nent,hops-1,thint,time(NULL))==RC_OK) {
+				rv=p_dns_cached_resolve(&serv,  name, rrn, &nent,hops-1,thint,time(NULL));
+				if (rv==RC_OK || rv==RC_NAMEERR) {
 					del_qserv(&serv);
 					free_cent(**ent);
 					free(*ent);
-					*ent=nent;
+ 					*ent=nent;
 					
 					free(ns);
-					return RC_OK;
+					return rv;
 				}
 			}
 		}
@@ -1372,11 +1373,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
  */
 static int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
-	int dummy;
-	if (p_recursive_query(q, rrn, name,cached, &dummy, hops, thint)==RC_OK) {
-		return RC_OK;
-	}
-	return RC_NAMEERR;          /* Could not find a record on any server */
+	int dummy,rc;
+	rc=p_recursive_query(q, rrn, name,cached, &dummy, hops, thint);
+	return rc;
 } 
 
 /*
@@ -1557,7 +1556,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					free_cent(*bcached);
 					free(bcached);
 				}
-				return RC_SERVFAIL;
+				return rc;
 			}
 		} else {
 			if (bcached) {
