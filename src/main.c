@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.10 2000/08/13 13:53:16 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.11 2000/10/10 20:29:05 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -285,7 +285,7 @@ int main(int argc,char *argv[])
 	init_log();
 	if (daemon_p && pidfile[0]) {
 		unlink(pidfile);
-		if (!(pfd=open(pidfile,O_CREAT|O_EXCL, 0600))) {
+		if (!(pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
