@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.18 2000/07/03 15:56:36 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.19 2000/07/04 22:00:40 thomas Exp $";
 #endif
 
 /*
@@ -1255,8 +1255,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		auth=0;
 		nopurge=0;
 		for (i=0;i<T_MAX;i++) {
-			if ((*cached)->rr[i] /* && ((*cached)->rr[i]->flags&CF_LOCAL || 
-						(*cached)->rr[i]->ttl>=time(NULL)-(*cached)->rr[i]->ts)*/) {
+			if ((*cached)->rr[i]) {
 				if (!((*cached)->rr[i]->flags&CF_NOAUTH)) {
 					auth=1;
 				}

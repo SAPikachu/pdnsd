@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.21 2000/06/25 12:13:11 thomas Exp $
+# $Id: Makefile,v 1.22 2000/07/04 22:00:40 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -92,7 +92,7 @@ ChangeLog:
 test:
 	cd test; make CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' LIBS='$(LIBS)'
 
-.PHONY: all clean mclean distclean dist install
+.PHONY: all clean mclean distclean dist cinstall install suseinstall
 
 clean:
 	-rm -f y.output
@@ -141,7 +141,7 @@ rhrpm: 	dist pdnsd-redhat.spec
 pdnsd-redhat.spec: version pdnsd-redhat.spec.templ
 	v=`cat version` ; sed pdnsd-redhat.spec.templ -e "s/\\/\\*VERSION-INSERT-LOC\\*\\//$$v/" > pdnsd-redhat.spec
 
-install:
+cinstall:
 	if [ -e /etc/pdnsd.conf ] ; then cp /etc/pdnsd.conf /etc/pdnsd.conf.old ; echo -e "\n\033[31mBacked up your old /etc/pdnsd.conf to /etc/pdnsd.conf.old\033[m\n"; fi
 #	cp doc/pdnsd.conf /etc/pdnsd.conf
 #	chmod go-w /etc/pdnsd.conf
@@ -154,10 +154,15 @@ install:
 	# Thanks to Soenke J. Peters for suggestions on the Makefile rules!
 	install -o root -g root -m 600 doc/pdnsd.conf /etc/pdnsd.conf
 	install -o root -g root -m 755 pdnsd /usr/sbin
-	install -d -o root -g root $(PDNSD_CACHEDIR)
 	# Make sure the cache file permissions are correct.
 	if [ -f $(PDNSD_CACHEDIR)/pdnsd.cache ] ; then chmod 0600 $(PDNSD_CACHEDIR)/pdnsd.cache ; fi
 	echo -e "\033[31m\nYou should edit your /etc/pdnsd.conf to adapt it to your system configuration.\033[m\n"
+
+install: cinstall
+	install -d -o root -g root $(PDNSD_CACHEDIR)
+
+suseinstall: cinstall
+	install -d -o nobody -g nogroup $(PDNSD_CACHEDIR)
 
 # This is to generate the docs from my master copy. If you want to modify the docs or package your own or whatever, either modify
 # this rule (an empty one will do if you did not change the documentation), or get the html docs package from my download page
