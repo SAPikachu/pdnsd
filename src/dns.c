@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.8 2000/10/20 19:56:14 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.9 2000/10/23 20:31:42 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -133,7 +133,7 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
 	rhn2str(ms,&sbuf[1]); /* Change to dotted notation since processing starts from behind, */
 	rhn2str(md,&dbuf[1]); /* and so it's much easier that way. */
 	/* If this is the root domain, we have two dots. bad. so this special case test: */
-	if (strcmp(&sbuf[1],".")==0) {
+	if (strcmp((char *)&sbuf[1],".")==0) {
 		*o=0;
 		rest[0]='\0';
 		return 0;

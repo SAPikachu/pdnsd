@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.19 2000/10/21 13:02:23 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.20 2000/10/23 20:31:42 thomas Exp $";
 #endif
 
 /*
@@ -728,6 +728,8 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 							    ae->rr[T_NS-T_MIN]->flags)) {
 							free_cent(*cached);
 							free(cached);
+							free_cent(*ae);
+							free(ae);
 							while (ar) {
 								au=ar->next;
 								free_rr(ar->rr);
