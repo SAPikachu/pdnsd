@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.17 2001/05/09 17:51:53 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.18 2001/05/12 22:55:21 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
 	} else if (strcmp(argv[0],"list-rrtypes")==0) {
 		printf("Available RR types for the neg command:\n");
 		for (i=0;i<T_MAX;i++)
-			printf("%s\n",rr_info[i]);
+			printf("%s\n",rr_info[i].name);
 		exit(0);
 	} else {
 		cmd=match_cmd(argv[0],top_cmds);
