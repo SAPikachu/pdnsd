@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.13 2000/06/26 11:41:58 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.14 2000/07/07 10:05:35 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -331,6 +331,12 @@ int main(int argc,char *argv[])
 		close(ping_isocket);
 	if (ping_osocket!=-1)
 		close(ping_osocket);
+#ifdef ENABLE_IPV6
+	if (ping6_isocket!=-1)
+		close(ping6_isocket);
+	if (ping6_osocket!=-1)
+		close(ping6_osocket);
+#endif
 	free_rng();
 	_exit(0);
 }

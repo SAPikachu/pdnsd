@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.9 2000/06/27 10:15:50 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.10 2000/07/07 10:05:35 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -82,6 +82,7 @@ unsigned char *nm;
 %token <num> PERM_CACHE
 %token <num> CACHE_DIR
 %token <num> SERVER_PORT
+%token <num>  SERVER_IP
 %token <num> LINKDOWN_KLUGE
 %token <num> MAX_TTL
 %token <num> RUN_AS
@@ -124,8 +125,15 @@ file:		/* nothing */		{}
 		| file spec   		{}	
 		;
 
-spec:		GLOBAL '{' glob_s '}'	{}
-		| SERVER '{' {server=serv_presets; } serv_s '}'
+spec:		GLOBAL '{' 
+			{
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+				if (run_ipv6)
+					global.a.ipv6=in6addr_any;
+#endif
+			}
+			glob_s '}'	{}
+		| SERVER '{' {set_serv_presets(&server); } serv_s '}'
 			{
 				if (is_inaddr_any(&server.a)) {
 					yyerror("bad ip or no ip specified in section");
@@ -205,6 +213,13 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			{
 				global.port=$3;
 			}
+		| SERVER_IP '=' STRING ';'
+			{
+				if (!str2pdnsd_a((char *)$3,&global.a)) {
+					yyerror("bad ip in server_ip= option.");
+					YYERROR;
+				}
+ 			}
 		| LINKDOWN_KLUGE '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {

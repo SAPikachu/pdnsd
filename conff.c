@@ -32,13 +32,17 @@ Boston, MA 02111-1307, USA.  */
 #include "y.tab.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.11 2000/06/27 18:24:22 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.12 2000/07/07 10:05:35 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
-globparm_t global={2048,CACHEDIR,53,0,604800,"",1,0};
+#ifdef ENABLE_IPV4
+globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0};
+#else
+globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0};
+#endif
 servparm_t server;
 #ifdef ENABLE_IPV4
 servparm_t serv_presets={53,C_NONE,120,900,600,"","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};
@@ -51,6 +55,18 @@ servparm_t *servers=NULL;
 
 void lex_set_io(FILE *in, FILE *out); /* defined in conf.l*/
 int  yyparse (void);                  /* from yacc/bison output */
+
+/* Initialize a servparm_t */
+void set_serv_presets(servparm_t *server)
+{
+	*server=serv_presets;
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	/* In this case we have to set IN6ADDR_ANY_INIT */
+	if (run_ipv6) {
+		server->a.ipv6=server->ping_a.ipv6=in6addr_any;
+	}
+#endif
+}
 
 /*
  * Add a server (with parameters contained in serv) into the internal server-list

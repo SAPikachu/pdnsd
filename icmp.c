@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.11 2000/06/27 18:24:22 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.12 2000/07/07 10:05:35 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -61,6 +61,10 @@ int icmp_errs=0; /* This is only here to minimize log output. Since the
 
 int ping_isocket;
 int ping_osocket;
+#ifdef ENABLE_IPV6
+int ping6_isocket=-1;
+int ping6_osocket=-1;
+#endif
 
 /* different names, same thing... be careful, as these are macros... */
 #if TARGET==TARGET_BSD
@@ -109,16 +113,23 @@ void init_ping_socket()
 		if ((ping_osocket=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP))==-1) {
 			log_warn("icmp ping: socket() failed: %s",strerror(errno));
 		}
-
 	}
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		if ((ping_isocket=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6))==-1) {
+		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+			return;
+		}
+		if ((ping_osocket=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP))==-1) {
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+		}
+
+		if ((ping6_isocket=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6))==-1) {
 			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
 			return;
 		}
-		if ((ping_osocket=socket(PF_INET6,SOCK_RAW,IPPROTO_ICMPV6))==-1) {
+		if ((ping6_osocket=socket(PF_INET6,SOCK_RAW,IPPROTO_ICMPV6))==-1) {
 			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
 		}
 	}
@@ -291,8 +302,8 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	SOL_IPV6=pe->p_proto;
 #endif
 
-	isock=ping_isocket;
-	osock=ping_osocket;
+	isock=ping6_isocket;
+	osock=ping6_osocket;
 
 	ICMP6_FILTER_SETBLOCKALL(&f);
 	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY,&f);

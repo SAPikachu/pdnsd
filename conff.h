@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.7 2000/06/24 18:58:06 thomas Exp $ */
+/* $Id: conff.h,v 1.8 2000/07/07 10:05:35 thomas Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -59,6 +59,7 @@ typedef struct {
 	long          perm_cache;
 	char          cache_dir[MAXPATH];
 	int           port;
+	pdnsd_a       a;
 	char          lndown_kluge;
 	long          max_ttl;
 	char          run_as[21];
@@ -73,6 +74,7 @@ extern servparm_t serv_presets;
 extern int serv_num;
 extern servparm_t *servers;
 
+void set_serv_presets(servparm_t *server);
 
 void add_server(servparm_t serv);
 void read_config_file(char *nm); /*nm may be NULL*/
