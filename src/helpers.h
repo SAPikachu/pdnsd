@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.10 2001/05/09 17:51:52 tmm Exp $ */
+/* $Id: helpers.h,v 1.11 2001/06/02 20:12:45 tmm Exp $ */
 
 #ifndef HELPERS_H
 #define HELPERS_H
@@ -27,6 +27,12 @@ Boston, MA 02111-1307, USA.  */
 #include <pthread.h>
 #include "cache.h"
 
+/* format string checking for printf-like functions */
+#ifdef __GNUC__
+#define printfunc(fmt, firstva) __attribute__((__format__(__printf__, fmt, firstva)))
+#else
+#define printfunc(fmt, firstva)
+#endif
 
 #define SOFTLOCK_MAXTRIES 1000
 
@@ -55,7 +61,7 @@ int init_rng(void);
 void free_rng(void);
 unsigned short get_rand16(void);
 
-void fsprintf(int fd, char *format, ...);
+void fsprintf(int fd, char *format, ...) printfunc(2, 3);
 
 int stricomp(char *a, char *b);
 

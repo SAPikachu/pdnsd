@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.32 2001/05/29 14:37:24 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.33 2001/06/02 20:12:45 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1008,7 +1008,7 @@ void write_disk_cache()
 	FILE *f;
 
 	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
-		log_warn("Cache file path too long.",path,strerror(errno));
+		log_warn("Cache file path too long.");
 		return;
 	}		
 

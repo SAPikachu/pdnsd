@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.30 2001/06/02 18:07:15 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.31 2001/06/02 20:12:45 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -393,7 +393,7 @@ void init_stat_sock()
 		return;
 	}
 	if (unlink(a.sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
-		log_warn("Failed to unlink %s: %s.",strerror(errno));
+		log_warn("Failed to unlink %s: %s.",a.sun_path, strerror(errno));
 		pdnsd_exit();
 	}
 	if ((stat_sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
@@ -409,7 +409,7 @@ void init_stat_sock()
 	if (bind(stat_sock,(struct sockaddr *)&a,sizeof(a))==-1) {
 		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(stat_sock);
-		return NULL;
+		return;
 	}
 	umask(omask);
 }

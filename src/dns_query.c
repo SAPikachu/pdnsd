@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.44 2001/05/22 16:33:00 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.45 2001/06/02 20:12:45 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -925,7 +925,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 				ttl=ttl<0?0:ttl;
 			}
 			ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
-			DEBUG_MSG("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,ttl);
+			DEBUG_MSG("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,(long)ttl);
 			if (!add_cent_rrset(*ent, st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial, 1)) {
 			    free_cent(**ent, 1);
 			    pdnsd_free(*ent);
@@ -1559,7 +1559,7 @@ int p_dns_cached_resolve(darray q, unsigned char *name, unsigned char *rrn , dns
 			}
 		}
 		DEBUG_MSG("Requery decision: req=%i, neg=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,
-			   neg,timed,flags,ttl-queryts);
+			   neg,timed,flags,(long)(ttl-queryts));
 	}
 	/* update server records set onquery */
 	test_onquery();

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.11 2001/05/19 14:57:30 tmm Exp $ */
+/* $Id: error.h,v 1.12 2001/06/02 20:12:45 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -30,6 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include <signal.h>
 
 #include "thread.h"
+#include "helpers.h"
 
 /* --- from error.c */
 volatile extern int waiting;
@@ -37,9 +38,9 @@ volatile extern int waiting;
 
 void crash_msg(char *msg);
 void init_log(void);
-void log_error(char *s,...);
-void log_warn(char *s, ...);
-void log_info(int level, char *s, ...);
+void log_error(char *s,...) printfunc(1, 2);
+void log_warn(char *s, ...) printfunc(1, 2);
+void log_info(int level, char *s, ...) printfunc(2, 3);
 
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.

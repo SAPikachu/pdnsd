@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.23 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.24 2001/06/02 20:12:45 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -159,9 +159,9 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tServer port: %i\n",global.port);
 	fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
 	fsprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
-	fsprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
-	fsprintf(f,"\tMinimum ttl: %li\n",global.min_ttl);
-	fsprintf(f,"\tNegative ttl: %li\n",global.neg_ttl);
+	fsprintf(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
+	fsprintf(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
+	fsprintf(f,"\tNegative ttl: %li\n",(long)global.neg_ttl);
 	fsprintf(f,"\tNegative RRS policy: %s\n",global.neg_rrs_pol==C_ON?"on":(global.neg_rrs_pol==C_OFF?"off":"auth"));
 	fsprintf(f,"\tNegative domain policy: %s\n",global.neg_domain_pol==C_ON?"on":(global.neg_domain_pol==C_OFF?"off":"auth"));
 	fsprintf(f,"\tRun as: %s\n",global.run_as);
@@ -179,9 +179,9 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&st->a,buf,ADDRSTR_MAXLEN));
 		fsprintf(f,"\tport: %hu\n",st->port);
 		fsprintf(f,"\tuptest: %i\n",st->uptest);
-		fsprintf(f,"\ttimeout: %li\n",st->timeout);
-		fsprintf(f,"\tuptest interval: %li\n",st->interval);
-		fsprintf(f,"\tping timeout: %li\n",st->ping_timeout);
+		fsprintf(f,"\ttimeout: %li\n",(long)st->timeout);
+		fsprintf(f,"\tuptest interval: %li\n",(long)st->interval);
+		fsprintf(f,"\tping timeout: %li\n",(long)st->ping_timeout);
 		fsprintf(f,"\tping ip: %s\n",pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));
 		fsprintf(f,"\tinterface: %s\n",st->interface);
 		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
