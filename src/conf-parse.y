@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.14 2000/10/19 12:49:46 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.15 2000/10/21 11:28:37 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -102,6 +102,7 @@ unsigned char *nm;
 %token <num> C_PROCQ_LIMIT
 %token <num> TCP_QTIMEOUT
 %token <num> C_PAR_QUERIES
+%token <num> C_RAND_RECS
 
 %token <num> IP
 %token <num> PORT
@@ -369,6 +370,15 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| C_PAR_QUERIES '=' NUMBER ';'
 			{
 				global.par_queries=$3;
+			}
+		| C_RAND_RECS '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					global.rnd_recs=($3==C_ON);
+				} else {
+					yyerror("bad qualifier in randomize_recs= option.");
+					YYERROR;
+				}
 			}
 		;
 

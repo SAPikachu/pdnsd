@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.17 2000/10/20 08:58:57 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.18 2000/10/21 11:28:37 thomas Exp $";
 #endif
 
 /*
@@ -70,7 +70,8 @@ int da_mem_errs=0;
 int da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
-int procs=0;
+int procs=0;   /* active query processes */
+int qprocs=0;  /* queued query processes */
 pthread_mutex_t proc_lock;
 
 #ifdef SOCKET_LOCKING
@@ -347,11 +348,33 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 	return 1;
 }
 
+/* This adds an rrset, optionally randomizing the first element it adds.
+ * if that is done, all rrs after the randomized one appear in order, starting from
+ * that one and wrapping over if needed. */
 static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *sz, compbuf_t **cb, char udp, unsigned long queryts, unsigned char *rrn, sva_t **sva, int *svan)
 {
 	rr_bucket_t *b;
+	rr_bucket_t *first;
+	int cnt;
 	if (cached->rr[tp-T_MIN]) {
 		b=cached->rr[tp-T_MIN]->rrs;
+		if (global.rnd_recs) {
+			/* in order to have equal chances for each records to be the first, we have to count first. */
+			first=b;
+			cnt=0;
+			while (b) {
+				b=b->next;
+				cnt++;
+			}
+			/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
+			 * and we do not need any good RNG here. */
+			cnt=random()%cnt;
+			while (cnt) {
+				cnt--;
+				first=first->next;
+			}
+			b=first;
+		}
 		while (b) {
 			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,cached->rr[tp-T_MIN]->ts,
 				    cached->rr[tp-T_MIN]->ttl,cached->rr[tp-T_MIN]->flags)) 
@@ -362,6 +385,12 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *
 					return 0;
 			}
 			b=b->next;
+			if (global.rnd_recs && !b) {
+				/* wraparound */
+				b=cached->rr[tp-T_MIN]->rrs;
+			}
+			if (global.rnd_recs && b==first)
+				break;
 		}
 	}
 	return 1;
@@ -940,6 +969,7 @@ void decrease_procs(void *dummy)
 	(void)dummy;
 	pthread_mutex_lock(&proc_lock);
 	procs--;
+	qprocs--;
 	pthread_mutex_unlock(&proc_lock);
 }
 
@@ -979,7 +1009,11 @@ void *udp_answer_thread(void *data)
 		if (i>global.proc_limit)
 			usleep(50000);
 	} while (i>global.proc_limit); 
-	
+
+	pthread_mutex_lock(&proc_lock);
+	procs++;
+	pthread_mutex_unlock(&proc_lock);
+		
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
@@ -1360,8 +1394,8 @@ void *udp_server_thread(void *dummy)
 			continue;
 		} else {
 			pthread_mutex_lock(&proc_lock);
-			if (procs<=global.proc_limit+global.procq_limit) {
-				procs++;
+			if (qprocs<global.proc_limit+global.procq_limit) {
+				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
 				buf->len=qlen;
 				pthread_attr_init(&attr);
@@ -1416,6 +1450,10 @@ void *tcp_answer_thread(void *csock)
 		if (i>global.proc_limit)
 			usleep(50000);
 	} while (i>global.proc_limit);
+
+	pthread_mutex_lock(&proc_lock);
+	procs++;
+	pthread_mutex_unlock(&proc_lock);
 
 	free(csock);
 	rlen=htons(rlen);
@@ -1653,8 +1691,8 @@ void *tcp_server_thread(void *p)
 			 * in rfc1035 not to block
 			 */
 			pthread_mutex_lock(&proc_lock);
-			if (procs<=global.proc_limit+global.procq_limit) {
-				procs++;
+			if (qprocs<global.proc_limit+global.procq_limit) {
+				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
 				pthread_attr_init(&attr);
 				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
