@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.22 2001/01/24 18:57:21 thomas Exp $
+dnl $Id: configure.in,v 1.23 2001/01/27 00:11:10 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -397,6 +397,7 @@ AC_OUTPUT([
 pdnsd.spec
 Makefile
 file-list.base
+doc/Makefile
 doc/pdnsd.conf
 src/Makefile
 src/conf-lex.l
