@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.3 2000/07/29 18:45:05 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.4 2000/08/12 20:01:00 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -70,7 +70,7 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
  			if (lb>63 && lb<192)     /* The two highest bits must be either 00 or 11 */
 				return RC_FORMAT;
 			if (lb>=192) {
-				if (lptr-msg>=msgsz-1)
+				if (lptr-msg>=msgsz)
 					return RC_FORMAT;
 				if (!jumped) {
 					if ((*sz)<1)
@@ -80,7 +80,7 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 
 				}
 				offs=(((unsigned short)lb&0x3f)<<8)|(*lptr);
-				if (offs>=msgsz-1) 
+				if (offs>=msgsz) 
 					return RC_FORMAT;
 				lptr=msg+offs;
 				lb=*lptr;
