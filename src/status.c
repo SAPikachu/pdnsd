@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.33 2002/01/02 14:47:57 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.34 2002/07/12 14:32:28 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -404,7 +404,8 @@ void init_stat_sock()
 	mode_t omask;
 	
 	/* Early initialization, so that umask can be used race-free. */
-	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(a.sun_path)) {
+	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(a.sun_path) ||
+	    !strncp(sock_path, a.sun_path, sizeof(sock_path))) {
 		log_warn("cache directory name too long");
 		return;
 	}
