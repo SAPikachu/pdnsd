@@ -1,5 +1,5 @@
 /* conff.c - Maintain configuration information
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -32,12 +32,9 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.16 2000/11/05 15:23:59 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.17 2001/04/03 19:10:30 tmm Exp $";
 #endif
 
-#ifndef CACHEDIR
-#error "CACHEDIR must be defined. Please look into your Makefile!"
-#endif
 #ifdef ENABLE_IPV4
 globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
 		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
@@ -55,7 +52,7 @@ servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUD
 int serv_num=0;
 servparm_t *servers=NULL;
 
-void lex_set_io(FILE *in, FILE *out); /* defined in conf.l*/
+void lex_set_io(FILE *in, FILE *out); /* defined in conf.l */
 int  yyparse (void);                  /* from yacc/bison output */
 
 /* Initialize a servparm_t */
@@ -103,7 +100,7 @@ void read_config_file(char *nm)
 		fprintf(stderr,"Error: You must own the config file.\n");
 		exit(3);
 	}
-	if ((sb.st_mode&S_IWGRP) || (sb.st_mode&S_IWOTH)) {
+	if ((sb.st_mode&(S_IWGRP|S_IWOTH))) {
 		fprintf(stderr,"Error: Bad config file permissions: the file must be only writeable by the user.\n");
 		exit(3);
 	}
@@ -127,7 +124,7 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
 	fsprintf(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
 	fsprintf(f,"\tServer port: %i\n",global.port);
-	fsprintf(f,"\tServer ip (0.0.0.0=any available): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
 	fsprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
 	fsprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
 	fsprintf(f,"\tMinimum ttl: %li\n",global.min_ttl);

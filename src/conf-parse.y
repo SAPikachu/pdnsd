@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.25 2001/03/25 20:34:31 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.26 2001/04/03 19:10:29 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -73,7 +73,7 @@ extern int yylineno;
                 strncpy((dst),(src),sizeof(dst)); \
 		o=dst[sizeof(dst)-1]; \
                 dst[sizeof(dst)-1]='\0'; \
-	        if (strlen(global.run_as) >= sizeof(global.run_as)-1 && o!='\0') { \
+	        if (strlen(dst) >= sizeof(dst)-1 && o!='\0') { \
 		        yyerror(err": string too long"); \
 		        YYERROR; \
 	        } \
@@ -193,7 +193,7 @@ spec:		GLOBAL '{'
 					YYERROR;
 				}
 				if (is_inaddr_any(&server.ping_a)) {
-					memcpy(&server.ping_a, &server.a,sizeof(server.a));
+					memcpy(&server.ping_a, &server.a,sizeof(server.ping_a));
 				}
 				if (server.uptest==C_EXEC) {
 					if (server.uptest_cmd[0]=='\0') {
@@ -488,6 +488,7 @@ serv_el:	IP '=' STRING ';'
 		| UPTEST_CMD '=' STRING ';'
 			{
 				STRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
+				server.uptest_usr[0] = '\0';
 			}
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
@@ -617,7 +618,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strcpy((char *)c_name,(char *)$3);
+				STRNCP((char *)c_name, (char *)$3, "name");
 				if (c_owner[0]!='\0') {
 					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
 						fprintf(stderr,"Out of memory.\n");
@@ -707,7 +708,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				memset(buf,0,532);
+				memset(buf,0,sizeof(buf));
 				ts=htons($5);
 				memcpy(buf,&ts,2);
 				memcpy(buf+2,c_ptr,strlen((char *)c_ptr)+1);
@@ -735,8 +736,16 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("you must specify owner and name before a, ptr and soa records.");
 					YYERROR;
 				}
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
 				if (!str2rhn($3,c_soa_owner)) {
 					yyerror("bad domain name - must end in root domain.");
+					YYERROR;
+				}
+				if (strlen((char *)$5)>255) {
+					yyerror("name too long.");
 					YYERROR;
 				}
 				if (!str2rhn($5,c_soa_r)) {
@@ -748,7 +757,7 @@ rr_el:		NAME '=' STRING ';'
 				c_soa.retry=htonl($11);
 				c_soa.expire=htonl($13);
 				c_soa.minimum=htonl($15);
-				memset(buf,0,532);
+				memset(buf,0,sizeof(buf));
 				strcpy((char *)buf,(char *)c_soa_owner);
 				idx=strlen((char *)c_soa_owner)+1;
 				strcpy((char *)&buf[idx],(char *)c_soa_r);
@@ -810,13 +819,7 @@ rrneg_el:	NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strcpy((char *)c_name,(char *)$3);
-				if (c_owner[0]!='\0') {
-					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
-						fprintf(stderr,"Out of memory.\n");
-						YYERROR;
-					}
-				}
+				STRNCP((char *)c_name,(char *)$3, "name");
 			}			
 		| TTL '=' NUMBER ';'
 			{
@@ -825,7 +828,7 @@ rrneg_el:	NAME '=' STRING ';'
                 | TYPES '=' NDOMAIN ';'
 			{
 				if (htp) {
-					yyerror("You may not specify types=domain together with other types!.");
+					yyerror("You may not specify types=domain together with other types!");
 					YYERROR;
 				}
 				if (!c_name[0]) {

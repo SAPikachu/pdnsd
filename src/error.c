@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.4 2001/03/28 15:03:27 tmm Exp $";
+static char rcsid[]="$Id: error.c,v 1.5 2001/04/03 19:10:30 tmm Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -109,8 +109,10 @@ void log_info(int level, char *s, ...)
 	va_start(va,s);
 	if (level<=verbosity) {
 		if (use_lock)
-			if (!softlock_mutex(&loglock))
+			if (!softlock_mutex(&loglock)) {
+				va_end(va);
 				return;
+			}
 		if (daemon_p) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
 			vsyslog(LOG_INFO,s,va);

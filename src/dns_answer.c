@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.39 2001/03/28 15:03:26 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.40 2001/04/03 19:10:30 tmm Exp $";
 #endif
 
 /*
@@ -961,7 +961,6 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 		*resp=mk_error_reply(hdr->id,hdr->opcode,res);
 		return (unsigned char *)resp;
 	}
-	free(resp);
 
 #if DEBUG>0
 	if (debug_p) {
@@ -979,6 +978,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_SERVFAIL);
 		return (unsigned char *)resp;
 	}
+	free(resp);
 	free(q);
 	return (unsigned char *)ans;
 }
@@ -1575,8 +1575,8 @@ void *tcp_answer_thread(void *csock)
 				close(sock);
 				return NULL;
 			} else {
-				memcpy(&err,buf,sizeof(err));
-				err=mk_error_reply(*((unsigned short *)buf),olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
+				memcpy(&err,buf,sizeof(err)>olen?olen:sizeof(err));
+				err=mk_error_reply(err.id,olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
 				if (write(sock,&err,sizeof(err))!=sizeof(err)) {
 					free(buf);
 					close(sock);
