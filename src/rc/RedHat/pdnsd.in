@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: pdnsd.in,v 1.5 2001/07/04 11:36:18 tmm Exp $
+# $Id: pdnsd.in,v 1.6 2001/07/26 12:26:55 tmm Exp $
 #
 #	/etc/rc.d/init.d/pdnsd
 #
@@ -10,6 +10,8 @@
 # description: Proxy DNS Daemon
 # processname: pdnsd
 # config: /etc/pdnsd.conf
+
+prefix=@prefix@
 
 test -x @prefix@/sbin/pdnsd || exit 0
 [ -f @sysconfdir@/pdnsd.conf ] || exit 1
