@@ -1,10 +1,10 @@
-# $Id: Makefile.am,v 1.2 2000/07/29 21:29:39 thomas Exp $
+# $Id: Makefile.am,v 1.3 2000/07/30 19:01:43 thomas Exp $
 EXTRA_DIST = pdnsd
 
 DISTRO = @distribution@
 
 install-exec-local:
-	if [ "$(DISTRO)" = "RedHat" ]; then \
+	if [ "$(DISTRO)" = "RedHat" ] ; then \
 	  CURDIR=`pwd`; \
 	  $(mkinstalldirs) /etc/rc.d/init.d; \
 	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd /etc/rc.d/init.d/pdnsd; \

@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.4 2000/07/29 21:29:33 thomas Exp $
+# $Id: Makefile.am,v 1.5 2000/07/30 19:01:37 thomas Exp $
 
 SUBDIRS = src
 
@@ -6,6 +6,7 @@ EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
 file-list.base.in ChangeLog.old
 
 install-data-hook:
+	if [ -f $(DESTDIR)/etc/pdnsd.conf ] ; then cp $(DESTDIR)/etc/pdnsd.conf $(DESTDIR)/etc/pdnsd.conf.old ; echo -e "\n\nBacked up your old pdnsd.conf to pdns.conf.old\n\n" ; fi
 	cp -p doc/pdnsd.conf $(DESTDIR)/etc
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
 	if test "$(cachedbm)" = "native"; then \

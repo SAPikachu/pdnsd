@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.9 2000/07/29 18:45:02 thomas Exp $
+$Id: AUTHORS,v 1.10 2000/07/30 19:01:37 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -25,3 +25,4 @@ Nikita V. Youschenko	contributed extensions to the "if" uptest
 
 Please look into the THANKS file for people who helped me in various ways on
 this project.
+If this list is incomplete, pease drop me a mail!

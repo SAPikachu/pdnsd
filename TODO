@@ -1,4 +1,4 @@
-$Id: TODO,v 1.9 2000/07/29 21:29:33 thomas Exp $
+$Id: TODO,v 1.10 2000/07/30 19:01:37 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -174,23 +174,28 @@ On the other hand, it should lower latency.		       [-tm, 2000-07-09]
 Document the new options -m, -t and -p			       [-tm, 2000-07-10]
 --------------------------------------------------------------------------------
 Use Autoconf for configuration				       
-[contributed by Sourav K. Mandal, CVS import pending.]
+					       [contributed by Sourav K. Mandal]
 --------------------------------------------------------------------------------
 ================================================================================
-After 1.0.6
+1.0.7
 ================================================================================
 --------------------------------------------------------------------------------
 Include new options in configure.in, do some checks, update    [open	       ]
 docs. In particular:
--[ ] rewrite install instructions
+-[X] rewrite install instructions
 -[ ] document new conf file options
+-[X] document new command line options
 -[ ] document pdnsd-ctl
--[ ] replace references to status pipe
+-[X] replace references to status pipe
 -[ ] setup doc build process
 -[X] setup Debain build process for install scripts
 -[X] make rc script installation optional
 -[X] include temp dir for socket, recheck socket code.
--[ ] final check for install
+-[X] final check for install
+--------------------------------------------------------------------------------
+================================================================================
+After 1.0.7
+================================================================================
 --------------------------------------------------------------------------------
 Source address discovery for FreeBSD. Subtasks:		       [open           ]
 -[ ] IPv4						      

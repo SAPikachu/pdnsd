@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.3 2000/07/21 21:55:35 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.4 2000/07/30 19:01:39 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -108,8 +108,8 @@ void print_help (void)
 	printf("--debug\t\tPrint some debug messages on the console or to the\n");
 	printf("\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n");
 	printf("-t\t\t--or--\n");
-	printf("--tcp\t\tEnables the TCP server thread. pdnsd will then only\n");
-	printf("\t\tserve UDP queries.\n");
+	printf("--tcp\t\tEnables the TCP server thread. pdnsd will then serve\n");
+	printf("\t\tTCP and UDP queries.\n");
 	printf("-p\t\tWrites the pid the server runs as to a specified filename.\n");
 	printf("\t\tWorks only in daemon mode.\n");
 	printf("-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n");
@@ -419,7 +419,7 @@ int main(int argc,char *argv[])
 	if (ping6_osocket!=-1)
 		close(ping6_osocket);
 #endif
-	unlink(fifo_path); /* Delete the socket */
+	unlink(sock_path); /* Delete the socket */
 	free_rng();
 	_exit(0);
 }

@@ -18,14 +18,14 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: status.h,v 1.4 2000/07/29 18:45:06 thomas Exp $ */
+/* $Id: status.h,v 1.5 2000/07/30 19:01:39 thomas Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_
 
 #include "config.h"
 
-extern char fifo_path[1024];
+extern char sock_path[1024];
 
 /* The commands for pdnsd-ctl */
 #define CTL_STATS   1 /* Give out stats (like the "traditional" status pipe) */
