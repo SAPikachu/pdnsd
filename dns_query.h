@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.2 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: dns_query.h,v 1.3 2000/06/06 11:57:01 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
@@ -47,6 +47,7 @@ typedef struct {
 		struct sockaddr_in6 sin6;
 #endif
 	} a;
+	int                 s_offs;
 	struct sockaddr     *sin;
 	int                 sinl;
 	long                timeout;

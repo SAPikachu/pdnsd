@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.5 2000/06/04 21:22:18 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.6 2000/06/06 11:57:01 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -399,6 +399,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	switch (st->state){
 	case QS_INITIAL:
+		st->sin=(struct sockaddr *)(((char *)st)+st->s_offs);
 		if (!st->lean_query)
 			st->qt=QT_ALL;
 		st->transl=htons(sizeof(dns_hdr_t)+strlen((char *)rrn)+5);
@@ -645,7 +646,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			return RC_SERVFAIL; /* mock error code */
 		}
 
-		if (!(st->recvbuf->rcode==RC_NOTSUPP || !st->recvbuf->ra)){
+		if (!(st->recvbuf->rcode==RC_NOTSUPP/* || !st->recvbuf->ra*/)){
 			st->state=QS_DONE;
 			/* break on success, and if no requery is needed */
 			break;
@@ -909,7 +910,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		q->qs[q->num-1].a.sin4.sin_port=htons(port);
 		q->qs[q->num-1].a.sin4.sin_addr=a->ipv4;
 		SET_SOCKA_LEN4(q->qs[q->num-1].a.sin4);
-		q->qs[q->num-1].sin=(struct sockaddr *)&q->qs[q->num-1].a.sin4;
+		q->qs[q->num-1].s_offs=((char *)&q->qs[q->num-1].a.sin4)-((char *)&q->qs[q->num-1]);
 		q->qs[q->num-1].sinl=sizeof(struct sockaddr_in);
 	}
 #endif
@@ -920,7 +921,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		q->qs[q->num-1].a.sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		q->qs[q->num-1].a.sin6.sin6_addr=a->ipv6;
 		SET_SOCKA_LEN6(q->qs[q->num-1].a.sin6);
-		q->qs[q->num-1].sin=(struct sockaddr *)&q->qs[q->num-1].a.sin6;
+		q->qs[q->num-1].s_offs=((char *)&q->qs[q->num-1].a.sin6)-((char *)&q->qs[q->num-1]);
 		q->qs[q->num-1].sinl=sizeof(struct sockaddr_in6);
 	}
 #endif
@@ -1037,7 +1038,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 					serva.ipv4.s_addr=INADDR_ANY;
 					if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
 						if (servent->rr[T_A-T_MIN])
-							memcpy(&serva.ipv4,(unsigned char *)(servent->rr[T_A-T_MIN]+1),sizeof(serva.ipv4));
+							memcpy(&serva.ipv4,(unsigned char *)(servent->rr[T_A-T_MIN]->rrs+1),sizeof(serva.ipv4));
 						free_cent(*servent);
 						free(servent);
 					}
@@ -1049,7 +1050,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 #ifdef DNS_NEW_RRS
 					if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
 						if (servent->rr[T_AAAA-T_MIN])
-							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]+1),sizeof(serva.ipv6));
+							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
 						free_cent(*servent);
 						free(servent);
 					}
@@ -1057,7 +1058,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 					if (!is_inaddr_any(&serva)) {
 						if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
 							if (servent->rr[T_A-T_MIN])
-								IPV6_MAPIPV4((struct in_addr *)(servent->rr[T_A-T_MIN]+1),&serva.ipv6);
+								IPV6_MAPIPV4((struct in_addr *)(servent->rr[T_A-T_MIN]->rrs+1),&serva.ipv6);
 							free_cent(*servent);
 							free(servent);
 						}
@@ -1196,7 +1197,42 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					break;
 			}
 		}
-		if ((*cached)->rr[thint-T_MIN]) {
+		if (thint==QT_ALL) {
+			for (i=0;i<T_NUM;i++) {
+				if ((*cached)->rr[i]) {
+					flags|=(*cached)->rr[i]->flags;
+					if (ttl<(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl )
+						ttl=(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl;
+				}
+			}
+		} else if (thint==QT_MAILA) {
+			if ((*cached)->rr[T_MD-T_MIN]) {
+				flags|=(*cached)->rr[T_MD-T_MIN]->flags;
+				if (ttl<(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl )
+					ttl=(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl;
+			}
+			if ((*cached)->rr[T_MF-T_MIN]) {
+				flags|=(*cached)->rr[T_MF-T_MIN]->flags;
+				if (ttl<(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl )
+					ttl=(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl;
+			}
+		} else if (thint==QT_MAILB) {
+			if ((*cached)->rr[T_MG-T_MIN]) {
+				flags|=(*cached)->rr[T_MG-T_MIN]->flags;
+				if (ttl<(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl )
+					ttl=(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl;
+			}
+			if ((*cached)->rr[T_MB-T_MIN]) {
+				flags|=(*cached)->rr[T_MB-T_MIN]->flags;
+				if (ttl<(*cached)->rr[T_MB-T_MIN]->ts+(*cached)->rr[T_MB-T_MIN]->ttl )
+					ttl=(*cached)->rr[T_MB-T_MIN]->ts+(*cached)->rr[T_MB-T_MIN]->ttl;
+			}
+			if ((*cached)->rr[T_MR-T_MIN]) {
+				flags|=(*cached)->rr[T_MR-T_MIN]->flags;
+				if (ttl<(*cached)->rr[T_MR-T_MIN]->ts+(*cached)->rr[T_MR-T_MIN]->ttl )
+					ttl=(*cached)->rr[T_MR-T_MIN]->ts+(*cached)->rr[T_MR-T_MIN]->ttl;
+			}
+		} else if (thint>=T_MIN && thint<=T_MAX && (*cached)->rr[thint-T_MIN]) {
 			flags=(*cached)->rr[thint-T_MIN]->flags;
 			ttl=(*cached)->rr[thint-T_MIN]->ts+(*cached)->rr[thint-T_MIN]->ttl;
 		}

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.9 2000/06/04 21:22:18 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.10 2000/06/06 11:57:01 thomas Exp $";
 #endif
 
 /*
@@ -1157,14 +1157,30 @@ void *udp_server_thread(void *dummy)
 	}
 
 #if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
-	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
-		if (da_udp_errs<UDP_MAX_ERRS) {
-			da_udp_errs++;
-			log_error("Could not set options on udp socket: %s",strerror(errno));
+# ifdef ENABLE_IPV4
+	if (run_ipv4) {
+		if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
+			if (da_udp_errs<UDP_MAX_ERRS) {
+				da_udp_errs++;
+				log_error("Could not set options on udp socket: %s",strerror(errno));
+			}
+			close(sock);
+			return NULL;
 		}
-		close(sock);
-		return NULL;
 	}
+# endif
+# ifdef ENABLE_IPV6
+	if (run_ipv6) {
+		if (setsockopt(sock,SOL_IPV6,IPV6_PKTINFO,&so,sizeof(so))!=0) {
+			if (da_udp_errs<UDP_MAX_ERRS) {
+				da_udp_errs++;
+				log_error("Could not set options on udp socket: %s",strerror(errno));
+			}
+			close(sock);
+			return NULL;
+		}
+	}
+# endif
 #endif
 
 	while (1) {
