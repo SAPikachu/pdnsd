@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.21 2000/07/10 12:08:52 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.22 2000/07/12 14:24:27 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -294,6 +294,28 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
+				/* Some nameservers obviously choose to send SOA records instead of NS ones.
+				 * altough I think that this is poor behaviour, we'll have to work around that. */
+				/* Don't accept possibliy poisoning nameserver entries in paranoid mode */
+				if (!trusted) 
+					domain_match(&rc,nsdomain, oname, tbuf);
+				if (trusted ||  tbuf[0]=='\0') {
+					/* add to the nameserver list. */
+					if (!*ns) {
+						if (!(*ns=calloc(sizeof(ns_t),1))) {
+							return RC_SERVFAIL;
+						}
+						(*ns)->num=1;
+					} else {
+						(*ns)->num++;
+						if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
+							return RC_SERVFAIL;
+						}
+					}
+					/* rhn2str will only convert the first name, which is the NS */
+					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
+					memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
+				}
 				break;
 #ifdef DNS_NEW_RRS
 			case T_PX:

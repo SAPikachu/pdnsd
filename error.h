@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.9 2000/06/25 14:25:51 thomas Exp $ */
+/* $Id: error.h,v 1.10 2000/07/12 14:24:27 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -55,7 +55,6 @@ void log_info(int level, char *s, ...);
 	                signal(SIGABRT,thread_sig); \
 	                signal(SIGFPE,thread_sig); \
 	                signal(SIGSEGV,thread_sig); \
-	                signal(SIGPIPE,thread_sig); \
 	                signal(SIGTSTP,thread_sig); \
                         signal(SIGTTOU,thread_sig); \
                     	signal(SIGTTIN,thread_sig);
