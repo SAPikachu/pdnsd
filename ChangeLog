@@ -1,3 +1,10 @@
+2003-06-11  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/thread.h
+	Undid the change to the definition of THREAD_SIGINIT suggested to me by
+	Thomas Moestl, after receiving a report of a problem with this change
+	from someone running SuSE 7.0.
+
 2003-06-06  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_query.c:

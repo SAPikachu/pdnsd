@@ -97,9 +97,9 @@ darray da_resize(darray a, int sz, int n)
 darray DBGda_free(darray a, char *file, int line)
 {
 	if (a==NULL)
-		DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);
+		{DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);}
 	else
-		DEBUG_MSG("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);
+		{DEBUG_MSG("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);}
 	free(a);
 	return;
 }

@@ -23,7 +23,7 @@ if [[ $NETWORKING == [Nn][Oo] ]]; then exit 0; fi
 
 start() {
 	echo -n 'Starting pdnsd: '
-	daemon @prefix@/sbin/pdnsd -d
+	daemon @prefix@/sbin/pdnsd -d -p /var/run/pdnsd.pid
 	local RETVAL=$?
 	echo
 	if [ $RETVAL -eq 0 ]; then touch /var/lock/subsys/pdnsd; fi
