@@ -375,18 +375,23 @@ unsigned long get_serial()
  */
 
 /* Initialize the cache. Call only once. */
-/*void init_cache()
+#if 0
+void init_cache()
 {
 	mk_hash_ctable();
 	mk_dns_hash();
-} */
+}
+#endif
 
 /* Initialize the cache lock. Call only once. */
-/* void init_cache_lock()
+/* This is now defined as an inline function in cache.h */
+#if 0
+void init_cache_lock()
 {
 
 	use_cache_lock=1;
-} */
+}
+#endif
 
 /* Empty the cache completely, freeing all entries. */ 
 int empty_cache()
@@ -415,25 +420,30 @@ void destroy_cache()
 #endif
 
 #if 0
-TARGET!=TARGET_LINUX
+#if (TARGET!=TARGET_LINUX)
 	/* under Linux, this frees no resources but may hang on a crash */
 	pthread_mutex_destroy(&lock_mutex);
 	pthread_cond_destroy(&rw_cond);
 	pthread_cond_destroy(&r_cond);
 #endif
+#endif
 }
 
 /* Make a flag value for a dns_cent_t (dns cache entry) from a server record */
 /* Now defined as inline function in cache.h */
-/* int mk_flag_val(servparm_t *server)
+#if 0
+unsigned int mk_flag_val(servparm_t *server)
 {
-	int fl=0;
+	unsigned int fl=0;
 	if (!server->purge_cache)
 		fl|=CF_NOPURGE;
 	if (server->nocache)
 		fl|=CF_NOCACHE;
+	if (server->rootserver)
+		fl|=CF_ROOTSERV;
 	return fl;
-} */
+}
+#endif
 
 /* Initialize a dns cache record (dns_cent_t) with the query name (in
  * transport format), a flag value, a timestamp indicating
@@ -1684,12 +1694,12 @@ void invalidate_record(const unsigned char *name)
 			rr_set_t *rrs=ce->rr[i];
 			if (rrs) {
 				rrs->ts=0;
-				rrs->flags &= ~(CF_LOCAL|CF_AUTH);
+				rrs->flags &= ~CF_AUTH;
 			}
 		}
 		/* set the cent time to 0 (for the case that this was negative) */
 		ce->ts=0;
-		ce->flags &= ~(DF_LOCAL|DF_AUTH);
+		ce->flags &= ~DF_AUTH;
 	}
 	unlock_cache_rw();
 }

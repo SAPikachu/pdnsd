@@ -39,7 +39,7 @@
     License,  as  published by the Free Software Foundation; either version
     2, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.1-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -214,10 +214,10 @@
 	  <code>--with-target=platform</code>
 	</td>
 	<td>
-	  Change compilation target platform (default: autodetect; others: Linux, BSD)<br>
-	  autodetect will attempt to detect whether you are using *BSD or Linux and
-	  should normally be sufficient. If this does not work, try specifyning
-	  you system manually.
+	  Change compilation target platform (default: autodetect; others: Linux, BSD, Cygwin).<br>
+	  autodetect will attempt to detect whether you are using Linux, *BSD or Cygwin and
+	  should normally be sufficient. If this does not work, try specifying
+	  your system manually.
 	</td>
       </tr>
       <tr>
@@ -323,7 +323,8 @@
 	<td>
 	  Disable the UDP source address discovery.<br>
 	  You need this only if you have trouble with messages saying 
-	  &quot;could not discover udp source address&quot;.
+	  &quot;could not discover udp source address&quot;.<br>
+	  For the Cygwin target, this option is disabled by default.
 	</td>
       </tr>
       <tr>
@@ -2223,7 +2224,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 10 Oct 2004 by Paul Rombouts</i>
+      <i>Last revised: 20 Oct 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

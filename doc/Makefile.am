@@ -8,9 +8,9 @@ html/index.html txt/faq.txt txt/intro.txt txt/manual.txt $(man_MANS)
 # XXX: Do not insist to set the config file owner to root to avoid breaking RPM
 # builds
 install-data-hook:
-	$(mkinstalldirs) $(DESTDIR)/$(sysconfdir)
+	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
 	if test `whoami` = "root"; then \
-	  $(INSTALL) -o 0 -g 0 -m 644 pdnsd.conf $(DESTDIR)/$(sysconfdir)/pdnsd.conf.sample ; \
+	  $(INSTALL) -o 0 -g 0 -m 644 pdnsd.conf $(DESTDIR)$(sysconfdir)/pdnsd.conf.sample ; \
 	else \
-	  $(INSTALL) -m 644 pdnsd.conf $(DESTDIR)/$(sysconfdir)/pdnsd.conf.sample ; \
+	  $(INSTALL) -m 644 pdnsd.conf $(DESTDIR)$(sysconfdir)/pdnsd.conf.sample ; \
 	fi

@@ -17,13 +17,13 @@ have_ipv4="yes"
 newrr="yes"
 query_m="udponly"
 have_tcp_server="yes"
-adisc="yes";
+adisc="default"
 slock="no";
 def_id="nobody"
 have_rcsids="no"
 udp_queries="yes"
 tcp_queries="no"
-tempdir="/tmp";
+tempdir="/tmp"
 randomdev=default
 freebsd_pthread="4"
 specbuild=no
@@ -41,19 +41,25 @@ AC_SUBST(distribution)
 
 AC_ARG_WITH(target,
 [  --with-target=platform      Change compilation target platform (default: 
-			      autodetect; others: Linux, BSD)],
+			      autodetect; others: Linux, BSD, Cygwin)],
   target=$withval)
 case $target in
   Linux|linux) 
     AC_DEFINE(TARGET, TARGET_LINUX) 
+    target="Linux"
     ;;
   BSD| bsd)
     AC_DEFINE(TARGET, TARGET_BSD)
+    target="BSD"
+    ;;
+  Cygwin|CYGWIN|cygwin)
+    AC_DEFINE(TARGET, TARGET_CYGWIN)
+    target="cygwin"
     ;;
   autodetect)
     ;;
   *)
-    AC_MSG_ERROR([--with-target must have Linux or BSD as parameter.])
+    AC_MSG_ERROR([--with-target must have Linux, BSD or Cygwin as parameter.])
     ;;
 esac
 
@@ -148,8 +154,6 @@ test $have_tcp_server != "yes" && AC_DEFINE(NO_TCP_SERVER)
 AC_ARG_ENABLE(src-addr-disc,
 [  --disable-src-addr-disc     Disable the UDP source address discovery],
     adisc=$enableval)
-
-test $adisc = "yes" && AC_DEFINE(SRC_ADDR_DISC)
 
 AC_ARG_ENABLE(socket-locking,
 [  --enable-socket-locking     Enable the UDP socket locking],
@@ -281,6 +285,11 @@ if test "$target" = "autodetect" ; then
       AC_DEFINE(TARGET, TARGET_BSD)
       target="BSD"
       ;;
+    CYGWIN*)
+      AC_MSG_RESULT("${uname_sys}")
+      AC_DEFINE(TARGET, TARGET_CYGWIN)
+      target="cygwin"
+      ;;
     *)
       AC_MSG_RESULT([failed])
       AC_MSG_ERROR(
@@ -306,12 +315,23 @@ fi
 #  fi
 #fi	
 
+if test "$adisc" = "default"; then
+  if test "$target" = "cygwin" ; then
+# Don't do UDP source address discovery on Cygwin platform by default.
+    adisc="no"
+  else
+    adisc="yes"
+  fi  
+fi
+
+test "$adisc" = "yes" && AC_DEFINE(SRC_ADDR_DISC)
+
 
 dnl Checks for libraries.
-if test $target = "Linux"; then
+if test "$target" = "Linux"; then
   AC_CHECK_LIB(pthread, pthread_kill)
 fi
-if test $target = "BSD" ; then
+if test "$target" = "BSD" ; then
 #  if test $freebsd_pthread = 4 ; then
     CFLAGS="$CFLAGS -pthread"
     AC_SUBST(CFLAGS)
@@ -354,7 +374,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(nanosleep gettimeofday mkfifo select socket strerror uname snprintf vsnprintf, true, 
 		AC_MSG_ERROR([One of the functions required for pdnsd were not found.]))
 AC_CHECK_FUNCS(poll, true, AC_DEFINE(NO_POLL))
-AC_CHECK_FUNCS(strdup strndup stpcpy stpncpy strlcpy mempcpy getline asprintf vasprintf getpwnam_r)
+AC_CHECK_FUNCS(strdup strndup stpcpy stpncpy strlcpy mempcpy getline asprintf vasprintf getpwnam_r inet_ntop)
 
 AC_OUTPUT([
 pdnsd.spec

@@ -271,13 +271,15 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb)
 }
 
 /* Convert a numeric IP address into a domain name representation
-   suitable for PTR records.
+   (C string) suitable for PTR records.
+   buf is assumed to be at least 256 bytes in size.
 */
 int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 {
 	if(tp==T_A) {
 		unsigned char *p=(unsigned char *)&a->ipv4.s_addr;
-		if(snprintf(buf,256,"%i.%i.%i.%i.in-addr.arpa.",p[3],p[2],p[1],p[0])>=256)
+		int n=snprintf(buf,256,"%i.%i.%i.%i.in-addr.arpa.",p[3],p[2],p[1],p[0]);
+		if(n<0 || n>=256)
 			return 0;
 	}
 	else 

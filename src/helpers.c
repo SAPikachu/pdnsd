@@ -154,7 +154,8 @@ int run_as(const char *user)
 /*
  * returns whether c is allowed in IN domain names
  */
-/* int isdchar (unsigned char c)
+#if 0
+int isdchar (unsigned char c)
 {
 	if ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-'
 #ifdef UNDERSCORE
@@ -163,7 +164,8 @@ int run_as(const char *user)
 	   )
 		return 1;
 	return 0;
-} */
+}
+#endif
 
 /*
  * Convert a string given in dotted notation to the transport format (length byte prepended
@@ -283,7 +285,15 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 				if(j>=size-2)
 					goto overflow;
 				c=rhn[i++];
-				if(c<=0x20 || c>=0x7f) {
+				if(isgraph(c)) {
+					if(c=='.' || c=='\\' || c=='"') {
+						str[j++]='\\';
+						if(j>=size-2)
+							goto overflow;
+					}
+					str[j++]=c;
+				}
+				else {
 					int rem=size-1-j;
 					int n=snprintf(&str[j],rem,"\\%03o",c);
 					if(n<0 || n>=rem) {
@@ -291,14 +301,6 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 						goto overflow;
 					}
 					j+=n;
-				}
-				else {
-					if(c=='.' || c=='\\' || c=='"') {
-						str[j++]='\\';
-						if(j>=size-2)
-							goto overflow;
-					}
-					str[j++]=c;
 				}
 			}
 			str[j++]='.';
@@ -327,7 +329,8 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
-/* unsigned int rhnlen(const unsigned char *rhn)
+#if 0
+unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0,lb;
 
@@ -335,7 +338,7 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 		i+=lb+1;
 	return i+1;
 }
-*/
+#endif
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
@@ -390,7 +393,8 @@ int str2pdnsd_a(const char *addr, pdnsd_a *a)
 }
 
 /* definition moved to helpers.h */
-/* int is_inaddr_any(pdnsd_a *a)
+#if 0
+int is_inaddr_any(pdnsd_a *a)
 {
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -402,7 +406,8 @@ int str2pdnsd_a(const char *addr, pdnsd_a *a)
 		return IN6_IS_ADDR_UNSPECIFIED(&a->ipv6);
 	}
 #endif
-} */
+}
+#endif
 
 /*
  * This is used for user output only, so it does not matter when an error occurs
@@ -430,7 +435,7 @@ const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 
 /* Appropriately set our random device */
 #ifdef R_DEFAULT
-# if TARGET == TARGET_BSD && !defined(__NetBSD__)
+# if (TARGET == TARGET_BSD) && !defined(__NetBSD__)
 #  define R_ARC4RANDOM 1
 # else
 #  define R_RANDOM 1
@@ -468,13 +473,15 @@ int init_rng()
 }
 
 /* The following function is now actually defined as a macro in helpers.h */
-/* void free_rng()
+#if 0
+void free_rng()
 {
 #ifdef RANDOM_DEVICE
 	if (rand_file)
 		fclose(rand_file);
 #endif
-} */
+}
+#endif
 
 /* generate a (more or less) random number. */
 unsigned short get_rand16()
@@ -512,20 +519,21 @@ int fsprintf(int fd, const char *format, ...)
 		n=vsnprintf(buf,sizeof(buf),format,va);
 		va_end(va);
 
-		if(n<sizeof(buf)) {
+		if(n<(int)sizeof(buf)) {
 			if(n>0) n=write_all(fd,buf,n);
 			return n;
 		}
 	}
 	/* retry with a right sized buffer, needs glibc 2.1 or higher to work */
 	{
-		char buf[n+1];
+		unsigned bufsize=n+1;
+		char buf[bufsize];
 
 		va_start(va,format);
-		n=vsnprintf(buf,sizeof(buf),format,va);
+		n=vsnprintf(buf,bufsize,format,va);
 		va_end(va);
 
-		n=write_all(fd,buf,n);
+		if(n>0) n=write_all(fd,buf,n);
 	}
 	return n;
 }
@@ -598,7 +606,9 @@ int escapestr(char *in, int ilen, char *str, int size)
  * This is not like strcmp, but will return 1 on match or 0 if the
  * strings are different.
  */
-/* int stricomp(char *a, char *b)
+/* definition moved to helpers.h as an inline function. */
+#if 0
+int stricomp(char *a, char *b)
 {
 	int i;
 	if (strlen(a) != strlen(b)) 
@@ -608,10 +618,13 @@ int escapestr(char *in, int ilen, char *str, int size)
 			return 0;
 	}
 	return 1;
-} */
+}
+#endif
 
 /* Bah. I want strlcpy */
-/*int strncp(char *dst, char *src, int dstsz)
+/* definition moved to helpers.h */
+#if 0
+int strncp(char *dst, char *src, int dstsz)
 {
 	char o;
 	
@@ -621,7 +634,8 @@ int escapestr(char *in, int ilen, char *str, int size)
 	if (strlen(dst) >= dstsz-1 && o!='\0')
 		return 0;
 	return 1;
-} */
+}
+#endif
 
 #ifndef HAVE_GETLINE
 /* Note by Paul Rombouts: I know that getline is a GNU extension and is not really portable,
@@ -732,5 +746,43 @@ int asprintf (char **lineptr, const char *format, ...)
 	va_end(va);
 
 	return n;
+}
+#endif
+
+#ifndef HAVE_INET_NTOP
+const char *inet_ntop(int af, const void *src, char *dst, size_t size)
+{
+	const char *rc = NULL;
+
+	if (src != NULL && dst != NULL && size > 0) {
+		switch (af) {
+		case AF_INET:
+		{
+			const unsigned char *p=src;
+			int n = snprintf(dst, size, "%i.%i.%i.%i",
+					 p[0],p[1],p[2],p[3]);
+			if (n >= 0 && n < size) rc = dst;
+		}
+		break;
+
+#if defined(DNS_NEW_RRS) && defined(AF_INET6)
+		case AF_INET6:
+		{
+			const unsigned char *p=src;
+			unsigned int i,offs=0;
+			for (i=0;i<16;i+=2) {
+				int n=snprintf(dst+offs, size-offs,i==0?"%x":":%x", ((unsigned)p[i]<<8)|p[i+1]);
+				if(n<0) return NULL;
+				offs+=n;
+				if(offs>=size) return NULL;
+			}
+			rc = dst;
+		}
+		break;
+#endif
+		}
+	}
+
+	return rc;
 }
 #endif

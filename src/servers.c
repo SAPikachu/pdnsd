@@ -88,7 +88,7 @@ static int uptest (servparm_t *serv, int j)
  	case C_DEV:
 	case C_DIALD:
  		ret=if_up(serv->interface);
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
  		if (ret!=0) {
 			if(serv->uptest==C_DEV)
 				ret=dev_up(serv->interface,serv->device);

@@ -46,7 +46,7 @@ pthread_key_t thrid_key;
  * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads
  * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
  * softlocks (see below) in any functions called after sigwait from main(). */
-#if TARGET==TARGET_LINUX && !defined(THREADLIB_NPTL)
+#if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 void thread_sig(int sig)
 {
 	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {
@@ -66,9 +66,11 @@ void thread_sig(int sig)
 }
 #endif
 
-/* void usleep_r(unsigned long usec)
+/* This is now defined as an inline function in thread.h */
+#if 0
+void usleep_r(unsigned long usec)
 {
-#if (TARGET==TARGET_LINUX || TARGET==TARGET_BSD) && defined(HAVE_USLEEP)
+#if ((TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)) && defined(HAVE_USLEEP)
 	usleep(usec);
 #else
 	struct timeval tv;
@@ -77,5 +79,6 @@ void thread_sig(int sig)
 	tv.tv_usec=usec%1000000;
 	select(0, NULL, NULL, NULL, tv);
 #endif
-} */
+}
+#endif
 

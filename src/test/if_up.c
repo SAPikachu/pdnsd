@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "../helpers.h"
 #include "../conff.h"
 #include "../netdev.h"
 

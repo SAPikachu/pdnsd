@@ -23,6 +23,7 @@ Boston, MA 02111-1307, USA.  */
 
 #include <string.h>
 #include <stdio.h>
+#include "helpers.h"
 #include "dns.h"
 #include "rr_types.h"
 

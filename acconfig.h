@@ -7,9 +7,9 @@
  * config.h MAY BE OVERWRITTEN BY make, config.h.in by autoheader! */
 
 /* Define your Target here. Currently defined are TARGET_LINUX (any 
- * architecture) and TARGET_BSD (experimental; tested on FreeBSD, hopefully 
- * works for other BSD variants) */
-#define TARGET TARGET_LINUX 
+ * architecture), TARGET_BSD (experimental; tested on FreeBSD, hopefully 
+ * works for other BSD variants) and TARGET_CYGWIN. */
+#define TARGET TARGET_LINUX
 
 /* change the #undef to #define if you do not want to compile with special 
  * ISDN support for Linux. Note that the ISDN support will not compile ok on 
@@ -129,7 +129,7 @@
  * The only defined debug levels by now are 0 (off) and 1 (on).
  * Defining this larger than 1 does no harm.
  * When in doubt, leave it defined to 1. */
-#define DEBUG 9 
+#define DEBUG 9
 
 /* This defines the default verbosity of informational messages you will get. 
    This has nothing to to with the debug option (-g), but may be set with -v 
@@ -153,7 +153,6 @@
 
 /* Define if system has not packet info structure
  * (previously done by a-conf.sh/a-conf.h) */
- 
 #undef NO_IN_PKTINFO
 
 /* Lock the UDP socket before using it? */
@@ -166,14 +165,15 @@
 #undef TCP_SUBSEQ
 
 /*default value for parallel query number */
-#define PAR_QUERIES   2 
+#define PAR_QUERIES   2
 
 /* These are the possible targets. Normally no need to touch these 
  * definitions. */
-#define TARGET_LINUX 0
-#define TARGET_BSD   1
+#define TARGET_LINUX  0
+#define TARGET_BSD    1
+#define TARGET_CYGWIN 2
 
-/* Allow _ in domain names? */
+/* Allow _ in domain names? (This option is obsolete and will be ignored.) */
 #undef UNDERSCORE
 
 /* Assume the Native POSIX Thread Library instead of LinuxThreads ? */

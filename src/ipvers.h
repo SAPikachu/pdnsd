@@ -67,7 +67,7 @@ extern short int cmdlineipv;
 extern short int cmdlineprefix;
 #endif
 
-#if TARGET==TARGET_LINUX && defined(NO_IN_PKTINFO)
+#if (TARGET==TARGET_LINUX) && defined(NO_IN_PKTINFO)
 struct in_pktinfo
 {
 	int		ipi_ifindex;
@@ -76,7 +76,7 @@ struct in_pktinfo
 };
 #endif
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 /* some older glibc versions seem to lack this. */
 # ifndef IP_PKTINFO
 #  define IP_PKTINFO 8
@@ -131,7 +131,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # define SIN_LEN
 #endif 
 
-#if defined(ENABLE_IPV6) && TARGET==TARGET_LINUX
+#if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 
 /* Some glibc versions (I know of 2.1.2) get this wrong, so we define out own. To be exact, this is fixed
  * glibc code. */
@@ -213,7 +213,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # endif
 #endif
 
-#if TARGET==TARGET_BSD
+#if (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
 # define SOL_IPV6 IPPROTO_IPV6
 #endif
 

@@ -40,14 +40,16 @@ darray DBGda_create(size_t sz, char *file, int line)
 }
 #endif
 
-/* darray Dda_create(size_t sz)
+#if 0
+darray Dda_create(size_t sz)
 {
 	darray a;
 
 	a=(darray)malloc(sizeof(struct _dynamic_array_dummy_head)+sz*8);
 	if(a) a->nel=0;
 	return a;
-} */
+}
+#endif
 
 darray da_grow1(darray a, size_t sz, void (*cleanuproutine) (void *))
 {

@@ -8,8 +8,8 @@ the Free Software Foundation; either version 2, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2-par. For older documentation, please
-refer to the doc directory of the respective pdnsd package.
+This manual is up-to-date for version 1.2.1-par. For older documentation,
+please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
 
@@ -119,11 +119,11 @@ distro                    RedHat, SuSE, Debian)
                           See below for the effect of these settings.
 
                           Change compilation target platform (default:
-                          autodetect; others: Linux, BSD)
+                          autodetect; others: Linux, BSD, Cygwin).
 --with-target=platform    autodetect will attempt to detect whether you are
-                          using *BSD or Linux and should normally be
-                          sufficient. If this does not work, try specifyning
-                          you system manually.
+                          using Linux, *BSD or Cygwin and should normally be
+                          sufficient. If this does not work, try specifying
+                          your system manually.
 
                           Default directory for pdnsd cache (default=/var/cache
 --with-cachedir=dir       /pdnsd)
@@ -169,8 +169,10 @@ distro                    RedHat, SuSE, Debian)
                           large answers.
 
                           Disable the UDP source address discovery.
---disable-src-addr-disc   You need this only if you have trouble with messages
-                          saying "could not discover udp source address".
+                          You need this only if you have trouble with messages
+--disable-src-addr-disc   saying "could not discover udp source address".
+                          For the Cygwin target, this option is disabled by
+                          default.
 
 --disable-poll            Disable poll(2) and use select(2) (default=enabled)
                           You will normally not need this.
@@ -1705,5 +1707,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 10 Oct 2004 by Paul Rombouts
+Last revised: 20 Oct 2004 by Paul Rombouts
 

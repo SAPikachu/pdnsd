@@ -42,9 +42,16 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2004-11-07</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.1-par has been released.</b>
+	The main new feature of this release is improved support for non-Linux platforms.<br>
+	This release has (experimental) support for the Cygwin platform, and should also fix
+	some compilation glitches that have been reported by FreeBSD users.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-10-10</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2-par has been released.</b>
-	Latest release by Paul Rombouts.<br>
 	pdnsd is new and improved! Most of the changes effect the internal workings
 	of pdnsd, but there also a number of interesting new features (well, I think they are interesting).<br>
 	Amongs the bugs fixed are two rather nasty ones which involve the handling of NXT and NAPTR records
@@ -225,7 +232,7 @@
     pdnsd is a  proxy dns server with permanent caching (the cache contents
     are written to hard disk on exit) that is designed to cope with unreacheable
     or down dns servers (for example in dial-in networking).<br>
-    Since version 1.1.0, pdnsd supports negative cacheing.<br>
+    Since version 1.1.0, pdnsd supports negative caching.<br>
     <br>
     It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="COPYING">GPL</A><!--notext(-->, 
     <a HREF="http://www.gnu.org/copyleft/gpl.html">also available in html</A> and 
@@ -259,7 +266,7 @@
       information for localhost as well as for your machines FQDN) and serve its
       contents.
     </p> <p>
-      pdnsd was started on Linux, and has since been ported to FreeBSD.
+      pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin).
       90% of the source code should be easily portable to POSIX- 
       and BSD-compatible systems, provided that those systems support the POSIX threads (pthreads).
       The rest might need OS-specific rewrites.
@@ -311,6 +318,7 @@
     </ul>
     There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for both).
     Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for the OpenBSD one!
+    Thanks to Kiyo Kelvin Lee now also runs on the Cygwin platform!
     <p>
       If you have questions left, you should take a look into the <a HREF="faq.html">FAQ</a>.
       <br>
@@ -369,8 +377,9 @@
     A script contributed by Marko Stolle makes pdnsd usable in a DHCP setup using this feature.
     <br>
     <h1>System requirements</h1>
-    As mentioned, pdnsd currently runs under Linux and FreeBSD. Other BSD flavours may or may not work (feedback is
-    very welcome!). The system and software requirements under Linux are:
+    As mentioned, pdnsd currently runs under Linux, FreeBSD and Cygwin.
+    Other BSD flavours may or may not work (feedback is very welcome!).
+    The system and software requirements under Linux are:
     <ul>
       <li> Kernel version &gt;2.2.0 
       <li> glibc version &gt;2.0.1 (aka libc6) with LinuxThreads (normally included)<br>
@@ -441,7 +450,10 @@
       Marko Stolle contributed the contrib/pdnsd_update.pl script that makes pdnsd usable in a DHCP setup.<br>
       Andrew M. Bishop contributed the support for the label server option and the pdnsd-ctl interface for using it.<br>
       Frank Elsner contributed rc script fixes. <br>
-      Andreas Steinmetz contributed the code for query_port_start and query_port_end options.
+      Andreas Steinmetz contributed the code for query_port_start and query_port_end options.<br>
+      Mahesh T. Pai contributed the pdnsd.8 man page.<br>
+      Nikola Kotur contributed the Slackware start-up script.<br>
+      Kiyo Kelvin Lee contributed a patch for Cygwin support.
     </p>
     <p>
       Special thanks to Bert Frederiks for letting me do a late-night debugging run on his machine to
@@ -449,11 +461,16 @@
     </p>
     <p>
       Thanks to the following persons for reporting bugs and being helpful:<br>
+      David G. Andersen,<br>
+      Daniel Black,<br>
       Kevin A. Burton,<br>
+      Juliusz Chroboczek,<br>
       Joachim Dorner,<br>
       Stefan Erhardt,<br>
+      Stefan Förster,<br>
       Mike Hammer,<br>
       Jonathan Hudson,<br>
+      Dan Jacobson,<br>
       Byrial Jensen,<br>
       Patrick Loschmidt,<br>
       James MacLean,<br>
@@ -503,7 +520,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 10 Oct 2004 by Paul Rombouts</i>
+      <i>Last revised: 07 Nov 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

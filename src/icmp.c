@@ -21,7 +21,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /*
- * This should now work on both Linux and FreeBSD. If anyone
+ * This should now work on both Linux and FreeBSD (and CYGWIN?). If anyone
  * with experience in other Unix flavors wants to contribute platform-specific
  * code, he is very welcome. 
  */
@@ -36,15 +36,21 @@ Boston, MA 02111-1307, USA.  */
 #include <errno.h>
 #include <string.h>
 #include "ipvers.h"
-#if TARGET==TARGET_BSD
-# include <netinet/in_systm.h>
-#endif
-#include <netinet/ip.h>
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
+# include <netinet/ip.h>
 # include <linux/types.h>
 # include <linux/icmp.h>
-#else
+#elif (TARGET==TARGET_BSD)
+# include <netinet/in_systm.h>
+# include <netinet/ip.h>
 # include <netinet/ip_icmp.h>
+#elif (TARGET==TARGET_CYGWIN)
+# include <netinet/ip.h>
+# include <netinet/in_systm.h>
+# include <netinet/ip_icmp.h>
+# include "freebsd_netinet_ip_icmp.h"
+#else
+# error Unsupported platform!
 #endif
 #ifdef ENABLE_IPV6
 # include <netinet/ip6.h>
@@ -70,35 +76,33 @@ volatile int ping6_isocket=-1;
 #endif
 
 /* different names, same thing... be careful, as these are macros... */
-#if TARGET==TARGET_BSD
-# define icmphdr   icmp
-# define iphdr     ip
-# define ip_saddr  ip_src.s_addr
-# define ip_daddr  ip_dst.s_addr
-#else
+#if (TARGET==TARGET_LINUX)
 # define ip_saddr  saddr
 # define ip_daddr  daddr
 # define ip_hl     ihl
 # define ip_p	   protocol
+#else
+# define icmphdr   icmp
+# define iphdr     ip
+# define ip_saddr  ip_src.s_addr
+# define ip_daddr  ip_dst.s_addr
 #endif
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 # define icmp_type  type
 # define icmp_code  code
 # define icmp_cksum checksum
 # define icmp_id un.echo.id
 # define icmp_seq un.echo.sequence
-#endif
-
-#if TARGET==TARGET_BSD
-# define ICMP_DEST_UNREACH   ICMP_UNREACH
+#else
+# define ICMP_DEST_UNREACH  ICMP_UNREACH
 # define ICMP_TIME_EXCEEDED ICMP_TIMXCEED    
 #endif
 
 #define ICMP_BASEHDR_LEN  8
 #define ICMP4_ECHO_LEN    ICMP_BASEHDR_LEN
 
-#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
+#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
 /*
  * These are the ping implementations for Linux/FreeBSD in their IPv4/ICMPv4 and IPv6/ICMPv6 versions.
  * I know they share some code, but I'd rather keep them separated in some parts, as some
@@ -165,7 +169,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 {
 	int i;
 	int isock;
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 	struct icmp_filter f;
 #endif
 	struct sockaddr_in from,to;
@@ -176,7 +180,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 	isock=ping_isocket;
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 	/* Fancy ICMP filering -- only on Linux (as far is I know) */
 	
 	/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
@@ -504,4 +508,4 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 
 #else
 # error "Huh! No OS macro defined!"
-#endif /*TARGET==TARGET_LINUX || TARGET==TARGET_BSD*/
+#endif /*(TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)*/

@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
-#include "../conff.h"
 #include "../helpers.h"
+#include "../conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: random.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";

@@ -1,5 +1,5 @@
-	        pdnsd version 1.2-par by Paul Rombouts
-                ======================================
+	        pdnsd version 1.2.1-par by Paul Rombouts
+                ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
 making available so other people can enjoy the latest features and fixes. Thomas
@@ -12,6 +12,8 @@ significant enough to warrant increasing the minor version number from 1.1 to
 last release 1.1.7a are described in my previous README, which I have renamed
 REAME.par.old. In this README I restrict myself to describing changes between
 1.1.11 and 1.2.
+The main difference between versions 1.2 and 1.2.1, aside from some minor
+changes, is that 1.2.1 has (experimental) support for the Cygwin platform.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'

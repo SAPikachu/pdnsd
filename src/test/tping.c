@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include "../helpers.h"
 #include "../conff.h"
 #include "../icmp.h"
 #include "../ipvers.h"

@@ -89,12 +89,15 @@ static unsigned dns_hash(const unsigned char *str, unsigned long *rhash)
 /*
  * Initialize hash to hold a dns hash table
  */
-/* void mk_dns_hash()
+/* This is now defined as an inline function in hash.h */
+#if 0
+void mk_dns_hash()
 {
 	int i;
 	for(i=0;i<HASH_NUM_BUCKETS;i++)
 		hash_buckets[i]=NULL;
-} */
+}
+#endif
 
 /*
   Lookup in the hash table for key. If it is found, return the pointer to the cache entry.

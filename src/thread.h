@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 extern sigset_t sigs_msk;
 /* --- */
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 void thread_sig(int sig);
 #endif
 
@@ -52,7 +52,7 @@ void thread_sig(int sig);
    The signals are blocked in main() before any threads are created,
    and we simply never unblock them except by calling sigwait() in main(). */
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 # ifdef THREADLIB_NPTL
 # define THREAD_SIGINIT
 # else
@@ -82,8 +82,10 @@ void thread_sig(int sig);
 			   }
 #  endif
 # endif
-#else
+#elif (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
 #define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)
+#else
+# error Unsupported platform!
 #endif
 
 

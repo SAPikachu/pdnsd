@@ -302,7 +302,8 @@ hash.o: hash.c ../config.h hash.h cache.h ipvers.h list.h dns.h \
 helpers.o: helpers.c ../config.h ipvers.h thread.h error.h helpers.h \
 	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 icmp.o: icmp.c ../config.h ipvers.h icmp.h error.h thread.h helpers.h \
-	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
+	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h \
+	freebsd_netinet_ip_icmp.h
 list.o: list.c ../config.h helpers.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h pdnsd_assert.h
 main.o: main.c ../config.h consts.h cache.h ipvers.h list.h dns.h \
@@ -311,7 +312,7 @@ main.o: main.c ../config.h consts.h cache.h ipvers.h list.h dns.h \
 netdev.o: netdev.c ../config.h ipvers.h netdev.h error.h thread.h \
 	helpers.h cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 rr_types.o: rr_types.c dns.h ../config.h rr_types.h list.h pdnsd_assert.h \
-	ipvers.h
+	ipvers.h helpers.h
 servers.o: servers.c ../config.h thread.h error.h helpers.h cache.h \
 	ipvers.h list.h dns.h rr_types.h conff.h servers.h consts.h \
 	icmp.h netdev.h dns_query.h pdnsd_assert.h

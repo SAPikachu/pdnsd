@@ -3,22 +3,28 @@ $Id: THANKS,v 1.39 2002/08/07 09:08:04 tmm Exp $
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
 
+David G. Andersen
 Andrew M. Bishop
+Daniel Black
 Carsten Block
 Stephan Boettcher
 P.J. Bostley
 Kevin A. Burton
+Juliusz Chroboczek
 Joachim Dorner
 Frank Elsner
 Christian Engstler
 Stefan Erhardt
 Bjoern Fischer
+Stefan Förster
 Bert Frederiks
 Mike Hammer
 Jonathan Hudson
 Torben Janssen
 Byrial Jensen
 Olaf Kirch
+Nikola Kotur
+Kiyo Kelvin Lee
 Bernd Leibing
 Patrick Loschmidt
 James MacLean
@@ -29,6 +35,7 @@ Michael Müller
 Gustavo Niemeyer
 Alexandre Nunes
 Wolfgang Ocker
+Mahesh T. Pai
 Bernhard Pelz
 Soenke J. Peters
 Erich Reitz

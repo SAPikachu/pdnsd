@@ -5,7 +5,7 @@ About pdnsd
 pdnsd is a proxy dns server with permanent caching (the cache contents are
 written to hard disk on exit) that is designed to cope with unreacheable or
 down dns servers (for example in dial-in networking).
-Since version 1.1.0, pdnsd supports negative cacheing.
+Since version 1.1.0, pdnsd supports negative caching.
 
 It is licensed under the GNU General Public License (GPL). This, in short,
 means that the sources are distributed togehter with the program, and that you
@@ -36,10 +36,10 @@ or do not serve these records. pdnsd may also read your /etc/hosts file (this
 file is normally used by your local resolver and usually contains information
 for localhost as well as for your machines FQDN) and serve its contents.
 
-pdnsd was started on Linux, and has since been ported to FreeBSD. 90% of the
-source code should be easily portable to POSIX- and BSD-compatible systems,
-provided that those systems support the POSIX threads (pthreads). The rest
-might need OS-specific rewrites.
+pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin).
+90% of the source code should be easily portable to POSIX- and BSD-compatible
+systems, provided that those systems support the POSIX threads (pthreads). The
+rest might need OS-specific rewrites.
 
 Currently, pdnsd is only compileable by gcc. This should be easy to fix, but I
 just do not have documentation for other compilers. If you are not able or do
@@ -89,7 +89,8 @@ executable space):
 
 There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for
 both). Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for
-the OpenBSD one!
+the OpenBSD one! Thanks to Kiyo Kelvin Lee now also runs on the Cygwin
+platform!
 
 If you have questions left, you should take a look into the FAQ.
 Bugfixes, patches and compatability fixes for other OSs are very welcome!
@@ -156,9 +157,9 @@ this feature.
 
 System requirements
 
-As mentioned, pdnsd currently runs under Linux and FreeBSD. Other BSD flavours
-may or may not work (feedback is very welcome!). The system and software
-requirements under Linux are:
+As mentioned, pdnsd currently runs under Linux, FreeBSD and Cygwin. Other BSD
+flavours may or may not work (feedback is very welcome!). The system and
+software requirements under Linux are:
 
   * Kernel version >2.2.0
   * glibc version >2.0.1 (aka libc6) with LinuxThreads (normally included)
@@ -244,16 +245,24 @@ pdnsd-ctl interface for using it.
 Frank Elsner contributed rc script fixes.
 Andreas Steinmetz contributed the code for query_port_start and query_port_end
 options.
+Mahesh T. Pai contributed the pdnsd.8 man page.
+Nikola Kotur contributed the Slackware start-up script.
+Kiyo Kelvin Lee contributed a patch for Cygwin support.
 
 Special thanks to Bert Frederiks for letting me do a late-night debugging run
 on his machine to spot obscure bugs!
 
 Thanks to the following persons for reporting bugs and being helpful:
+David G. Andersen,
+Daniel Black,
 Kevin A. Burton,
+Juliusz Chroboczek,
 Joachim Dorner,
 Stefan Erhardt,
+Stefan Förster,
 Mike Hammer,
 Jonathan Hudson,
+Dan Jacobson,
 Byrial Jensen,
 Patrick Loschmidt,
 James MacLean,
@@ -275,5 +284,5 @@ Eelco Vriezekolk
 Thomas Moestl
 
 
-Last revised: 10 Oct 2004 by Paul Rombouts
+Last revised: 07 Nov 2004 by Paul Rombouts
 

@@ -1,3 +1,26 @@
+2004-10-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/rr_types.c
+	I have included some changes proposed by Joseph Pecquet to address
+	the compilation problems reported by FreeBSD users.
+
+2004-10-18  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* acconfig.h,configure.in,src/helpers.c,src/helpers.h,src/dns.h
+	I have merged a patch for CYGWIN support by Kiyo Kelvin Lee into
+	my version of the code.
+
+2004-10-15  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Invalidating local records with the pdnsd-ctl did not work the way the
+	documentation described. An invalidated local record would be always be
+	purged at the next lookup, thus invalidation would practically have the
+	same effect as deletion. An invalidated local record is of no use at all and
+	would occupy space until it is purged during a lookup (but not by purge_cache).
+	The function invalidate_record() now behaves as the documentation describes, i.e.
+	invalidation of local records has no effect.
+
 2004-09-27  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* doc/pdnsd.conf.5.in
@@ -14,6 +37,12 @@
 	of entries in the hash chain. Not a huge speed up, but still worth while, I think.
 	Additionally, the number of hash computations for each add_cache() call has
 	been halved.
+
+2004-09-11  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	insert_rrl() will no longer add local records to the rr_l list, because
+	purge_cache() ignores them anyway.
 
 2004-09-08  Paul Rombouts  <p.a.rombouts@home.nl>
 

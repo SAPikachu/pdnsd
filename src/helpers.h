@@ -39,14 +39,16 @@ int run_as(const char *user);
 void pdnsd_exit(void);
 int softlock_mutex(pthread_mutex_t *mutex);
 
-/* inline static int isdchar (unsigned char c)
+#if 0
+inline static int isdchar (unsigned char c)
 {
   return ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-'
 #ifdef UNDERSCORE
 	  || c=='_'
 #endif
 	  );
-} */
+}
+#endif
 
 const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int size);
 int  str2rhn(const unsigned char *str, unsigned char *rhn);
@@ -179,11 +181,12 @@ inline static int write_all(int fd,const void *data,int n)
 void hexdump(const void *data, int dlen, char *buf, int buflen);
 int escapestr(char *in, int ilen, char *str, int size);
 
-/* inline static int stricomp(const char *a, const char *b)
+#if 0
+inline static int stricomp(const char *a, const char *b)
 {
   return !strcasecmp(a,b);
 }
-*/
+#endif
 
 /* compare two names in length byte - string format */
 inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
@@ -280,6 +283,10 @@ int asprintf (char **lineptr, const char *format, ...);
 
 #ifndef HAVE_VASPRINTF
 int vasprintf (char **lineptr, const char *format, va_list va);
+#endif
+
+#ifndef HAVE_INET_NTOP
+const char *inet_ntop(int af, const void *src, char *dst, size_t size);
 #endif
 
 #define strlitlen(strlit) (sizeof(strlit)-1)

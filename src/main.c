@@ -465,7 +465,8 @@ int main(int argc,char *argv[])
 		 * supported, this is just-in-case code.
 		 */
 #endif
-			      , 0600))==-1) {
+			      , 0600))==-1)
+		{
 			log_error("Error: could not open pid file %s: %s",global.pidfile, strerror(errno));
 			exit(1);
 		}
@@ -479,7 +480,7 @@ int main(int argc,char *argv[])
 
 	if (!init_rng())
 		exit(1);
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 	if (!final_init())
 		exit(1);
 #endif
@@ -555,7 +556,7 @@ int main(int argc,char *argv[])
 		printf("pdnsd-%s starting.\n",VERSION);
 		DEBUG_MSGC("Debug messages activated\n");
 	}
-#if TARGET!=TARGET_LINUX
+#if (TARGET!=TARGET_LINUX)
 	if (!final_init())
 		_exit(1);
 #endif
@@ -600,7 +601,7 @@ int main(int argc,char *argv[])
 	/* if (!daemon_p) {
 		sigaddset(&sigs_msk,SIGQUIT);
 	} */
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 
@@ -620,7 +621,7 @@ int main(int argc,char *argv[])
 
 		if(start_servstat_thread()) thrdfail;
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 		if (!global.strict_suid) {
 			if (!run_as(global.run_as)) {
 				_exit(1);
@@ -641,7 +642,7 @@ int main(int argc,char *argv[])
 #undef thrdfail
 	}
 
-#if TARGET==TARGET_LINUX && !defined(THREADLIB_NPTL)
+#if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 	waiting=1;

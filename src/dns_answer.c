@@ -87,7 +87,7 @@ pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef union {
 #ifdef ENABLE_IPV4
-# if TARGET==TARGET_LINUX
+# if (TARGET==TARGET_LINUX)
 	struct in_pktinfo   pi4;
 # else
 	struct in_addr      ai4;
@@ -879,6 +879,42 @@ static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned sho
 	rep->arcount=0;
 }
 
+#if 0
+/* Debug code contributed by Kiyo Kelvin Lee. */
+static void debug_dump_query(void *data, long len)
+{
+	unsigned char *udata = (unsigned char *)data;
+	dns_hdr_t *hdr = (dns_hdr_t *)data;
+	char buf[1024];
+	char *cp = buf;
+	long i, n, l;
+	l = (len > 256) ? 256 : len;
+	for (i = 0; i < l; i++)
+	{
+		n = sprintf(cp, "%02x", udata[i]);
+		cp += n;
+	}
+	*cp++ = ' ';
+	for (i = 0; i < l; i++)
+	{
+		*cp++ = isprint(udata[i]) ? udata[i] : '.';
+	}
+	*cp = '\0';
+	DEBUG_MSG("data=%p len=%d\n", udata, len);
+	DEBUG_MSG("data%s=%s\n", (l < len) ? "(first 256 bytes)" : "", buf);
+	DEBUG_MSG(
+		"id=%04x rd=%d tc=%d aa=%d opcode=%04x "
+		"qr=%d rcode=%04x z1=%d au=%d z2=%d ra=%d\n",
+		hdr->id, hdr->rd, hdr->tc, hdr->aa, hdr->opcode,
+		hdr->qr, hdr->rcode, hdr->z1, hdr->au, hdr->z2, hdr->ra);
+	DEBUG_MSG(
+		"qdcount=%04x ancount=%04x nscount=%04x arcount=%04x\n",
+		hdr->qdcount, hdr->ancount, hdr->nscount, hdr->arcount);
+}
+#else
+#define debug_dump_query(d, r)
+#endif
+
 /*
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
@@ -890,7 +926,8 @@ static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 	dns_hdr_t *hdr;
 	dlist q;
 	dns_hdr_t *ans;
-	
+
+	debug_dump_query(data, rlen);
 
 	DEBUG_MSG("Received query.\n");
 	/*
@@ -1046,6 +1083,7 @@ static void *udp_answer_thread(void *data)
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
+#if (TARGET!=TARGET_CYGWIN)
 #if defined(SRC_ADDR_DISC)
 	msg.msg_control=ctrl;
 	msg.msg_controllen=sizeof(ctrl);
@@ -1054,6 +1092,7 @@ static void *udp_answer_thread(void *data)
 	msg.msg_controllen=0;
 #endif
 	msg.msg_flags=0;  /* to avoid warning message by Valgrind */
+#endif
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -1061,7 +1100,7 @@ static void *udp_answer_thread(void *data)
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin4;
 		msg.msg_namelen=sizeof(struct sockaddr_in);
 # if defined(SRC_ADDR_DISC) 
-#  if TARGET==TARGET_LINUX
+#  if (TARGET==TARGET_LINUX)
 		((udp_buf_t *)data)->pi.pi4.ipi_spec_dst=((udp_buf_t *)data)->pi.pi4.ipi_addr;
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in_pktinfo));
@@ -1084,7 +1123,7 @@ static void *udp_answer_thread(void *data)
 
 			DEBUG_MSG("Answering to: %s", inet_ntop(AF_INET,&((udp_buf_t *)data)->addr.sin4.sin_addr,buf,ADDRSTR_MAXLEN));
 #  if defined(SRC_ADDR_DISC)
-#   if TARGET==TARGET_LINUX
+#   if (TARGET==TARGET_LINUX)
 			DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET,&((udp_buf_t *)data)->pi.pi4.ipi_spec_dst,buf,ADDRSTR_MAXLEN));
 #   else
 			DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET,&((udp_buf_t *)data)->pi.ai4,buf,ADDRSTR_MAXLEN));
@@ -1194,12 +1233,12 @@ int init_udp_socket()
 #endif
 
 #ifdef SRC_ADDR_DISC
-# if (TARGET==TARGET_BSD)
+# if (TARGET!=TARGET_LINUX)
 	if (run_ipv4) {
 # endif
 		/* The following must be set on any case because it also applies for IPv4 packets sent to
 		 * ipv6 addresses. */
-# if  TARGET==TARGET_LINUX 
+# if (TARGET==TARGET_LINUX )
 		if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
 # else
 		if (setsockopt(sock,IPPROTO_IP,IP_RECVDSTADDR,&so,sizeof(so))!=0) {
@@ -1208,7 +1247,7 @@ int init_udp_socket()
 			close(sock);
 			return -1;
 		}
-# if (TARGET==TARGET_BSD)
+# if (TARGET!=TARGET_LINUX)
 	}
 # endif
 
@@ -1276,8 +1315,10 @@ void *udp_server_thread(void *dummy)
 		v.iov_len=udp_buf_len;
 		msg.msg_iov=&v;
 		msg.msg_iovlen=1;
+#if (TARGET!=TARGET_CYGWIN)
 		msg.msg_control=ctrl;
 		msg.msg_controllen=sizeof(ctrl);
+#endif
 
 #if defined(SRC_ADDR_DISC)
 # ifdef ENABLE_IPV4
@@ -1287,7 +1328,7 @@ void *udp_server_thread(void *dummy)
 			if ((qlen=recvmsg(sock,&msg,0))>=0) {
 				cmsg=CMSG_FIRSTHDR(&msg);
 				while(cmsg) {
-#  if TARGET==TARGET_LINUX
+#  if (TARGET==TARGET_LINUX)
 					if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
 						memcpy(&buf->pi.pi4,CMSG_DATA(cmsg),sizeof(struct in_pktinfo));
 						break;
@@ -1331,7 +1372,7 @@ void *udp_server_thread(void *dummy)
 				        * check for IPv4 sender addresses */
 					cmsg=CMSG_FIRSTHDR(&msg);
 					while(cmsg) {
-#  if TARGET==TARGET_LINUX
+#  if (TARGET==TARGET_LINUX)
 						if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
 							memcpy(&sip,CMSG_DATA(cmsg),sizeof(sip));
 							IPV6_MAPIPV4(&sip.ipi_addr,&buf->pi.pi6.ipi6_addr);

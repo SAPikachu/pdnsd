@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include <errno.h>
 #include <stdarg.h>
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 #include <sys/ioctl.h>
 #endif
 #include "conff.h"
@@ -416,7 +416,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    {
 	      const char *err;
 	      if ((err=parse_ip(ps,len,&global->a))) {
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX)
 		if(!strcmp(err,"bad IP address") && len<IFNAMSIZ) {
 		  /* Treat the string argument as the name of an interface
 		     and try to find its IP address.

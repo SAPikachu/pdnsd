@@ -44,10 +44,12 @@ volatile short int use_log_lock=0;
  * multiple simultaneous errors.
  */
 /* This is now defined as an inline function in error.h */
-/* void init_log_lock(void)
+#if 0
+void init_log_lock(void)
 {
 	use_log_lock=1;
-} */
+}
+#endif
 
 /* We crashed? Ooops... */
 void crash_msg(char *msg)

@@ -34,19 +34,30 @@ Boston, MA 02111-1307, USA.  */
 #include "list.h"
 #include "ipvers.h"
 
+#if (TARGET==TARGET_BSD)
+# if defined(_BIG_ENDIAN) && !defined(__BIG_ENDIAN)
+#  define __BIG_ENDIAN _BIG_ENDIAN
+# endif
+# if defined(_LITTLE_ENDIAN) && !defined(__LITTLE_ENDIAN)
+#  define __LITTLE_ENDIAN _LITTLE_ENDIAN
+# endif
+# if defined(_BYTE_ORDER) && !defined(__BYTE_ORDER)
+#  define __BYTE_ORDER _BYTE_ORDER
+# endif
+#endif
+
 /* Deal with byte orders */
-#ifndef BYTE_ORDER
-# define LITTLE_ENDIAN __LITTLE_ENDIAN
-# define BIG_ENDIAN __BIG_ENDIAN
-# ifdef __BYTE_ORDER
-#  define BYTE_ORDER __BYTE_ORDER
-# else
-#  ifdef __LITTLE_ENDIAN
-#   define BYTE_ORDER __LITTLE_ENDIAN
-#  endif
-#  ifdef __BIG_ENDIAN
-#   define BYTE_ORDER __LITTLE_ENDIAN
-#  endif
+#ifndef __BYTE_ORDER
+# if defined(__LITTLE_ENDIAN) && defined(__BIG_ENDIAN)
+#  error Fuzzy endianness system! Both __LITTLE_ENDIAN and __BIG_ENDIAN have been defined!
+# endif
+# if !defined(__LITTLE_ENDIAN) && !defined(__BIG_ENDIAN)
+#  error Strange Endianness-less system! Neither __LITTLE_ENDIAN nor __BIG_ENDIAN has been defined!
+# endif
+# if defined(__LITTLE_ENDIAN)
+#  define __BYTE_ORDER __LITTLE_ENDIAN
+# elif defined(__BIG_ENDIAN)
+#  define __BYTE_ORDER __BIG_ENDIAN
 # endif
 #endif
 

@@ -75,19 +75,25 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: netdev.c,v 1.11 2001/06/13 17:28:04 tmm Exp $";
 #endif
 
+#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 /* Taken from FreeBSD net/if.h rev. 1.58.2.1 */
 #define	SIZEOF_ADDR_IFREQ(ifr) \
 	((ifr).ifr_addr.sa_len > sizeof(struct sockaddr) ? \
 	 (sizeof(struct ifreq) - sizeof(struct sockaddr) + \
 	  (ifr).ifr_addr.sa_len) : sizeof(struct ifreq))
+#elif (TARGET==TARGET_CYGWIN)
+#define SIZEOF_ADDR_IFREQ(ifr) (sizeof(struct sockaddr))
+#else
+# error Unsupported platform!
+#endif
 
 /*
  * These portion is Linux/FreeBSD specific. Please write interface-detection routines for other
  * flavours of Unix if you can and want.
  */
 
-#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
-# if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
+# if (TARGET==TARGET_LINUX)
 
 volatile int isdn_errs=0;
 
@@ -168,7 +174,7 @@ int dev_up(char *ifname, char *devname)
 }
  
 
-# endif
+# endif /*(TARGET==TARGET_LINUX)*/
 
 /*
  * Test whether the network device specified in devname is up and
@@ -184,7 +190,7 @@ int if_up(char *devname)
 {
 	int sock;
 	struct ifreq ifr;
-# if TARGET==TARGET_LINUX
+# if (TARGET==TARGET_LINUX)
 	unsigned int devnamelen=strlen(devname);
 	if (devnamelen>4 && devnamelen<=6 && strncmp(devname,"ippp",4)==0) {
 		/* This function didn't manage the interface uptest correctly. Thanks to
@@ -214,7 +220,7 @@ int if_up(char *devname)
 	return (ifr.ifr_flags&IFF_UP) && (ifr.ifr_flags&IFF_RUNNING);
 }
 
-# if TARGET==TARGET_LINUX
+# if (TARGET==TARGET_LINUX)
 
 int is_local_addr(pdnsd_a *a)
 {
@@ -287,7 +293,7 @@ int is_local_addr(pdnsd_a *a)
 	return 0;
 }
 
-# else
+# else /*(TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)*/
 
 int is_local_addr(pdnsd_a *a)
 {
