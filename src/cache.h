@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.1 2000/07/21 20:04:38 thomas Exp $ */
+/* $Id: cache.h,v 1.2 2000/10/31 13:19:01 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -100,6 +100,7 @@ typedef struct rr_lent_s {
 #define CACHE_LAT 120
 
 void init_cache(void);
+void init_cache_lock(void);
 void destroy_cache(void);
 void read_disk_cache(void);
 void write_disk_cache(void);

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.5 2000/10/19 15:40:34 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.6 2000/10/31 13:19:02 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -107,6 +107,12 @@ int cache_r_lock=0;
 pthread_mutex_t lock_mutex;
 
 /*
+ * This is set to 1 once the lock is intialized. This must happen before we get
+ * multiple threads.
+ */
+int use_cache_lock=0;
+
+/*
  * Prototypes for internal use
  */
 void del_cache_int(dns_cent_t *cent);
@@ -129,6 +135,8 @@ void del_cache_int(dns_cent_t *cent);
 static void lock_cache_r(void)
 {
 	int lk=0;
+	if (!use_cache_lock)
+		return;
 	while (!lk)  {
 		pthread_mutex_lock(&lock_mutex);
 		if (!cache_w_lock) {
@@ -143,6 +151,8 @@ static void lock_cache_r(void)
 
 static void unlock_cache_r(void)
 {
+	if (!use_cache_lock)
+		return;
 	pthread_mutex_lock(&lock_mutex);
 	if (cache_r_lock>0) 
 		cache_r_lock--;
@@ -158,6 +168,8 @@ static void unlock_cache_r(void)
 static void lock_cache_rw(void)
 {
 	int lk=0;
+	if (!use_cache_lock)
+		return;
 	while (!lk)  {
 		pthread_mutex_lock(&lock_mutex);
 		if (!(cache_w_lock || cache_r_lock)) {
@@ -172,6 +184,8 @@ static void lock_cache_rw(void)
 
 static void unlock_cache_rw(void)
 {
+	if (!use_cache_lock)
+		return;
 	pthread_mutex_lock(&lock_mutex);
 	cache_w_lock=0;
 	pthread_mutex_unlock(&lock_mutex);
@@ -184,6 +198,8 @@ static int softlock_cache_r(void)
 {
 	int lk=0;
 	int tr=0;
+	if (!use_cache_lock)
+		return 0;
 	while (!lk)  {
 		if (!softlock_mutex(&lock_mutex))
 			return 0;
@@ -202,6 +218,8 @@ static int softlock_cache_r(void)
 
 static int softunlock_cache_r(void)
 {
+	if (!use_cache_lock)
+		return 0;
 	if (!softlock_mutex(&lock_mutex))
 		return 0;
 	if (cache_r_lock>0) 
@@ -214,6 +232,8 @@ static int softlock_cache_rw(void)
 {
 	int lk=0;
 	int tr=0;
+	if (!use_cache_lock)
+		return 0;
 	while (!lk)  {
 		if (!softlock_mutex(&lock_mutex))
 			return 0;
@@ -232,6 +252,8 @@ static int softlock_cache_rw(void)
 
 static int softunlock_cache_rw(void)
 {
+	if (!use_cache_lock)
+		return 0;
 	if (!softlock_mutex(&lock_mutex))
 		return 0;
 	cache_w_lock=0;
@@ -267,7 +289,13 @@ void init_cache()
 {
 	mk_hash_ctable();
 	mk_dns_hash(&dns_hash);
+}
+
+/* Initialize the cache. Call only once. */
+void init_cache_lock()
+{
 	pthread_mutex_init(&lock_mutex,NULL);
+	use_cache_lock=1;
 }
 
 /* Delete the cache. Call only once */

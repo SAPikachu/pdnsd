@@ -30,11 +30,12 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.2 2000/10/31 13:18:59 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
 int waiting=0; /* Has the main thread already done sigwait() ? */
+int use_lock=0;
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on
@@ -43,6 +44,7 @@ int waiting=0; /* Has the main thread already done sigwait() ? */
 void init_log(void)
 {
 	pthread_mutex_init(&loglock,NULL);
+	use_lock=1;
 }
 
 /* This is a handler for signals to the threads. We just hand the sigs on to the main thread.
@@ -84,7 +86,8 @@ void log_error(char *s,...)
 	int ul;
 	va_list va;
 	va_start(va,s);
-	ul=softlock_mutex(&loglock);
+	if (use_lock)
+		ul=softlock_mutex(&loglock);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -94,7 +97,7 @@ void log_error(char *s,...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	if (ul)
+	if (use_lock && ul)
 		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }
@@ -106,7 +109,8 @@ void log_warn(char *s, ...)
 	int ul;
 	va_list va;
 	va_start(va,s);
-	ul=softlock_mutex(&loglock);
+	if (use_lock)
+		ul=softlock_mutex(&loglock);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -116,7 +120,7 @@ void log_warn(char *s, ...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	if (ul)
+	if (use_lock && ul)
 		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }
@@ -129,8 +133,9 @@ void log_info(int level, char *s, ...)
 	va_list va;
 	va_start(va,s);
 	if (level<=verbosity) {
-		if (!softlock_mutex(&loglock))
-			return;
+		if (use_lock)
+			if (!softlock_mutex(&loglock))
+				return;
 		if (daemon_p) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
 			vsyslog(LOG_INFO,s,va);
@@ -140,7 +145,8 @@ void log_info(int level, char *s, ...)
 			vfprintf(stderr,s,va);
 			fprintf(stderr,"\n");
 		}
-		pthread_mutex_unlock(&loglock);
+		if (use_lock)
+			pthread_mutex_unlock(&loglock);
 	}
 	va_end(va);
 }

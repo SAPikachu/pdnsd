@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.17 2000/10/30 18:22:16 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.18 2000/10/31 13:18:59 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -290,8 +290,11 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-
-	init_log();
+	
+	/* init_log() initializes a mutex. This is done best once we are daemon.
+	 * so this initialization is deferred, and log_* can now do without a mutex
+	 * initially */
+	/*init_log();*/
 	if (daemon_p && pidfile[0]) {
 		unlink(pidfile);
 #ifdef O_NOFOLLOW		
@@ -324,6 +327,7 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
+	signal(SIGPIPE, SIG_IGN);
 	umask(0077); /* for security reasons */
 	if (daemon_p) {
 		/* become a daemon */
@@ -346,6 +350,7 @@ int main(int argc,char *argv[])
 		}
 		if (i!=0)
 			_exit(0); /* exit parent, so we are no session group leader */
+		signal(SIGPIPE, SIG_IGN);
 		chdir("/");
 		if (pidfile[0]) {
 			fprintf(pf,"%i\n",getpid());
@@ -391,6 +396,11 @@ int main(int argc,char *argv[])
 	if (run_ipv6)
 		DEBUG_MSG1("Using IPv6.\n");
 #endif
+	init_log();
+
+	/* Before this point, cache accesses are not locked because we are single-threaded. */
+	init_cache_lock();
+
 	read_disk_cache();
 
 	sigemptyset(&sigs_msk);
@@ -435,7 +445,6 @@ int main(int argc,char *argv[])
 	signal(SIGFPE,bsd_sighnd);
 	signal(SIGSEGV,bsd_sighnd);
 	signal(SIGTERM,bsd_sighnd);
-	signal(SIGPIPE, SIG_IGN);
 	if (!daemon_p) {
 		signal(SIGINT,bsd_sighnd);
 		signal(SIGQUIT,bsd_sighnd);

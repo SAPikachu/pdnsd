@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.6 2000/10/30 18:22:16 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.7 2000/10/31 13:18:59 thomas Exp $";
 #endif
 
 /*
@@ -59,7 +59,7 @@ int softlock_mutex(pthread_mutex_t *mutex)
 			return 1;
 		if (tr++>SOFTLOCK_MAXTRIES)
 			return 0;
-		usleep(1000);
+		usleep(10000);
 	}
 	return 0;
 }
