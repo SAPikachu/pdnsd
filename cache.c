@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.16 2000/06/22 22:42:02 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.17 2000/06/26 21:04:28 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -83,7 +83,7 @@ static char rcsid[]="$Id: cache.c,v 1.16 2000/06/22 22:42:02 thomas Exp $";
  */
 
 /*
- * This is the size the memory cache may exceed the size of the perm cache
+ * This is the size the memory cache may exceed the size of the permanent cache
  */
 #define MCSZ 10240
 
@@ -318,7 +318,7 @@ static rr_bucket_t *create_rr(int dlen, void *data)
 }
 
 /*
- * Adds a rr record (usually prepared by rr_create) to a cent. For cache.c internal use. 
+ * Adds a rr record (usually prepared by create_rr) to a cent. For cache.c internal use. 
  */
 static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
 {
@@ -444,7 +444,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
 	return ne;
 }
 
-/* remove a rr into the rr_l list.call with locks applied*/
+/* Remove a rr from the rr_l list.Call with locks applied*/
 static void remove_rrl(rr_lent_t *le)
 {
 	if (le->next)
@@ -475,7 +475,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 {
 	dns_cent_t *ic;
 	int i;
-	rr_bucket_t *rr,**rri,*lrr;
+	rr_bucket_t *rr,**rri;
 	
 	if (!(ic=calloc(sizeof(dns_cent_t),1)))
 		return NULL;
@@ -501,14 +501,12 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 			ic->rr[i]->rrs=NULL;
 			rri=&ic->rr[i]->rrs;
 			rr=cent->rr[i]->rrs;
-			lrr=NULL;
 			while(rr) {
 				if (!(*rri=copy_rr(rr))) {
 					free_cent(*ic);
 					free(ic);
 					return NULL;
 				}
-				lrr=*rri;
 				rri=(rr_bucket_t **)&(*rri)->next;
 				rr=rr->next;
 			}
@@ -553,7 +551,7 @@ static int purge_cent(dns_cent_t *cent)
 	}
 	/* if the record was purged empty, delete it from the cache. */
 	if (cent->num_rr==0) {
-		del_cache_int(cent);
+		del_cache_int(cent); /* this will subtract the cent's left size off cache_size */
 	}
 	return rv;
 }
@@ -575,23 +573,21 @@ static void purge_cache(unsigned long sz)
 		cache_size-=purge_cent(ce);
 		ce=fetch_next(&dns_hash,&pos);
 	}
-	if (cache_size>sz) {
-		/* we are still above the desired cache size. Well, delete records from the oldest to
-		 * the newest. This is the case where nopurge records are deleted anyway. Only local
-		 * records are kept in any case.*/
-		le=&rrset_l;
-		while (*le && cache_size>sz) {
-			if (!((*le)->rrset->flags&CF_LOCAL)) {
-				/*next=(*le)->next;*/
-				cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
-				if ((*le)->cent->num_rr==0) {
-					del_cache_int((*le)->cent);
-				}
-				remove_rrl(*le);
-				/**le=next;*/ /*remove_rrl should do that. */
-			} else {
-				le=&(*le)->next;
+	/* we are still above the desired cache size. Well, delete records from the oldest to
+	 * the newest. This is the case where nopurge records are deleted anyway. Only local
+	 * records are kept in any case.*/
+	le=&rrset_l;
+	while (*le && cache_size>sz) {
+		if (!((*le)->rrset->flags&CF_LOCAL)) {
+			/*next=(*le)->next;*/
+			cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
+			if ((*le)->cent->num_rr==0) {
+				del_cache_int((*le)->cent);
 			}
+			remove_rrl(*le);
+			/**le=next;*/ /*remove_rrl should do that. */
+		} else {
+			le=&(*le)->next;
 		}
 	}
 }
@@ -670,7 +666,6 @@ void read_disk_cache()
 		return;
 	}
 	
-	
 	for(;cnt>0;cnt--) {
 		if (fread(&fe,sizeof(dns_file_t),1,f)!=1) {
 			fclose(f);
@@ -735,7 +730,7 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	unsigned char num_rr=0;
 	long nump,oldp;
 	
-	nump=ftell(f);
+ 	nump=ftell(f);
 	fwrite(&num_rr,sizeof(num_rr),1,f); /* write a dummy at first, since we do no know the number */
 	if (!rrs || rrs->flags&CF_LOCAL)
 		return;
@@ -808,15 +803,12 @@ void write_disk_cache()
 
 	le=fetch_first(&dns_hash,&pos);
 	while (le) {
-/*		fwrite(&le->cent,sizeof(dns_file_t),1,f); */
 		/* now, write the rr's */
 		aloc=1;
 		for (j=0;j<T_NUM;j++) {
-			if (le->rr[j]) {
-				if (!(le->rr[j]->flags&CF_LOCAL)) {
-					aloc=0;
-					break;
-				}
+			if (le->rr[j] && !(le->rr[j]->flags&CF_LOCAL)) {
+				aloc=0;
+				break;
 			}
 		}
 		if (!aloc) {
@@ -869,14 +861,14 @@ void add_cache(dns_cent_t cent)
 		add_dns_hash(&dns_hash,cent.qname,ce);
 		/* Add the rrs to the rr list */
 		for (i=0;i<T_MAX;i++) {
-			if (ce->rr[i]) 
+			if (ce->rr[i]) {
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
 					log_warn("Out of cache memory.");
 					free_cent(*ce);
 					unlock_cache_rw();
 					return;
 				}
-			
+			}
 		}
 		ent_num++;
 		cache_size+=ce->cs;
@@ -892,15 +884,17 @@ void add_cache(dns_cent_t cent)
 				rr=cent.rr[i]->rrs;
 				while (rr) {
 					if (!(rrb=create_rr(rr->rdlen, rr+1))) {
+						if (ce->rr[i]) /* cleanup this entry */
+							del_cent_rrset(ce,i+T_MIN);
 						log_warn("Out of cache memory.");
 						unlock_cache_rw();
 						return;
-					} else {
-						add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0);
 					}
+					add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0);
 					rr=rr->next;
 				}
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+					del_cent_rrset(ce,i+T_MIN);
 					log_warn("Out of cache memory.");
 					unlock_cache_rw();
 					return;
@@ -909,7 +903,6 @@ void add_cache(dns_cent_t cent)
 		}
 		cache_size+=ce->cs;
 	}
-
 
 	purge_cache((long)global.perm_cache*1024+MCSZ);
 	unlock_cache_rw();
@@ -925,6 +918,7 @@ void del_cache_int(dns_cent_t *cent)
 	/* Delete from the hash */
 	del_dns_hash(&dns_hash,cent->qname);
 	/* delete rrs from the rrl */
+	cache_size-=cent->cs;
 	for (i=0;i<T_MAX;i++) {
 		if (cent->rr[i]) {
 			remove_rrl(cent->rr[i]->lent);
@@ -932,7 +926,6 @@ void del_cache_int(dns_cent_t *cent)
 		}
 	}
 	/* free the cent ptrs and rrs */
-	cache_size-=cent->cs;
 	free_cent(*cent);
 	free(cent);
 
@@ -980,6 +973,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	if ((ret=dns_lookup(&dns_hash,name))) {
 		/* purge the record. */
 		purge_cent(ret);
+		cache_size-=ret->cs;
 		if (ret->rr[tp-T_MIN] &&  
 		    ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
 		     (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && !ret->rr[tp-T_MIN]->serial==serial) || 
@@ -994,7 +988,9 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 				if (!add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial)) {
 					free_rr(*rrb);
 					free(rrb);
+					cache_size+=ret->cs;
 				} else {
+					cache_size+=ret->cs;
 					if (!had) {
 						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp)) {
 							unlock_cache_rw();
@@ -1005,8 +1001,10 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 					rv=1;
 				}
 			}
-		} else
+		} else {
+			cache_size+=ret->cs;
 			rv=1;
+		}
 	}
 	unlock_cache_rw();
 	return rv;
@@ -1133,7 +1131,15 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 /*		printf("i: %s, n: %s--\n",pi,pn);*/
 		if (!str2rhn(pn,b3))
 			continue;
-		if (!inet_aton((char *)pi,&ina4)) {
+		if (inet_aton((char *)pi,&ina4)) {
+/*#ifndef ENABLE_IPV4
+			continue;
+#else*/
+			a.ipv4=ina4;
+			tp=T_A;
+			sz=sizeof(struct in_addr);
+/*#endif*/
+		} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
 			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)) {
 				tp=T_AAAA;
@@ -1142,14 +1148,6 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 				continue;
 #else
 			continue;
-#endif
-		} else {
-#ifndef ENABLE_IPV4
-			continue;
-#else
-			a.ipv4=ina4;
-			tp=T_A;
-			sz=sizeof(struct in_addr);
 #endif
 		}
 		if (!add_host(pn, rns, b3, &a, sz, ttl, tp,1))
