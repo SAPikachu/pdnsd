@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.32 2001/05/22 18:04:59 tmm Exp $
+$Id: THANKS,v 1.33 2001/06/06 19:13:10 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -11,6 +11,7 @@ Kevin A. Burton
 Joachim Dorner
 Frank Elsner
 Christian Engstler
+Stefan Erhardt
 Bjoern Fischer
 Bert Frederiks
 Mike Hammer
