@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,11 +35,10 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.10 2001/04/06 21:30:46 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.11 2001/04/10 23:01:58 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
-char sock_path[99];
 char buf[1024];
 
 typedef struct {
@@ -48,15 +48,15 @@ typedef struct {
 
 #define CTL_AUX_LISTRRT 16
 
-cmd_s top_cmds[7]={{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
+cmd_s top_cmds[]={{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
 		   {"source",CTL_SOURCE},{"add",CTL_ADD},{"neg",CTL_NEG}, {NULL,0}};
-cmd_s server_cmds[4]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
-cmd_s record_cmds[3]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
-cmd_s onoff_cmds[3]= {{"off",0},{"on",1},{NULL,0}};
+cmd_s server_cmds[]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
+cmd_s record_cmds[]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
+cmd_s onoff_cmds[]= {{"off",0},{"on",1},{NULL,0}};
 #ifdef ENABLE_IPV6
-cmd_s rectype_cmds[6]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+cmd_s rectype_cmds[]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #else
-cmd_s rectype_cmds[5]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+cmd_s rectype_cmds[]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #endif
 
 void print_version(void)
@@ -66,76 +66,78 @@ void print_version(void)
 
 void print_help(void)
 {
-	printf("Usage: pdnsd-ctl [-c cachedir] <command> [options]\n\n");
+	fprintf(stderr,"Usage: pdnsd-ctl [-c cachedir] <command> [options]\n\n");
 
-	printf("Command line options\n");
+	fprintf(stderr,"Command line options\n");
 
-	printf("-c\tcachedir\n\tset the cache directory to cachedir (must match pdnsd setting)\n");
+	fprintf(stderr,"-c\tcachedir\n\tset the cache directory to cachedir (must match pdnsd setting)\n");
 
-	printf("Commands and needed options are:\n");
+	fprintf(stderr,"Commands and needed options are:\n");
 
-	printf("help\t[no options]\n\tprint this help\n");
-	printf("version\t[no options]\n\tprint version info\n");
-	printf("status\t[no options]\n\tprint pdnsd's status\n");
+	fprintf(stderr,"help\t[no options]\n\tprint this help\n");
+	fprintf(stderr,"version\t[no options]\n\tprint version info\n");
+	fprintf(stderr,"status\t[no options]\n\tprint pdnsd's status\n");
 
-	printf("server\tindex\t(up|down|retest)\n");
-	printf("\tSet the status of the server with the given index to up or down, or\n");
-	printf("\tforce a retest. The index is assigned in the order of definition in\n");
-	printf("\tpdnsd.cache starting with 0. Use the status command to view the indexes.\n");
-	printf("\tYou can specify all instead of an index to perform th action for all\n");
-	printf("\tservers registered with pdnsd.\n");
+	fprintf(stderr,"server\tindex\t(up|down|retest)\n");
+	fprintf(stderr,"\tSet the status of the server with the given index to up or down, or\n");
+	fprintf(stderr,"\tforce a retest. The index is assigned in the order of definition in\n");
+	fprintf(stderr,"\tpdnsd.cache starting with 0. Use the status command to view the indexes.\n");
+	fprintf(stderr,"\tYou can specify all instead of an index to perform th action for all\n");
+	fprintf(stderr,"\tservers registered with pdnsd.\n");
 
-	printf("record\tname\t(delete|invalidate)\n");
-	printf("\tDelete or invalidate the record of the given domain if it is in the\n");
-	printf("\tcache.\n");
+	fprintf(stderr,"record\tname\t(delete|invalidate)\n");
+	fprintf(stderr,"\tDelete or invalidate the record of the given domain if it is in the\n");
+	fprintf(stderr,"\tcache.\n");
 
-	printf("source\tfn\towner\t[ttl]\t[(on|off)]\n");
-	printf("\tLoad a hosts-style file. Works like using the pdnsd source option.\n");
-	printf("\tOwner and ttl are used as in the source section. ttl has a default\n");
-	printf("\tof 900 (it does not need to be specified). The last option corresponds\n");
-	printf("\tto the serve_aliases option, and is off by default. fn is the filename\n");
+	fprintf(stderr,"source\tfn\towner\t[ttl]\t[(on|off)]\n");
+	fprintf(stderr,"\tLoad a hosts-style file. Works like using the pdnsd source option.\n");
+	fprintf(stderr,"\tOwner and ttl are used as in the source section. ttl has a default\n");
+	fprintf(stderr,"\tof 900 (it does not need to be specified). The last option corresponds\n");
+	fprintf(stderr,"\tto the serve_aliases option, and is off by default. fn is the filename\n");
 
-	printf("add\ta\taddr\tname\t[ttl]\n");
-	printf("add\taaaa\taddr\tname\t[ttl]\n");
-	printf("add\tptr\thost\tname\t[ttl]\n");
-	printf("add\tcname\thost\tname\t[ttl]\n");
-	printf("\tAdd a record of the given type to the pdnsd cache, replacing existing\n");
-	printf("\trecords for the same name and type. The 2nd argument corresponds\n");
- 	printf("\tto the argument of the option in the rr section that is named like\n");
- 	printf("\tthe first option. The ttl is optional, the default is 900 seconds.\n");
- 	printf("\tIf you want no other record than the newly added in the cache, do\n");
- 	printf("\tpdnsdctl record <name> delete\n");
- 	printf("\tbefore adding records.\n");
+	fprintf(stderr,"add\ta\taddr\tname\t[ttl]\n");
+	fprintf(stderr,"add\taaaa\taddr\tname\t[ttl]\n");
+	fprintf(stderr,"add\tptr\thost\tname\t[ttl]\n");
+	fprintf(stderr,"add\tcname\thost\tname\t[ttl]\n");
+	fprintf(stderr,"\tAdd a record of the given type to the pdnsd cache, replacing existing\n");
+	fprintf(stderr,"\trecords for the same name and type. The 2nd argument corresponds\n");
+ 	fprintf(stderr,"\tto the argument of the option in the rr section that is named like\n");
+ 	fprintf(stderr,"\tthe first option. The ttl is optional, the default is 900 seconds.\n");
+ 	fprintf(stderr,"\tIf you want no other record than the newly added in the cache, do\n");
+ 	fprintf(stderr,"\tpdnsdctl record <name> delete\n");
+ 	fprintf(stderr,"\tbefore adding records.\n");
 
-	printf("neg\tname\t[type]\t[ttl]\n");
- 	printf("\tAdd a negative cached record to pdnsd's cache, replacing existing\n");
-	printf("\trecords for the same name and type. If no type is given, the whole\n");
-	printf("\tdomain is cached negative. For negative cached records, errors are\n");
-	printf("\timmediately returned on a query, without querying other servers first.\n");
-	printf("\tThe ttl is optional, the default is 900 seconds.\n");
+	fprintf(stderr,"neg\tname\t[type]\t[ttl]\n");
+ 	fprintf(stderr,"\tAdd a negative cached record to pdnsd's cache, replacing existing\n");
+	fprintf(stderr,"\trecords for the same name and type. If no type is given, the whole\n");
+	fprintf(stderr,"\tdomain is cached negative. For negative cached records, errors are\n");
+	fprintf(stderr,"\timmediately returned on a query, without querying other servers first.\n");
+	fprintf(stderr,"\tThe ttl is optional, the default is 900 seconds.\n");
 
-	printf("list-rrtypes\n");
-	printf("\tList available rr types for the neg command. Note that those are only\n");
-	printf("\tused for the neg command, not for add!\n");
+	fprintf(stderr,"list-rrtypes\n");
+	fprintf(stderr,"\tList available rr types for the neg command. Note that those are only\n");
+	fprintf(stderr,"\tused for the neg command, not for add!\n");
 }
 
-int open_sock(char *pipe)
+int open_sock(char *cache_dir)
 {
 	struct sockaddr_un a;
 	int s;
 
-	printf("Opening socket %s.\n",pipe);
 	if ((s=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
-		printf("Error: could not open socket: %s\n",strerror(errno));
+		perror("Error: could not open socket");
 		exit(2);
 	}
 
 	a.sun_family=AF_UNIX;
-	strncpy(a.sun_path,pipe,99);
-	a.sun_path[98]='\0';
+	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", cache_dir)>=sizeof(a.sun_path)) {
+		fprintf(stderr, "Cache dir string too long\n");
+		exit(2);
+	}
+	printf("Opening socket %s.\n",a.sun_path);
 
 	if (connect(s,(struct sockaddr *)&a,sizeof(a))==-1) {
-		printf("Error: could not open socket: %s\n",strerror(errno));
+		perror("Error: could not open socket");
 		close(s);
 		exit(2);
 	}
@@ -147,7 +149,7 @@ void send_long(long cmd, int f)
 	long nc=htonl(cmd);
 
 	if (write(f,&nc,sizeof(nc))<sizeof(nc)) {
-		printf("Error: could not write long: %s\n",strerror(errno));
+		perror("Error: could not write long");
 		exit(2);
 	}
 }
@@ -157,7 +159,7 @@ void send_short(long cmd, int f)
 	short nc=htons(cmd);
 
 	if (write(f,&nc,sizeof(nc))<sizeof(nc)) {
-		printf("Error: could not write short: %s\n",strerror(errno));
+		perror("Error: could not write short");
 		exit(2);
 	}
 }
@@ -166,7 +168,7 @@ void send_string(int fd, char *s)
 {
 	/* include the terminating \0 */
 	if (write(fd,s,strlen(s)+1)<strlen(s)+1) {
-		printf("Error: could not write short: %s\n",strerror(errno));
+		perror("Error: could not write short");
 		exit(2);
 	}
 }
@@ -179,8 +181,8 @@ int match_cmd(char *cmd, cmd_s cmds[])
 			return cmds[i].val;
 		i++;
 	}
-	printf("Command/option not recognized: %s\n",cmd);
-	printf("Try 'pdnsd-ctl help' for available commands.\n");
+	fprintf(stderr,"Command/option not recognized: %s\n",cmd);
+	fprintf(stderr,"Try 'pdnsd-ctl help' for available commands.\n");
 	exit(2);
 }
 
@@ -199,23 +201,20 @@ int main(int argc, char *argv[])
 		switch(i) {
 		case 'c':
 			if (strlen(optarg)>=sizeof(cache_dir)) {
-				printf("-c: directory name too long\n");
+				fprintf(stderr,"-c: directory name too long\n");
 				exit(2);
 			}
 			strncpy(cache_dir, optarg, sizeof(cache_dir));
 			cache_dir[sizeof(cache_dir)-1]='\0';
 			break;
 		case '?':
+			fprintf(stderr,"Try 'pdnsd-ctl help' for available commands and options.\n");
 			exit(2);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
-	if (snprintf(sock_path, sizeof(sock_path), "%s/pdnsd.status", cache_dir)>=sizeof(sock_path)) {
-		printf("Cache dir string too long\n");
-		exit(2);
-	}
 	if (argc<1) {
 		print_help();
 		exit(2);
@@ -229,13 +228,12 @@ int main(int argc, char *argv[])
 		exit(0);
 	} else if (strcmp(argv[0],"list-rrtypes")==0) {
 		printf("Available RR types for the neg command:\n");
-		for (i=0;i<T_MAX;i++) {
+		for (i=0;i<T_MAX;i++)
 			printf("%s\n",rr_info[i]);
-		}
 		exit(0);
 	} else {
 		cmd=match_cmd(argv[0],top_cmds);
-		pf=open_sock(sock_path);
+		pf=open_sock(cache_dir);
 		send_short(cmd,pf);
 		switch (cmd) {
 		case CTL_STATS:
@@ -258,7 +256,7 @@ int main(int argc, char *argv[])
 				cmd2=-1;
 			else {
 				if (sscanf(argv[1],"%hi",&cmd2)!=1) {
-					printf("Bad argument for server\n");
+					fprintf(stderr,"Bad argument for server\n");
 					exit(2);
 				}
 			}
@@ -292,7 +290,7 @@ int main(int argc, char *argv[])
 			acnt=3;
 			if (argc==5 || (argc==4 && isdigit(argv[3][0]))) {
 				if (sscanf(argv[3],"%li",&ttl)!=1) {
-					printf("Bad argument for source\n");
+					fprintf(stderr,"Bad argument for source\n");
 					exit(2);
 				}
 				acnt++;
@@ -320,7 +318,7 @@ int main(int argc, char *argv[])
 			if ((cmd!=T_MX && argc==5) || (cmd==T_MX && argc==6)) {
 				tp = cmd==T_MX?5:3;
 				if (sscanf(argv[tp],"%li",&ttl)!=1) {
-					printf("Bad argument for add\n");
+					fprintf(stderr,"Bad argument for add\n");
 					exit(2);
 				}
 			}
@@ -329,11 +327,11 @@ int main(int argc, char *argv[])
 			switch (cmd) {
 			case T_A:
 				if (argc>5) {
-					printf("Too many arguments\n");
+					fprintf(stderr,"Too many arguments\n");
 					exit(2);
 				}
 				if (!inet_aton(argv[2],&ina4)) {
-					printf("Bad IP for add a option\n");
+					fprintf(stderr,"Bad IP for add a option\n");
 					exit(2);
 				}
 				write(pf,&ina4,sizeof(ina4));
@@ -341,11 +339,11 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_IPV6
 			case T_AAAA:
 				if (argc>5) {
-					printf("Too many arguments\n");
+					fprintf(stderr,"Too many arguments\n");
 					exit(2);
 				}
 				if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
-					printf("Bad IP (v6) for add aaaa option\n");
+					fprintf(stderr,"Bad IP (v6) for add aaaa option\n");
 					exit(2);
 				}
 				write(pf,&ina6,sizeof(ina6));
@@ -354,18 +352,18 @@ int main(int argc, char *argv[])
 			case T_PTR:
 			case T_CNAME:
 				if (argc>5) {
-					printf("Too many arguments\n");
+					fprintf(stderr,"Too many arguments\n");
 					exit(2);
 				}
 				send_string(pf,argv[2]);
 				break;
 			case T_MX:
 				if (argc<5) {
-					printf("Too few arguments\n");
+					fprintf(stderr,"Too few arguments\n");
 					exit(2);
 				}
 				if (sscanf(argv[4], "%hd", &tp)!=1) {
-					printf("Bad number.\n");
+					fprintf(stderr,"Bad number.\n");
 					exit(2);
 				}
 				send_short(tp,pf);
@@ -389,22 +387,22 @@ int main(int argc, char *argv[])
 			if (argc==3) {
 				if (isdigit(argv[2][0])) {
 					if (sscanf(argv[2],"%li",&ttl)!=1) {
-						printf("Bad argument (ttl) for neg\n");
+						fprintf(stderr,"Bad argument (ttl) for neg\n");
 						exit(2);
 					}
 				} else {
 					if ((tp=rr_tp_byname(argv[2]))==-1) {
-						printf("Bad argument (type) for neg\n");
+						fprintf(stderr,"Bad argument (type) for neg\n");
 						exit(2);
 					}
 				}
 			} else if (argc==4) {
 				if ((tp=rr_tp_byname(argv[2]))==-1) {
-					printf("Bad argument (type) for neg\n");
+					fprintf(stderr,"Bad argument (type) for neg\n");
 					exit(2);
 				}
 				if (sscanf(argv[3],"%li",&ttl)!=1) {
-					printf("Bad argument (ttl) for neg\n");
+					fprintf(stderr,"Bad argument (ttl) for neg\n");
 					exit(2);
 				}
 			}
@@ -413,8 +411,10 @@ int main(int argc, char *argv[])
 		}
 		close(pf);
 	}
-	if (rv)
-		printf("Failed: %s\n",errmsg);
+	if (rv) {
+		errmsg[255]='\0';
+		fprintf(stderr,"Failed: %s\n",errmsg);
+	}
 	else
 		printf("Succeeded\n");
 	return rv;
