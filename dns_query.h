@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.5 2000/06/12 14:37:07 thomas Exp $ */
+/* $Id: dns_query.h,v 1.6 2000/06/24 18:58:06 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
@@ -55,6 +55,8 @@ typedef struct {
 	int                 flags;
 	int                 nocache;
 	int                 state;
+	char                trusted;
+	unsigned char       nsdomain[256];
 	/* internal state for p_exec_query */
 	int                 sock;
 /*	dns_cent_t          nent;

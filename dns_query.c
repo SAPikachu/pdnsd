@@ -37,12 +37,8 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.11 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.12 2000/06/24 18:58:06 thomas Exp $";
 #endif
-
-unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
-		       * We just use it as a debugging aid, and it is not really needed since we use tcp 
-		       * connections */
 
 /*
  * Take a rr and do The Right Thing: add it to the cache list if the oname matches the owner name of the
@@ -50,10 +46,11 @@ unsigned short rid=0; /* rid is the value we fill into the id field. It does not
  * Note aside: Is locking of the added records required? (surely not for data integrity, but maybe for
  * efficiency in not fetching records twice)
  */
-static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int dlen, void *data , int tp, int flags, time_t queryts, unsigned long serial)
+static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int dlen, void *data , int tp, int flags, time_t queryts, unsigned long serial, char trusted, unsigned char *nsdomain)
 {
 	dns_cent_t ce;
-	unsigned char buf[256];
+	unsigned char buf[256],cbuf[256];
+	int dummy;
 	rhn2str(oname,buf);
 	if (strcmp((char *)buf,(char *)cent->qname)==0) {
 		/* it is for the record we are editing. add_to_cent is sufficient. 
@@ -65,26 +62,36 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp);
 	} else {
-		/* try to find a matching record in cache */
-		if (have_cached(buf)) {
- 			return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
-		} else {
-			if (init_cent(&ce, buf)) {
-				if (add_cent_rr(&ce, ttl, queryts,flags, dlen, data, tp)) {
-					add_cache(ce);
-					free_cent(ce);
-					return 1;
+		if (trusted)
+			domain_match(&dummy,nsdomain, cent->qname, cbuf);
+		if (trusted ||  cbuf[0]=='\0') {
+			/* try to find a matching record in cache */
+			if (have_cached(buf)) {
+				return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
+			} else {
+				if (init_cent(&ce, buf)) {
+					if (add_cent_rr(&ce, ttl, queryts,flags, dlen, data, tp)) {
+						add_cache(ce);
+						free_cent(ce);
+						return 1;
+					}
 				}
+				return 0;
 			}
-			return 0;
-		}
+		} else
+			return 1; /* don't add, but don't complain either */
 	}
 	return 0;
 }
 
 typedef struct {
+	unsigned char name[256];
+	unsigned char nsdomain[256];
+} nsr_t;
+
+typedef struct {
 	int           num;
-	unsigned char first_ns[256];
+	nsr_t         first_ns;
 } ns_t;
 
 /*
@@ -94,7 +101,7 @@ typedef struct {
  * The domain names of all name servers found are placed in *ns, which is automatically grown
  * It may be null initially and must be freed when you are done with it.
  */
-static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial)
+static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial, char trusted, unsigned char *nsdomain)
 {
 	unsigned char oname[256];
 	unsigned char db[530];
@@ -143,7 +150,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, len, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, len, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				if (ntohs(rhdr->type)==T_NS) {
 					/* add to the nameserver list. */
@@ -158,7 +166,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 							return RC_SERVFAIL;
 						}
 					}
-					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1]);
+					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
+					memcpy(db,(&(*ns)->first_ns)[(*ns)->num-1].name,256);
 				} 
 				break;
 			case T_MINFO:
@@ -182,7 +191,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 			case T_MX:
@@ -207,7 +217,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 			case T_SOA:
@@ -233,7 +244,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 #ifdef DNS_NEW_RRS
@@ -344,7 +356,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				break;
 #endif
 			default:
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, ntohs(rhdr->rdlength), *ptr, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, ntohs(rhdr->rdlength), *ptr, ntohs(rhdr->type),flags,
+						 queryts,serial,trusted, nsdomain))
 					return RC_SERVFAIL;
 			}
 		}
@@ -385,6 +398,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
  * If you want to tell me that this function has a truly ugly coding style, ah, well...
  * You are right, somehow, but I feel it is conceptually elegant ;-)
  */
+
 static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns, unsigned long serial) 
 {
 	struct protoent *pe;
@@ -436,8 +450,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			/* sin6 is intialized, hopefully. */
 		}
 #endif
-		st->myrid=rid;
-		rid++;
+		st->myrid=get_rand16();
 		st->hdr->id=htons(st->myrid);
 		st->hdr->qr=QR_QUERY;
 		st->hdr->opcode=OP_QUERY;
@@ -520,9 +533,16 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 				return RC_SERVFAIL; /* mock error code */
 			}
 		}
-		st->state=QS_CONNECT;
 		st->rts=time(NULL);
-		/* fall through if ok */
+		if (st->trusted)
+			st->state=QS_CONNECT;
+		else {
+			st->state=QS_REQUERY;
+                        /* ok, ok... but it is the only goto in pdnsd, and it may be excused by a.) this is basically a state machine,
+			 * and b.) otherwise, significant rewrite would have been needed, introducing new bugs. Sigh... */
+			goto REQUERY; 
+		}
+		/* fall through if ok and trusted */
 	case QS_CONNECT:
 		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
 			if (errno!=EAGAIN) {
@@ -655,13 +675,13 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->state=QS_REQUERY;
 		free(st->recvbuf);
 		st->hdr->rd=0;
-		st->myrid=rid;
-		rid++;
+		st->myrid=get_rand16();;
 		st->hdr->id=htons(st->myrid);
 		st->rts=time(NULL);
+		DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
 		/* fall through on requery */
 	case QS_REQUERY:
-		DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+	REQUERY:
 		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
 			if (errno!=EAGAIN) {
 				free(st->hdr);
@@ -835,7 +855,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	if (!*aa) {
 		st->flags|=CF_NOAUTH;
 	}
-	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,ns,queryts,serial)!=RC_OK) {
+	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,
+		     ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
 		free_cent(**ent);
 		free(*ent);
 		free(st->recvbuf);
@@ -843,7 +864,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	}
 
 	if (ntohs(st->recvbuf->nscount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,ns,queryts,serial)!=RC_OK) {
+		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,
+			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -852,7 +874,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	}
 	
 	if (ntohs(st->recvbuf->arcount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,ns,queryts,serial)!=RC_OK) {
+		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,
+			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -898,7 +921,7 @@ static void init_qserv(query_serv_t *q)
 /*
  * Add a server entry to a query_serv_t
  */
-static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si, int flags, int nocache, int thint, char lean_query)
+static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si, int flags, int nocache, int thint, char lean_query, char trusted, unsigned char *nsdomain)
 {
 	q->num++;
 	q->qs=realloc(q->qs,sizeof(query_stat_t)*q->num);
@@ -931,6 +954,8 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 	q->qs[q->num-1].nocache=nocache;
 	q->qs[q->num-1].qt=thint;
 	q->qs[q->num-1].lean_query=lean_query;
+	q->qs[q->num-1].trusted=trusted;
+	strcpy((char *)q->qs[q->num-1].nsdomain,(char *)nsdomain);
 	q->qs[q->num-1].state=QS_INITIAL;
 	return 1;
 }
@@ -1029,7 +1054,13 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		 * resolve the name servers.*/
 		if (hops>=0) {
 			for (j=0;j<ns->num;j++) {
-				strcpy((char *)nsname,(char *)(&ns->first_ns)[j]);
+				if (global.paranoid) {
+					/* paranoia mode: don't query name servers that are not responsible */
+					domain_match(&i,(&ns->first_ns)[j].name,rrn,nsname);
+					if (nsname[0]!='\0')
+						continue;
+				}
+				strcpy((char *)nsname,(char *)(&ns->first_ns)[j].name);
 				if (!str2rhn(nsname,nsbuf))
 					continue;
 				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,
@@ -1085,7 +1116,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 					if (nons) {
 						/* lean query mode is inherited. CF_NOAUTH and CF_ADDITIONAL are not (as specified
 						 * in CFF_NOINHERIT). */
-						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags&~CFF_NOINHERIT, 0,thint,q->qs[se].lean_query)) {
+						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags&~CFF_NOINHERIT, 0,thint,q->qs[se].lean_query,!global.paranoid,(&ns->first_ns)[j].nsdomain)) {
 							free_cent(**ent);
 							free(*ent);
 							free(ns);
@@ -1142,7 +1173,7 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	init_qserv(&serv);
 	for (i=0;i<serv_num;i++) {
 		if (servers[i].is_up) {
-			add_qserv(&serv, &servers[i].a, servers[i].port, servers[i].timeout, i, mk_flag_val(&servers[i]),servers[i].nocache,thint,servers[i].lean_query);
+			add_qserv(&serv, &servers[i].a, servers[i].port, servers[i].timeout, i, mk_flag_val(&servers[i]),servers[i].nocache,thint,servers[i].lean_query,1,(unsigned char *)"");
 			one_up=1;
 		}
 	}

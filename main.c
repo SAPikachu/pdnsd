@@ -35,13 +35,13 @@ Boston, MA 02111-1307, USA.  */
 #include "dns_answer.h"
 #include "error.h"
 #include "helpers.h"
+#include "icmp.h"
 /*
- *#include "icmp.h"
  *#include "netdev.h"
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.10 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.11 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -65,6 +65,8 @@ pthread_t main_thread;
 
 int tcp_socket;
 int udp_socket;
+int ping_isocket;
+int ping_osocket;
 
 sigset_t sigs_msk;
 int waiting=0;
@@ -258,6 +260,8 @@ int main(int argc,char *argv[])
 		log_error("tcp and udp initialization failed. Exiting.");
 		exit(1);
 	}
+	init_ping_socket();
+	init_rng();
 	if (global.strict_suid) {
 		if (!run_as(global.run_as)) {
 			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
@@ -380,5 +384,10 @@ int main(int argc,char *argv[])
 	if (debug_p && daemon_p)
 		fclose(dbg);
 #endif
+	if (ping_isocket!=-1)
+		close(ping_isocket);
+	if (ping_osocket!=-1)
+		close(ping_osocket);
+	free_rng();
 	_exit(0);
 }

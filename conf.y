@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.7 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.8 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -56,11 +56,13 @@ struct in_addr ina4;
 
 int idx;
 
+#ifndef NO_YYLINENO
 /*
  * This comes from the generated lexer. It is an undocumented variable in lex, and in flex
  * we explicitely switch it on.
  */
 extern int yylineno;
+#endif
 
 %}
 %union {
@@ -84,6 +86,7 @@ unsigned char *nm;
 %token <num> MAX_TTL
 %token <num> RUN_AS
 %token <num> STRICT_SETUID
+%token <num> PARANOID
 
 %token <num> IP
 %token <num> PORT
@@ -226,6 +229,15 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					global.strict_suid=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in strict_setuid= option.");
+					YYERROR;
+				}
+			}
+		| PARANOID '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					global.paranoid=($3==C_ON);
+				} else {
+					yyerror("bad qualifier in paranoid= option.");
 					YYERROR;
 				}
 			}

@@ -19,6 +19,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include <sys/types.h>
+#include <sys/time.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -33,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.10 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.11 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 /*
@@ -289,3 +290,48 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 }
 
 #endif
+
+#ifdef RANDOM_DEVICE
+static FILE *rand_file;
+#endif
+
+/* initialize the RNG */
+void init_rng()
+{
+	struct timeval tv;
+	struct timezone tz;
+#ifdef RANDOM_DEVICE
+	if (!(rand_file=fopen(RANDOM_DEVICE,"r"))) {
+		log_warn("Could not open %s. Will use the internal random() function, which might be less secure.");
+#endif
+		gettimeofday(&tv,&tz);
+		srandom(tv.tv_sec^tv.tv_usec); /* not as guessable as time() */
+#ifdef RANDOM_DEVICE
+	}
+#endif
+}
+
+void free_rng()
+{
+#ifdef RANDOM_DEVICE
+	if (rand_file)
+		fclose(rand_file);
+#endif
+}
+
+/* generate a (more or less) random number. */
+unsigned short get_rand16()
+{
+#ifdef RANDOM_DEVICE
+	unsigned short rv;
+
+	if (rand_file) {
+		fread(&rv,sizeof(unsigned short),1, rand_file);
+		return rv;
+	} else {
+#endif
+		return random()&0xffff;
+#ifdef RANDOM_DEVICE
+	}
+#endif
+}

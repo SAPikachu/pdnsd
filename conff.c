@@ -32,13 +32,13 @@ Boston, MA 02111-1307, USA.  */
 #include "y.tab.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.8 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.9 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
-globparm_t global={2048,CACHEDIR,53,0,604800,"",0};
+globparm_t global={2048,CACHEDIR,53,0,604800,"",1,0};
 servparm_t server;
 #ifdef ENABLE_IPV4
 servparm_t serv_presets={53,C_NONE,120,900,600,"","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};

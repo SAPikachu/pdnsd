@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.8 2000/06/06 21:20:52 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.9 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -97,6 +97,37 @@ int icmp_errs=0; /* This is only here to minimize log output. Since the
 # define IP_RECVERR 11
 #endif
 
+/* Initialize a socket for pinging */
+void init_ping_socket()
+{
+#ifdef ENABLE_IPV6
+	struct in_addr v4;
+#endif
+
+
+#ifdef ENABLE_IPV4
+	if (run_ipv4) {
+		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+		}
+		if ((ping_osocket=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP))==-1) {
+			log_warn("icmp ping: socket() failed.");
+		}
+
+	}
+#endif
+#ifdef ENABLE_IPV6
+	if (run_ipv6) {
+		if ((ping_isocket=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6))==-1) {
+			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
+		}
+		if ((ping_osocket=socket(PF_INET6,SOCK_RAW,IPPROTO_ICMPV6))==-1) {
+			log_warn("icmpv6 ping: socket() failed.");
+		}
+	}
+#endif
+}
+
 /* IPv4/ICMPv4 ping. Called from ping (see below) */
 static int ping4(struct in_addr addr, int timeout, int rep)
 {
@@ -122,60 +153,43 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 #if TARGET!=TARGET_LINUX	
 	if (!(pe=getprotobyname("ip"))) {
-		if (icmp_errs<ICMP_MAX_ERRS) {
-			icmp_errs++;
-			log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
-		}
+		log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
 		return -1;
 	}
 	SOL_IP=pe->p_proto;
 #endif
 
-	for (i=0;i<rep;i++) {
-		/* Open a raw socket for replies */
-		isock=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
-		if (isock==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmp ping: socket() failed: %s",strerror(errno));
-			}
-			return -1;
-		}
+	isock=ping_isocket;
+	osock=ping_osocket;
+
+
 #if TARGET==TARGET_LINUX
-		/* Fancy ICMP filering -- only on Linux */
-		
-		/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
-		 * So, set it manually and unportable ;-) */
-		f.data=0xfffffffe;
-		if (setsockopt(isock,SOL_RAW,ICMP_FILTER,&f,sizeof(f))==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmp ping: setsockopt() failed: %s", strerror(errno));
-			}
-			close(isock);
-			return -1;
+	/* Fancy ICMP filering -- only on Linux */
+	
+	/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
+	 * So, set it manually and unportable ;-) */
+	f.data=0xfffffffe;
+	if (setsockopt(isock,SOL_RAW,ICMP_FILTER,&f,sizeof(f))==-1) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
+			log_warn("icmp ping: setsockopt() failed: %s", strerror(errno));
 		}
+		close(isock);
+		return -1;
+	}
 #endif
-		fcntl(isock,F_SETFL,O_NONBLOCK);
-		/* send icmp_echo_request */
-		osock=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP);
-		if (osock==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmp ping: socket() failed.");
-			}
-			close(isock);
-			return -1;
+	fcntl(isock,F_SETFL,O_NONBLOCK);
+	if (setsockopt(osock,SOL_IP,IP_RECVERR,&rve,sizeof(rve))==-1) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
+			log_warn("icmp ping: setsockopt() failed: %s",strerror(errno));
 		}
-		if (setsockopt(osock,SOL_IP,IP_RECVERR,&rve,sizeof(rve))==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmp ping: setsockopt() failed: %s",strerror(errno));
-			}
-			close(osock);
-			close(isock);
-			return -1;
-		}
+		close(osock);
+		close(isock);
+		return -1;
+	}
+	
+	for (i=0;i<rep;i++) {
 		icmpd.icmp_type=ICMP_ECHO;
 		icmpd.icmp_code=0;
 		icmpd.icmp_cksum=0;
@@ -199,14 +213,13 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		from.sin_port=0;
 		from.sin_addr=addr;
 		SET_SOCKA_LEN4(from);
+		fcntl(osock,F_SETFL,0);
 		if (sendto(osock,&icmpd,8,0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
 
 			}
-			close(osock);
-			close(isock);
 			return -1;
 		}
 		fcntl(osock,F_SETFL,O_NONBLOCK);
@@ -218,8 +231,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			msg.msg_controllen=1024;
 			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
 				if (*((unsigned int *)buf)!=0) {
-					close(osock);
-					close(isock);
 					return -1;  /* error in sending (e.g. no route to host) */
 				}
 			}
@@ -229,24 +240,18 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 					icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
 					if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
 					     icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
-						close(osock);
-						close(isock);
 						return (i-ntohs(icmpp->icmp_seq))*timeout+tm; /* return the number of ticks */
 					}
 				}
 			} else {
 				if (errno!=EAGAIN)
 				{
-					close(osock);
-					close(isock);
 					return -1; /* error */
 				}
 			}
 			usleep(100000);
 			tm++;
 		} while (tm<timeout);
-		close(osock);
-		close(isock);
 	}
 	return -1; /* no answer */
 }
@@ -292,51 +297,35 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	SOL_IPV6=pe->p_proto;
 #endif
 
+	isock=ping_isocket;
+	osock=ping_osocket;
 
 	ICMP6_FILTER_SETBLOCKALL(&f);
 	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REQUEST,&f);
 
-	for (i=0;i<rep;i++) {
-		/* Open a raw socket for replies */
-		isock=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-		if (isock==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
-			}
-			return -1;
+	if (setsockopt(isock,IPPROTO_ICMPV6,ICMP6_FILTER,&f,sizeof(f))==-1) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
+			log_warn("icmpv6 ping: setsockopt() for is failed: %s", strerror(errno));
 		}
-		if (setsockopt(isock,IPPROTO_ICMPV6,ICMP6_FILTER,&f,sizeof(f))==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmpv6 ping: setsockopt() for is failed: %s", strerror(errno));
-			}
-			close(isock);
-			return -1;
-		}
-		fcntl(isock,F_SETFL,O_NONBLOCK);
-		/* send icmp_echo_request */
-		osock=socket(PF_INET6,SOCK_RAW,IPPROTO_ICMPV6);
-		if (osock==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
-				log_warn("icmpv6 ping: socket() failed.");
-			}
-			close(isock);
-			return -1;
-		}
-
-		/* enable error queueing and checksumming. --checksumming should be on by default.*/
-		if (setsockopt(osock,SOL_IPV6,IPV6_RECVERR,&rve,sizeof(rve))==-1 /*|| 
- 		    setsockopt(osock,IPPROTO_ICMPV6,IPV6_CHECKSUM,&ck_offs,sizeof(ck_offs))==-1*/) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
+		close(isock);
+		return -1;
+	}
+	fcntl(isock,F_SETFL,O_NONBLOCK);
+	
+	/* enable error queueing and checksumming. --checksumming should be on by default.*/
+	if (setsockopt(osock,SOL_IPV6,IPV6_RECVERR,&rve,sizeof(rve))==-1 /*|| 
+	    setsockopt(osock,IPPROTO_ICMPV6,IPV6_CHECKSUM,&ck_offs,sizeof(ck_offs))==-1*/) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
 				log_warn("icmpv6 ping: setsockopt() for os failed: %s",strerror(errno));
-			}
-			close(osock);
-			close(isock);
-			return -1;
 		}
+		close(osock);
+		close(isock);
+		return -1;
+	}
+	
+	for (i=0;i<rep;i++) {
 		icmpd.icmp6_type=ICMP6_ECHO_REQUEST;
 		icmpd.icmp6_code=0;
 		icmpd.icmp6_cksum=0; /* The friently kernel does fill that in for us. */
@@ -349,6 +338,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		from.sin6_addr=a;
 		SET_SOCKA_LEN6(from);
 /*		printf("to: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
+		fcntl(osock,F_SETFL,0);
 		if (sendto(osock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
@@ -417,6 +407,9 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 #ifdef ENABLE_IPV6
 	struct in_addr v4;
 #endif
+
+	if (ping_isocket==-1 || ping_osocket==-1)
+		return -1;
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4)

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.5 2000/06/23 21:54:57 thomas Exp $ */
+/* $Id: helpers.h,v 1.6 2000/06/24 18:58:06 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
@@ -51,5 +51,9 @@ char *pdnsd_a2str(pdnsd_a *a, char *str, int maxlen);
 #if DEBUG>0
 char *socka2str(struct sockaddr *a, char *str, int maxlen);
 #endif
+
+void init_rng(void);
+void free_rng(void);
+unsigned short get_rand16(void);
 
 #endif

@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.l.templ,v 1.6 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: conf.l.templ,v 1.7 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -62,6 +62,7 @@ C_CLOSE \*\/
 <INITIAL>"max_ttl"			{return MAX_TTL;}
 <INITIAL>"run_as"			{return RUN_AS;}
 <INITIAL>"strict_setuid"		{return STRICT_SETUID;}
+<INITIAL>"paranoid"			{return PARANOID;}
 
 <INITIAL>"ip"				{return IP;}
 <INITIAL>"port"				{return PORT;}

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.7 2000/06/22 11:34:52 thomas Exp $
+$Id: NEWS,v 1.8 2000/06/24 18:58:06 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -37,3 +37,7 @@ them "under the hood":
 - Optimizations & cleanups
 - Automatic deps (only interesting for developers ;-)
 
+Versions 1.0.1, 1.0.2 and 1.0.3 are bugfix releases.
+
+Version 1.0.4 introduces the new options run_as, strict_setuid and
+paranoid. These new options are optional security enhancements.

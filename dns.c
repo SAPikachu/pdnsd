@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.4 2000/06/06 11:57:01 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.5 2000/06/24 18:58:06 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -154,7 +154,8 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
  */
 int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest)
 {
-	unsigned char sbuf[257],dbuf[257], offs, slen, dlen, cnt, nc;
+	unsigned char sbuf[257],dbuf[257];
+	int offs, slen, dlen, cnt, nc;
 	sbuf[0]='.';          /* Prefix the names with '.' : This is done for the special case that */
 	dbuf[0]='.';          /* the domains match exactly, or one is a complete subdomain of another */
 	rhn2str(ms,&sbuf[1]); /* Change to dotted notation since processing starts from behind, */
@@ -164,7 +165,7 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
 	slen=strlen((char *)sbuf)-2;
 	dlen=strlen((char *)dbuf)-2;
 	nc=cnt=0;
-	offs=0;
+	offs=-1;
 	while (cnt<=slen && cnt<=dlen) {
 		if (tolower(sbuf[slen-cnt])!=tolower(dbuf[dlen-cnt]))
 			break;

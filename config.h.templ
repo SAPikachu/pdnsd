@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.9 2000/06/22 11:34:52 thomas Exp $ */
+/* $Id: config.h.templ,v 1.10 2000/06/24 18:58:06 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -71,6 +71,17 @@
  * however only achieved by deactivating this behaviour and thus being
  * intolerant. */
 #undef RFC2181_ME_HARDER
+
+/* Define this to the device you want to use for getting random numbers.
+ * Leave this undefined if you wand to use the standard C library random
+ * function, which basically should be sufficient.
+ * Linux and FreeBSD have two random number devices: /dev/random and
+ * /dev/urandom. /dev/urandom might be less secure in some cases, but
+ * should still be more than sufficient. The use of /dev/random is 
+ * discouraged, as reading from this device blocks when new random bits
+ * need to be gathered. */
+/*#undef RANDOM_DEVICE*/
+#define RANDOM_DEVICE "/dev/urandom"
 
 /* -- Debugging Options ------------------------------------------------------ */
 
