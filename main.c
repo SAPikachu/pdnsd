@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.6 2000/06/21 21:47:18 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.7 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -313,6 +313,11 @@ int main(int argc,char *argv[])
 #endif
 	read_disk_cache();
 
+	signal(SIGILL,SIG_DFL); 
+	signal(SIGABRT,SIG_DFL);
+	signal(SIGFPE,SIG_DFL);
+	signal(SIGSEGV,SIG_DFL);
+	signal(SIGPIPE,SIG_DFL);
 	sigemptyset(&sigs_msk);
 	sigaddset(&sigs_msk,SIGILL);
 	sigaddset(&sigs_msk,SIGABRT);
@@ -324,6 +329,7 @@ int main(int argc,char *argv[])
 		sigaddset(&sigs_msk,SIGINT);
 		sigaddset(&sigs_msk,SIGQUIT);
 	}
+	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 
 	if (stat_pipe)
 		init_stat_fifo();

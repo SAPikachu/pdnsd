@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.5 2000/06/21 20:36:17 thomas Exp $
+$Id: NEWS,v 1.6 2000/06/22 09:57:34 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -29,7 +29,10 @@ Version 1.0.0 has a lot of changes compared to the 0.9.x tree, but much of them
 - IPv6 support (experimental; compile- and run-time configurable)
 - FreeBSD (and such hopefully *BSD) support
 - better rfc2181 compatability
-- new option serve_aliases in source section
+- new options:
+  - serve_aliases in source section
+  - linkdown_kluge in global section 
+  - max_ttl in global section 
 - cache-code reorganization, only one unified hash (of variable depth)
 - Optimizations & cleanups
 - Automatic deps (only interesting for developers ;-)

@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.6 2000/06/21 21:47:18 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.7 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -48,6 +48,7 @@ void init_log(void)
  * Note that this may result in blocked locks. We have no means to resolve the logs here, because in LinuxThreads
  * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
  * softlocks in any functions called after sigwait from main(). */
+#if TARGET==TARGET_LINUX
 void fatal_sig(int sig)
 {
 	if (waiting) {
@@ -59,6 +60,7 @@ void fatal_sig(int sig)
 		_exit(0);
 	}
 }
+#endif
 
 /* We crashed? Ooops... */
 void crash_msg(char *msg)

@@ -1,6 +1,6 @@
-#! /bin/bash
+#!/bin/sh
 
-# $Id: a-conf.sh,v 1.1 2000/06/13 12:13:31 thomas Exp $
+# $Id: a-conf.sh,v 1.2 2000/06/22 09:57:34 thomas Exp $
 # This is a rather quick-and-dirty scripts to determine parameters that cannot be gotten using pure #ifdefs.
 # It generates a-conf.h 
 # If you want to tell me that I should use autoconf, you are right; this is indeed planned, and I hope

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.16 2000/06/21 21:47:18 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.17 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 /*
@@ -979,12 +979,7 @@ void *udp_answer_thread(void *data)
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
 
-	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
-	signal(SIGILL,fatal_sig);
-	signal(SIGABRT,fatal_sig);
-	signal(SIGFPE,fatal_sig);
-	signal(SIGSEGV,fatal_sig);
-	signal(SIGPIPE,fatal_sig);
+	THREAD_SIGINIT;
 
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
@@ -1097,12 +1092,8 @@ void *udp_server_thread(void *dummy)
 	struct in_pktinfo *sip;
 #endif
 	(void)dummy; /* To inhibit "unused variable" warning */
-	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
-	signal(SIGILL,fatal_sig);
-	signal(SIGABRT,fatal_sig);
-	signal(SIGFPE,fatal_sig);
-	signal(SIGSEGV,fatal_sig);
-	signal(SIGPIPE,fatal_sig);
+
+	THREAD_SIGINIT;
 
 	if (!pe) {
 		if (da_udp_errs<UDP_MAX_ERRS) {
@@ -1319,12 +1310,7 @@ void *tcp_answer_thread(void *csock)
 	unsigned char *buf;
 	unsigned char *resp;
 
-	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
-	signal(SIGILL,fatal_sig);
-	signal(SIGABRT,fatal_sig);
-	signal(SIGFPE,fatal_sig);
-	signal(SIGSEGV,fatal_sig);
-	signal(SIGPIPE,fatal_sig);
+	THREAD_SIGINIT;
 
 	free(csock);
 	rlen=htons(rlen);
@@ -1421,12 +1407,9 @@ void *tcp_server_thread(void *p)
 	int first=1;
 
 	(void)p; /* To inhibit "unused variable" warning */
-	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
-	signal(SIGILL,fatal_sig);
-	signal(SIGABRT,fatal_sig);
-	signal(SIGFPE,fatal_sig);
-	signal(SIGSEGV,fatal_sig);
-	signal(SIGPIPE,fatal_sig);
+
+	THREAD_SIGINIT;
+
 	if (!pe) {
 		if (da_tcp_errs<TCP_MAX_ERRS) {
 			da_tcp_errs++;

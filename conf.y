@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "lex.inc.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf.y,v 1.5 2000/06/12 14:37:06 thomas Exp $";
+static char rcsid[]="$Id: conf.y,v 1.6 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -81,6 +81,7 @@ unsigned char *nm;
 %token <num> CACHE_DIR
 %token <num> SERVER_PORT
 %token <num> LINKDOWN_KLUGE
+%token <num> MAX_TTL
 
 %token <num> IP
 %token <num> PORT
@@ -206,6 +207,10 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					yyerror("bad qualifier in linkdown_kluge= option.");
 					YYERROR;
 				}
+			}
+		| MAX_TTL '=' NUMBER ';'
+			{
+				global.max_ttl=$3;
 			}
 		;
 

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.6 2000/06/21 21:47:18 thomas Exp $ */
+/* $Id: error.h,v 1.7 2000/06/22 09:57:34 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -32,12 +32,34 @@ extern sigset_t sigs_msk;
 extern int waiting;
 /* --- */
 
+#if TARGET==TARGET_LINUX
 void fatal_sig(int sig);
+#endif
 void crash_msg(char *msg);
 void init_log(void);
 void log_error(char *s,...);
 void log_warn(char *s, ...);
 void log_info(int level, char *s, ...);
+
+/* These are macros for setting up the signal handling of a new thread. They
+ * are needed because the LinuxThreads implementation obviously has some
+ * problems in signal handling, which makes the recommended solution (doing
+ * sigwait() in one thread and blocking the signals in all threads) impossible.
+ * So, for Linux, we have to install the fatal_sig handler. 
+ * It seems to me that signal handlers in fact aren't shared between threads
+ * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
+#if TARGET==TARGET_LINUX
+#define THREAD_SIGINIT	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL); \
+                        signal(SIGILL,fatal_sig); \
+	                signal(SIGABRT,fatal_sig); \
+	                signal(SIGFPE,fatal_sig); \
+	                signal(SIGSEGV,fatal_sig); \
+	                signal(SIGPIPE,fatal_sig);
+
+#else
+#define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)
+#endif
+
 
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.

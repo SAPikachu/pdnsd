@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.10 2000/06/13 12:12:27 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.11 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -60,7 +60,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 		 * however, make sure there are no double records. This is done by
 		 * add_to_cent */
 #ifdef RFC2181_ME_HARDER
-		if (cent->rr[tp-T_MIN]->ttl!=ttl)
+		if (cent->rr[tp-T_MIN]->ttl!=(ttl>global.max_ttl?global.max_ttl:ttl))
 			return 0;
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp);

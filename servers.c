@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "netdev.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.6 2000/06/21 21:47:18 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.7 2000/06/22 09:57:34 thomas Exp $";
 #endif
 
 pthread_t stt;
@@ -134,12 +134,9 @@ void *servstat_thread(void *p)
 	servparm_t srv;
 
 	(void)p; /* To inhibit "unused variable" warning */
-	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
-	signal(SIGILL,fatal_sig);
-	signal(SIGABRT,fatal_sig);
-	signal(SIGFPE,fatal_sig);
-	signal(SIGSEGV,fatal_sig);
-	signal(SIGPIPE,fatal_sig);
+
+	THREAD_SIGINIT;
+
 	for (i=0;i<serv_num;i++) {
 		s_ts=time(NULL);
 		j=uptest(servers[i]);
