@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.18 2000/10/30 18:22:14 thomas Exp $
+$Id: AUTHORS,v 1.19 2000/11/25 23:09:51 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -15,6 +15,7 @@ Stephan Boettcher	contributed the SCHEME= option.
 Torben Janssen		contributed RedHat rc scripts
 Olaf Kirch		contributed a security fix for the run_as()
 			function
+Bernd Leibing		contributed fixes to the spec file.
 Sourav K. Mandal	contributed the autoconf/automake code, gdbm
 			caching facility and many suggestions
 Markus Mohr		contributed Debian rc scripts

@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.5 2000/11/11 20:10:57 thomas Exp $
+# $Id: pdnsd.spec.in,v 1.6 2000/11/25 23:09:51 thomas Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -38,6 +38,7 @@ CURDIR=`pwd`; cd ${RPM_BUILD_ROOT} ; \
 FILES=$(find . | sed 's/^\.//' \
   | grep -v pdnsd.conf \
   | grep -v '/usr/doc' \
+  | grep -v '/usr/share/doc' \
   | grep -v '/var') ; \
 for FILE in $FILES; do \
   [ ! -d "$FILE" ] && echo $FILE >> $CURDIR/file-list ; \
@@ -55,7 +56,7 @@ rm -rf ${RPM_BUILD_DIR}/%{name}-%{ver}
 %post
 if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then 
   grep "START_PDNSD" /etc/rc.config > /dev/null
-  if [ $$? -ne 0 ] ; then
+  if [ $? -ne 0 ] ; then
     echo -e \
 "\n\n#\n# Set to yes to start pdnsd at boot time\n#\nSTART_PDNSD=yes" \
 >> /etc/rc.config
@@ -63,6 +64,8 @@ if [ "%{distro}" = "SuSE" -a -w /etc/rc.config ]; then
 fi
 
 %changelog
+* Sun Nov 26 2000 Thomas Moestl <tmoestl@gmx.net>
+- Added some patches contributed by Bernd Leibing
 * Tue Aug 15 2000 Thomas Moestl <tmoestl@gmx.net>
 - Added the distro for configure
 * Tue Jul 11 2000 Sourav K. Mandal <smandal@mit.edu>
