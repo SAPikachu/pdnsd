@@ -30,7 +30,7 @@
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: debug.c,v 1.3 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: debug.c,v 1.4 2001/05/19 15:42:58 tmm Exp $";
 #endif
 
 /*
@@ -52,8 +52,10 @@ void *DBGmalloc(size_t sz, char *file, int line)
 
 void *DBGrealloc(void *ptr, size_t sz, char *file, int line)
 {
-	if (ptr == NULL)
+	if (ptr == NULL && sz != 0)
 		DEBUG_MSG("+ realloc, %s:%d\n", file, line);
+	if (ptr != NULL && sz == 0)
+		DEBUG_MSG("- realloc(0), %s:%d\n", file, line);
 	return realloc(ptr, sz);
 }
 void DBGfree(void *ptr, char *file, int line)
