@@ -28,6 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/poll.h>
 #include <sys/time.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -54,7 +55,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.21 2001/04/11 17:54:57 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.22 2001/04/12 19:51:39 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -327,8 +328,8 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 	/* XXX: lots of memcpy here to avoid unaligned access faults on alpha */
 	if (elen<sizeof(icmph)+sizeof(eiph))
 		return 0;
-	memcpy(icmph,errmsg,sizeof(icmph));
-	memcpy(eiph,errmsg+sizeof(icmph),sizeof(eiph));
+	memcpy(&icmph,errmsg,sizeof(icmph));
+	memcpy(&eiph,errmsg+sizeof(icmph),sizeof(eiph));
 	if (!IN6_ARE_ADDR_EQUAL(&eiph.ip6_dst, to))
 		return 0;
 	rlen=elen-sizeof(icmph)-sizeof(eiph);
@@ -342,7 +343,7 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 			return 0;
 		if (rlen<sizeof(hbh))
 			return 0;
-		memcpy(hbh,data,sizeof(hbh));
+		memcpy(&hbh,data,sizeof(hbh));
 		if (rlen<hbh.ip6h_len)
 			return 0;
 		rlen-=hbh.ip6h_len;
@@ -352,7 +353,7 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 	if (rlen<sizeof(struct icmp6_hdr))
 		return 0;
 	/* Zero out the checksum of the enclosed ICMPv6 header, it is kernel-filled in the original data */
-	memset(((char *)data)+offsetof(icmp6_hdr,icmp6_cksum),0,sizeof(icmph.icmp6_cksum));
+	memset(((char *)data)+offsetof(struct icmp6_hdr,icmp6_cksum),0,sizeof(icmph.icmp6_cksum));
 	return icmph.icmp6_type==errtype && memcmp(data, packet, plen<rlen?plen:rlen)==0;
 }
 
@@ -496,16 +497,16 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
-		return ping4(addr->ipv4,timeout*10,rep);
+		return ping4(addr->ipv4,timeout/10,rep);
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			v4.s_addr=((long *)&addr->ipv6)[3];
-			return ping4(v4,timeout*10,rep);
+			return ping4(v4,timeout/10,rep);
 		} else 
-			return ping6(addr->ipv6,timeout*10,rep);
+			return ping6(addr->ipv6,timeout/10,rep);
 	}
 #endif
 	return -1;

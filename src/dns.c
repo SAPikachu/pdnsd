@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.19 2001/04/12 18:48:22 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.20 2001/04/12 19:51:39 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -272,8 +272,8 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 	if (tp==T_AAAA) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp)) {
- 			free_cent(ce);
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp,0)) {
+ 			free_cent(ce,0);
 			return 0;
 		}
 	}

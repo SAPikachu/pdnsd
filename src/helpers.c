@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.21 2001/04/12 02:46:24 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.22 2001/04/12 19:51:39 tmm Exp $";
 #endif
 
 /*
@@ -277,7 +277,7 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		if (inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,str,maxlen)==NULL)
+		if (inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,str,maxlen)==NULL) {
 			log_error("inet_ntop: %s", strerror(errno));
 			str[0]='\0';
 		}
