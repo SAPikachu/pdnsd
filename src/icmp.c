@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.4 2000/10/17 22:11:45 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.5 2000/10/18 16:21:34 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -244,8 +244,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			FD_SET(osock, &fds);
 			FD_SET(isock, &fds);
 			tv.tv_usec=0;
-			tv.tv_sec=timeout<(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
-			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<1) {
+			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
+			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
 					icmp_errs++;
 					log_warn("poll/select failed: %s",strerror(errno));
@@ -257,7 +257,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			pfd[0].events=POLL_IN;
 			pfd[1].fd=isock;
 			pfd[1].events=POLL_IN;
-			if (poll(pfd,2,timeout<(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<1) {
+			printf("to: %li\n",timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0);
+			if (poll(pfd,2,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
 					icmp_errs++;
 					log_warn("poll/select failed: %s",strerror(errno));
@@ -265,11 +266,10 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				return -1; 
 			}
 #endif
-
 #ifdef NO_POLL
 			if (FD_ISSET(osock,&fds)) {
 #else
-			if (pfd[0].revents|POLL_IN) {
+			if (pfd[0].revents&POLL_IN) {
 #endif
 				memset(&msg,0,sizeof(msg));
 				msg.msg_control=buf;
@@ -279,12 +279,16 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 						return -1;  /* error in sending (e.g. no route to host) */
 					}
 				}
+				fcntl(osock,F_SETFL,O_NONBLOCK);
+				/* Just to empty the queue should there be normal packets waiting */
+				recvmsg(osock,&msg,0);
+				fcntl(osock,F_SETFL,0);
 			}
 
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds)) {
 #else
-			if (pfd[1].revents|POLL_IN) {
+			if (pfd[1].revents&POLL_IN) {
 #endif
 				sl=sizeof(from);
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
@@ -292,12 +296,11 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 						icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
 						if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
 						    icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
-							return (i-ntohs(icmpp->icmp_seq))*timeout+tm; /* return the number of ticks */
+							return (i-ntohs(icmpp->icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
 						}
 					}
 				} else {
-					if (errno!=EAGAIN)
-						return -1; /* error */
+					return -1; /* error */
 				}
 			}
 		} while (time(NULL)-tm<timeout);
@@ -333,15 +336,15 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	struct msghdr msg;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
-#if TARGET!=TARGET_LINUX
-	int SOL_IPV6;
-	struct protoent *pe;
 #ifdef NO_POLL
 	fd_set fds;
 	struct timeval tv;
 #else
 	struct pollfd pfd[2];
 #endif
+#if TARGET!=TARGET_LINUX
+	int SOL_IPV6;
+	struct protoent *pe;
 
 	if (!(pe=getprotobyname("ipv6"))) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
@@ -406,25 +409,25 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			FD_SET(osock, &fds);
 			FD_SET(isock, &fds);
 			tv.tv_usec=0;
-			tv.tv_sec=timeout<(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
-			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<1) {
+			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
+			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
 					icmp_errs++;
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
-				return .-1; 
+				return -1; 
 			}
 #else
 			pfd[0].fd=osock;
 			pfd[0].events=POLL_IN;
 			pfd[1].fd=isock;
 			pfd[1].events=POLL_IN;
-			if (poll(pfd,2,timeout<(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<1) {
+			if (poll(pfd,2,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
 				if (icmp_errs<ICMP_MAX_ERRS) {
 					icmp_errs++;
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
-				return .-1; 
+				return -1; 
 
 			}
 #endif
@@ -432,7 +435,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #ifdef NO_POLL
 			if (FD_ISSET(osock,&fds)) {
 #else
-			if (pfd[0].revents|POLL_IN) {
+			if (pfd[0].revents&POLL_IN) {
 #endif
 				memset(&msg,0,sizeof(msg));
 				msg.msg_control=buf;
@@ -442,12 +445,16 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 						return -1;  /* error in sending (e.g. no route to host) */
 					}
 				}
+				fcntl(osock,F_SETFL,O_NONBLOCK);
+				/* Just to empty the queue should there be normal packets waiting */
+				recvmsg(osock,&msg,0);
+				fcntl(osock,F_SETFL,0);
 			}
 
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds)) {
 #else
-			if (pfd[1].revents|POLL_IN) {
+			if (pfd[1].revents&POLL_IN) {
 #endif
 				sl=sizeof(from);
 /*	        		printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
@@ -460,12 +467,11 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 						 * seem to have problems with it. */
 						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
 						    ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
-							return (i-ntohs(icmpp->icmp6_seq))*timeout+tm; /* return the number of ticks */
+							return (i-ntohs(icmpp->icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
 						}
 					}
 				} else {
-					if (errno!=EAGAIN)
-						return -1; /* error */
+					return -1; /* error */
 				}
 			}
 		} while (time(NULL)-tm<timeout);
@@ -490,7 +496,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
-		return ping4(addr->ipv4,timeout,rep);
+		return ping4(addr->ipv4,timeout/10,rep);
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {

@@ -5,7 +5,7 @@
 #include "../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: tping.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
+static char rcsid[]="$Id: tping.c,v 1.2 2000/10/18 16:21:37 thomas Exp $";
 #endif
 
 int daemon_p=0;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 		run_ipv4=1;
 		run_ipv6=0;
 		init_ping_socket();
-		printf("ping (v4) echo from %s: %i\n",argv[1],ping(&a,10,2));
+		printf("ping (v4) echo from %s: %i\n",argv[1],ping(&a,100,2));
 		return 0;
 	}
 #endif
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		run_ipv4=0;
 		run_ipv6=1;
 		init_ping_socket();
-		printf("ping (v6) echo from %s: %i\n",argv[1],ping(&a,10,2));
+		printf("ping (v6) echo from %s: %i\n",argv[1],ping(&a,100,2));
 		return 0;
 	}
 #endif

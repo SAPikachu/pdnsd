@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.9 2000/10/17 22:11:45 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.10 2000/10/18 16:21:34 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1181,10 +1181,10 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 								if (polls[k].fd==q->qs[global.par_queries*j+i].sock) {
 									switch (q->qs[global.par_queries*j+i].event) {
 									case QEV_READ:
-										srv=polls[k].revents|POLLIN;
+										srv=polls[k].revents&POLLIN;
 										break;
 									case QEV_WRITE:
-										srv=polls[k].revents|POLLOUT;
+										srv=polls[k].revents&POLLOUT;
 										break;
 									}
 									break;
