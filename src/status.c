@@ -37,10 +37,10 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.4 2000/07/29 18:45:06 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.5 2000/07/29 21:29:35 thomas Exp $";
 #endif
 
-char fifo_path[1024]="/tmp/.pdnsd-status";
+char sock_path[1024];
 
 pthread_t st;
 
@@ -129,19 +129,23 @@ void *status_thread (void *p)
 
 	uname(&nm);
 	(void)p; /* To inhibit "unused variable" warning */
-	unlink(fifo_path); /* Delete the socket */
+	strncpy(sock_path, TEMPDIR, 1024);
+	sock_path[1023]='\0';
+	strncat(sock_path, ".pdnsd.status", 1024-strlen(sock_path));
+	sock_path[1023]='\0';
+	unlink(sock_path); /* Delete the socket */
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
 		if (errno!=EINTR)
 			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
 	}
 	a.sun_family=AF_UNIX;
-	strncpy(a.sun_path,fifo_path,99);
+	strncpy(a.sun_path,sock_path,99);
 	if (bind(sock,(struct sockaddr *)&a,sizeof(a))==-1) {
 		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(sock);
 		return NULL;
 	}
-	chmod(fifo_path,global.ctl_perms);
+	chmod(sock_path,global.ctl_perms);
 	if (listen(sock,5)==-1) {
 		log_warn("Error: could not listen onsocket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(sock);
@@ -150,12 +154,6 @@ void *status_thread (void *p)
 	do {
 		res=sizeof(ra);
 		if ((rs=accept(sock,&ra,&res))!=-1) {
-/*			write(rs,fifo_path,strlen(fifo_path)+1);*/
-/*			if (!(f=fdopen(rs,"rw"))) {
-				log_warn("Error: could not get FILE: %s\n. Status readback will be impossible",strerror(errno));
-				close(rs);
-				return NULL;
-				}*/
 			DEBUG_MSG1("Pipe query pending.\n");
 			read(rs,&cmd,sizeof(cmd));
 			switch(ntohs(cmd)) {
@@ -339,12 +337,6 @@ void *status_thread (void *p)
 void init_stat_fifo()
 {
 	pthread_attr_t attr;
-
-/*	strncpy(fifo_path,global.cache_dir,1023);
-	fifo_path[1023]='\0';
-	strncat(fifo_path,"/status",1023-strlen(fifo_path));
-	fifo_path[1023]='\0';*/
-//	mkfifo(fifo_path,0600);
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);

@@ -29,6 +29,10 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <fnmatch.h>
+#include <string.h>
 #include "error.h"
 #include "servers.h"
 #include "conff.h"
@@ -38,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.2 2000/07/29 18:45:06 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.3 2000/07/29 21:29:34 thomas Exp $";
 #endif
 
 /*
@@ -49,6 +53,7 @@ static char rcsid[]="$Id: servers.c,v 1.2 2000/07/29 18:45:06 thomas Exp $";
 pthread_t stt;
 pthread_mutex_t servers_lock;
 int fexecerr=1;
+static char schm[32];
 
 /*
  * Execute an uptest.
@@ -57,6 +62,25 @@ int uptest (servparm_t serv)
 {
 	int ret/*=serv.is_up*/;
 	pid_t pid;
+	if (serv.scheme[0]) {
+		if (!schm[0]) {
+		  	int nschm;
+			int sc = open(global.scheme_file, O_RDONLY);
+			char *s;
+			if (sc<0) 
+				return 0;
+			nschm = read(sc, schm, sizeof(schm)-1);
+			close(sc);
+			if (nschm < 0) 
+				return 0;
+			schm[nschm] = '\0';
+			s = strchr(schm, '\n');
+			if (s) 
+				*s='\0';
+		}
+		if (fnmatch(serv.scheme, schm, 0))
+		  	return 0;
+	}
 	switch (serv.uptest) {
 	case C_NONE:
 		ret=1;
@@ -138,7 +162,7 @@ void *servstat_thread(void *p)
 	for (i=0;i<serv_num;i++) {
 		s_ts=time(NULL);
 		j=uptest(servers[i]);
-		if (servers[i].uptest!=C_NONE) {
+		if (servers[i].uptest!=C_NONE || servers[i].scheme[0]) {
 			all_none=0;
 		}
 		pthread_mutex_lock(&servers_lock);
@@ -149,6 +173,7 @@ void *servstat_thread(void *p)
 	if (all_none)
 		return NULL; /* we need no server status thread. */
 	while (1) {
++		schm[0] = '\0';
 		for (i=0;i<serv_num;i++) {
 			pthread_mutex_lock(&servers_lock);
 			if (servers[i].interval>0 && (time(NULL)-servers[i].i_ts>servers[i].interval ||
@@ -214,6 +239,7 @@ void perform_uptest(int idx)
 	int j;
 
 	pthread_mutex_lock(&servers_lock);
+	schm[0] = '\0';
 	srv=servers[idx];
 	s_ts=time(NULL);
 	pthread_mutex_unlock(&servers_lock);
@@ -232,6 +258,7 @@ void test_onquery()
 	int i;
 	
 	pthread_mutex_lock(&servers_lock);
+	schm[0] = '\0';
 	for (i=0;i<serv_num;i++) {
 		if (servers[i].interval<0) {
 			retest(i);

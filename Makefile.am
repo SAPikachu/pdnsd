@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.3 2000/07/29 18:45:02 thomas Exp $
+# $Id: Makefile.am,v 1.4 2000/07/29 21:29:33 thomas Exp $
 
 SUBDIRS = src
 
@@ -16,4 +16,5 @@ install-data-hook:
 
 dist-hook: $(PACKAGE).spec
 	cp $(PACKAGE).spec $(distdir)
+	echo $(distdir)
 	cp -pr doc $(distdir)

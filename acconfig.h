@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.2 2000/07/21 20:04:35 thomas Exp $ */
+/* $Id: acconfig.h,v 1.3 2000/07/29 21:29:33 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -118,6 +118,8 @@
 #define CACHE_DBM DBM_NATIVE
 
 #define CACHEDIR "/var/cache/pdnsd"
+
+#define TEMPDIR "/tmp";
 
 /* yylineno not provided by flex */
 #undef NO_YYLINENO

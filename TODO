@@ -1,4 +1,4 @@
-$Id: TODO,v 1.8 2000/07/16 18:53:01 thomas Exp $
+$Id: TODO,v 1.9 2000/07/29 21:29:33 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -176,18 +176,25 @@ Document the new options -m, -t and -p			       [-tm, 2000-07-10]
 Use Autoconf for configuration				       
 [contributed by Sourav K. Mandal, CVS import pending.]
 --------------------------------------------------------------------------------
-Include new options in configure.in, do some checks, updated   [open	       ]
-docs.
---------------------------------------------------------------------------------
 ================================================================================
 After 1.0.6
 ================================================================================
 --------------------------------------------------------------------------------
+Include new options in configure.in, do some checks, update    [open	       ]
+docs. In particular:
+-[ ] rewrite install instructions
+-[ ] document new conf file options
+-[ ] document pdnsd-ctl
+-[ ] replace references to status pipe
+-[ ] setup doc build process
+-[X] setup Debain build process for install scripts
+-[X] make rc script installation optional
+-[X] include temp dir for socket, recheck socket code.
+-[ ] final check for install
+--------------------------------------------------------------------------------
 Source address discovery for FreeBSD. Subtasks:		       [open           ]
 -[ ] IPv4						      
 -[ ] IPv6
---------------------------------------------------------------------------------
-Guided configuration?					       [open           ]
 --------------------------------------------------------------------------------
 Implement a use count to ensure that newly entered records are
 not purged immediately?					       [open	       ]

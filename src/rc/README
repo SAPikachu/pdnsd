@@ -1,4 +1,4 @@
-$Id: README,v 1.1 2000/07/20 20:03:12 thomas Exp $
+$Id: README,v 1.2 2000/07/29 21:29:36 thomas Exp $
 
 rc/
 ===
@@ -81,5 +81,5 @@ Debian
 The contents of the Debia directory were contributed by Markus Mohr. 
 His installation instructions are (translated):
 Install the pdnsd script to /etc/init and run 
-update-rc.d pdns defaults 19
+update-rc.d pdnsd defaults 19
 as root.
