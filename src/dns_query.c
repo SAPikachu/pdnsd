@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.17 2000/10/20 08:58:58 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.18 2000/10/20 19:56:14 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1268,7 +1268,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			aa_needed=1;
 	}
 
-	if (ns && ns->num>0 && !aa && aa_needed && (*sv==-1 || !servers[*sv].is_proxy)) {
+	if (ns && ns->num>0 /*&& !aa */ && aa_needed && (*sv==-1 || !servers[*sv].is_proxy)) {
 		init_qserv(&serv);
 		/* Authority records present. Ask them, because the answer was non-authoritative. To do so, we first put 
 		 * the Authority and the additional section into a dns_cent_t and look for name servers in the Authority 

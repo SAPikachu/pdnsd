@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.4 2000/10/19 13:10:16 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.5 2000/10/20 19:56:15 thomas Exp $";
 #endif
 
 /*
@@ -159,6 +159,10 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 	int cnt=1;
 	str[0]='\0';
 	lb=rhn[0];
+	if (!lb) {
+		strcpy(str,".");
+		return;
+	}
  	while (lb) {
 		for (i=0;i<lb;i++) {
 			str[cnt-1]=tolower(rhn[cnt]);
