@@ -1,4 +1,4 @@
-# $Id: pdnsd-suse.spec.templ,v 1.3 2000/06/22 22:42:02 thomas Exp $
+# $Id: pdnsd-suse.spec.templ,v 1.4 2000/07/04 22:01:27 thomas Exp $
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
@@ -21,7 +21,7 @@ and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 make
 
 %install
-make install
+make suseinstall
 make -C rc/SuSE/ install
 
 %post
