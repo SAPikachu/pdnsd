@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.9 2000/10/16 21:23:52 thomas Exp $ */
+/* $Id: acconfig.h,v 1.10 2000/10/17 20:34:44 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -161,9 +161,18 @@
  * (previously done by a-conf.sh/a-conf.h) */
  
 #undef NO_IN_PKTINFO
+
+/* Lock the UDP socket before using it? */
 #define SOCKET_LOCKING
+
+/* Default TCP timeout when receiving queries */
 #define TCP_TIMEOUT 30
+
+/* Allow subsequent TCP queries on one connection? */
 #undef TCP_SUBSEQ
+
+/*default value for parallel query number */
+#define PAR_QUERIES   2 
 
 /* -- End of User-Configureable Options ------------------------------------- */
 

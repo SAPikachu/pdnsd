@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
+/* $Id: dns_query.h,v 1.3 2000/10/17 20:34:46 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
@@ -33,9 +33,6 @@ Boston, MA 02111-1307, USA.  */
 #endif
 #include "dns.h"
 #include "cacheing/cache.h"
-
-#define PAR_QUERIES   2
-#define PAR_GRAN     50
 
 extern int query_method;
 
@@ -57,6 +54,7 @@ typedef struct {
 	int                 flags;
 	int                 nocache;
 	int                 state;
+	int                 event;         /* event to poll for */
 	int                 nstate;
 	int                 qm;
 	char                trusted;
@@ -68,17 +66,10 @@ typedef struct {
 	unsigned short      transl;
 	unsigned short      recvl;
 	dns_hdr_t           *hdr;
-	long                rts;
 	int                 myrid;
 	dns_hdr_t           *recvbuf;
 	int                 qt;
 	char                lean_query;
-#ifdef NO_POLL
-	fd_set              writes;
-	struct timeval      tv;
-#else
-	struct pollfd       polls;
-#endif
 } query_stat_t;
 
 typedef struct {
@@ -103,6 +94,10 @@ typedef struct {
 #define QSN_UDPRECEIVE  22  /* Start a UDP query */
 
 #define QSN_DONE        11
+
+/* Events to be polled/selected for */
+#define QEV_WRITE        1
+#define QEV_READ         2
 
 /* --- parallel query */
 int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);

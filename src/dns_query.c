@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.7 2000/10/16 21:23:54 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.8 2000/10/17 20:34:46 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -487,7 +487,14 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
  * control, we will do the parallel queries multiplexed in one thread.
  */
 
-/* The query state machine that is called from p_exec_query */
+/* The query state machine that is called from p_exec_query. This is called once for initialization (state
+ * QSN_TCPINITIAL or QSN_UDPINITIAL is preset), and the state that it gives back may either be nstate QSN_DONE, 
+ * in which case it must return a return code other than -1 and is called no more for this server 
+ * (except perhaps in UDP mode if TCP failed; QSN_DONE makes QS_DONE be set in state), or the st->event 
+ * structure must be setup correctly, because it is then used to setup a poll() or select() together with st.>sock. 
+ * If that poll/select is succesful for that socket, p_exec_query is called again and will hand over to p_query_sm. 
+ * So, you can assume that read(), write() and recvfrom() will not block at sthe start of a state handling when you 
+ * have set st->event and returned -1 (which means "call again") as last step of the last state handling. */
 static int p_query_sm(query_stat_t *st) 
 {
 	struct protoent *pe;
@@ -535,12 +542,16 @@ static int p_query_sm(query_stat_t *st)
 		}
 # endif
 		/* transmit query by tcp*/
+		/* make the socket non-blocking for connect only, so that connect will not
+		 * hang */
 		fcntl(st->sock,F_SETFL,O_NONBLOCK);
 		st->rts=time(NULL);
 		if ((rv=connect(st->sock,st->sin,st->sinl))!=0)
 		{
 			if (errno==EINPROGRESS) {
-				st->nstate=QSN_TCPALLOC;
+				st->nstate=QSN_TCPCONNECT;
+				st->event=QEV_WRITE; /* wait for writablility; the connect is then done */
+				return -1;
 			} else if (errno==ECONNREFUSED) {
 				close(st->sock);
 				st->nstate=QSN_DONE;
@@ -555,152 +566,55 @@ static int p_query_sm(query_stat_t *st)
 			}
 		} else {
 			st->nstate=QSN_TCPCONNECT;
-			return -1; /* hold on */ 
 		}
-		/* fall through in case of EINPROGRESS */
-	case QSN_TCPALLOC:
-# ifdef NO_POLL
-		FD_ZERO(&st->writes);
-		FD_SET(sock,&st->writes);
-		st->tv.tv_sec=0;
-		st->tv.tv_usec=0/*PAR_GRAN*1000*/;
-		rv=select(st->sock+1,NULL,&st->writes,NULL,&st->tv);
-# else
-		st->polls.fd=st->sock;
-		st->polls.events=POLLOUT;
-		rv=poll(&st->polls,1,0/*PAR_GRAN*/);
-# endif
-		if (rv==0) {
-			if (time(NULL)-st->rts>st->timeout) {
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while connecting to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			} else {
-				return -1;
-			}
-		} else if (rv==-1) {
+		/* fall through in case of not EINPROGRESS */
+
+	case QSN_TCPCONNECT:
+		fcntl(st->sock,F_SETFL,0); /* reset O_NONBLOCK */
+		/* Since we selected/polled, writeability should be no problem. If connect worked instantly,
+		 * the buffer is empty and there is also no problem*/
+		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
 			close(st->sock);
-			DEBUG_MSG2("poll failed: %s\n",strerror(errno));
+			DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
-		} else {
-			sz=sizeof(rv);
-			if (getsockopt(st->sock,SOL_SOCKET,SO_ERROR,&rv,&sz)==-1) {
-				close(st->sock);
-				DEBUG_MSG2("getsockopt failed: %s\n",strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (rv==ECONNREFUSED) {
-				close(st->sock);
-				st->nstate=QSN_DONE;
-				return RC_TCPREFUSED;
-			} else if (rv!=0) {
-				close(st->sock);
-				DEBUG_MSG2("Error on socket: %s\n",strerror(rv));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
-		st->rts=time(NULL);
-		st->nstate=QSN_TCPCONNECT;
-	case QSN_TCPCONNECT:
-		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
 		}
 		st->nstate=QSN_TCPLWRITTEN;
-		st->rts=time(NULL);
-		/* fall through on success */
+		st->event=QEV_WRITE;
+		return -1;
 	case QSN_TCPLWRITTEN:
 		if (write(st->sock,st->hdr,ntohs(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
+			close(st->sock);
+			DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
 		}
 		st->nstate=QSN_TCPQWRITTEN;
-		st->rts=time(NULL);
-		/* fall through on success */
+		st->event=QEV_READ;
+		return -1;
 	case QSN_TCPQWRITTEN:
 		if (read(st->sock,&st->recvl,sizeof(st->recvl))!=sizeof(st->recvl)) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-					st->nstate=QSN_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				close(st->sock);
-				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
+			close(st->sock);
+			DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
 		}
 		st->recvl=ntohs(st->recvl);
-		st->nstate=QSN_TCPLREAD;
 		if (!(st->recvbuf=(dns_hdr_t *)calloc(st->recvl,1))) {
 			close(st->sock);
 			DEBUG_MSG1("Out of memory in query.\n");
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
-		st->rts=time(NULL);
-		/* fall through on success */
+		st->nstate=QSN_TCPLREAD;
+		st->event=QEV_READ;
+		return -1;
 	case QSN_TCPLREAD:
 		if (read(st->sock,st->recvbuf,st->recvl)!=st->recvl) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-					st->nstate=QSN_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				close(st->sock);
-				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
+			close(st->sock);
+			DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
 		}
 		st->nstate=QSN_DONE;
 		close(st->sock);
@@ -734,38 +648,23 @@ static int p_query_sm(query_stat_t *st)
 		}
 # endif
 		/* transmit query by udp*/
-		fcntl(st->sock,F_SETFL,O_NONBLOCK);
-		st->rts=time(NULL);
-		st->nstate=QSN_UDPTRANSMIT;
-		
-	case QSN_UDPTRANSMIT:
+		/* sendto will hopefully not block on a freshly opened socket (the buffer
+		 * must be empty) */
 		if (sendto(st->sock,st->hdr,ntohs(st->transl),0,st->sin,st->sinl)==-1) {
-			if (errno!=EAGAIN) {
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
+			close(st->sock);
+			DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
 		}
-		st->nstate=QSN_UDPRECEIVE;
-		st->rts=time(NULL);
 		if (!(st->recvbuf=(dns_hdr_t *)calloc(512,1))) {
 			close(st->sock);
 			DEBUG_MSG1("Out of memory in query.\n");
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
-		/* fall through */ 
+		st->nstate=QSN_UDPRECEIVE;
+		st->event=QEV_READ;
+		return -1;
 	case QSN_UDPRECEIVE:
 # ifdef ENABLE_IPV4
 		if (run_ipv4) {
@@ -781,23 +680,10 @@ static int p_query_sm(query_stat_t *st)
 # endif
 		slenc=slen;
 		if ((rv=recvfrom(st->sock,st->recvbuf,512,0, sender, &slen))<0) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-					st->nstate=QSN_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				close(st->sock);
-				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
+			close(st->sock);
+			DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
 		}
 		st->recvl=rv;
 		if (slen<slenc || st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid 
@@ -811,15 +697,9 @@ static int p_query_sm(query_stat_t *st)
 # endif
 			) {
 			DEBUG_MSG1("Bad answer received. Ignoring it.\n");
-			if (time(NULL)-st->rts>st->timeout) {
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL;
-			}
+			/* no need to care about timeouts here. That is done at an upper layer. */
+			st->nstate=QSN_UDPRECEIVE;
+			st->event=QEV_READ;
 			return -1;
 		}
 		st->nstate=QSN_DONE;
@@ -913,7 +793,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			free(st->hdr);
 			st->state=QS_DONE;
 			DEBUG_MSG2("TCP connection refused by %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-		return RC_SERVFAIL;
+			return RC_SERVFAIL;
 		} else if (rv==-1) {
 			return -1;
 		} else if (rv!=RC_OK) {
@@ -1155,48 +1035,186 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	int aa_needed;
 	pdnsd_a serva;
 	int aa=0;
-	int i,j,k,ad,mc,qo,se,done,nons;
+	int i,j,k,ad,mc,qo,se,done,nons,pc,srv;
 	int rv=0;
 	dns_cent_t *nent,*servent;
 	query_serv_t serv;
 	unsigned char nsbuf[256],nsname[256];
 	unsigned long serial=get_serial();
 	ns_t *ns=NULL;
+	time_t ts;
+	long maxto;
 #ifdef DEBUG
 	char buf[ADDRSTR_MAXLEN];
 #endif
-	qo=done=0;
+#ifdef NO_POLL
+	fd_set              reads;
+	fd_set              writes;
+	struct timeval      tv;
+	int                 maxfd;
+#else
+	struct pollfd       *polls;
+#endif
 
-	ad=q->num/PAR_QUERIES;
-	if (ad*PAR_QUERIES<q->num)
+	qo=done=0;
+	ad=q->num/global.par_queries;
+	if (ad*global.par_queries<q->num)
 		ad++;
+#ifndef NO_POLL
+	if (!(polls=calloc(global.par_queries,sizeof(*polls)))) {
+		log_warn("Out of memory in p_recursive_query!");
+		return RC_SERVFAIL;
+	}
+#endif
 	for (j=0;j<ad;j++) {
-		mc=q->num-j*PAR_QUERIES;
-		if (mc>PAR_QUERIES)
-			mc=PAR_QUERIES;
-		do {
-			qo=1;
-			for (i=0;i<mc;i++) {
-				if (q->qs[PAR_QUERIES*j+i].state!=QS_DONE) {
-					qo=0;
-					if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[PAR_QUERIES*j+i],&ns,serial))==RC_OK) {
-						for (k=0;k<mc;k++) {
-							p_cancel_query(&q->qs[PAR_QUERIES*j+k]);
-						}
-						se=PAR_QUERIES*j+i;
-						*sv=q->qs[PAR_QUERIES*j+i].si;
-						DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[PAR_QUERIES*j+i].sin,buf,ADDRSTR_MAXLEN));
-						done=1;
-						break;
-					} 
-				}
+		mc=q->num-j*global.par_queries;
+		if (mc>global.par_queries)
+			mc=global.par_queries;
+		/* First, call p_exec_query once for each parallel set to initialize.
+		 * The, as long as not all have the state QS_DONE or we have a timeout,
+		 * build a poll/select set for all active queries and call them accordingly. */
+		qo=1;
+		for (i=0;i<mc;i++) {
+			if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+				qo=0;
+				/* The below should not happen any more, but may once again
+				 * (immediate success) */
+				if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
+					for (k=0;k<mc;k++) {
+						p_cancel_query(&q->qs[global.par_queries*j+k]);
+					}
+					se=global.par_queries*j+i;
+					*sv=q->qs[global.par_queries*j+i].si;
+					DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+					done=1;
+					break;
+				} 
 			}
-			if (!qo && !done)
-				usleep(50000);
-		} while (!qo);
+		}
+		if (!done) {
+			/* we do time keeping by hand, because poll/select might be interrupted and
+			 * the returned times are not always to be trusted upon */
+			ts=time(NULL);
+			do {
+				/* build poll/select sets, maintain time. 
+				 * If you do parallel queries, the highest timeout may be honored
+				 * also for the other servers when their timeout is exceeded and
+				 * the highest is not. This could be fixed, but this does not
+				 * affect functionality or timeouts at all in practice (if we wait
+				 * longer anyway, why not for more servers) and is therefore still there.*/
+				maxto=0;
+				pc=0;
+				
+# ifdef NO_POLL
+				FD_ZERO(&reads);
+				FD_ZERO(&writes);
+				for (i=0;i<mc;i++) {
+					if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+						if (q->qs[global.par_queries*j+i].timeout>maxto)
+							maxto=q->qs[global.par_queries*j+i].timeout;
+						if (q->qs[global.par_queries*j+i].sock>maxfd)
+							maxfd=q->qs[global.par_queries*j+i].sock;
+						switch (q->qs[global.par_queries*j+i].event) {
+						case QEV_READ:
+							FD_SET(q->qs[global.par_queries*j+i].sock,&reads);
+							break;
+						case QEV_WRITE:
+							FD_SET(q->qs[global.par_queries*j+i].sock,&writes);
+							break;
+							}
+					}
+				}
+				maxto-=time(NULL)-ts;
+				tv.tv_sec=maxto>0?maxto:0;
+				tv.tv_usec=0;
+				srv=select(maxfd+1,&reads,&writes,NULL,&tv);
+# else
+				for (i=0;i<mc;i++) {
+					if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+						if (q->qs[global.par_queries*j+i].timeout>maxto)
+							maxto=q->qs[global.par_queries*j+i].timeout;
+						
+						polls[pc].fd=q->qs[global.par_queries*j+i].sock;
+						switch (q->qs[global.par_queries*j+i].event) {
+						case QEV_READ:
+							polls[pc].events=POLLIN;
+							break;
+						case QEV_WRITE:
+							polls[pc].events=POLLOUT;
+							break;
+						}
+						pc++;
+					}
+				}
+				maxto-=time(NULL)-ts;
+				srv=poll(polls,1,maxto>0?(maxto*1000):0);
+# endif
+				/* FIXME: look after srv! */
+				
+				qo=1;
+				for (i=0;i<mc;i++) {
+					/* Check if we got a poll/select event, or whether we are timed out */
+					if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+						if (time(NULL)-ts>q->qs[global.par_queries*j+i].timeout) {
+							/* We have timed out. cancel this, and see whether we need to mark
+							 * a server down. */
+							p_cancel_query(&q->qs[global.par_queries*j+i]);
+							if (q->qs[global.par_queries*j+i].si>=0)
+								mark_server_down(q->qs[global.par_queries*j+i].si);
+							/* set rv, we might be the last! */
+							rv=RC_SERVFAIL;
+						} else {
+							srv=0;
+							/* This detection may seem subobtimal, but normally, we have at most 2-3 parallel
+							 * queries, and anything else would be higher overhead, */
+#ifdef NO_POLL
+							switch (q->qs[global.par_queries*j+i].event) {
+							case QEV_READ:
+								srv=FD_ISSET(polls[k].fd==q->qs[global.par_queries*j+i].sock,&reads);
+								break;
+							case QEV_WRITE:
+								srv=FD_ISSET(polls[k].fd==q->qs[global.par_queries*j+i].sock,&writes);
+								break;
+							}
+#else
+							for (k=0;k<pc;k++) {
+								if (polls[k].fd==q->qs[global.par_queries*j+i].sock) {
+									switch (q->qs[global.par_queries*j+i].event) {
+									case QEV_READ:
+										srv=polls[k].revents|POLLIN;
+										break;
+									case QEV_WRITE:
+										srv=polls[k].revents|POLLOUT;
+										break;
+									}
+									break;
+								}
+							}
+#endif
+							if (srv) {
+								qo=0;
+								if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
+									for (k=0;k<mc;k++) {
+										p_cancel_query(&q->qs[global.par_queries*j+k]);
+									}
+									se=global.par_queries*j+i;
+									*sv=q->qs[global.par_queries*j+i].si;
+									DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+									done=1;
+									break;
+								}
+							}
+						} 
+					}
+				}
+			} while (!qo);
+		}
 		if (done)
 			break;
 	}
+#ifndef NO_POLL
+		free(polls);
+#endif
 	if (rv!=RC_OK) {
 		DEBUG_MSG1("No query succeeded.\n");
 		return rv;
