@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.8 2000/08/12 18:24:53 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.9 2000/08/12 20:58:45 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -146,7 +146,7 @@ void print_help (void)
  */
 int main(int argc,char *argv[])
 {
-	int i,sig;
+	int i,sig,pfd;
 	char *conf_file="/etc/pdnsd.conf";
 #if DEBUG>0
 	char dbgdir[1024];
@@ -284,7 +284,12 @@ int main(int argc,char *argv[])
 
 	init_log();
 	if (daemon_p && pidfile[0]) {
-		if (!(pf=fopen(pidfile,"w"))) {
+		unlink(pidfile);
+		if (!(pfd=open(pidfile,O_CREAT|O_EXCL, 0600))) {
+			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+			exit(1);
+		}
+		if (!(pf=fdopen(pfd,"w"))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
