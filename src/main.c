@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.20 2000/11/02 17:22:36 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.21 2000/11/04 00:08:04 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -75,6 +75,29 @@ void bsd_sighnd (int sig) {
 }
 #endif
 */
+
+/* These are some init steps we have to call before we get daemon on linux, but need
+ * do call after daemonizing on other OSes.
+ * Theay are also the last steps before we drop privileges. */
+int final_init()
+{
+#ifndef NO_TCP_SERVER
+	if (!notcp)
+		tcp_socket=init_tcp_socket();
+#endif
+	udp_socket=init_udp_socket();
+	if (tcp_socket==-1 && udp_socket==-1) {
+		log_error("tcp and udp initialization failed. Exiting.");
+		exit(1);
+	}
+	if (global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			return 0;
+		}
+	}
+	return 1;
+}
 
 /* Print version and licensing information */
 void print_info (void)
@@ -310,23 +333,12 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-#ifndef NO_TCP_SERVER
-	if (!notcp)
-		tcp_socket=init_tcp_socket();
-#endif
-	udp_socket=init_udp_socket();
-	if (tcp_socket==-1 && udp_socket==-1) {
-		log_error("tcp and udp initialization failed. Exiting.");
-		exit(1);
-	}
 	init_ping_socket();
 	init_rng();
-	if (global.strict_suid) {
-		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
-			exit(1);
-		}
-	}
+#if TARGET==TARGET_LINUX
+	if (!final_init())
+		exit(1);
+#endif
 	signal(SIGPIPE, SIG_IGN);
 	umask(0077); /* for security reasons */
 	if (daemon_p) {
@@ -388,6 +400,10 @@ int main(int argc,char *argv[])
 		printf("pdnsd-%s starting.\n",VERSION);
 		DEBUG_MSG1("Debug messages activated\n");
 	}
+#if TARGET!=TARGET_LINUX
+	if (!final_init())
+		_exit(1);
+#endif
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
 		DEBUG_MSG1("Using IPv4.\n");
@@ -419,12 +435,14 @@ int main(int argc,char *argv[])
 
 	start_servstat_thread();
 
+#if TARGET==TARGET_LINUX
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
 			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 			_exit(1);
 		}
 	}
+#endif
 
 	if (stat_pipe)
 		init_stat_fifo();
@@ -438,8 +456,6 @@ int main(int argc,char *argv[])
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
 #else
-	/* The whole BSD signal handling stuff is DIRTY, I know. But somehow, the FreeBSD thread
-	   implementation does not like sigwait and the like. If someone can explain me, I will be glad to fix it. */
 /*	signal(SIGILL,bsd_sighnd);
 	signal(SIGABRT,bsd_sighnd);
 	signal(SIGFPE,bsd_sighnd);

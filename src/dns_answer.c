@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.23 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.24 2000/11/04 00:08:03 thomas Exp $";
 #endif
 
 /*
@@ -1060,9 +1060,9 @@ void *udp_answer_thread(void *data)
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.pi4,sizeof(struct in_pktinfo));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_pktinfo));
 # endif		
-		DEBUG_MSG2("Answering to: %s, ", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
+		DEBUG_MSG2("Answering to: %s", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
 # if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
-		DEBUG_MSG2("source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
+		DEBUG_MSG2(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
 # else
 		DEBUG_MSG1("\n");
 # endif
@@ -1082,9 +1082,9 @@ void *udp_answer_thread(void *data)
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in6_pktinfo));
 # endif
 
-		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
+		DEBUG_MSG2("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
 # if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
-		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
+		DEBUG_MSG2(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
 # else
 		DEBUG_MSG1("\n");
 # endif
