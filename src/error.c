@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.6 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: error.c,v 1.7 2001/06/03 11:00:54 tmm Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -49,7 +49,7 @@ void init_log(void)
 /* We crashed? Ooops... */
 void crash_msg(char *msg)
 {
-	log_error(msg);
+	log_error("%s", msg);
 	log_error("pdnsd probably crashed due to a bug. Please consider sending a bug");
 	log_error("report to tmoestl@gmx.net");
 }
