@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.30 2001/01/15 22:52:55 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.31 2001/01/16 22:30:00 thomas Exp $";
 #endif
 
 /*
@@ -374,7 +374,7 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *
 				cnt++;
 			}
 			/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
-			 * and we do not need any good RNG here. */
+			 * and we do not need any good PRNG here). */
 			cnt=random()%cnt;
 			while (cnt) {
 				cnt--;

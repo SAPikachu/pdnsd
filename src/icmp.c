@@ -51,9 +51,10 @@ Boston, MA 02111-1307, USA.  */
 #include <netdb.h>
 #include "icmp.h"
 #include "error.h"
+#include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.12 2000/11/15 17:27:02 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.13 2001/01/16 22:30:00 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -174,7 +175,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	struct icmphdr *icmpp;
 	unsigned long sum;
 	unsigned short *ptr;
-	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
+	unsigned short id=(unsigned short)get_rand16(); /* randomize a ping id */
 	socklen_t sl;
 #ifdef NO_POLL
 	fd_set fds,fdse;
