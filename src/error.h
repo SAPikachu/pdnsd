@@ -1,5 +1,5 @@
 /* error.h - Error handling
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.6 2000/11/15 17:27:02 thomas Exp $ */
+/* $Id: error.h,v 1.7 2001/04/06 18:09:35 tmm Exp $ */
 
-#ifndef _ERROR_H_
-#define _ERROR_H_
+#ifndef ERROR_H
+#define ERROR_H
 
 #include "config.h"
 #include <stdio.h>
@@ -51,30 +51,36 @@ void log_info(int level, char *s, ...);
 /* from main.c */
 extern FILE *dbg;
 
-#define DEBUG_MSG1(x)           if (debug_p) {                             \
-                                   fprintf(dbg,x);                         \
-                                   fflush(dbg);                            \
-                                }
-#define DEBUG_MSG2(x,y)         if (debug_p) {                             \
-                                   fprintf(dbg,x,y);                       \
-                                   fflush(dbg);                            \
-                                }
-#define DEBUG_MSG3(x,y,z)       if (debug_p) {                             \
-                                   fprintf(dbg,x,y,z);                     \
-                                   fflush(dbg);                            \
-                                }
-#define DEBUG_MSG4(x,y,z,a)     if (debug_p) {                             \
-                                   fprintf(dbg,x,y,z,a);                   \
-                                   fflush(dbg);                            \
-                                }
-#define DEBUG_MSG5(x,y,z,a,b)   if (debug_p) {                             \
-                                   fprintf(dbg,x,y,z,a,b);                 \
-                                   fflush(dbg);                            \
-                                }
-#define DEBUG_MSG6(x,y,z,a,b,c) if (debug_p) {                             \
-                                   fprintf(dbg,x,y,z,a,b,c);               \
-                                   fflush(dbg);                            \
-                                }
+#define DEBUG_MSG1(x)							\
+	if (debug_p) {							\
+		fprintf(dbg,x);						\
+		fflush(dbg);						\
+	}
+#define DEBUG_MSG2(x,y)							\
+	if (debug_p) {							\
+		fprintf(dbg,x,y);					\
+		fflush(dbg);						\
+	}
+#define DEBUG_MSG3(x,y,z)						\
+	if (debug_p) {							\
+		fprintf(dbg,x,y,z);					\
+		fflush(dbg);						\
+	}
+#define DEBUG_MSG4(x,y,z,a)						\
+	if (debug_p) {							\
+		fprintf(dbg,x,y,z,a);					\
+		fflush(dbg);						\
+	}
+#define DEBUG_MSG5(x,y,z,a,b)						\
+	if (debug_p) {							\
+		fprintf(dbg,x,y,z,a,b);					\
+		fflush(dbg);						\
+	}
+#define DEBUG_MSG6(x,y,z,a,b,c)						\
+	if (debug_p) {							\
+		fprintf(dbg,x,y,z,a,b,c);				\
+		fflush(dbg);						\
+	}
 #else
 #define DEBUG_MSG1(x) 
 #define DEBUG_MSG2(x,y) 
@@ -84,4 +90,12 @@ extern FILE *dbg;
 #define DEBUG_MSG6(x,y,z,a,b,c)
 #endif
 
+/*
+ * This is a macro so that it can be made empty after sufficient testing if !defined(DEBUG)
+ */
+#define PDNSD_ASSERT(cond, msg)						\
+	if (!(cond)) {							\
+		log_error(msg);						\
+		pdnsd_exit();						\
+ 	}
 #endif
