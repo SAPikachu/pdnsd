@@ -48,14 +48,13 @@ Boston, MA 02111-1307, USA.  */
 # include <netinet/ip6.h>
 # include <netinet/icmp6.h>
 #endif
-#include <netinet/ip.h>
 #include <netdb.h>
 #include "icmp.h"
 #include "error.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.23 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.24 2001/06/12 22:37:32 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
