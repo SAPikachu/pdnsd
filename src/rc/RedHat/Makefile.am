@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.7 2001/05/17 14:14:30 tmm Exp $
+# $Id: Makefile.am,v 1.8 2001/05/21 12:06:12 tmm Exp $
 #EXTRA_DIST = pdnsd
 
 DISTRO = @distribution@
@@ -12,7 +12,7 @@ install-exec-local:
 	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/init.d; \
 	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd $(DESTDIR)/etc/rc.d/init.d/pdnsd; \
 	    if [ "$(SPECBUILD)" = "yes" ] ; then \
-	      /sbin/chkconfig --add pdnsd \
+	      /sbin/chkconfig --add pdnsd; \
 	    fi \
 	fi
 
