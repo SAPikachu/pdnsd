@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.11 2000/10/18 20:55:01 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.12 2000/10/19 12:21:57 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1089,7 +1089,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				}
 				se=global.par_queries*j+i;
 				*sv=q->qs[global.par_queries*j+i].si;
-				DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,sizeof(buf)));
+				DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
 				done=1;
 				break;
 			} 

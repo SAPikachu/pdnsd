@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.13 2000/10/18 20:55:01 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.14 2000/10/19 12:21:57 thomas Exp $";
 #endif
 
 /*
@@ -1037,9 +1037,9 @@ void *udp_answer_thread(void *data)
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in6_pktinfo));
 # endif
 
-		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,50));
+		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
 # if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
-		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,50));
+		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
 # else
 		DEBUG_MSG1("\n");
 # endif
