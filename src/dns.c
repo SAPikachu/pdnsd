@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.30 2001/12/30 19:43:27 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -176,6 +176,8 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
  * offs is the offset the generated string will be placed in the packet.
  * retval: 0 - error, otherwise length
  * When done, just free() cb (if it is NULL, free will behave correctly).
+ * It is guaranteed (and insured by assertions) that the output is smaller or equal in
+ * size to the input.
  */
 int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 {
@@ -184,9 +186,11 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 	int coffs=-1;
 	int rv,rl,to;
 	int longest=0;
+	long ilen;
 	unsigned char rest[256];
 	unsigned char brest[256];
 	rl=0;
+	ilen = rhnlen(in);
 	/* part 1: compression */
 	if (*cb) {
 		for (i=0;i<da_nel(*cb);i++) {
@@ -204,6 +208,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 			} 
 		}
 		if (coffs>-1) {
+			PDNSD_ASSERT(rhnlen(brest) + 1 <= ilen, "compress_name: length increased");
 			rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
 			PDNSD_ASSERT(rl <= 254, "compress_name: name too long");
 			out[rl]=192|((coffs&0x3f00)>>8);

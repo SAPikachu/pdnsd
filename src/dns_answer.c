@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.56 2002/01/02 17:07:04 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.57 2002/01/03 17:47:20 tmm Exp $";
 #endif
 
 /*
@@ -242,6 +242,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		}
 		*sz+=rrh.rdlength;
 		ilen=rhnlen((unsigned char *)(rr+1));
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_RP: got longer");
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			pdnsd_free(*ans);
 			return 0;
@@ -271,6 +272,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		}
 		*sz+=rrh.rdlength;
 		ilen=rhnlen((unsigned char *)(rr+1));
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_SOA: got longer");
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			pdnsd_free(*ans);
 			return 0;
@@ -278,6 +280,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		rrh.rdlength+=blen;
 		*sz+=blen;
 		ilen+=rhnlen(((unsigned char *)(rr+1))+ilen);
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_SOA: got longer");
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,sizeof(soa_r_t));
 		*sz+=sizeof(soa_r_t);
 		rrh.rdlength+=sizeof(soa_r_t);
@@ -293,7 +296,8 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		}
 		rrh.rdlength=2+blen;
 		*sz+=blen;
-		ilen+=rhnlen((unsigned char *)(rr+1));
+		ilen+=rhnlen(((unsigned char *)(rr+1))+ilen);
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_PX: got longer");
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			pdnsd_free(*ans);
 			return 0;
@@ -319,6 +323,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		rrh.rdlength=blen;
 		*sz+=blen;
 		ilen=rhnlen((unsigned char *)(rr+1));
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_NXT: got longer");
 		wlen=rr->rdlen < ilen ? 0 : (rr->rdlen - ilen);
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,wlen);
 		*sz+=wlen;
