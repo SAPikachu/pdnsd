@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: thread.c,v 1.1 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: thread.c,v 1.2 2000/11/01 19:31:51 thomas Exp $";
 #endif
 
 int waiting=0; /* Has the main thread already done sigwait() ? */
@@ -67,7 +67,7 @@ void usleep_r(unsigned long usec)
 	struct timeval tv;
 #endif
 
-#if TARGET==TARGET_LINUX || TARGET==TARGET_BSD
+#if (TARGET==TARGET_LINUX || TARGET==TARGET_BSD) && defined(HAVE_USLEEP)
 	usleep(usec);
 #else
 	tv.tv_sec=usec/1000000;
