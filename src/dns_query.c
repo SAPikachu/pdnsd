@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.58 2002/07/23 18:53:03 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.59 2002/08/07 08:55:33 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -160,7 +160,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 			 * the other records are taken as they are
 			 * The maximum lenth for a decompression buffer is 530 bytes (maximum SOA record length) */
 #ifndef UNDERSCORE
-			if (uscore && ntohs(rhdr.type)!=T_SRV) {
+			if (uscore && ntohs(rhdr.type)!=T_SRV && ntohs(rhdr.type)!=T_TXT) {
 				/* Underscore is only allowed in SRV records */
 				return RC_FORMAT;
 			}

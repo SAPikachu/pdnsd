@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.37 2001/10/14 16:10:59 tmm Exp $
+$Id: THANKS,v 1.38 2002/08/07 08:55:30 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -26,6 +26,7 @@ Sourav K. Mandal
 Fraser McCrossan
 Markus Mohr
 Michael Müller
+Gustavo Niemeyer
 Alexandre Nunes
 Wolfgang Ocker
 Bernhard Pelz
