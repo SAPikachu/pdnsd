@@ -22,19 +22,21 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/time.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <errno.h>
 #include "ipvers.h"
 #include "error.h"
 #include "helpers.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 /*
@@ -291,4 +293,17 @@ unsigned short get_rand16()
 #ifdef RANDOM_DEVICE
 	}
 #endif
+}
+
+
+void fsprintf(int fd, char *format, ...)
+{
+	char buf[1024];
+
+	va_list va;
+	va_start(va,format);
+	vsnprintf(buf,1023,format,va);
+	write(fd,buf,strlen(buf));
+
+	va_end(va);
 }

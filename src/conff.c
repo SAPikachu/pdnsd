@@ -32,16 +32,16 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
 #ifdef ENABLE_IPV4
-globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0};
+globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600};
 #else
-globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0};
+globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
@@ -116,35 +116,36 @@ void read_config_file(char *nm)
 }
 
 /* Report the currenct configuration into the file (for the status fifo, see status.c) */
-void report_conf_stat(FILE *f)
+void report_conf_stat(int f)
 {
 	char buf[ADDRSTR_MAXLEN];
 	int i;
-	fprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
-	fprintf(f,"\tCache size: %li kB\n",global.perm_cache);
-	fprintf(f,"\tServer directory: %s\n",global.cache_dir);
-	fprintf(f,"\tServer port: %i\n",global.port);
-	fprintf(f,"\tServer ip (0.0.0.0=any available): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
-	fprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
-	fprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
-	fprintf(f,"\tRun as: %s\n",global.run_as);
-	fprintf(f,"\tStrict run as: %i\n",global.strict_suid);
-	fprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
+	fsprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
+	fsprintf(f,"\tCache size: %li kB\n",global.perm_cache);
+	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
+	fsprintf(f,"\tServer port: %i\n",global.port);
+	fsprintf(f,"\tServer ip (0.0.0.0=any available): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	fsprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
+	fsprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
+	fsprintf(f,"\tRun as: %s\n",global.run_as);
+	fsprintf(f,"\tStrict run as: %i\n",global.strict_suid);
+	fsprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
+	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	for(i=0;i<serv_num;i++) {
-		fprintf(f,"Server %i:\n------\n",i+1);
-		fprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
-		fprintf(f,"\tport: %hu\n",servers[i].port);
-		fprintf(f,"\tuptest: %i\n",servers[i].uptest);
-		fprintf(f,"\ttimeout: %li\n",servers[i].timeout);
-		fprintf(f,"\tuptest interval: %li\n",servers[i].interval);
-		fprintf(f,"\tping timeout: %li\n",servers[i].ping_timeout);
-		fprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
-		fprintf(f,"\tinterface: %s\n",servers[i].interface);
-		fprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
-		fprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
-		fprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
-		fprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
-		fprintf(f,"\tlean query: %i\n",!servers[i].lean_query);
-		fprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
+		fsprintf(f,"Server %i:\n------\n",i+1);
+		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
+		fsprintf(f,"\tport: %hu\n",servers[i].port);
+		fsprintf(f,"\tuptest: %i\n",servers[i].uptest);
+		fsprintf(f,"\ttimeout: %li\n",servers[i].timeout);
+		fsprintf(f,"\tuptest interval: %li\n",servers[i].interval);
+		fsprintf(f,"\tping timeout: %li\n",servers[i].ping_timeout);
+		fsprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
+		fsprintf(f,"\tinterface: %s\n",servers[i].interface);
+		fsprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
+		fsprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
+		fsprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
+		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
+		fsprintf(f,"\tlean query: %i\n",!servers[i].lean_query);
+		fsprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
 	}
 }

@@ -45,11 +45,11 @@ Boston, MA 02111-1307, USA.  */
 #include "dns_answer.h"
 #include "dns_query.h"
 #include "helpers.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 /*

@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 #include "ipvers.h"
 #include "dns_query.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "dns.h"
 #include "conff.h"
 #include "servers.h"
@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.1 2000/07/20 20:11:54 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY

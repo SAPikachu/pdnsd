@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.1 2000/07/20 20:03:05 thomas Exp $ */
+/* $Id: acconfig.h,v 1.2 2000/07/21 20:04:35 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -113,6 +113,10 @@
 #undef RANDOM_DEVICE
 /*#define RANDOM_DEVICE "/dev/urandom"*/
 
+/* Designate which database manager to use for cacheing.
+ * default: native; others: gdbm */
+#define CACHE_DBM DBM_NATIVE
+
 #define CACHEDIR "/var/cache/pdnsd"
 
 /* yylineno not provided by flex */
@@ -163,6 +167,10 @@
 #define TARGET_LINUX 0
 #define TARGET_BSD   1
 
+/* Possible dbm's for cacheing */
+#define DBM_NATIVE   0
+#define DBM_GDBM     1
+ 
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT
 

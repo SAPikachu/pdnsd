@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.1 2000/07/20 20:11:54 thomas Exp $ */
+/* $Id: dns_query.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/poll.h>
 #endif
 #include "dns.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 
 #define PAR_QUERIES   2
 #define PAR_GRAN     50

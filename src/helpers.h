@@ -18,14 +18,14 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.1 2000/07/20 20:03:10 thomas Exp $ */
+/* $Id: helpers.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
 
 #include "config.h"
 #include <pthread.h>
-#include "cache.h"
+#include "cacheing/cache.h"
 
 
 #define SOFTLOCK_MAXTRIES 1000
@@ -53,5 +53,7 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen);
 void init_rng(void);
 void free_rng(void);
 unsigned short get_rand16(void);
+
+void fsprintf(int fd, char *format, ...);
 
 #endif

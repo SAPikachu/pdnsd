@@ -29,13 +29,13 @@ Boston, MA 02111-1307, USA.  */
 #include <arpa/inet.h>
 #include "conff.h"
 #include "consts.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "dns.h"
 #include "dns_query.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -87,7 +87,7 @@ unsigned char *nm;
 %token <num> RUN_AS
 %token <num> STRICT_SETUID
 %token <num> PARANOID
-%token <num> STATUS_PIPE
+%token <num> STATUS_CTL
 %token <num> DAEMON
 %token <num> C_TCP_SERVER
 %token <num> PID_FILE
@@ -95,6 +95,7 @@ unsigned char *nm;
 %token <num> C_QUERY_METHOD
 %token <num> RUN_IPV4
 %token <num> C_DEBUG
+%token <num> C_CTL_PERMS
 
 %token <num> IP
 %token <num> PORT
@@ -263,7 +264,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					YYERROR;
 				}
 			}
-		| STATUS_PIPE '=' CONST ';'
+		| STATUS_CTL '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {
 					stat_pipe=($3==C_ON);
@@ -330,6 +331,10 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					yyerror("bad qualifier in tcp_server= option.");
 					YYERROR;
 				}
+			}
+		| C_CTL_PERMS '=' NUMBER ';'
+			{
+				global.ctl_perms=$3;
 			}
 		;
 

@@ -21,11 +21,13 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include "helpers.h"
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -230,6 +232,177 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **c
 	}
 	return rl;
 }
+
+
+typedef	struct {
+	struct in_addr ipv4;
+#ifdef ENABLE_IPV6
+	struct in6_addr ipv6;
+#endif
+} pdnsd_ca;
+
+/*
+ * Add records for a host as read from a hosts-style file
+ */
+static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int tp, int reverse)
+{
+	dns_cent_t ce;
+	unsigned char b2[256],rhn[256];
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+	unsigned char b4[5];
+	int i;
+#endif
+
+	if (!init_cent(&ce, pn))
+		return 0;
+#ifdef ENABLE_IPV4
+	if (tp==T_A) {
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp))
+			return 0;
+	}
+#endif
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+	if (tp==T_AAAA) {
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp))
+			return 0;
+	}
+#endif
+	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)rns)+1,rns,T_NS)) {
+		free_cent(ce);
+		return 0;
+	}
+	add_cache(ce);
+	free_cent(ce);
+	if (reverse) {
+#ifdef ENABLE_IPV4
+		if (tp==T_A) 
+# if TARGET==TARGET_BSD
+			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
+				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+# else
+			snprintf((char *)b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
+				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+# endif
+#endif
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+		if (tp==T_AAAA) {/* means T_AAAA*/
+			b2[0]='\0';
+			for (i=15;i>=0;i--) {
+				sprintf((char *)b4,"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
+				strcat((char *)b2,(char *)b4);
+			}
+			strcat((char *)b2,"ip6.int.");
+		}
+#endif
+		if (!str2rhn(b2,rhn))
+			return 0;
+		if (!init_cent(&ce, b2))
+			return 0;
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)b3)+1,b3,T_PTR))
+			return 0;
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,strlen((char *)rns)+1,rns,T_NS)) {
+			free_cent(ce);
+			return 0;
+		}
+		add_cache(ce);
+		free_cent(ce);
+	}
+	return 1;
+}
+
+/*
+ * Read a file in /etc/hosts-format and add generate rrs for it.
+ */
+void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
+{
+	FILE *f;
+	unsigned char buf[1025];
+	unsigned char b2[257],b3[256];
+	unsigned char *p,*pn,*pi;
+	struct in_addr ina4;
+	int tp;
+	int sz;
+	pdnsd_ca a;
+
+	buf[1023]='\0';
+	if (!(f=fopen(fn,"r"))) {
+		fprintf(stderr, "Failed to source %s: %s\n", fn, strerror(errno));
+		return;
+	}
+	while (!feof(f)) {
+		fgets((char *)buf,1023,f);
+		buf[1023]='\0';
+/*		printf("read: %s\n", buf);*/
+		p=buf;
+		while (*p) {
+			if (*p=='#') {
+				*p='\0';
+				break;
+			}
+			p++;
+		}
+		pi=buf;
+		while (*pi==' ' || *pi=='\t') pi++;
+		if (!*pi)
+			continue;
+		pn=pi;
+		while (*pn=='.' || *pn==':' || isxdigit(*pn)) pn++;  /* this includes IPv6 (':') */
+		if (!*pn)
+			continue;
+		*pn='\0';
+		pn++;
+		while (*pn==' ' || *pn=='\t') pn++;
+		if (!*pn)
+			continue;
+		p=pn;
+		while (isdchar(*p) || *p=='.') p++;
+		*p='\0';
+		memset(b2,'\0',257);
+		strncpy((char *)b2,(char *)pn,255);
+		if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+			b2[strlen((char *)b2)]='.';
+		}
+/*		printf("i: %s, n: %s--\n",pi,pn);*/
+		if (!str2rhn(b2,b3))
+			continue;
+		if (inet_aton((char *)pi,&ina4)) {
+			a.ipv4=ina4;
+			tp=T_A;
+			sz=sizeof(struct in_addr);
+		} else {
+#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
+			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)) {
+				tp=T_AAAA;
+				sz=sizeof(struct in6_addr);
+			} else
+				continue;
+#else
+			continue;
+#endif
+		}
+		if (!add_host(b2, rns, b3, &a, sz, ttl, tp,1))
+			continue;
+		while (aliases) {
+			pn=p+1;
+			while (*pn==' ' || *pn=='\t') pn++;
+			if (!*pn)
+				break;
+			p=pn;
+			while (isdchar(*p) || *p=='.') p++;
+			*p='\0';
+			memset(b2,'\0',257);
+			strncpy((char *)b2,(char *)pn,256);
+			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+				b2[strlen((char *)b2)]='.';
+			}
+			if (!str2rhn(b2,b3))
+				break;
+			add_host(b2, rns, b3, &a, sz, ttl, tp,0);
+		}
+	}
+	fclose(f);
+}
+
 
 #if DEBUG>0
 /*

@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.1 2000/07/20 20:03:10 thomas Exp $ */
+/* $Id: dns.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
 
-#include "config.h"
+#include <config.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/types.h>
@@ -209,6 +209,8 @@ typedef struct {
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len);
 int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest);
 int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **cb);
+
+void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases);
 
 #if DEBUG>0 
 char *get_cname(int id);

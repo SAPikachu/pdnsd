@@ -1,18 +1,26 @@
-$Id: AUTHORS,v 1.7 2000/07/10 15:19:00 thomas Exp $
+$Id: AUTHORS,v 1.8 2000/07/21 20:04:35 thomas Exp $
 
-pdnsd was written by Thomas Moestl (tmoestl@gmx.net)
+Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
 Small parts of this program are based on code that  was taken from nmap (IP 
 checksumming), the isdn4k-utils (ippp interface uptest) and glibc 2.1.2 (some
 definitions for kernel 2.2.x missing in 2.0 glibcs).
 nmap was written by Fyodor. The insd4k-utils were written by Fritz Elfert and
-others. The GNU C library (glibc) is copyrighted by the Free Software 
+others. The GNU C library (glibc) is copyright by the Free Software 
 Foundation.
 
-Torben Janssen contributed the files in rc/Redhat.
-Soenke J. Peters contributed patches and suggestions for Red Hat compatability.
-Wolfgang Ocker has contributed the code for the server_ip option.
-Markus Mohr has contributed the files in rc/Debian.
+The following people have contributed code:
+Torben Janssen		contributed RedHat rc scripts
+Sourav K. Mandal	contributed the autoconf/automake code, gdbm
+			caching facility and many suggestions
+Markus Mohr		contributed Debian rc scripts
+Wolfgang Ocker		contributed the server_ip option
+Soenke J. Peters	contributed patches and suggestions for RedHat 
+			compatability
+Lyonel Vincent		extended the serve_aliases option to support an
+			arbitrary number of aliases
+Nikita V. Youschenko	contributed extensions to the "if" uptest
+
 
 Please look into the THANKS file for people who helped me in various ways on
 this project.

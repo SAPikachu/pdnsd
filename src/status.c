@@ -1,4 +1,4 @@
-/* status.c - Make server status information accessible through a named pipe
+/* status.c - Allow control of a running server using a pipe
    Copyright (C) 2000 Thomas Moestl
 
 This file is part of the pdnsd package.
@@ -28,17 +28,18 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include "status.h"
-#include "hash.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "error.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
-char fifo_path[1024];
+char fifo_path[1024]="/tmp/.pdnsd-status";
 
 pthread_t st;
 
@@ -48,8 +49,11 @@ pthread_t st;
  */
 void *status_thread (void *p)
 {
-	FILE *f;
+	int sock,rs;
+	socklen_t res;
 	struct utsname nm;
+	short cmd;
+	struct sockaddr_un a,ra;
 
 	THREAD_SIGINIT;
 
@@ -62,12 +66,46 @@ void *status_thread (void *p)
 
 	uname(&nm);
 	(void)p; /* To inhibit "unused variable" warning */
+	unlink(fifo_path); /* Delete the socket */
+	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
+		if (errno!=EINTR)
+			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+	}
+	a.sun_family=AF_UNIX;
+	strncpy(a.sun_path,fifo_path,99);
+	if (bind(sock,(struct sockaddr *)&a,sizeof(a))==-1) {
+		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
+		close(sock);
+		return NULL;
+	}
+	chmod(fifo_path,global.ctl_perms);
+	if (listen(sock,5)==-1) {
+		log_warn("Error: could not listen onsocket: %s.\nStatus readback will be impossible",strerror(errno));
+		close(sock);
+		return NULL;
+	}
 	do {
-		if ((f=fopen(fifo_path,"w"))) {
-			fprintf(f,"pdnsd-%s running on %s.\n",VERSION,nm.nodename);
-			report_cache_stat(f);
-			report_conf_stat(f);
-			fclose(f);
+		res=sizeof(ra);
+		if ((rs=accept(sock,&ra,&res))!=-1) {
+/*			write(rs,fifo_path,strlen(fifo_path)+1);*/
+/*			if (!(f=fdopen(rs,"rw"))) {
+				log_warn("Error: could not get FILE: %s\n. Status readback will be impossible",strerror(errno));
+				close(rs);
+				return NULL;
+				}*/
+			DEBUG_MSG1("Pipe query pending.\n");
+			read(rs,&cmd,sizeof(cmd));
+			switch(ntohs(cmd)) {
+			case CTL_STATS:
+				DEBUG_MSG1("Received STATUS query.\n");
+				fsprintf(rs,"pdnsd-%s running on %s.\n",VERSION,nm.nodename);
+				report_cache_stat(rs);
+				report_conf_stat(rs);
+				break;
+			case CTL_SERVER:
+				break;
+			}
+			close(rs);
 			usleep(100000); /* sleep some time. I do not want the query frequency to be too high. */
 		} else {
 			if (errno!=EINTR)
@@ -85,11 +123,11 @@ void init_stat_fifo()
 {
 	pthread_attr_t attr;
 
-	strncpy(fifo_path,global.cache_dir,1023);
+/*	strncpy(fifo_path,global.cache_dir,1023);
 	fifo_path[1023]='\0';
 	strncat(fifo_path,"/status",1023-strlen(fifo_path));
-	fifo_path[1023]='\0';
-	mkfifo(fifo_path,0600);
+	fifo_path[1023]='\0';*/
+//	mkfifo(fifo_path,0600);
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);

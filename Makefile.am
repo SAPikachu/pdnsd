@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.1 2000/07/20 20:03:05 thomas Exp $
+# $Id: Makefile.am,v 1.2 2000/07/21 20:04:35 thomas Exp $
 
 SUBDIRS = src
 
@@ -8,7 +8,11 @@ file-list.base.in ChangeLog.old
 install-data-hook:
 	cp -p doc/pdnsd.conf $(DESTDIR)/etc
 	$(mkinstalldirs) $(DESTDIR)@cachedir@
-	touch $(DESTDIR)@cachedir@/pdnsd.cache
+	if test "$(cachedbm)" = "native"; then \
+	  echo -en "\0\0\0\0" > $(DESTDIR)@cachedir@/pdnsd.cache; \
+	else \
+	  touch $(DESTDIR)@cachedir@/pdnsd.cache; \
+	fi
 
 dist-hook: @PACKAGE@.spec
 	cp @PACKAGE@.spec $(distdir)

@@ -29,8 +29,7 @@ Boston, MA 02111-1307, USA.  */
 #include <errno.h>
 #include <ctype.h>
 #include "consts.h"
-#include "hash.h"
-#include "cache.h"
+#include "cacheing/cache.h"
 #include "status.h"
 #include "servers.h"
 #include "dns_answer.h"
@@ -40,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -88,7 +87,7 @@ void print_info (void)
 /* Print the help page */
 void print_help (void)
 {
-	printf("\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-vn] [-c file]");
+	printf("\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-vn] [-mxx] [-c file]");
 #ifdef ENABLE_IPV4
 	printf(" [-4]");
 #endif
@@ -102,14 +101,14 @@ void print_help (void)
 	printf("-V\t\t--or--\n");
 	printf("--version\tprint version information and exit.\n");
 	printf("-s\t\t--or--\n");
-	printf("--status\tOpen a status pipe the cache directory\n");
+	printf("--status\tEnable status control socket the temp directory\n");
 	printf("-d\t\t--or--\n");
 	printf("--daemon\tStart pdnsd in daemon mode (as background process.)\n");
 	printf("-g\t\t--or--\n");
 	printf("--debug\t\tPrint some debug messages on the console or to the\n");
 	printf("\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n");
 	printf("-t\t\t--or--\n");
-	printf("--notcp\t\tDisables the TCP server thread. pdnsd will then only\n");
+	printf("--tcp\t\tEnables the TCP server thread. pdnsd will then only\n");
 	printf("\t\tserve UDP queries.\n");
 	printf("-p\t\tWrites the pid the server runs as to a specified filename.\n");
 	printf("\t\tWorks only in daemon mode.\n");
@@ -131,6 +130,8 @@ void print_help (void)
 	printf("-6\t\tenables IPv6 support. IPv4 support is automatically\n");
 	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV6?"On":"Off");
 #endif
+	printf("\n\n\"no\" can be prepended to the --status, --daemon, --debug and --tcp\n");
+	printf("options (e.g. --notcp) to reverse their effect.\n");
 }
 
 /*
@@ -155,7 +156,14 @@ int main(int argc,char *argv[])
 	/* We parse the command line two times, because the command-line options shall override the ones
 	 * given in the config file */
 	for (i=1;i<argc;i++) {
-		if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
+		if (strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--help")==0) {
+			print_info();
+			print_help();
+			exit(1);
+		} else if (strcmp(argv[i],"-V")==0 || strcmp(argv[i],"--version")==0) {
+			print_info();
+			exit(1);
+		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
 			if (i<argc-1) {
 				i++;
 				conf_file=argv[i];
@@ -170,14 +178,7 @@ int main(int argc,char *argv[])
 	read_config_file(conf_file);
 
 	for (i=1;i<argc;i++) {
-		if (strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--help")==0) {
-			print_info();
-			print_help();
-			exit(1);
-		} else if (strcmp(argv[i],"-V")==0 || strcmp(argv[i],"--version")==0) {
-			print_info();
-			exit(1);
-		} else if (strcmp(argv[i],"-s")==0 || strcmp(argv[i],"--status")==0) {
+		if (strcmp(argv[i],"-s")==0 || strcmp(argv[i],"--status")==0) {
 			stat_pipe=1;
 		} else if (strcmp(argv[i],"--nostatus")==0) {
 			stat_pipe=0;
@@ -419,6 +420,7 @@ int main(int argc,char *argv[])
 	if (ping6_osocket!=-1)
 		close(ping6_osocket);
 #endif
+	unlink(fifo_path); /* Delete the socket */
 	free_rng();
 	_exit(0);
 }
