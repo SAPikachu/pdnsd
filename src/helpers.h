@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.5 2001/04/03 19:33:01 tmm Exp $ */
+/* $Id: helpers.h,v 1.6 2001/04/06 18:11:34 tmm Exp $ */
 
-#ifndef _HELPERS_H_
-#define _HELPERS_H_
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #include "config.h"
 #include <pthread.h>

@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: icmp.h,v 1.2 2000/11/15 17:27:02 thomas Exp $ */
+/* $Id: icmp.h,v 1.3 2001/04/06 18:11:35 tmm Exp $ */
 
-#ifndef _ICMP_H_
-#define _ICMP_H_
+#ifndef ICMP_H
+#define ICMP_H
 
 
 #include "config.h"

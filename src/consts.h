@@ -1,5 +1,5 @@
 /* consts.h - Common config constants & handling
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: consts.h,v 1.6 2000/11/11 14:24:48 thomas Exp $ */
+/* $Id: consts.h,v 1.7 2001/04/06 18:11:34 tmm Exp $ */
 
-#ifndef _CONSTS_H_
-#define _CONSTS_H_
+#ifndef CONSTS_H
+#define CONSTS_H
 
 #include "config.h"
 

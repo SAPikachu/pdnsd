@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.5 2001/04/03 19:33:01 tmm Exp $ */
+/* $Id: ipvers.h,v 1.6 2001/04/06 18:11:35 tmm Exp $ */
 
-#ifndef _IPVERS_H_
-#define _IPVERS_H_
+#ifndef IPVERS_H
+#define IPVERS_H
 
 #include <config.h>
 #include <sys/types.h>

@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.13 2001/04/03 19:33:00 tmm Exp $ */
+/* $Id: conff.h,v 1.14 2001/04/06 18:11:34 tmm Exp $ */
 
-#ifndef _CONFF_H_
-#define _CONFF_H_
+#ifndef CONFF_H
+#define CONFF_H
 
 #define MAXPATH 1024
 

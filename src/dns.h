@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.9 2001/04/03 19:33:01 tmm Exp $ */
+/* $Id: dns.h,v 1.10 2001/04/06 18:11:34 tmm Exp $ */
 
-#ifndef _DNS_H_
-#define _DNS_H_
+#ifndef DNS_H
+#define DNS_H
 
 #include <config.h>
 #include <arpa/inet.h>

@@ -1,5 +1,5 @@
 /* dns_query.h - Execute outgoing dns queries and write entries to cache
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,10 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.3 2000/10/17 20:34:46 thomas Exp $ */
+/* $Id: dns_query.h,v 1.4 2001/04/06 18:11:34 tmm Exp $ */
 
-#ifndef _DNS_QUERY_H_
-#define _DNS_QUERY_H_
+#ifndef DNS_QUERY_H
+#define DNS_QUERY_H
 
 #include "config.h"
 #include <sys/types.h>
