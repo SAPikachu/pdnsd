@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.32 2001/03/13 00:26:24 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.33 2001/03/14 22:07:49 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1138,25 +1138,30 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		if (mc>global.par_queries)
 			mc=global.par_queries;
 		/* First, call p_exec_query once for each parallel set to initialize.
-		 * The, as long as not all have the state QS_DONE or we have a timeout,
+		 * Then, as long as not all have the state QS_DONE or we have a timeout,
 		 * build a poll/select set for all active queries and call them accordingly. */
 		qo=1;
 		for (i=0;i<mc;i++) {
-			qo=0;
 			/* The below should not happen any more, but may once again
 			 * (immediate success) */
-			if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
+			rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial);
+			if (rv==RC_OK || rv==RC_NAMEERR) {
 				for (k=0;k<mc;k++) {
 					p_cancel_query(&q->qs[global.par_queries*j+k]);
 				}
-				se=global.par_queries*j+i;
-				*sv=q->qs[global.par_queries*j+i].si;
-				DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+				if (rv==RC_OK) {
+					se=global.par_queries*j+i;
+					*sv=q->qs[global.par_queries*j+i].si;
+					DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+				}
 				done=1;
 				break;
-			} 
+			}
+			if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+				qo=0;
+			}
 		}
-		if (!done) {
+		if (!done && !qo) {
 			/* we do time keeping by hand, because poll/select might be interrupted and
 			 * the returned times are not always to be trusted upon */
 			ts=time(NULL);
@@ -1194,7 +1199,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				if (pc==0) {
 					/* In this case, ALL are done and we do not need to cancel any
 					 * query. */
-					done=1;
+					qo=1;
 					break;
 				}
 				maxto-=time(NULL)-ts;
@@ -1222,7 +1227,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				if (pc==0) {
 					/* In this case, ALL are done and we do not need to cancel any
 					 * query. */
-					done=1;
+					qo=1;
 					break;
 				}
 				maxto-=time(NULL)-ts;
@@ -1278,7 +1283,6 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 								}
 							}
 #endif
-							qo=0;
 							if (srv) {
 								rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial);
 								if (rv==RC_OK || rv==RC_NAMEERR) {
@@ -1293,6 +1297,10 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 									done=1;
 									break;
 								}
+							}
+							/* recheck, this might have changed after the last p_exec_query */
+							if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
+								qo=0;
 							}
 						} 
 					}
