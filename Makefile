@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.22 2000/07/04 22:00:40 thomas Exp $
+# $Id: Makefile,v 1.23 2000/07/07 13:53:41 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -159,7 +159,7 @@ cinstall:
 	echo -e "\033[31m\nYou should edit your /etc/pdnsd.conf to adapt it to your system configuration.\033[m\n"
 
 install: cinstall
-	install -d -o root -g root $(PDNSD_CACHEDIR)
+	install -d -o nobody -g root $(PDNSD_CACHEDIR)
 
 suseinstall: cinstall
 	install -d -o nobody -g nogroup $(PDNSD_CACHEDIR)
