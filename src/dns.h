@@ -1,5 +1,5 @@
 /* dns.h - Declarations for dns handling and generic dns functions
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.8 2001/03/25 20:34:31 tmm Exp $ */
+/* $Id: dns.h,v 1.9 2001/04/03 19:33:01 tmm Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
@@ -31,12 +31,18 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 /* Deal with byte orders */
-#ifndef __BYTE_ORDER
-# ifdef __LITTLE_ENDIAN
-#  define __BYTE_ORDER __LITTLE_ENDIAN
-# endif
-# ifdef __BIG_ENDIAN
-#   define __BYTE_ORDER __BIG_ENDIAN
+#ifndef BYTE_ORDER
+# define LITTLE_ENDIAN __LITTLE_ENDIAN
+# define BIG_ENDIAN __BIG_ENDIAN
+# ifdef __BYTE_ORDER
+#  define BYTE_ORDER __BYTE_ORDER
+# else
+#  ifdef __LITTLE_ENDIAN
+#   define BYTE_ORDER __LITTLE_ENDIAN
+#  endif
+#  ifdef __BIG_ENDIAN
+#   define BYTE_ORDER __LITTLE_ENDIAN
+#  endif
 # endif
 #endif
 

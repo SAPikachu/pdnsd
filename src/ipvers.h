@@ -1,5 +1,5 @@
 /* ipvers.h - definitions for IPv4 and IPv6
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.4 2000/11/07 12:49:53 thomas Exp $ */
+/* $Id: ipvers.h,v 1.5 2001/04/03 19:33:01 tmm Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -28,18 +28,6 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#if !defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
-# error "You need to define either or both of ENABLE_IPV4 and ENABLE_IPV6. Look into your config.h.templ"
-#endif
-
-#if DEFAULT_IPV4==0 && DEFAULT_IPV6==0
-# error "You need to set either IPV4_DEFAULT or IPV6_DEFAULT to 1. Look into your config.h.templ"
-#endif
-
-#if DEFAULT_IPV4!=0 && DEFAULT_IPV6!=0
-# error "You only may set one of IPV4_DEFAULT and IPV6_DEFAULT to 1. Look into your config.h.templ"
-#endif
 
 #if defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4

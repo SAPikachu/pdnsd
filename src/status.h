@@ -1,5 +1,5 @@
 /* status.h - Make server status information accessible through a named pipe
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: status.h,v 1.7 2001/02/25 00:56:26 tmm Exp $ */
+/* $Id: status.h,v 1.8 2001/04/03 19:33:01 tmm Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_
