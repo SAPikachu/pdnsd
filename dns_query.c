@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.15 2000/06/29 10:24:51 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.16 2000/06/29 20:12:01 thomas Exp $";
 #endif
 
 /*
@@ -1091,7 +1091,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				if (run_ipv6) {
 					serva.ipv6=in6addr_any;
 #ifdef DNS_NEW_RRS
-					if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
+					if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_AAAA,time(NULL))==RC_OK) {
 						if (servent->rr[T_AAAA-T_MIN])
 							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
 						free_cent(*servent);
