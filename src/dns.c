@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.22 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.23 2001/05/22 16:17:16 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -256,7 +256,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 	dns_cent_t ce;
 	unsigned char b2[256],rhn[256];
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-	unsigned char b4[5];
+	unsigned char b4[7];
 	int i;
 #endif
 
@@ -299,7 +299,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 		if (tp==T_AAAA) {
 			b2[0]='\0';
 			for (i=15;i>=0;i--) {
-				sprintf((char *)b4,"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
+				snprintf((char *)b4, sizof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
 				strcat((char *)b2,(char *)b4);
 			}
 			strcat((char *)b2,"ip6.int.");
