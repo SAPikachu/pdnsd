@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.23 2001/02/25 18:23:13 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.24 2001/03/13 00:26:23 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -54,6 +54,7 @@ char errbuf[256];
 int sz,tp;
 int hdtp, htp;
 struct in_addr ina4;
+uint16_t ts;
 
 int idx;
 
@@ -707,7 +708,8 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				memset(buf,0,532);
-				*((short *)buf)=htons($5);
+				ts=htons($5);
+				memcpy(buf,&ts,2);
 				memcpy(buf+2,c_ptr,strlen((char *)c_ptr)+1);
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+3,buf,T_MX);
 			}

@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.17 2001/02/25 01:29:44 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.18 2001/03/13 00:26:28 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1022,7 +1022,7 @@ void add_cache(dns_cent_t cent)
 	lock_cache_rw();
 
 	if (!(ce=dns_lookup((dns_hash_t *)&dns_hash,cent.qname))) {
-		if(!(ce=(dns_cent_t *)copy_cent(&cent))) {
+		if(!(ce=copy_cent(&cent))) {
 			log_warn("Out of cache memory.");
 			free_cent(*ce);
 			unlock_cache_rw();

@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.31 2001/03/12 22:54:48 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.32 2001/03/13 00:26:24 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -124,7 +124,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 {
 	unsigned char oname[256];
 	unsigned char db[530],tbuf[256];
-	rr_hdr_t *rhdr;
+	rr_hdr_t rhdr;
 	int rc;
 	int i;
 #ifdef DNS_NEW_RRS
@@ -146,20 +146,20 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				return RC_OK;
 			return RC_FORMAT;
 		}
-		*lcnt-=sizeof(rr_hdr_t);
-		rhdr=(rr_hdr_t *)*ptr;
-		*ptr+=sizeof(rr_hdr_t);
-		if (*lcnt<ntohs(rhdr->rdlength)) {
+		*lcnt-=sizeof(rhdr);
+		memcpy(&rhdr,*ptr,sizeof(rhdr));
+		*ptr+=sizeof(rhdr);
+		if (*lcnt<ntohs(rhdr.rdlength)) {
 			if (tc)
 				return RC_OK;
 			return RC_FORMAT;
 		}
-		if (!(ntohs(rhdr->type)<T_MIN || ntohs(rhdr->type)>T_MAX || ntohs(rhdr->class)!=C_IN)) {
+		if (!(ntohs(rhdr.type)<T_MIN || ntohs(rhdr.type)>T_MAX || ntohs(rhdr.class)!=C_IN)) {
 			/* skip otherwise */
 			/* Some types contain names that may be compressed, so these need to be processed.
 			 * the other records are taken as they are
 			 * The maximum lenth for a decompression buffer is 530 bytes (maximum SOA record length) */
-			switch (ntohs(rhdr->type)) {
+			switch (ntohs(rhdr.type)) {
 			case T_CNAME:
 			case T_MB:
 			case T_MD:
@@ -175,14 +175,14 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, len, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, len, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
-				if (ntohs(rhdr->type)==T_NS) {
+				if (ntohs(rhdr.type)==T_NS) {
 					/* Don't accept possibliy poisoning nameserver entries in paranoid mode */
 					if (!trusted)
 						domain_match(&rc,nsdomain, oname, tbuf);
@@ -225,11 +225,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				}
 				/*nptr+=len;*/
 				slen+=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
@@ -256,11 +256,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				}
 				/*nptr+=len;*/
 				slen+=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
@@ -290,11 +290,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				blcnt-=20;
 				memcpy(nptr,bptr,20); /*copy the rest of the SOA record*/
 				slen+=20;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial, trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				/* Some nameservers obviously choose to send SOA records instead of NS ones.
@@ -346,11 +346,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				}
 				nptr+=len;
 				slen+=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
@@ -372,11 +372,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				}
 				/*nptr+=len;*/
 				slen+=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
@@ -391,22 +391,22 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
-				if (blcnt<ntohs(rhdr->rdlength)) {
+				if (blcnt<ntohs(rhdr.rdlength)) {
 					if (tc)
 						return RC_OK;
 					return RC_FORMAT;
 				}
-				if (ntohs(rhdr->rdlength)-len<0)
+				if (ntohs(rhdr.rdlength)-len<0)
 					return RC_FORMAT;
-				len=ntohs(rhdr->rdlength)-len;
+				len=ntohs(rhdr.rdlength)-len;
 				memcpy(nptr,bptr,len);
 				slen+=len;
 				blcnt-=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
@@ -454,23 +454,23 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				}
 				/*nptr+=len;*/
 				slen+=len;
-				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
+				if (*lcnt-blcnt>ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr->rdlength)>530)
+				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 #endif
 			default:
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, ntohs(rhdr->rdlength), *ptr, ntohs(rhdr->type),flags,
+				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, ntohs(rhdr.rdlength), *ptr, ntohs(rhdr.type),flags,
 						 queryts,serial,trusted, nsdomain))
 					return RC_SERVFAIL;
 			}
 		}
-		*lcnt-=ntohs(rhdr->rdlength);
-		*ptr+=ntohs(rhdr->rdlength);
+		*lcnt-=ntohs(rhdr.rdlength);
+		*ptr+=ntohs(rhdr.rdlength);
 	}
 	return RC_OK;
 }
@@ -729,7 +729,10 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 #if DEBUG>0
 	char buf[ADDRSTR_MAXLEN];
 #endif
-	std_query_t temp;
+	std_query_t temp_q;
+#ifdef notdef
+	soa_r_t soa_r;
+#endif
 
 	switch (st->state){
 	case QS_INITIAL:
@@ -760,9 +763,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr->arcount=0;
 		strcpy(((char *)(st->hdr+1)),(char *)rrn);
 		*(((unsigned char *)(st->hdr+1))+strlen((char *)rrn))='\0';
-		temp.qtype=htons(st->qt);
-		temp.qclass=htons(C_IN);
-		memcpy(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1,&temp,4);
+		temp_q.qtype=htons(st->qt);
+		temp_q.qclass=htons(C_IN);
+		memcpy(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1,&temp_q,4);
 		if (!st->trusted)
 			st->hdr->rd=0;
 		st->recvbuf=NULL;
@@ -977,7 +980,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 				while (*soa)
 					soa+=*soa+1;
 				soa++;
-				ttl=((soa_r_t *)soa)->expire;
+				memcpy(soa_r,soa,sizeof(soa_r));
+				ttl=soa_r.expire;
 #endif
 				ttl=(*ent)->rr[T_SOA-T_MIN]->ttl+(*ent)->rr[T_SOA-T_MIN]->ts-time(NULL);
 				ttl=ttl<0?0:ttl;
@@ -1104,6 +1108,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	ns_t *ns=NULL;
 	time_t ts;
 	long maxto;
+#ifdef ENABLE_IPV6
+	struct in_addr ina;
+#endif
 #ifdef DEBUG
 	char buf[ADDRSTR_MAXLEN];
 #endif
@@ -1360,8 +1367,11 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
 						else
 # endif
-							if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs)
-								IPV6_MAPIPV4((struct in_addr *)(servent->rr[T_A-T_MIN]->rrs+1),&serva.ipv6);
+							if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs) {
+								/* XXX: memcpy for alpha (unaligned access) */
+								memcpy(&ina,servent->rr[T_A-T_MIN]->rrs+1,sizeof(ina));
+								IPV6_MAPIPV4(&ina,&serva.ipv6);
+							}
 						
 					}
 #endif

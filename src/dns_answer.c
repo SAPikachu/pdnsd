@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.35 2001/03/12 22:54:48 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.36 2001/03/13 00:26:23 tmm Exp $";
 #endif
 
 /*
@@ -574,6 +574,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	unsigned char *nb;
 	int have_ns=0;
 	dns_cent_t *ae;
+	std_query_t temp_q;
 
 	ar=NULL;
 	ans=(dns_hdr_t *)calloc(sizeof(dns_hdr_t),1);
@@ -602,8 +603,9 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			return NULL;
 		strcpy(((char *)ans)+*rlen,(char *)(&q->first_q)[i].query);
 		*rlen+=strlen((char *)(&q->first_q)[i].query)+1;
-		((std_query_t *)(((unsigned char *)ans)+*rlen))->qtype=htons((&q->first_q)[i].qtype);
-		((std_query_t *)(((unsigned char *)ans)+*rlen))->qclass=htons((&q->first_q)[i].qclass);
+		temp_q.qtype=htons((&q->first_q)[i].qtype);
+		temp_q.qclass=htons((&q->first_q)[i].qclass);
+		memcpy(((unsigned char *)ans)+*rlen,&temp_q,sizeof(temp_q));
 		*rlen+=4;
 	}
 
@@ -808,11 +810,14 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	return (unsigned char *)ans;
 }
 
-/* Decode the query (the query messgage is in data and rlen bytes long) into q */
+/*
+ * Decode the query (the query messgage is in data and rlen bytes long) into q
+ * XXX: data needs to be aligned
+ */
 static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
 {
 	int i,res,l;
-	dns_hdr_t *hdr=(dns_hdr_t *)data;
+	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
 	unsigned char *ptr=(unsigned char *)(hdr+1);
 	long sz=rlen-sizeof(dns_hdr_t);
 	if (ntohs(hdr->qdcount)==0) 
@@ -995,6 +1000,7 @@ void decrease_procs(void *dummy)
  * A thread opened to answer a query transmitted via udp. Data is a pointer to the structure udp_buf_t that
  * contains the received data and various other parameters.
  * After the query is answered, the thread terminates
+ * XXX: data must point to a correctly aligned buffer
  */
 void *udp_answer_thread(void *data)
 {
@@ -1003,6 +1009,7 @@ void *udp_answer_thread(void *data)
 	struct cmsghdr *cmsg;
 	char ctrl[512];
 	unsigned long rlen=((udp_buf_t *)data)->len;
+	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
 	unsigned char *resp;
 	socklen_t sl;
 	int tmp,i;
@@ -1253,7 +1260,7 @@ void *udp_server_thread(void *dummy)
 	struct cmsghdr *cmsg;
 	char ctrl[512];
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
-	struct in_pktinfo *sip;
+	struct in_pktinfo sip;
 #endif
 	(void)dummy; /* To inhibit "unused variable" warning */
 
@@ -1370,9 +1377,9 @@ void *udp_server_thread(void *dummy)
 					while(cmsg) {
 #  if TARGET==TARGET_LINUX
 						if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
-							sip=(struct in_pktinfo *)CMSG_DATA(cmsg);
-							IPV6_MAPIPV4(&sip->ipi_addr,&buf->pi.pi6.ipi6_addr);
-							buf->pi.pi6.ipi6_ifindex=sip->ipi_ifindex;
+							memcpy(&sip,CMSG_DATA(cmsg),sizeof(sip));
+							IPV6_MAPIPV4(&sip.ipi_addr,&buf->pi.pi6.ipi6_addr);
+							buf->pi.pi6.ipi6_ifindex=sip.ipi_ifindex;
 							break;
 						}
 						/* FIXME: What about BSD? probably ok, but... */
@@ -1464,6 +1471,7 @@ void *tcp_answer_thread(void *csock)
 	dns_hdr_t err;
 	unsigned short rlen,olen;
 	unsigned long nlen;
+	/* XXX: This should be OK, the original must be (and is) aligned */
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
@@ -1572,7 +1580,8 @@ void *tcp_answer_thread(void *csock)
 				close(sock);
 				return NULL;
 			} else {
-				err=mk_error_reply(*((unsigned short *)buf),olen>=3?((dns_hdr_t *)buf)->opcode:OP_QUERY,RC_FORMAT);
+				memcpy(&err,buf,sizeof(err));
+				err=mk_error_reply(*((unsigned short *)buf),olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
 				if (write(sock,&err,sizeof(err))!=sizeof(err)) {
 					free(buf);
 					close(sock);

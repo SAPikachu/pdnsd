@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.8 2001/02/25 18:23:17 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.9 2001/03/13 00:26:31 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -55,7 +55,7 @@ cmd_s onoff_cmds[3]= {{"off",0},{"on",1},{NULL,0}};
 #ifdef ENABLE_IPV6
 cmd_s rectype_cmds[5]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #else
-cmd_s rectype_cmds[4]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+cmd_s rectype_cmds[5]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #endif
 
 void print_version(void)

@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.15 2001/02/09 23:15:03 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.16 2001/03/13 00:26:24 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -137,22 +137,23 @@ void init_ping_socket()
  * We do not compare more, as this is all we need.*/
 static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg, int elen, int errtype)
 {
-	struct iphdr *iph;
-	struct icmphdr *icmph;
-	struct iphdr *eiph;
+	struct iphdr iph;
+	struct icmphdr icmph;
+	struct iphdr eiph;
 	char *data;
-		
+
+	/* XXX: lots of memcpy to avoid unaligned accesses on alpha */
 	if (elen<sizeof(struct iphdr))
 		return 0;
-	iph=(struct iphdr *)errmsg;
-	if (elen<iph->ip_ihl*4+ICMP_BASEHDR_LEN+sizeof(struct iphdr))
+	memcpy(&iph,errmsg,sizeof(iph));
+	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_ihl*4+ICMP_BASEHDR_LEN+sizeof(iph))
 		return 0;
-	icmph=(struct icmphdr *)(errmsg+iph->ip_ihl*4);
-	eiph=(struct iphdr *)(((char *)icmph)+ICMP_BASEHDR_LEN);
-	if (elen<iph->ip_ihl*4+ICMP_BASEHDR_LEN+eiph->ip_ihl*4+8)
+	memcpy(&icmph,errmsg+iph.ip_ihl*4,sizeof(icmph));
+	memcpy(&eiph,errmsg+iph.ip_ihl*4+ICMP_BASEHDR_LEN,sizeof(eiph));
+	if (elen<iph.ip_ihl*4+ICMP_BASEHDR_LEN+eiph.ip_ihl*4+8)
 		return 0;
-	data=((char *)eiph)+eiph->ip_ihl*4;
-	return icmph->icmp_type==errtype && memcmp(&to->s_addr, &eiph->ip_daddr, sizeof(to->s_addr))==0 &&
+	data=errmsg+iph.ip_ihl*4+ICMP_BASEHDR_LEN+eiph.ip_ihl*4;
+	return icmph.icmp_type==errtype && memcmp(&to->s_addr, &eiph.ip_daddr, sizeof(to->s_addr))==0 &&
 		memcmp(data, packet, plen<8?plen:8)==0;
 }
 
@@ -314,36 +315,40 @@ static int ping4(struct in_addr addr, int timeout, int rep)
  * we don't know their length a priori.*/
 static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errmsg, int elen, int errtype)
 {
-	struct icmp6_hdr *icmph;
-	struct ip6_hdr *eiph;
+	struct icmp6_hdr icmph;
+	struct ip6_hdr eiph;
+	struct ip6_hbh hbh;
 	char *data;
 	int rlen,nxt;
-		
+
+	/* XXX: lots of memcpy here to avoid unaligned access faults on alpha */
 	if (elen<sizeof(struct icmp6_hdr)+sizeof(struct ip6_hdr))
 		return 0;
-	icmph=(struct icmp6_hdr *)errmsg;
-	eiph=(struct ip6_hdr *)(icmph+1);
-	if (!IN6_ARE_ADDR_EQUAL(&eiph->ip6_dst, to))
+	memcpy(icmph,errmsg,sizeof(icmph));
+	memcpy(eiph,errmsg+sizeof(icmph),sizeof(eiph));
+	if (!IN6_ARE_ADDR_EQUAL(&eiph.ip6_dst, to))
 		return 0;
-	rlen=elen-sizeof(struct icmp6_hdr)-sizeof(struct ip6_hdr);
-	data=(char *)(eiph+1);
-	nxt=eiph->ip6_nxt;
+	rlen=elen-sizeof(icmph)-sizeof(eiph);
+	data=errmsg+sizeof(icmph)+sizeof(eiph);
+	nxt=eiph.ip6_nxt;
 	/* Now, jump over any known option header that might be present, and then
 	 * try to compare the packets. */
 	while (nxt!=IPPROTO_ICMPV6) {
+		memcpy(hbh,data,sizeof(hbh));
 		/* Those are the headers we understand. */
 		if (nxt!=IPPROTO_HOPOPTS && nxt!=IPPROTO_ROUTING && nxt!=IPPROTO_DSTOPTS)
 			return 0;
-		if (rlen<sizeof(struct ip6_hbh) || rlen<((struct ip6_hbh *)data)->ip6h_len)
+		if (rlen<sizeof(hbh) || rlen<hbh.ip6h_len)
 			return 0;
-		rlen-=((struct ip6_hbh *)data)->ip6h_len;
-		nxt=((struct ip6_hbh *)data)->ip6h_nxt;
-		data+=((struct ip6_hbh *)data)->ip6h_len;
+		rlen-=hbh.ip6h_len;
+		nxt=hbh.ip6h_nxt;
+		data+=hbh.ip6h_len;
 	}
 	if (rlen<sizeof(struct icmp6_hdr))
 		return 0;
-	((struct icmp6_hdr *)data)->icmp6_cksum=0;
-	return icmph->icmp6_type==errtype && memcmp(data, packet, plen<rlen?plen:rlen)==0;
+	/* Zero out the checksum of the enclosed ICMPv6 header, it is kernel-filled in the original data */
+	memset(((char *)data)+offsetof(icmp6_hdr,icmp6_cksum),0,sizeof(icmph.icmp6_cksum));
+	return icmph.icmp6_type==errtype && memcmp(data, packet, plen<rlen?plen:rlen)==0;
 }
 
 /* IPv6/ICMPv6 ping. Called from ping (see below) */

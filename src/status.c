@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.17 2001/02/25 18:23:14 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.18 2001/03/13 00:26:24 tmm Exp $";
 #endif
 
 char sock_path[99];
@@ -118,7 +118,6 @@ void *status_thread (void *p)
 	char owner[256];
 	long ttl;
 	dns_cent_t cent;
-	short pri;
 
 	THREAD_SIGINIT;
 
