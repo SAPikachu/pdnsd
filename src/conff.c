@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.4 2000/08/05 16:50:36 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.5 2000/08/07 11:04:53 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -148,6 +148,6 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
 		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
 		fsprintf(f,"\tlean query: %i\n",servers[i].lean_query);
-		fsprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
+		fsprintf(f,"\tUse only proxy?: %i\n",servers[i].is_proxy);
 	}
 }

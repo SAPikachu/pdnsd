@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.4 2000/08/05 16:50:36 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.5 2000/08/07 11:04:52 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -462,7 +462,7 @@ serv_el:	IP '=' STRING ';'
 		| PROXY_ONLY '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_ON) {
-					server.is_proxy=($3==C_OFF);
+					server.is_proxy=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in proxy_only= option.");
 					YYERROR;
