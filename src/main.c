@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.13 2000/10/13 18:18:36 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.14 2000/10/14 23:29:08 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -108,6 +108,7 @@ void print_help (void)
 	printf("--help\t\tprint this help page and exit.\n");
 	printf("-V\t\t--or--\n");
 	printf("--version\tprint version information and exit.\n");
+	printf("--pdnsd-user\tprint the user pdnsd will run as and exit.\n");
 	printf("-s\t\t--or--\n");
 	printf("--status\tEnable status control socket the temp directory\n");
 	printf("-d\t\t--or--\n");

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.8 2000/10/08 20:50:46 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.9 2000/10/14 23:29:08 thomas Exp $";
 #endif
 
 /*
@@ -68,6 +68,8 @@ int da_mem_errs=0;
 int da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
+int procs=0;
+pthread_mutex_t proc_lock;
 
 #ifdef SOCKET_LOCKING
 pthread_mutex_t s_lock;
@@ -925,6 +927,18 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 }
 
 /*
+ * Called by *_answer_thread exit handler to clean up process count.
+ */
+void decrease_procs(void *dummy)
+{
+	(void)dummy;
+	pthread_mutex_lock(&proc_lock);
+	procs--;
+	pthread_mutex_unlock(&proc_lock);
+}
+
+
+/*
  * A thread opened to answer a query transmitted via udp. Data is a pointer to the structure udp_buf_t that
  * contains the received data and various other parameters.
  * After the query is answered, the thread terminates
@@ -938,13 +952,21 @@ void *udp_answer_thread(void *data)
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
 	socklen_t sl;
-	int tmp;
+	int tmp,i;
 #ifdef ENABLE_IPV6
 	char buf[ADDRSTR_MAXLEN];
 #endif
-
+	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
 
+	do {
+		pthread_mutex_lock(&proc_lock);
+		i=procs;
+		pthread_mutex_unlock(&proc_lock);
+		if (i>global.proc_limit)
+			usleep(50000);
+	} while (i>global.proc_limit); 
+	
 	if (!global.strict_suid ) {
 		if (!run_as(global.run_as)) {
 			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
@@ -1043,9 +1065,10 @@ void *udp_answer_thread(void *data)
 		pthread_mutex_unlock(&s_lock);
 #endif
 	}
-
+	
 	free(resp);
 	free(data);
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 
@@ -1330,10 +1353,19 @@ void *udp_server_thread(void *dummy)
 			}*/
 			continue;
 		} else {
-			buf->len=qlen;
-			pthread_attr_init(&attr);
-			pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-			pthread_create(&pt,&attr,udp_answer_thread,(void *)buf);
+			pthread_mutex_lock(&proc_lock);
+			if (procs<=global.proc_limit+global.procq_limit) {
+				procs++;
+				pthread_mutex_unlock(&proc_lock);
+				buf->len=qlen;
+				pthread_attr_init(&attr);
+				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+				pthread_create(&pt,&attr,udp_answer_thread,(void *)buf);
+			} else {
+				pthread_mutex_unlock(&proc_lock);
+				free(buf);
+				usleep(50000);
+			}
 		}
 	}
 	close(sock);
@@ -1549,7 +1581,7 @@ int init_tcp_socket()
  */
 void *tcp_server_thread(void *p)
 {
-	int sock;
+	int sock,i;
 	pthread_t pt;
 	pthread_attr_t attr;
 	int *csock;
@@ -1557,7 +1589,16 @@ void *tcp_server_thread(void *p)
 
 	(void)p; /* To inhibit "unused variable" warning */
 
+	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
+
+	do {
+		pthread_mutex_lock(&proc_lock);
+		i=procs;
+		pthread_mutex_unlock(&proc_lock);
+		if (i>global.proc_limit)
+			usleep(50000);
+	} while (i>global.proc_limit);
 
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
@@ -1607,13 +1648,24 @@ void *tcp_server_thread(void *p)
 			 * With creating a new thread, we follow recommendations
 			 * in rfc1035 not to block
 			 */
-			pthread_attr_init(&attr);
-			pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-			pthread_create(&pt,&attr,tcp_answer_thread,(void *)csock);
+			pthread_mutex_lock(&proc_lock);
+			if (procs<=global.proc_limit+global.procq_limit) {
+				procs++;
+				pthread_mutex_unlock(&proc_lock);
+				pthread_attr_init(&attr);
+				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+				pthread_create(&pt,&attr,tcp_answer_thread,(void *)csock);
+			} else {
+				pthread_mutex_unlock(&proc_lock);
+				close(*csock);
+				free(csock);
+				usleep(50000);
+			}
 		}
 	}
 	close(sock);
 	tcp_socket=-1;
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 #endif
@@ -1625,6 +1677,8 @@ void *tcp_server_thread(void *p)
 void start_dns_servers()
 {
 	pthread_attr_t attrt,attru;
+
+	pthread_mutex_init(&proc_lock,NULL);
 	
 #ifndef NO_TCP_SERVER       
 	if (tcp_socket!=-1) {

@@ -1,4 +1,4 @@
-$Id: TODO,v 1.12 2000/10/08 12:16:02 thomas Exp $
+$Id: TODO,v 1.13 2000/10/14 23:29:06 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -188,18 +188,20 @@ docs. In particular:
 -[X] document pdnsd-ctl
 -[X] replace references to status pipe
 -[X] setup doc build process
--[X] setup Debain build process for install scripts
+-[X] setup Debian build process for install scripts
 -[X] make rc script installation optional
 -[X] include temp dir for socket, recheck socket code.
 -[X] final check for install
 --------------------------------------------------------------------------------
 ================================================================================
-1.0.11
+1.0.12
 ================================================================================
 --------------------------------------------------------------------------------
-Access lists for servers				       [open           ]
+Limit process count					       [-tm, 2000-10-15]
 --------------------------------------------------------------------------------
-Limit process counts and tcp receive length.		       [open           ]
+Limit tcp receive length and latency.			       [open           ]
+--------------------------------------------------------------------------------
+Access lists for servers				       [open           ]
 --------------------------------------------------------------------------------
 ================================================================================
 After 1.0.11

@@ -32,16 +32,16 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.7 2000/08/27 12:27:51 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.8 2000/10/14 23:29:08 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
 #ifdef ENABLE_IPV4
-globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme"};
+globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme",20,30};
 #else
-globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme"};
+globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme",20,30};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
@@ -131,6 +131,8 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tStrict run as: %i\n",global.strict_suid);
 	fsprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
 	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
+	fsprintf(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
+	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
 	for(i=0;i<serv_num;i++) {
 		fsprintf(f,"Server %i:\n------\n",i);
 		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));

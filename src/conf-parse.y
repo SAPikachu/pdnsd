@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.10 2000/10/08 12:16:08 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.11 2000/10/14 23:29:08 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -97,6 +97,8 @@ unsigned char *nm;
 %token <num> RUN_IPV4
 %token <num> C_DEBUG
 %token <num> C_CTL_PERMS
+%token <num> C_PROC_LIMIT
+%token <num> C_PROCQ_LIMIT
 
 %token <num> IP
 %token <num> PORT
@@ -345,6 +347,14 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| C_CTL_PERMS '=' NUMBER ';'
 			{
 				global.ctl_perms=$3;
+			}
+		| C_PROC_LIMIT '=' NUMBER ';'
+			{
+				global.proc_limit=$3;
+			}
+		| C_PROCQ_LIMIT '=' NUMBER ';'
+			{
+				global.procq_limit=$3;
 			}
 		;
 

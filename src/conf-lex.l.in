@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.6 2000/08/27 12:42:57 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.7 2000/10/14 23:29:08 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -74,6 +74,8 @@ C_CLOSE \*\/
 <INITIAL>"run_ipv4"			{return RUN_IPV4;}
 <INITIAL>"debug"			{return C_DEBUG;}
 <INITIAL>"ctl_perms"			{return C_CTL_PERMS;}
+<INITIAL>"proc_limit"			{return C_PROC_LIMIT;}
+<INITIAL>"procq_limit"			{return C_PROCQ_LIMIT;}
 
 <INITIAL>"ip"				{return IP;}
 <INITIAL>"port"				{return PORT;}
