@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.34 2001/03/25 19:27:37 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.35 2001/03/25 20:34:31 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -718,7 +718,7 @@ static int p_query_sm(query_stat_t *st)
 static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns, unsigned long serial) 
 {
 	int i,j,rv;
-	unsigned long queryts;
+	time_t queryts;
 	long lcnt;
 	time_t ttl;
 	unsigned char *rrp;
@@ -1028,7 +1028,7 @@ static void init_qserv(query_serv_t *q)
 /*
  * Add a server entry to a query_serv_t
  */
-static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si, int flags, int nocache, int thint, char lean_query, char trusted, unsigned char *nsdomain)
+static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, time_t timeout, int si, int flags, int nocache, int thint, char lean_query, char trusted, unsigned char *nsdomain)
 {
 	q->num++;
 	q->qs=realloc(q->qs,sizeof(query_stat_t)*q->num);

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.7 2001/03/10 12:50:29 tmm Exp $ */
+/* $Id: dns.h,v 1.8 2001/03/25 20:34:31 tmm Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
@@ -87,8 +87,8 @@ Boston, MA 02111-1307, USA.  */
 
 
 /* rfc2181 details that the ttl is a 32-bit integer, where the most significant bit is always 0.
- * for convenience and Unix compatablility we use a long, which satisfies these conditions if 
- * positive (which is ensured in the code */
+ * for convenience and Unix compatablility we use a uint32_t, which satisfies these conditions if 
+ * positive (which is ensured in the code) */
 typedef struct {
 	/* the name is the first field. It has variable length, so it can't be put in the struct */
 	uint16_t type      __attribute__((packed));

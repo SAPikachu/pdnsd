@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.11 2000/11/05 14:59:44 thomas Exp $ */
+/* $Id: conff.h,v 1.12 2001/03/25 20:34:31 tmm Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -48,9 +48,9 @@ typedef struct {
 typedef struct {
 	unsigned short   port;
 	int              uptest;
-	long             timeout;
-	long             interval;
-	long             ping_timeout;
+	time_t           timeout;
+	time_t           interval;
+	time_t           ping_timeout;
         char             scheme[32];
 	char             interface[7];
  	char             device[7];
@@ -75,9 +75,9 @@ typedef struct {
 	int           port;
 	pdnsd_a       a;
 	char          lndown_kluge;
-	long          max_ttl;
-	long          min_ttl;
-	long          neg_ttl;
+	time_t        max_ttl;
+	time_t        min_ttl;
+	time_t        neg_ttl;
 	int           neg_rrs_pol;
 	int           neg_domain_pol;
 	char          run_as[21];

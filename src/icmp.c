@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.17 2001/03/13 00:29:15 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.18 2001/03/25 20:34:31 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -174,7 +174,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #endif
 	struct sockaddr_in from,to;
 	struct icmphdr icmpd;
-	struct icmphdr *icmpp;
+	struct icmphdr icmpp;
+	struct iphdr iph;
 	unsigned long sum;
 	unsigned short *ptr;
 	unsigned short id=(unsigned short)get_rand16(); /* randomize a ping id */
@@ -281,18 +282,21 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				
 				sl=sizeof(from);
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
-					if (len>sizeof(struct iphdr) && len-((struct iphdr *)buf)->ip_ihl*4>=ICMP_BASEHDR_LEN) {
-						icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
-						if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
-						    icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
-							return (i-ntohs(icmpp->icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
-						} else {
-							/* No regular echo reply. Maybe an error? */
-							if (icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_DEST_UNREACH) ||
-							    icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_TIME_EXCEEDED)) {
-								return -1;
+					if (len>sizeof(struct iphdr)) {
+						memcpy(&iph, buf, sizeof(iph));
+						if (len-iph.ip_ihl*4>=ICMP_BASEHDR_LEN) {
+							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_ihl, sizeof(icmpp));
+							icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
+							if (iph.ip_saddr==addr.s_addr && icmpp->icmp_type==ICMP_ECHOREPLY &&
+							    ntohs(icmpp.icmp_id)==id && ntohs(icmpp.icmp_seq)<=i) {
+								return (i-ntohs(icmpp.icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
+							} else {
+								/* No regular echo reply. Maybe an error? */
+								if (icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_DEST_UNREACH) ||
+								    icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_TIME_EXCEEDED)) {
+									return -1;
+								}
 							}
-							
 						}
 					}
 				} else {
@@ -364,7 +368,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	struct icmp6_filter f;
 	struct sockaddr_in6 from;
 	struct icmp6_hdr icmpd;
-	struct icmp6_hdr *icmpp;
+	struct icmp6_hdr icmpp;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
 #ifdef NO_POLL
@@ -463,12 +467,12 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
 					if (len>=sizeof(struct icmp6_hdr)) {
 						/* we get packets without IPv6 header, luckily */
-						icmpp=(struct icmp6_hdr *)buf;
+						memcpy(&icmpp, buf, sizeof(icmpp));
 						/* The address comparation was diked out because some linux versions
 						 * seem to have problems with it. */
 						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
-						    ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
-							return (i-ntohs(icmpp->icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
+						    ntohs(icmpp.icmp6_id)==id && ntohs(icmpp.icmp6_seq)<=i) {
+							return (i-ntohs(icmpp.icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
 						} else {
 							/* No regular echo reply. Maybe an error? */
 							if (icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, buf, len, ICMP6_DST_UNREACH) ||

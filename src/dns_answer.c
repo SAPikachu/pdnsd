@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.36 2001/03/13 00:26:23 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.37 2001/03/25 20:34:31 tmm Exp $";
 #endif
 
 /*
@@ -171,7 +171,7 @@ int sva_add(sva_t **sva, int *svan, unsigned char *name, unsigned char *rhn, int
  * belongs logically. Note that you still have to add the rrs in the right order (answer rrs first,
  * then authority and last additional).
  */
-static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned short type, char section, compbuf_t **cb, char udp, time_t queryts, unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
+static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, compbuf_t **cb, char udp, time_t queryts, unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
 {
 	unsigned char nbuf[256];
 	int nlen,ilen,blen,osz;
@@ -358,7 +358,7 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 /* This adds an rrset, optionally randomizing the first element it adds.
  * if that is done, all rrs after the randomized one appear in order, starting from
  * that one and wrapping over if needed. */
-static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *sz, compbuf_t **cb, char udp, unsigned long queryts, unsigned char *rrn, sva_t **sva, int *svan)
+static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, compbuf_t **cb, char udp, time_t queryts, unsigned char *rrn, sva_t **sva, int *svan)
 {
 	rr_bucket_t *b;
 	rr_bucket_t *first;
@@ -411,7 +411,7 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *
  * the first time. It gets filled with a pointer to compression information that can be
  * reused in subsequent calls to add_to_response.
  */
-static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz, dns_cent_t *cached, compbuf_t **cb, char udp, unsigned char *rrn, unsigned long queryts, sva_t **sva, int *svan)
+static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent_t *cached, compbuf_t **cb, char udp, unsigned char *rrn, time_t queryts, sva_t **sva, int *svan)
 {
 	int i;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
@@ -464,7 +464,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 /*
  * Add an additional
  */
-static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_t **sva, int *svan,dns_hdr_t **ans, unsigned long *rlen, char udp, time_t queryts,	compbuf_t **cb, int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
+static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_t **sva, int *svan,dns_hdr_t **ans, long *rlen, char udp, time_t queryts, compbuf_t **cb, int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
 {
 	int rc;
 	int j;
@@ -497,7 +497,7 @@ static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_t **sva
 /*
  * The code below actually handles A and AAAA additionals.
  */
-static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t **ans, unsigned long *rlen, char udp, time_t queryts,	compbuf_t **cb) 
+static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t **ans, long *rlen, char udp, time_t queryts, compbuf_t **cb) 
 {
 	unsigned char  buf[256]; /* this is buffer space for the ns record */
 	dns_cent_t *ae;
@@ -558,7 +558,7 @@ int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server nam
  * Compose an answer message for the decoded query in q, hdr is the header of the dns requestm
  * rlen is set to be the answer lenght.
  */
-static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned long *rlen, char udp) 
+static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, long *rlen, char udp) 
 {
 	char aa=1;
 	unsigned char buf[256],bufr[256],oname[256];
@@ -814,7 +814,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
  * Decode the query (the query messgage is in data and rlen bytes long) into q
  * XXX: data needs to be aligned
  */
-static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
+static int decode_query(unsigned char *data, long rlen, dns_query_t **q)
 {
 	int i,res,l;
 	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
@@ -1008,7 +1008,7 @@ void *udp_answer_thread(void *data)
 	struct iovec v;
 	struct cmsghdr *cmsg;
 	char ctrl[512];
-	unsigned long rlen=((udp_buf_t *)data)->len;
+	long rlen=((udp_buf_t *)data)->len;
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
 	unsigned char *resp;
 	socklen_t sl;
@@ -1245,7 +1245,7 @@ int init_udp_socket()
 void *udp_server_thread(void *dummy)
 {
 	int sock;
-	long qlen;
+	unsigned long qlen;
 #ifdef ENABLE_IPV4
 	struct sockaddr_in sin4;
 #endif
@@ -1470,7 +1470,7 @@ void *tcp_answer_thread(void *csock)
 {
 	dns_hdr_t err;
 	unsigned short rlen,olen;
-	unsigned long nlen;
+	long nlen;
 	/* XXX: This should be OK, the original must be (and is) aligned */
 	int sock=*((int *)csock);
 	unsigned char *buf;
@@ -1506,7 +1506,6 @@ void *tcp_answer_thread(void *csock)
 	pthread_mutex_unlock(&proc_lock);
 
 	free(csock);
-	rlen=htons(rlen);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
 	 * the socket is closed by the other side or by tcp timeout. 
 	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.24 2001/03/13 00:26:23 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.25 2001/03/25 20:34:31 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -47,7 +47,7 @@ unsigned char c_db[256];
 unsigned char c_ptr[256];
 unsigned char c_owner[256];
 unsigned char c_name[256];
-unsigned long c_ttl;
+time_t c_ttl;
 int c_aliases;
 unsigned char buf[532];
 char errbuf[256];
