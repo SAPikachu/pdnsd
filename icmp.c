@@ -18,10 +18,6 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.6 2000/06/04 16:50:08 thomas Exp $";
-#endif
-
 /*
  * This should now work on both Linux and FreeBSD. If anyone
  * with experience in other Unix flavors wants to contribute platform-specific
@@ -53,6 +49,10 @@ static char rcsid[]="$Id: icmp.c,v 1.6 2000/06/04 16:50:08 thomas Exp $";
 #include <netdb.h>
 #include "icmp.h"
 #include "error.h"
+
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: icmp.c,v 1.7 2000/06/04 17:55:16 thomas Exp $";
+#endif
 
 #define ICMP_MAX_ERRS 5
 int icmp_errs=0; /* This is only here to minimize log output. Since the 

@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.7 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.8 2000/06/04 17:55:16 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1005,7 +1005,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 # endif
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-		if (tp=T_AAAA) {/* means T_AAAA*/
+		if (tp==T_AAAA) {/* means T_AAAA*/
 			b2[0]='\0';
 			for (i=15;i>=0;i--) {
 				sprintf((char *)b4,"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);

@@ -18,10 +18,6 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.7 2000/06/04 16:50:08 thomas Exp $";
-#endif
-
 /*
  * STANDARD CONFORMITY
  * 
@@ -52,6 +48,10 @@ static char rcsid[]="$Id: dns_answer.c,v 1.7 2000/06/04 16:50:08 thomas Exp $";
 #include "helpers.h"
 #include "cache.h"
 #include "error.h"
+
+#if !defined(lint) && !defined(NO_RCSIDS)
+static char rcsid[]="$Id: dns_answer.c,v 1.8 2000/06/04 17:55:16 thomas Exp $";
+#endif
 
 /*
  * This is for error handling to prevent spewing the log files.
@@ -341,12 +341,14 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 	rr_bucket_t *b;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
 	if (cached->rr[T_CNAME-T_MIN] != NULL) {
-		b=cached->rr[T_CNAME-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz, b,T_CNAME,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_CNAME-T_MIN]->ts,
-				    cached->rr[T_CNAME-T_MIN]->ttl,cached->rr[T_CNAME-T_MIN]->flags)) 
-				return 0;
-			b=b->next;
+		if (cached->rr[T_CNAME-T_MIN]) {
+			b=cached->rr[T_CNAME-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz, b,T_CNAME,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_CNAME-T_MIN]->ts,
+					    cached->rr[T_CNAME-T_MIN]->ttl,cached->rr[T_CNAME-T_MIN]->flags)) 
+					return 0;
+				b=b->next;
+			}
 		}
 	}
 	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
@@ -359,82 +361,96 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 		   reasons. */
 		return RC_NOTSUPP; 
 	} else if (qe.qtype==QT_MAILB) {
-		b=cached->rr[T_MB-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,T_MB,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MB-T_MIN]->ts,
-				    cached->rr[T_MB-T_MIN]->ttl,cached->rr[T_MB-T_MIN]->flags))
-				return 0;
-			b=b->next;
+		if (cached->rr[T_MB-T_MIN]) {
+			b=cached->rr[T_MB-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,T_MB,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MB-T_MIN]->ts,
+					    cached->rr[T_MB-T_MIN]->ttl,cached->rr[T_MB-T_MIN]->flags))
+					return 0;
+				b=b->next;
+			}
 		}
-		b=cached->rr[T_MG-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,T_MG,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MG-T_MIN]->ts,
-				    cached->rr[T_MG-T_MIN]->ttl,cached->rr[T_MG-T_MIN]->flags)) 
-				return 0;
-			b=b->next;
+		if (cached->rr[T_MG-T_MIN]) {
+			b=cached->rr[T_MG-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,T_MG,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MG-T_MIN]->ts,
+					    cached->rr[T_MG-T_MIN]->ttl,cached->rr[T_MG-T_MIN]->flags)) 
+					return 0;
+				b=b->next;
+			}
 		}
-		b=cached->rr[T_MR-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,T_MR,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MR-T_MIN]->ts,
-				    cached->rr[T_MR-T_MIN]->ttl,cached->rr[T_MR-T_MIN]->flags)) 
-				return 0;
-			b=b->next;
+		if (cached->rr[T_MR-T_MIN]) {
+			b=cached->rr[T_MR-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,T_MR,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MR-T_MIN]->ts,
+					    cached->rr[T_MR-T_MIN]->ttl,cached->rr[T_MR-T_MIN]->flags)) 
+					return 0;
+				b=b->next;
+			}
 		}
 	} else if (qe.qtype==QT_MAILA) {
-		b=cached->rr[T_MD-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,T_MD,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MD-T_MIN]->ts,
-				    cached->rr[T_MD-T_MIN]->ttl,cached->rr[T_MD-T_MIN]->flags)) 
-				return 0;
-			b=b->next;
+		if (cached->rr[T_MD-T_MIN]) {
+			b=cached->rr[T_MD-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,T_MD,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MD-T_MIN]->ts,
+					    cached->rr[T_MD-T_MIN]->ttl,cached->rr[T_MD-T_MIN]->flags)) 
+					return 0;
+				b=b->next;
+			}
 		}
-		b=cached->rr[T_MF-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,T_MF,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MF-T_MIN]->ts,
-				    cached->rr[T_MF-T_MIN]->ttl,cached->rr[T_MF-T_MIN]->flags)) 
-				return 0;
-			b=b->next;
+		if (cached->rr[T_MF-T_MIN]) {
+			b=cached->rr[T_MF-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,T_MF,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MF-T_MIN]->ts,
+					    cached->rr[T_MF-T_MIN]->ttl,cached->rr[T_MF-T_MIN]->flags)) 
+					return 0;
+				b=b->next;
+			}
 		}
 	} else if (qe.qtype==QT_ALL) {
 		for (i=T_MIN;i<=T_MAX;i++) {
 			if (i==T_CNAME)
 				continue; /* cnames are added below without name filtering */
-			b=cached->rr[i-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,i,S_ANSWER,cb,udp,queryts,rrn,cached->rr[i-T_MIN]->ts,
-					    cached->rr[i-T_MIN]->ttl,cached->rr[i-T_MIN]->flags)) 
-					return 0;
-				if (svan && sva && (i==T_NS || i==T_A || i==T_AAAA)) {
+			if (cached->rr[i-T_MIN]) {
+				b=cached->rr[i-T_MIN]->rrs;
+				while (b) {
+					if (!add_rr(ans, sz,b ,i,S_ANSWER,cb,udp,queryts,rrn,cached->rr[i-T_MIN]->ts,
+						    cached->rr[i-T_MIN]->ttl,cached->rr[i-T_MIN]->flags)) 
+						return 0;
+					if (svan && sva && (i==T_NS || i==T_A || i==T_AAAA)) {
 				        /* mark it as added */
+						(*svan)++;
+						if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
+							return 0;
+						}
+						(*sva)[*svan-1].tp=i;
+						rhn2str(rrn,buf);
+						strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+					}
+					b=b->next;
+				}
+			}
+		}
+	} else {
+		/* Unsupported elements have been filtered.*/
+		if (cached->rr[qe.qtype-T_MIN]) {
+			b=cached->rr[qe.qtype-T_MIN]->rrs;
+			while (b) {
+				if (!add_rr(ans, sz,b ,qe.qtype,S_ANSWER,cb,udp,queryts,rrn,cached->rr[qe.qtype-T_MIN]->ts,
+					    cached->rr[qe.qtype-T_MIN]->ttl,cached->rr[qe.qtype-T_MIN]->flags)) 
+					return 0;
+				if (svan && sva && (qe.qtype==T_NS || qe.qtype==T_A || qe.qtype==T_AAAA)) {
+				/* mark it as added */
 					(*svan)++;
 					if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
 						return 0;
 					}
-					(*sva)[*svan-1].tp=i;
+					(*sva)[*svan-1].tp=qe.qtype;
 					rhn2str(rrn,buf);
 					strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
 				}
 				b=b->next;
 			}
-		}
-	} else {
-		/* Unsupported elements have been filtered.*/
-		b=cached->rr[qe.qtype-T_MIN]->rrs;
-		while (b) {
-			if (!add_rr(ans, sz,b ,qe.qtype,S_ANSWER,cb,udp,queryts,rrn,cached->rr[qe.qtype-T_MIN]->ts,
-				    cached->rr[qe.qtype-T_MIN]->ttl,cached->rr[qe.qtype-T_MIN]->flags)) 
-				return 0;
-			if (svan && sva && (qe.qtype==T_NS || qe.qtype==T_A || qe.qtype==T_AAAA)) {
-				/* mark it as added */
-				(*svan)++;
-				if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
-					return 0;
-				}
-				(*sva)[*svan-1].tp=qe.qtype;
-				rhn2str(rrn,buf);
-				strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
-			}
-			b=b->next;
 		}
 	}
 	return 1;
@@ -558,34 +574,36 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			if (!cont) {
 				tmp=&ar;
 				while (*tmp) tmp=&(*tmp)->next;
-				rr=cached->rr[T_NS-T_MIN]->rrs;;
-				while (rr) {
-					if (!(rr2=copy_rr(rr)) || !(*tmp=calloc(sizeof(rr_ext_t),1))) {
-						free(ans);
-						while (ar) {
-							au=ar->next;
-							free_rr(ar->rr);
-							free(ar);
-							ar=au;
-						}
-						if (cb)
+				if (cached->rr[T_NS-T_MIN]) {
+					rr=cached->rr[T_NS-T_MIN]->rrs;;
+					while (rr) {
+						if (!(rr2=copy_rr(rr)) || !(*tmp=calloc(sizeof(rr_ext_t),1))) {
+							free(ans);
+							while (ar) {
+								au=ar->next;
+								free_rr(ar->rr);
+								free(ar);
+								ar=au;
+							}
+							if (cb)
 							free(cb);
-						return NULL;
-					}
-					memcpy(&(*tmp)->nm,bufr,256);
-					(*tmp)->ts=cached->rr[T_NS-T_MIN]->ts;
-					(*tmp)->ttl=cached->rr[T_NS-T_MIN]->ttl;
-					(*tmp)->flags=cached->rr[T_NS-T_MIN]->flags;
-					memcpy(&(*tmp)->rr,rr2,sizeof(rr_bucket_t)+rr2->rdlen);
-					free(rr2);
+							return NULL;
+						}
+						memcpy(&(*tmp)->nm,bufr,256);
+						(*tmp)->ts=cached->rr[T_NS-T_MIN]->ts;
+						(*tmp)->ttl=cached->rr[T_NS-T_MIN]->ttl;
+						(*tmp)->flags=cached->rr[T_NS-T_MIN]->flags;
+						memcpy(&(*tmp)->rr,rr2,sizeof(rr_bucket_t)+rr2->rdlen);
+						free(rr2);
 #if 0
-					if (!(cached->flags&CF_LOCAL)) {
+						if (!(cached->flags&CF_LOCAL)) {
 						/* set the timestamp correct */
-						(*tmp)->ttl=(*tmp)->ttl<time(NULL)-cached->ts?0:(*tmp)->ttl<time(NULL)-cached->ts;
-					}
+							(*tmp)->ttl=(*tmp)->ttl<time(NULL)-cached->ts?0:(*tmp)->ttl<time(NULL)-cached->ts;
+						}
 #endif
-					rr=rr->next;
-					tmp=&(*tmp)->next;
+						rr=rr->next;
+						tmp=&(*tmp)->next;
+					}
 				}
 			} else {
 				free_cent(*cached);
