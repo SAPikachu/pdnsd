@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.9 2000/08/12 20:58:45 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.10 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -199,8 +199,8 @@ int main(int argc,char *argv[])
 		} else if (strcmp(argv[i],"-p")==0) {
 			if (i<argc-1) {
 				i++;
-				strncpy(pidfile,argv[i],1023);
-				pidfile[1024]='\0';
+				strncpy(pidfile,argv[i],1024);
+				pidfile[1023]='\0';
 			} else {
 				fprintf(stderr,"Error: file name expected after -p option.\n");
 				exit(1);

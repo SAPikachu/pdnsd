@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.5 2000/08/07 11:04:52 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.6 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -109,6 +109,7 @@ unsigned char *nm;
 %token <num> UPTEST_CMD
 %token <num> INTERVAL
 %token <num> INTERFACE
+%token <num> DEVICE
 %token <num> PURGE_CACHE
 %token <num> CACHING
 %token <num> LEAN_QUERY
@@ -371,7 +372,7 @@ serv_el:	IP '=' STRING ';'
 			}
 		| UPTEST '=' CONST ';'
 			{
-				if ($3==C_PING || $3==C_NONE || $3==C_IF || $3==C_EXEC) {
+ 				if ($3==C_PING || $3==C_NONE || $3==C_IF || $3==C_EXEC || $3==C_DEV) {
 					server.uptest=$3;
 				} else {
 					yyerror("bad qualifier in uptest= option.");
@@ -423,6 +424,11 @@ serv_el:	IP '=' STRING ';'
 				strncpy(server.interface,(char *)$3,6);
 				server.interface[6]='\0';
 			}
+ 		| DEVICE '=' STRING  ';'
+ 			{
+ 				strncpy(server.device,(char *)$3,6);
+ 				server.device[6]='\0';
+  			}
 		| PURGE_CACHE '=' CONST ';'
 			{
 				if ($3==C_ON || $3==C_OFF) {

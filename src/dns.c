@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.5 2000/08/12 20:05:34 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.6 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -313,7 +313,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 /*
  * Read a file in /etc/hosts-format and add generate rrs for it.
  */
-char *read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize)
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize)
 {
 	FILE *f;
 	unsigned char buf[1025];

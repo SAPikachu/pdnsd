@@ -42,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.3 2000/07/29 21:29:34 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.4 2000/08/13 13:53:17 thomas Exp $";
 #endif
 
 /*
@@ -89,7 +89,11 @@ int uptest (servparm_t serv)
 		ret=ping(&serv.ping_a,serv.ping_timeout,2)!=-1;
 		break;
 	case C_IF:
-		ret=if_up(serv.interface);
+ 	case C_DEV:
+ 		ret=if_up(serv.interface);
+ 		if (ret!=0 && serv.uptest==C_DEV) {
+ 			ret=dev_up(serv.interface,serv.device);
+ 		}
 		break;
 	case C_EXEC:
 		if ((pid=fork())==-1) {
@@ -173,7 +177,7 @@ void *servstat_thread(void *p)
 	if (all_none)
 		return NULL; /* we need no server status thread. */
 	while (1) {
-+		schm[0] = '\0';
+		schm[0] = '\0';
 		for (i=0;i<serv_num;i++) {
 			pthread_mutex_lock(&servers_lock);
 			if (servers[i].interval>0 && (time(NULL)-servers[i].i_ts>servers[i].interval ||

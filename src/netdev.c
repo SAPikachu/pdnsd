@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.1 2000/07/20 20:03:10 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.2 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 /*
@@ -72,7 +72,7 @@ int statusif(char *name)
 	}
 		
 	memset(&phone, 0, sizeof(phone));
-	strncpy(phone.name, name, sizeof(phone.name));
+	strncpy(phone.name, name, sizeof(phone.name)-1);
 	if (ioctl(isdninfo, IIOCNETGPN, &phone)==0) {
 		rc=1;
 	}
@@ -80,6 +80,48 @@ int statusif(char *name)
 	return rc;
 }
 #  endif
+
+/*
+ * Test whether the network interface specified in ifname and its
+ * associated device specified in devname have locks owned by the
+ * same process.
+ */
+int dev_up(char *ifname, char *devname)
+{
+	char buffer[256];
+ 	FILE *fd;
+ 	int pidi, pidd, rv;
+	
+ 	snprintf(buffer, 256, "/var/run/%s.pid", ifname) ;
+ 	if ( (fd=fopen(buffer, "r")) == NULL ) {
+ 		return 0 ;
+ 	}
+
+ 	if ( fscanf(fd, "%d", &pidi) != 1 ) {
+		fclose(fd) ;
+ 		return 0 ;
+ 	}
+ 	fclose(fd) ;
+ 
+ 	snprintf(buffer, 256, "/var/lock/LCK..%s", devname) ;
+ 	if ( (fd=fopen(buffer, "r")) == NULL ) {
+		return 0 ;
+ 	}
+	
+ 	if ( fscanf(fd, "%d", &pidd) != 1 ) {
+		fclose(fd) ;
+		return 0 ;
+ 	}
+ 	fclose(fd) ;
+	
+ 	if (pidi != pidd)
+		return 0;
+	/* Test if pppd is still alive */
+	rv=kill(pidi,0);
+	return (rv==0 || (rv==-1 && errno==ESRCH));
+}
+ 
+
 # endif
 
 /*
@@ -120,6 +162,7 @@ int if_up(char *devname)
 	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
 		return 0;
 	strncpy(ifr.ifr_name,devname,IFNAMSIZ);
+	ifr.ifr_name[IFNAMSIZ-1]='\0';
 	if (ioctl(sock,SIOCGIFFLAGS,&ifr)==-1) {
 		close(sock);
 		return 0;

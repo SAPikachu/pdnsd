@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.6 2000/08/05 16:50:36 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.7 2000/08/13 13:53:17 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -140,6 +140,7 @@ void *status_thread (void *p)
 	}
 	a.sun_family=AF_UNIX;
 	strncpy(a.sun_path,sock_path,99);
+	a.sun_path[98]='\0';
 	if (bind(sock,(struct sockaddr *)&a,sizeof(a))==-1) {
 		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(sock);

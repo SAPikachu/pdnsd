@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: netdev.h,v 1.1 2000/07/20 20:03:10 thomas Exp $ */
+/* $Id: netdev.h,v 1.2 2000/08/13 13:53:17 thomas Exp $ */
 
 #ifndef _NETDEV_H_
 #define _NETDEV_H_
@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 int if_up(char *devname);
+int dev_up(char *ifname, char *devname);
 int is_local_addr(pdnsd_a *a);
 
 #endif

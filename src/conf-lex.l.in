@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.4 2000/08/05 16:50:36 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.5 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -85,6 +85,7 @@ C_CLOSE \*\/
 <INITIAL>"uptest_cmd"			{return UPTEST_CMD;}
 <INITIAL>"interval"			{return INTERVAL;}
 <INITIAL>"interface"			{return INTERFACE;}
+<INITIAL>"device"			{return DEVICE;}
 <INITIAL>"purge_cache"			{return PURGE_CACHE;}
 <INITIAL>"caching"			{return CACHING;}
 <INITIAL>"lean_query"			{return LEAN_QUERY;}
@@ -105,6 +106,7 @@ C_CLOSE \*\/
 <INITIAL>"ping"				{yylval.num=C_PING;return CONST;}
 <INITIAL>"none"				{yylval.num=C_NONE;return CONST;}
 <INITIAL>"if"				{yylval.num=C_IF;return CONST;}
+<INITIAL>"dev"				{yylval.num=C_DEV;return CONST;}
 <INITIAL>"exec"				{yylval.num=C_EXEC;return CONST;}
 <INITIAL>"onquery"			{yylval.num=C_ONQUERY;return CONST;}
 <INITIAL>"udp_only"			{yylval.num=UDP_ONLY;return CONST;}

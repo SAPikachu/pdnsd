@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.5 2000/08/07 11:04:53 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.6 2000/08/13 13:53:16 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -45,9 +45,9 @@ globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/va
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,0,{{INADDR_ANY}},{{INADDR_ANY}}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,0,{{INADDR_ANY}},{{INADDR_ANY}}};
 #else
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
 #endif
 
 int serv_num=0;
@@ -144,7 +144,7 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
 		fsprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
 		if (servers[i].scheme[0])
-			fprintf(f,"\tscheme: %s\n", servers[i].scheme);
+			fsprintf(f,"\tscheme: %s\n", servers[i].scheme);
 		fsprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
 		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
 		fsprintf(f,"\tlean query: %i\n",servers[i].lean_query);
