@@ -35,6 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/poll.h>
+#include <sys/param.h>
 #include <netdb.h>
 #include <signal.h>
 #include <time.h>
@@ -53,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.25 2000/11/06 21:19:08 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.26 2000/11/07 12:49:53 thomas Exp $";
 #endif
 
 /*
@@ -97,9 +98,14 @@ typedef struct {
 # ifdef ENABLE_IPV4
 		struct in_pktinfo   pi4;
 # endif
-# ifdef ENABLE_IPV6
-		struct in6_pktinfo  pi6;
+#else
+# ifdef ENABLE_IPV4
+		struct in_addr      ai4;
 # endif
+
+#endif
+#ifdef ENABLE_IPV6
+		struct in6_pktinfo  pi6;
 #endif
 	}                  pi;
 
@@ -1038,7 +1044,7 @@ void *udp_answer_thread(void *data)
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
-#if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
+#if defined(SRC_ADDR_DISC)
 	msg.msg_control=ctrl;
 	msg.msg_controllen=512;
 #else
@@ -1051,7 +1057,8 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin4;
 		msg.msg_namelen=sizeof(struct sockaddr_in);
-# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC) 
+#  if TARGET==TARGET_LINUX
 		((udp_buf_t *)data)->pi.pi4.ipi_spec_dst=((udp_buf_t *)data)->pi.pi4.ipi_addr;
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in_pktinfo));
@@ -1059,10 +1066,22 @@ void *udp_answer_thread(void *data)
 		cmsg->cmsg_type=IP_PKTINFO;
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.pi4,sizeof(struct in_pktinfo));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_pktinfo));
+#  else
+		cmsg=CMSG_FIRSTHDR(&msg);
+		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in_addr));
+		cmsg->cmsg_level=IPPROTO_IP;
+		cmsg->cmsg_type=IP_RECVDSTADDR;
+		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.ai4,sizeof(struct in_addr));
+		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_addr));
+#  endif
 # endif		
 		DEBUG_MSG2("Answering to: %s", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
-# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC)
+#  if TARGET==TARGET_LINUX
 		DEBUG_MSG2(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
+#  else
+		DEBUG_MSG2(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.ai4));
+#  endif
 # else
 		DEBUG_MSG1("\n");
 # endif
@@ -1073,7 +1092,7 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin6;
 		msg.msg_namelen=sizeof(struct sockaddr_in6);
-# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC)
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in6_pktinfo));
 		cmsg->cmsg_level=SOL_IPV6;
@@ -1083,7 +1102,7 @@ void *udp_answer_thread(void *data)
 # endif
 
 		DEBUG_MSG2("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
-# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC)
 		DEBUG_MSG2(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
 # else
 		DEBUG_MSG1("\n");
@@ -1236,10 +1255,14 @@ void *udp_server_thread(void *dummy)
 	}
 #endif
 
-#if defined (SRC_ADDR_DISC) && TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
+#if defined (SRC_ADDR_DISC)
 	/* The following must be set on any case because it also applies for IPv4 packets sent to
 	 * ipv6 addresses. */
+# if  TARGET==TARGET_LINUX 
 	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
+# else
+	if (setsockopt(sock,IPPROTO_IP,IP_RECVDSTADDR,&so,sizeof(so))!=0) {
+# endif
 		if (da_udp_errs<UDP_MAX_ERRS) {
 			da_udp_errs++;
 			log_error("Could not set options on udp socket: %s",strerror(errno));
@@ -1289,7 +1312,7 @@ void *udp_server_thread(void *dummy)
 		msg.msg_control=ctrl;
 		msg.msg_controllen=512;
 
-#if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
+#if defined(SRC_ADDR_DISC)
 # ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
@@ -1297,10 +1320,17 @@ void *udp_server_thread(void *dummy)
 			if ((qlen=recvmsg(sock,&msg,0))>=0) {
 				cmsg=CMSG_FIRSTHDR(&msg);
 				while(cmsg) {
+#  if TARGET==TARGET_LINUX
 					if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
 						memcpy(&buf->pi.pi4,CMSG_DATA(cmsg),sizeof(struct in_pktinfo));
 						break;
 					}
+#  else
+					if (cmsg->cmsg_level==IPPROTO_IP && cmsg->cmsg_type==IP_RECVDSTADDR) {
+						memcpy(&buf->pi.ai4,CMSG_DATA(cmsg),sizeof(buf->pi.ai4));
+						break;
+					}
+#  endif
 					cmsg=CMSG_NXTHDR(&msg,cmsg);
 				}
 				if (!cmsg) {
@@ -1338,12 +1368,15 @@ void *udp_server_thread(void *dummy)
 				        * check for IPv4 sender addresses */
 					cmsg=CMSG_FIRSTHDR(&msg);
 					while(cmsg) {
+#  if TARGET==TARGET_LINUX
 						if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
 							sip=(struct in_pktinfo *)CMSG_DATA(cmsg);
 							IPV6_MAPIPV4(&sip->ipi_addr,&buf->pi.pi6.ipi6_addr);
 							buf->pi.pi6.ipi6_ifindex=sip->ipi_ifindex;
 							break;
 						}
+						/* FIXME: What about BSD? probably ok, but... */
+#  endif
 						cmsg=CMSG_NXTHDR(&msg,cmsg);
 					}
 					if (!cmsg) {

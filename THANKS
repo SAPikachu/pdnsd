@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.21 2000/10/30 18:22:14 thomas Exp $
+$Id: THANKS,v 1.22 2000/11/07 12:49:49 thomas Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -21,6 +21,7 @@ Michael Müller
 Alexandre Nunes
 Wolfgang Ocker
 Soenke J. Peters
+Erich Reitz
 Brian Schroeder
 Roman Shterenzon
 Daniel Smolik

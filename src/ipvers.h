@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.3 2000/07/29 18:45:06 thomas Exp $ */
+/* $Id: ipvers.h,v 1.4 2000/11/07 12:49:53 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -201,6 +201,10 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # else
 #  define ADDRSTR_MAXLEN 16
 # endif
+#endif
+
+#if TARGET==TARGET_BSD
+# define SOL_IPV6 IPPROTO_IPV6
 #endif
 
 typedef union {

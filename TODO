@@ -1,4 +1,4 @@
-$Id: TODO,v 1.24 2000/11/06 21:19:04 thomas Exp $
+$Id: TODO,v 1.25 2000/11/07 12:49:49 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -234,36 +234,38 @@ records.
 Document negative (problems with QT_ALL, problems without      [open	       ]
 lean_query, policy options, neg_ttl, min_ttl)
 --------------------------------------------------------------------------------
+Source address discovery for FreeBSD. Subtasks:		       [-tm, 2000-11-07]
+-[X] IPv4
+-[X] IPv6
+--------------------------------------------------------------------------------
 ================================================================================
 After 1.1.0
 ================================================================================
 --------------------------------------------------------------------------------
-Source address discovery for FreeBSD. Subtasks:		       [open           ]
--[ ] IPv4						      
--[ ] IPv6
+Add support to pdnsd-ctl for dumping cache contents.	       [open	       ]
 --------------------------------------------------------------------------------
-Implement a use count to ensure that newly entered records are
-not purged immediately?					       [open	       ]
+Implement a use count to ensure that newly entered records are [open	       ]
+not purged immediately?
 --------------------------------------------------------------------------------
-Perhaps do a two-step form of recursive query: first query
+Perhaps do a two-step form of recursive query: first query     [open           ]
 those servers we have got cached, then (if unsuccessful) look
 the others up and query again.
 The impact of this optimization may not be very big, because
-all sane servers give A records for NS records (as do we ;-)   [open           ]
+all sane servers give A records for NS records (as do we ;-)
 --------------------------------------------------------------------------------
-Introduce debug levels with compile time preset to save space?
+Introduce debug levels with compile time preset to save space? [open           ]
 This is deferred to the time it might be really useful (debug
-msgs have only 4kB overhead by now).			       [open           ]
+msgs have only 4kB overhead by now).
 --------------------------------------------------------------------------------
-Test for compatibility on other Unix-like Systems other than 
+Test for compatibility on other Unix-like Systems other than   [open	       ]
 Linux and FreeBSD; rewrite the functions in netdev.c and icmp.c
 for those OSs if necessary.
 Also try to get compatibility for other compilers than gcc, for
-I need to use __attribute__((packed)) for some structures 
+I need to use __attribute__((packed)) for some structures
 declared in the header files, and I also use it in some just
 to reduce memory/disk requirements (well, since I need it, I
 may as well use it in other places).
-(Needed, but I can't do that by myself)			       [open	       ]
+(Needed, but I can't do that by myself)
 --------------------------------------------------------------------------------
 
 Maintainers:

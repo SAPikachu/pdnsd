@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.10 2000/11/03 16:08:09 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.11 2000/11/07 12:49:53 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -367,6 +367,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #else
 	struct pollfd pfd;
 #endif
+	/*
 #if TARGET!=TARGET_LINUX
 	int SOL_IPV6;
 	struct protoent *pe;
@@ -380,6 +381,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	}
 	SOL_IPV6=pe->p_proto;
 #endif
+	*/
 
 	isock=ping6_isocket;
 

@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.26 2000/11/06 21:19:08 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.27 2000/11/07 12:49:53 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -828,7 +828,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			free(st->hdr);
 			rv=st->recvbuf->rcode;
 			free(st->recvbuf);
-			close(st->sock);
+			/*close(st->sock);*/
 			st->state=QS_DONE;
 			if (rv!=RC_OK) {
 				DEBUG_MSG3("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(rv));
@@ -1195,7 +1195,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 						case QEV_WRITE:
 							FD_SET(q->qs[global.par_queries*j+i].sock,&writes);
 							break;
-							}
+						}
 						pc++;
 					}
 				}
@@ -1250,10 +1250,11 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				for (i=0;i<mc;i++) {
 					/* Check if we got a poll/select event, or whether we are timed out */
 					if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
-						if (time(NULL)-ts>q->qs[global.par_queries*j+i].timeout) {
+						if (time(NULL)-ts>=q->qs[global.par_queries*j+i].timeout) {
 							/* We have timed out. cancel this, and see whether we need to mark
 							 * a server down. */
 							p_cancel_query(&q->qs[global.par_queries*j+i]);
+							DEBUG_MSG1("timeout\n");
 							if (q->qs[global.par_queries*j+i].si>=0)
 								mark_server_down(q->qs[global.par_queries*j+i].si);
 							/* set rv, we might be the last! */
@@ -1286,8 +1287,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 								}
 							}
 #endif
+							qo=0;
 							if (srv) {
-								qo=0;
 								rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial);
 								if (rv==RC_OK || rv==RC_NAMEERR) {
 									for (k=0;k<mc;k++) {
