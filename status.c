@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.7 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.8 2000/06/27 18:24:22 thomas Exp $";
 #endif
 
 char fifo_path[1024];
@@ -68,7 +68,7 @@ void *status_thread (void *p)
 			report_cache_stat(f);
 			report_conf_stat(f);
 			fclose(f);
-			usleep(100000); /* sleep some time. I do not want the query frequence to be too high. */
+			usleep(100000); /* sleep some time. I do not want the query frequency to be too high. */
 		} else {
 			if (errno!=EINTR)
 				log_warn("Failed to open fifo: %s. Status readback will be impossible",strerror(errno));
@@ -94,7 +94,7 @@ void init_stat_fifo()
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 	if (pthread_create(&st,&attr,status_thread,NULL))
-		log_warn("Failed to start status thread. The status fifo will be unusable");
+		log_warn("Failed to start status thread. The status fifo will be unuseable");
 	else
 		log_info(2,"Status pipe thread started.");
 }

@@ -27,7 +27,6 @@ Boston, MA 02111-1307, USA.  */
  * I always set RA but I ignore RD largely (in everything but CNAME recursion), 
  * not because it is not supported, but because I _always_ do a recursive 
  * resolve in order to be able to cache the results.
- *
  */
 
 #include "config.h"
@@ -50,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.20 2000/06/24 21:44:21 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.21 2000/06/27 18:24:22 thomas Exp $";
 #endif
 
 /*
@@ -124,24 +123,20 @@ typedef struct {
 } sva_t; 
 
 /*
- * Mark an addtional record as added to avoif double records. Supply either name or rhn (set the other to 0)
+ * Mark an addtional record as added to avoid double records. Supply either name or rhn (set the other to 0)
  */
 int sva_add(sva_t **sva, int *svan, unsigned char *name, unsigned char *rhn, int tp, rr_bucket_t *b)
 {
-	unsigned char buf[256];
-
 	if (svan && sva) {
-		if (!name)
-			rhn2str(rhn,buf);
-		else
-			strcpy((char *)buf,(char *)name);
-			
 		(*svan)++;
 		if (!(*sva=realloc(*sva,sizeof(sva_t)**svan))) {
 			return 0;
 		}
 		(*sva)[*svan-1].tp=tp;
-		strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+		if (!name)
+			rhn2str(rhn,(*sva)[*svan-1].nm);
+		else
+			strcpy((char *)(*sva)[*svan-1].nm,(char *)name);
 		memcpy((*sva)[*svan-1].data,b+1,b->rdlen);
 	}
 	return 1;
@@ -176,13 +171,9 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 
 	/* This buffer is over-allocated usually due to compression. Never mind, just a few bytes,
 	 * and the buffer is freed soon*/
-	*ans=(dns_hdr_t *)realloc(*ans,*sz+sizeof(rr_hdr_t)+nlen+rr->rdlen/*+strlen(rr->oname)+1*/);
+	*ans=(dns_hdr_t *)realloc(*ans,*sz+sizeof(rr_hdr_t)+nlen+rr->rdlen);
 	if (!*ans)
 		return 0;
-/*	strcpy((char *)(*ans)+*sz,rr->oname); 
-        *sz+=strlen(rr->oname);
-        *(((char *)(*ans))+(*sz))='\0';
-        *sz+=1; */
 	memcpy((unsigned char *)(*ans)+*sz,nbuf,nlen); 
 	*sz+=nlen;
 	rrh=(rr_hdr_t *)(((unsigned char *)(*ans))+(*sz));
@@ -308,21 +299,18 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 	case T_NAPTR:
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),4);
 		*sz+=4;
-		rrh->rdlength=4;
+		ilen=4;
 		for (j=0;j<3;j++) {
-			k=*(((unsigned char *)(rr+1))+*sz);
-			*(((unsigned char *)(*ans))+(*sz))=k;
-			(*sz)++;
-			for (;k>0;k--) {
-				*(((unsigned char *)(*ans))+(*sz))=*(((unsigned char *)(rr+1))+*sz);
-				(*sz)++;
-			}
+			k=*(((unsigned char *)(rr+1))+ilen);
+			memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,k);
+			(*sz)+=k+1;
+			ilen+=k+1;
 		}
-		if (!(blen=compress_name(((unsigned char *)(rr+1))+*sz, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
+		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			free(*ans);
 			return 0;
 		}
-		rrh->rdlength+=blen;
+		rrh->rdlength=ilen+blen;
 		*sz+=blen;
 		break;
 #endif
@@ -331,8 +319,8 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1)),rr->rdlen);
 		*sz+=rr->rdlen;
 	}
-	if (udp && (*sz)/*+rrh->rdlength*/>512 && section==S_ADDITIONAL) /* only add the record if we do not increase the length over 512 */
-		*sz=osz;                                           /* in additionals for udp answer*/
+	if (udp && (*sz)>512 && section==S_ADDITIONAL) /* only add the record if we do not increase the length over 512 */
+		*sz=osz;                               /* in additionals for udp answer*/
 	else {
 		rrh->rdlength=htons(rrh->rdlength);
 		switch (section) {
@@ -347,9 +335,26 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 			break;
 		}
 	}
-/*	rrh->rdlength=htons(rr->rdlen);
-        memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)rr)+sizeof(rr_bucket_t),rr->rdlen);
-	*sz+=rr->rdlen;*/
+	return 1;
+}
+
+static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *sz, compbuf_t **cb, char udp, unsigned long queryts, unsigned char *rrn, sva_t **sva, int *svan)
+{
+	rr_bucket_t *b;
+	if (cached->rr[tp-T_MIN]) {
+		b=cached->rr[tp-T_MIN]->rrs;
+		while (b) {
+			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,cached->rr[tp-T_MIN]->ts,
+				    cached->rr[tp-T_MIN]->ttl,cached->rr[tp-T_MIN]->flags)) 
+				return 0;
+			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
+				/* mark it as added */
+				if (!sva_add(sva,svan,NULL,rrn,tp,b))
+					return 0;
+			}
+			b=b->next;
+		}
+	}
 	return 1;
 }
 
@@ -364,19 +369,10 @@ static int add_rr(dns_hdr_t **ans, unsigned long *sz, rr_bucket_t *rr, unsigned 
 static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz, dns_cent_t *cached, compbuf_t **cb, char udp, unsigned char *rrn, unsigned long queryts, sva_t **sva, int *svan)
 {
 	int i;
-	rr_bucket_t *b;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
-	if (cached->rr[T_CNAME-T_MIN] != NULL) {
-		if (cached->rr[T_CNAME-T_MIN]) {
-			b=cached->rr[T_CNAME-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz, b,T_CNAME,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_CNAME-T_MIN]->ts,
-					    cached->rr[T_CNAME-T_MIN]->ttl,cached->rr[T_CNAME-T_MIN]->flags)) 
-					return 0;
-				b=b->next;
-			}
-		}
-	}
+	if (!add_rrset(cached,T_CNAME, ans, sz, cb, udp, queryts, rrn, sva, svan))
+		return 0;
+
 	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
 	if (qe.qtype==QT_AXFR || qe.qtype==QT_IXFR) {
 		/* I do not know what to do in this case. Since we do not maintain zones (and since we are
@@ -387,87 +383,28 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 		   reasons. */
 		return RC_NOTSUPP; 
 	} else if (qe.qtype==QT_MAILB) {
-		if (cached->rr[T_MB-T_MIN]) {
-			b=cached->rr[T_MB-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,T_MB,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MB-T_MIN]->ts,
-					    cached->rr[T_MB-T_MIN]->ttl,cached->rr[T_MB-T_MIN]->flags))
-					return 0;
-				b=b->next;
-			}
-		}
-		if (cached->rr[T_MG-T_MIN]) {
-			b=cached->rr[T_MG-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,T_MG,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MG-T_MIN]->ts,
-					    cached->rr[T_MG-T_MIN]->ttl,cached->rr[T_MG-T_MIN]->flags)) 
-					return 0;
-				b=b->next;
-			}
-		}
-		if (cached->rr[T_MR-T_MIN]) {
-			b=cached->rr[T_MR-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,T_MR,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MR-T_MIN]->ts,
-					    cached->rr[T_MR-T_MIN]->ttl,cached->rr[T_MR-T_MIN]->flags)) 
-					return 0;
-				b=b->next;
-			}
-		}
+		if (!add_rrset(cached,T_MB, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
+		if (!add_rrset(cached,T_MG, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
+		if (!add_rrset(cached,T_MR, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
 	} else if (qe.qtype==QT_MAILA) {
-		if (cached->rr[T_MD-T_MIN]) {
-			b=cached->rr[T_MD-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,T_MD,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MD-T_MIN]->ts,
-					    cached->rr[T_MD-T_MIN]->ttl,cached->rr[T_MD-T_MIN]->flags)) 
-					return 0;
-				b=b->next;
-			}
-		}
-		if (cached->rr[T_MF-T_MIN]) {
-			b=cached->rr[T_MF-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,T_MF,S_ANSWER,cb,udp,queryts,rrn,cached->rr[T_MF-T_MIN]->ts,
-					    cached->rr[T_MF-T_MIN]->ttl,cached->rr[T_MF-T_MIN]->flags)) 
-					return 0;
-				b=b->next;
-			}
-		}
+		if (!add_rrset(cached,T_MD, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
+		if (!add_rrset(cached,T_MF, ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
 	} else if (qe.qtype==QT_ALL) {
 		for (i=T_MIN;i<=T_MAX;i++) {
 			if (i==T_CNAME)
-				continue; /* cnames are added below without name filtering */
-			if (cached->rr[i-T_MIN]) {
-				b=cached->rr[i-T_MIN]->rrs;
-				while (b) {
-					if (!add_rr(ans, sz,b ,i,S_ANSWER,cb,udp,queryts,rrn,cached->rr[i-T_MIN]->ts,
-						    cached->rr[i-T_MIN]->ttl,cached->rr[i-T_MIN]->flags)) 
-						return 0;
-					if (i==T_NS || i==T_A || i==T_AAAA) {
-				                /* mark it as added */
-						if (!sva_add(sva,svan,NULL,rrn,i,b))
-							return 0;
-					}
-					b=b->next;
-				}
-			}
+				continue; /* cnames are added above without name filtering */
+			if (!add_rrset(cached,i, ans, sz, cb, udp, queryts, rrn, sva, svan))
+				return 0;
 		}
 	} else {
 		/* Unsupported elements have been filtered.*/
-		if (cached->rr[qe.qtype-T_MIN]) {
-			b=cached->rr[qe.qtype-T_MIN]->rrs;
-			while (b) {
-				if (!add_rr(ans, sz,b ,qe.qtype,S_ANSWER,cb,udp,queryts,rrn,cached->rr[qe.qtype-T_MIN]->ts,
-					    cached->rr[qe.qtype-T_MIN]->ttl,cached->rr[qe.qtype-T_MIN]->flags)) 
-					return 0;
-				if (qe.qtype==T_NS || qe.qtype==T_A || qe.qtype==T_AAAA) {
- 				        /* mark it as added */
-					if (!sva_add(sva,svan,NULL,rrn,qe.qtype,b))
-						return 0;
-				}
-				b=b->next;
-			}
-		}
+		if (!add_rrset(cached, qe.qtype , ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
 	}
 	return 1;
 }
@@ -993,6 +930,9 @@ void *udp_answer_thread(void *data)
 	char ctrl[512];
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
+#ifdef ENABLE_IPV6
+	char buf[ADDRSTR_MAXLEN];
+#endif
 
 	THREAD_SIGINIT;
 

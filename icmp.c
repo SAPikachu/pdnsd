@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.10 2000/06/25 14:25:51 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.11 2000/06/27 18:24:22 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -62,6 +62,7 @@ int icmp_errs=0; /* This is only here to minimize log output. Since the
 int ping_isocket;
 int ping_osocket;
 
+/* different names, same thing... be careful, as these are macros... */
 #if TARGET==TARGET_BSD
 # define icmphdr   icmp
 # define iphdr     ip
@@ -82,11 +83,9 @@ int ping_osocket;
 
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 /*
- * These are the ping implementations for Linux in ther IPv4/ICMPv4 and IPv6/ICMPv6 versions.
+ * These are the ping implementations for Linux/FreeBSD in ther IPv4/ICMPv4 and IPv6/ICMPv6 versions.
  * I know they share some code, but I'd rather keep them separated in some parts, as some
  * things might go in different directions there.
- * Btw., the Linux version of ping6 should be fairly portable, according to rfc2292.
- * The ping4 might be, but well, try it.
  */
 
 /* glibc2.0 versions don't have some Linux 2.2 Kernel #defines */
@@ -94,27 +93,21 @@ int ping_osocket;
 # define MSG_ERRQUEUE 0x2000
 #endif
 
-
-/* glibc2.0 versions don't have some Linux 2.2 Kernel #defines */
 #ifndef IP_RECVERR
 # define IP_RECVERR 11
 #endif
 
-/* Initialize a socket for pinging */
+/* Initialize the sockets for pinging */
 void init_ping_socket()
 {
-#ifdef ENABLE_IPV6
-	struct in_addr v4;
-#endif
-
-
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
 			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+			return;
 		}
 		if ((ping_osocket=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP))==-1) {
-			log_warn("icmp ping: socket() failed.");
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
 		}
 
 	}
@@ -123,9 +116,10 @@ void init_ping_socket()
 	if (run_ipv6) {
 		if ((ping_isocket=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6))==-1) {
 			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
+			return;
 		}
 		if ((ping_osocket=socket(PF_INET6,SOCK_RAW,IPPROTO_ICMPV6))==-1) {
-			log_warn("icmpv6 ping: socket() failed.");
+			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
 		}
 	}
 #endif
@@ -167,7 +161,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 
 #if TARGET==TARGET_LINUX
-	/* Fancy ICMP filering -- only on Linux */
+	/* Fancy ICMP filering -- only on Linux (as far is I know) */
 	
 	/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
 	 * So, set it manually and unportable ;-) */
@@ -211,7 +205,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		sum += (sum >> 16);
 		icmpd.icmp_cksum=~sum;
 
-
 		from.sin_family=AF_INET;
 		from.sin_port=0;
 		from.sin_addr=addr;
@@ -248,9 +241,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				}
 			} else {
 				if (errno!=EAGAIN)
-				{
 					return -1; /* error */
-				}
 			}
 			usleep(100000);
 			tm++;
@@ -304,14 +295,13 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	osock=ping_osocket;
 
 	ICMP6_FILTER_SETBLOCKALL(&f);
-	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REQUEST,&f);
+	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY,&f);
 
 	if (setsockopt(isock,IPPROTO_ICMPV6,ICMP6_FILTER,&f,sizeof(f))==-1) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
-			log_warn("icmpv6 ping: setsockopt() for is failed: %s", strerror(errno));
+			log_warn("icmpv6 ping: setsockopt() failed: %s", strerror(errno));
 		}
-		close(isock);
 		return -1;
 	}
 	fcntl(isock,F_SETFL,O_NONBLOCK);
@@ -321,17 +311,15 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	    setsockopt(osock,IPPROTO_ICMPV6,IPV6_CHECKSUM,&ck_offs,sizeof(ck_offs))==-1*/) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
-				log_warn("icmpv6 ping: setsockopt() for os failed: %s",strerror(errno));
+				log_warn("icmpv6 ping: setsockopt() failed: %s",strerror(errno));
 		}
-		close(osock);
-		close(isock);
 		return -1;
 	}
 	
 	for (i=0;i<rep;i++) {
 		icmpd.icmp6_type=ICMP6_ECHO_REQUEST;
 		icmpd.icmp6_code=0;
-		icmpd.icmp6_cksum=0; /* The friently kernel does fill that in for us. */
+		icmpd.icmp6_cksum=0; /* The friendly kernel does fill that in for us. */
 		icmpd.icmp6_id=htons((short)id);
 		icmpd.icmp6_seq=htons((short)i);
 		
@@ -348,8 +336,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				log_warn("icmpv6 ping: sendto() failed: %s.",strerror(errno));
 
 			}
-			close(osock);
-			close(isock);
 			return -1;
 		}
 		fcntl(osock,F_SETFL,O_NONBLOCK);
@@ -361,8 +347,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			msg.msg_controllen=1024;
 			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
 				if (*((unsigned int *)buf)!=0) {
-					close(osock);
-					close(isock);
 					return -1;  /* error in sending (e.g. no route to host) */
 				}
 			}
@@ -375,26 +359,18 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 					icmpp=(struct icmp6_hdr *)buf;
 				        /* The address comparation was diked out because some linux versions
 				         * seem to have problems with it. */
-					if (/*IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&*/
+					if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
 						ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
-						close(osock);
-						close(isock);
 						return (i-ntohs(icmpp->icmp6_seq))*timeout+tm; /* return the number of ticks */
 					}
 				}
 			} else {
 				if (errno!=EAGAIN)
-				{
-					close(osock);
-					close(isock);
 					return -1; /* error */
-				}
 			}
 			usleep(100000);
 			tm++;
 		} while (tm<timeout);
-		close(osock);
-		close(isock);
 	}
 	return -1; /* no answer */
 }

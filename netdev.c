@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.8 2000/06/23 18:07:49 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.9 2000/06/27 18:24:22 thomas Exp $";
 #endif
 
 /*
@@ -101,7 +101,7 @@ int if_up(char *devname)
 	if (strlen(devname)>4 && strlen(devname)<=6 && strncmp(devname,"ippp",4)==0) {
 		/* This function didn't manage the interface uptest correctly. Thanks to
 		 * Joachim Dorner for pointing out. 
-		 * The new code was shamelessly stolen from isdnctrl.c of the 
+		 * The new code (statusif()) was shamelessly stolen from isdnctrl.c of the 
 		 * isdn4k-utils. */
 #  ifdef ISDN_SUPPORT
 		return statusif(devname);
@@ -125,9 +125,7 @@ int if_up(char *devname)
 		return 0;
 	}
 	close(sock);
-	if (!(ifr.ifr_flags&IFF_UP))
-		return 0;
-	if (!(ifr.ifr_flags&IFF_RUNNING))
+	if (!(ifr.ifr_flags&IFF_UP) || !(ifr.ifr_flags&IFF_RUNNING))
 		return 0;
 	return 1;
 }
@@ -232,7 +230,6 @@ int is_local_addr(pdnsd_a *a)
 	        return 0;
 	}
 	ad=buf;
-	/*	for (i=0;i<ifc.ifc_len/sizeof(struct ifreq);i++) {*/
 	while(cnt<ifc.ifc_len) {
 		ir=(struct ifreq *)ad;
 #  ifdef ENABLE_IPV4

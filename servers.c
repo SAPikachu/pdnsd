@@ -38,8 +38,12 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.8 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.9 2000/06/27 18:24:22 thomas Exp $";
 #endif
+
+/*
+ * We may be a little over-strict with locks here. Never mind...
+ */
 
 pthread_t stt;
 pthread_mutex_t servers_lock;
@@ -91,7 +95,6 @@ int uptest (servparm_t serv)
 			waitpid(pid,&ret,0);
 			ret=(WEXITSTATUS(ret)==0);
 		}
-		/*fexecerr=0;*/
 	}
 	return ret;
 }
@@ -200,14 +203,19 @@ void test_onquery()
 {
 	int i,j;
 	long s_ts;
+	servparm_t srv;
+	
+	pthread_mutex_lock(&servers_lock);
 	for (i=0;i<serv_num;i++) {
 		if (servers[i].interval<0) {
+			srv=servers[i];
 			s_ts=time(NULL);
-			j=uptest(servers[i]);
+			pthread_mutex_unlock(&servers_lock);
+			j=uptest(srv);
 			pthread_mutex_lock(&servers_lock);
 			servers[i].is_up=j;
 			servers[i].i_ts=s_ts;
-			pthread_mutex_unlock(&servers_lock);
 		}
 	}
+	pthread_mutex_unlock(&servers_lock);
 }
