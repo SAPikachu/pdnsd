@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.36 2001/09/10 15:59:04 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.37 2002/04/25 12:03:27 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1440,8 +1440,9 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 void report_cache_stat(int f)
 {
 	long mc=(long)global.perm_cache*1024+MCSZ;
-	long csz=cache_size*100/mc;
+	long csz=cache_size/(mc/100);
+
 	fsprintf(f,"\nCache status:\n=============\n");
-	fsprintf(f,"%li kB maximum disk cache size.\n",global.perm_cache);
-	fsprintf(f,"%li of %lu bytes (%lu%%) memory cache used in %lu entries.\n",cache_size,mc,csz,ent_num);
+	fsprintf(f,"%ld kB maximum disk cache size.\n",global.perm_cache);
+	fsprintf(f,"%ld of %ld bytes (%ld%%) memory cache used in %ld entries.\n",cache_size,mc,csz,ent_num);
 }
