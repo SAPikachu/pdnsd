@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.20 2001/04/12 02:46:23 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.21 2001/04/30 15:45:00 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -99,7 +99,7 @@ char *slist_add(servparm_t *sp, char *nm, int tp)
 		return "out of memory!";
 	}
 	sl=DA_LAST(sp->alist,slist_t);
-	sl->rule=C_INCLUDED;
+	sl->rule=tp;
 	if (strlen(nm)>255) {
 		return "include/exclude: name too long.";
 	}

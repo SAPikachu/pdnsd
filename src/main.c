@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.38 2001/04/12 18:48:23 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.39 2001/04/30 15:45:00 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -227,7 +227,7 @@ int main(int argc,char *argv[])
 		} else if (strcmp(argv[i],"-p")==0) {
 			if (i<argc-1) {
 				i++;
-				if (strlen(argv[4]) >= sizeof(pidfile)) {
+				if (strlen(argv[i]) >= sizeof(pidfile)) {
 					fprintf(stderr,"Error: pidfile name too long.\n");
 					exit(1);
 				}
