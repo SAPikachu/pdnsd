@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.11 2000/10/15 19:50:10 thomas Exp $
+$Id: NEWS,v 1.12 2000/10/19 13:10:14 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -66,4 +66,8 @@ enhancements. There are also inclusion/exclusion lists for servers
 (new options include=, exclude=, policy= in the server
 section).
 
+Version 1.0.13 has some code cleanup, a fix for the Debian rc install,
+and a security fix (contributed by Olaf Kirch): when changing
+user and group id, pdnsd did not drop supplementary group IDs that
+root is member of.
 

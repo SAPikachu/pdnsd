@@ -28,6 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <grp.h>
 #include <errno.h>
 #include "ipvers.h"
 #include "error.h"
@@ -36,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.3 2000/10/15 19:50:13 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.4 2000/10/19 13:10:16 thomas Exp $";
 #endif
 
 /*
@@ -76,6 +77,9 @@ int run_as(char *user)
 		}
 		/* setgid first, because we may not allowed to do it anymore after setuid */
 		if (setgid(pwd->pw_gid)!=0) {
+			return 0;
+		}
+		if (initgroups(user, pwd->pw_gid)!=0) {
 			return 0;
 		}
 		if (setuid(pwd->pw_uid)!=0) {
