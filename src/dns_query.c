@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.52 2002/01/03 17:47:20 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.53 2002/01/04 14:53:06 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -365,7 +365,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				 * ensured by the type of *bptr), plus one length byte for each, so 3 * 256 = 786 in
 				 * total. In addition, the name below is up to 256 character in size, and the preference
 				 * field is another 4 bytes in size, so the total length that can be taken up are
-				 * are 1030 characters. This means that the whole record will always fit into db.
+				 * are 1028 characters. This means that the whole record will always fit into db.
 				 */
 				for (j=0;j<3;j++) {
 					if (blcnt<=0)

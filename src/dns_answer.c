@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.57 2002/01/03 17:47:20 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.58 2002/01/04 14:53:06 tmm Exp $";
 #endif
 
 /*
@@ -242,7 +242,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		}
 		*sz+=rrh.rdlength;
 		ilen=rhnlen((unsigned char *)(rr+1));
-		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_RP: got longer");
+		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_MINFO/T_RP: got longer");
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
 			pdnsd_free(*ans);
 			return 0;
@@ -256,6 +256,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	case T_RT:
 	case T_KX:
 #endif
+		PDNSD_ASSERT(rr->rdlen > 2, "T_MX/T_AFSDB/...: rr botch");
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),2);
 		*sz+=2;
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+2, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
@@ -287,6 +288,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		break;
 #ifdef DNS_NEW_RRS
 	case T_PX:
+		PDNSD_ASSERT(rr->rdlen > 2, "T_PX: rr botch");
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),2);
 		*sz+=2;
 		ilen=2;
@@ -306,6 +308,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		*sz+=blen;
 		break;
 	case T_SRV:
+		PDNSD_ASSERT(rr->rdlen > 6, "T_SRV: rr botch");
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),6);
 		*sz+=6;
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+6, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
@@ -324,17 +327,20 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		*sz+=blen;
 		ilen=rhnlen((unsigned char *)(rr+1));
 		PDNSD_ASSERT(rrh.rdlength <= ilen, "T_NXT: got longer");
+		PDNSD_ASSERT(rr->rdlen >= ilen, "T_NXT: rr botch");
 		wlen=rr->rdlen < ilen ? 0 : (rr->rdlen - ilen);
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,wlen);
 		*sz+=wlen;
 		rrh.rdlength+=wlen;
 		break;
 	case T_NAPTR:
+		PDNSD_ASSERT(rr->rdlen > 5, "T_NAPTR: rr botch");
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),4);
 		*sz+=4;
 		ilen=4;
 		for (j=0;j<3;j++) {
 			k=*(((unsigned char *)(rr+1))+ilen);
+			PDNSD_ASSERT(k + 1 + ilen < rr->rdlen, "T_NAPTR: rr botch 2");
 			memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,k+1);
 			(*sz)+=k+1;
 			ilen+=k+1;
