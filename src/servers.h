@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: servers.h,v 1.2 2000/07/29 18:45:06 thomas Exp $ */
+/* $Id: servers.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _SERVERS_H_
 #define _SERVERS_H_
 
-#include "config.h"
+#include <config.h>
 
 void start_servstat_thread(void);
 void mark_server_down(int idx);

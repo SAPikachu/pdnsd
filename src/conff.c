@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.22 2001/04/30 17:02:00 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.23 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4

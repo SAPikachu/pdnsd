@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: netdev.h,v 1.2 2000/08/13 13:53:17 thomas Exp $ */
+/* $Id: netdev.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _NETDEV_H_
 #define _NETDEV_H_
 
-#include "config.h"
+#include <config.h>
 #include "ipvers.h"
 
 int if_up(char *devname);

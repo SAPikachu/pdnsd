@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.28 2001/04/11 16:32:42 tmm Exp $
+dnl $Id: configure.in,v 1.29 2001/05/09 17:51:49 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -24,7 +24,6 @@ def_id="nobody"
 have_rcsids="no"
 udp_queries="yes"
 tcp_queries="no"
-allcachedbms="native" ; cachedbm="native" ; unuseddbms="" ;
 tempdir="/tmp";
 randomdev=default
 freebsd_pthread="4"
@@ -63,29 +62,6 @@ AC_ARG_WITH(cachedir,
   cachedir=$withval)
 AC_DEFINE_UNQUOTED(CACHEDIR, "$cachedir")
 AC_SUBST(cachedir)
-
-AC_ARG_WITH(dbm,
-[  --with-dbm=dbm              Specifiy database manager to use for 
-                              cacheing (default=native)],
-  cachedbm=$withval)
-
-unuseddbms=""
-for dbm in $allcachedbms; do 
-  test "$dbm" != "$cachedbm" && unuseddbms="$unuseddbms $dbm"
-done
-AC_SUBST(allcachedbms)
-AC_SUBST(cachedbm)
-AC_SUBST(unuseddbms)
-
-# Since strings are not permitted as compiler directive conditional args
-case "$cachedbm" in
-  native)
-    AC_DEFINE(CACHE_DBM, DBM_NATIVE)
-	;;
-  *)
-    AC_MSG_ERROR([--with-dbm dbm selected not supported.])
-	;;
-esac
 
 AC_ARG_ENABLE(isdn,
 [  --enable-isdn               Enable ISDN support (may cause problems on 
@@ -384,8 +360,6 @@ doc/pdnsd.conf
 src/Makefile
 src/conf-lex.l
 src/pdnsd-ctl/Makefile
-src/cacheing/Makefile
-src/cacheing/native/Makefile
 src/rc/Makefile
 src/rc/RedHat/Makefile
 src/rc/RedHat/pdnsd

@@ -18,17 +18,17 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include "hash.h"
-#include "../cache.h"
+#include "cache.h"
 #include "error.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.8 2001/04/30 15:34:32 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.9 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash

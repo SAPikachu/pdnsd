@@ -28,18 +28,18 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-#include "../cache.h"
+#include "cache.h"
 #include "hash.h"
-#include "../../conff.h"
-#include "../../helpers.h"
-#include "../../dns.h"
-#include "../../error.h"
-#include "../../debug.h"
-#include "../../thread.h"
-#include "../../ipvers.h"
+#include "conff.h"
+#include "helpers.h"
+#include "dns.h"
+#include "error.h"
+#include "debug.h"
+#include "thread.h"
+#include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.25 2001/04/30 15:34:31 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.26 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -708,7 +708,7 @@ static int purge_rrset(dns_cent_t *cent, int tp)
  * returns the size of the freed memory.
  * Force means to delete the cent even when it's not timed out.
  */
-static int purge_cent(dns_cent_t *cent, int delete)
+static int purge_cent(dns_cent_t *cent, int delete, int *deleted)
 {
 	int rv=0;
 	int i;
@@ -719,7 +719,11 @@ static int purge_cent(dns_cent_t *cent, int delete)
 	if (cent->num_rrs==0 && delete && (!cent->flags&DF_NEGATIVE || 
 					   ((time(NULL)-cent->ts>cent->ttl+CACHE_LAT) && !cent->flags&DF_LOCAL))) {
 		del_cache_int_rrl(cent); /* this will subtract the cent's left size from cache_size */
-	}
+		if (deleted != NULL)
+			*deleted = 1;
+	} else
+		if (deleted != NULL)
+			*deleted = 0;
 	return rv;
 }
 
@@ -1147,6 +1151,7 @@ void add_cache(dns_cent_t cent)
 				unlock_cache_rw();
 			return;
 		}
+		cache_size-=purge_cent(ce, 0, NULL);
 		/* We have a record; add the rrsets replacing old ones */
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
@@ -1278,9 +1283,15 @@ int have_cached(unsigned char *name)
 dns_cent_t *lookup_cache(unsigned char *name)
 {
 	dns_cent_t *ret;
+	int deleted;
+	
 	lock_cache_r();
 	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
-		ret=copy_cent(ret, 1);  /* this may return NULL, check for it! */
+		cache_size-=purge_cent(ret, 1, &deleted);
+		if (deleted)
+			ret = NULL;
+		else
+			ret=copy_cent(ret, 1);
 	}
 	unlock_cache_r();
 	return ret;
@@ -1299,7 +1310,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	lock_cache_rw();
 	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
 		/* purge the record. */
-		purge_cent(ret,0);
+		cache_size-=purge_cent(ret,0, NULL);
 		cache_size-=ret->cs;
 		if (ret->rr[tp-T_MIN] &&  
 		    ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
@@ -1324,7 +1335,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 							return 0;
 						}
 					}
-					purge_cent(ret,1);
+					cache_size-=purge_cent(ret,1,NULL);
 					rv=1;
 				}
 			}

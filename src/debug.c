@@ -24,13 +24,13 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../config.h"
+#include <config.h>
 #include <stdlib.h>
 #include "helpers.h"
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: debug.c,v 1.1 2001/04/12 18:50:12 tmm Exp $";
+static char rcsid[]="$Id: debug.c,v 1.2 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /*

@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.5 2001/04/12 02:46:24 tmm Exp $ */
+/* $Id: dns_query.h,v 1.6 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef DNS_QUERY_H
 #define DNS_QUERY_H
 
-#include "config.h"
+#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #ifdef NO_POLL
@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/poll.h>
 #endif
 #include "dns.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 
 extern int query_method;
 

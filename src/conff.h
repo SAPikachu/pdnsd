@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.17 2001/04/30 17:02:00 tmm Exp $ */
+/* $Id: conff.h,v 1.18 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef CONFF_H
 #define CONFF_H
@@ -26,7 +26,7 @@ Boston, MA 02111-1307, USA.  */
 /* XXX should use the system defined one */
 #define MAXPATH 1024
 
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <pthread.h>
 #include "ipvers.h"

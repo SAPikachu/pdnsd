@@ -19,12 +19,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: rr_types.h,v 1.1 2001/04/03 19:33:01 tmm Exp $ */
+/* $Id: rr_types.h,v 1.2 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _RR_TYPES_H_
 #define _RR_TYPES_H_
 
-#include "../config.h"
+#include <config.h>
 
 #define T_MIN       1
 #define T_A         1
@@ -72,8 +72,27 @@ Boston, MA 02111-1307, USA.  */
 #define T_NAPTR    35
 #define T_KX       36
 
+/* Structure for rr information */
+struct rr_infos {
+	char	*name;		/* name of the RR */
+	int	class;		/* class (values see below) */
+	int	excludes;	/* reltaions to other classes. Mutual exclusion is mareked by or'ing the
+				 * respective RRCL value in this field. Exclusions should be symmettric */
+};
 
-extern char *rr_info[];
+/* Class values */
+#define RRCL_ALIAS	1	/* for CNAMES, conflics with RRCL_RECORD */
+#define RRCL_RECORD	2	/* normal direct record */
+#define RRCL_IDEM	4	/* types that conflict with no others (MX, CNAME, ...) */
+#define RRCL_PTR	8	/* PTR */
+
+/* Standard excludes for the classes */
+#define RRX_ALIAS	(RRCL_RECORD|RRCL_PTR)
+#define	RRX_RECORD	(RRCL_ALIAS|RRCL_PTR)
+#define	RRX_IDEM	0
+#define	RRX_PTR		(RRCL_ALIAS|RRCL_RECORD)
+
+extern struct rr_infos rr_info[];
 
 int rr_tp_byname(char *name);
 

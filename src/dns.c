@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.21 2001/04/30 17:02:00 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.22 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -443,7 +443,7 @@ char *get_cname(int id)
 char *get_tname(int id)
 {
 	if (id>=T_MIN && id<=T_MAX)
-		return rr_info[id-T_MIN];
+		return rr_info[id-T_MIN].name;
         else if (id>=QT_MIN && id<=QT_MAX)
 		return qt_names[id-QT_MIN];
 	return "[unknown]";

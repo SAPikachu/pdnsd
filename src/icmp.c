@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
  * code, he is very welcome. 
  */
 
-#include "config.h"
+#include <config.h>
 #include <sys/poll.h>
 #include <sys/time.h>
 #include <stdlib.h>
@@ -55,7 +55,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.22 2001/04/12 19:51:39 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.23 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5

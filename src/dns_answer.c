@@ -29,7 +29,7 @@ Boston, MA 02111-1307, USA.  */
  * resolve in order to be able to cache the results.
  */
 
-#include "config.h"
+#include <config.h>
 #include "ipvers.h"
 #include <pthread.h>
 #include <sys/uio.h>
@@ -51,12 +51,12 @@ Boston, MA 02111-1307, USA.  */
 #include "dns_answer.h"
 #include "dns_query.h"
 #include "helpers.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "error.h"
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.46 2001/04/12 18:48:22 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.47 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /*

@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_answer.h,v 1.2 2001/04/06 18:11:34 tmm Exp $ */
+/* $Id: dns_answer.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef DNS_ANSWER_H
 #define DNS_ANSWER_H
 
-#include "config.h"
+#include <config.h>
 
 /* --- from main.c */
 extern int tcp_socket;

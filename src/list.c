@@ -24,14 +24,14 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../config.h"
+#include <config.h>
 #include <stdlib.h>
 #include "helpers.h"
 #include "error.h"
 #include "list.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: list.c,v 1.3 2001/04/12 18:48:23 tmm Exp $";
+static char rcsid[]="$Id: list.c,v 1.4 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 #ifdef ALLOC_DEBUG

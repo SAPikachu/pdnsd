@@ -18,12 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.9 2001/04/12 18:48:23 tmm Exp $ */
+/* $Id: error.h,v 1.10 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
 
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <signal.h>
 

@@ -33,10 +33,10 @@ Boston, MA 02111-1307, USA.  */
 #include "../list.h"
 #include "../dns.h"
 #include "../rr_types.h"
-#include "../cacheing/cache.h"
+#include "../cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.16 2001/05/01 20:31:53 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.17 2001/05/09 17:51:53 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;

@@ -21,7 +21,7 @@ Boston, MA 02111-1307, USA.  */
 /* in order to use O_NOFOLLOW on Linux: */
 #define _GNU_SOURCE
 
-#include "config.h"
+#include <config.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include <errno.h>
 #include <ctype.h>
 #include "consts.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "status.h"
 #include "servers.h"
 #include "dns_answer.h"
@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.39 2001/04/30 15:45:00 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.40 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -34,13 +34,13 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 #include "status.h"
 #include "thread.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "error.h"
 #include "servers.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.24 2001/05/01 20:31:48 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.25 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];

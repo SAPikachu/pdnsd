@@ -18,14 +18,14 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.9 2001/04/11 17:54:57 tmm Exp $ */
+/* $Id: helpers.h,v 1.10 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include "config.h"
+#include <config.h>
 #include <pthread.h>
-#include "cacheing/cache.h"
+#include "cache.h"
 
 
 #define SOFTLOCK_MAXTRIES 1000

@@ -19,7 +19,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include "ipvers.h"
 #include <string.h>
 #include <unistd.h>
@@ -29,13 +29,13 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include "conff.h"
 #include "consts.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "dns.h"
 #include "dns_query.h"
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.33 2001/04/30 22:41:10 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.34 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <sys/types.h>
 #include <sys/poll.h>
 #include <stdlib.h>
@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 #include "ipvers.h"
 #include "dns_query.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "dns.h"
 #include "conff.h"
 #include "servers.h"
@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.40 2001/04/30 17:02:00 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.41 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY

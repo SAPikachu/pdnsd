@@ -18,13 +18,13 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "../config.h"
+#include <config.h>
 #include <stdlib.h>
 #include "consts.h"
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: consts.c,v 1.2 2001/04/03 19:38:38 tmm Exp $";
+static char rcsid[]="$Id: consts.c,v 1.3 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 typedef struct {

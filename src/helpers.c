@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "config.h"
+#include <config.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -35,11 +35,11 @@ Boston, MA 02111-1307, USA.  */
 #include "thread.h"
 #include "error.h"
 #include "helpers.h"
-#include "cacheing/cache.h"
+#include "cache.h"
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.23 2001/04/30 15:39:46 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.24 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
 /*
