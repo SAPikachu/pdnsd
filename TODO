@@ -1,4 +1,4 @@
-$Id: TODO,v 1.7 2000/07/15 21:36:37 thomas Exp $
+$Id: TODO,v 1.8 2000/07/16 18:53:01 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -175,6 +175,9 @@ Document the new options -m, -t and -p			       [-tm, 2000-07-10]
 --------------------------------------------------------------------------------
 Use Autoconf for configuration				       
 [contributed by Sourav K. Mandal, CVS import pending.]
+--------------------------------------------------------------------------------
+Include new options in configure.in, do some checks, updated   [open	       ]
+docs.
 --------------------------------------------------------------------------------
 ================================================================================
 After 1.0.6
