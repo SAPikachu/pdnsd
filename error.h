@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.7 2000/06/22 09:57:34 thomas Exp $ */
+/* $Id: error.h,v 1.8 2000/06/22 22:42:02 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -33,7 +33,7 @@ extern int waiting;
 /* --- */
 
 #if TARGET==TARGET_LINUX
-void fatal_sig(int sig);
+void thread_sig(int sig);
 #endif
 void crash_msg(char *msg);
 void init_log(void);
@@ -50,11 +50,14 @@ void log_info(int level, char *s, ...);
  * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
 #if TARGET==TARGET_LINUX
 #define THREAD_SIGINIT	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL); \
-                        signal(SIGILL,fatal_sig); \
-	                signal(SIGABRT,fatal_sig); \
-	                signal(SIGFPE,fatal_sig); \
-	                signal(SIGSEGV,fatal_sig); \
-	                signal(SIGPIPE,fatal_sig);
+                        signal(SIGILL,thread_sig); \
+	                signal(SIGABRT,thread_sig); \
+	                signal(SIGFPE,thread_sig); \
+	                signal(SIGSEGV,thread_sig); \
+	                signal(SIGPIPE,thread_sig); \
+	                signal(SIGTSTP,thread_sig); \
+                        signal(SIGTTOU,thread_sig); \
+                    	signal(SIGTTIN,thread_sig);
 
 #else
 #define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)

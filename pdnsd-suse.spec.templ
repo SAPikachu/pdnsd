@@ -1,4 +1,4 @@
-# $Id: pdnsd-suse.spec.templ,v 1.2 2000/06/03 19:59:35 thomas Exp $
+# $Id: pdnsd-suse.spec.templ,v 1.3 2000/06/22 22:42:02 thomas Exp $
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
@@ -37,3 +37,5 @@ grep "START_PDNSD" /etc/rc.config > /dev/null ; if [ $? -ne 0 ] ; then echo -e "
 /sbin/init.d/pdnsd
 /sbin/init.d/rc2.d/S11pdnsd
 /sbin/init.d/rc2.d/K34pdnsd
+/sbin/init.d/rc3.d/S11pdnsd
+/sbin/init.d/rc3.d/K34pdnsd

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.17 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.18 2000/06/22 22:42:02 thomas Exp $";
 #endif
 
 /*
@@ -119,6 +119,9 @@ typedef struct {
 	unsigned char nm[256];
 	unsigned char data[256];
 } sva_t; 
+
+int tcp_up=1;
+int udp_up=1;
 
 /*
  * Mark an addtional record as added to avoif double records. Supply either name or rhn (set the other to 0)
@@ -1100,6 +1103,9 @@ void *udp_server_thread(void *dummy)
 			da_udp_errs++;
 			log_error("Could not get udp protocol: %s",strerror(errno));
 		}
+		udp_up=0;
+		if (!tcp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 #ifdef ENABLE_IPV4
@@ -1109,6 +1115,9 @@ void *udp_server_thread(void *dummy)
 				da_udp_errs++;
 				log_error("Could not open udp socket: %s",strerror(errno));
 			}
+			udp_up=0;
+			if (!tcp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		sin4.sin_family=AF_INET;
@@ -1126,6 +1135,9 @@ void *udp_server_thread(void *dummy)
 				da_udp_errs++;
 				log_error("Could not open udp socket: %s",strerror(errno));
 			}
+			udp_up=0;
+			if (!tcp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		sin6.sin6_family=AF_INET6;
@@ -1143,6 +1155,9 @@ void *udp_server_thread(void *dummy)
 			log_error("Could bind to udp socket: %s",strerror(errno));
 		}
 		close(sock);
+		udp_up=0;
+		if (!tcp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 
@@ -1155,6 +1170,9 @@ void *udp_server_thread(void *dummy)
 			log_error("Could not set options on udp socket: %s",strerror(errno));
 			}
 		close(sock);
+		udp_up=0;
+		if (!tcp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 # ifdef ENABLE_IPV6
@@ -1165,6 +1183,9 @@ void *udp_server_thread(void *dummy)
 				log_error("Could not set options on udp socket: %s",strerror(errno));
 			}
 			close(sock);
+			udp_up=0;
+			if (!tcp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 	}
@@ -1177,6 +1198,9 @@ void *udp_server_thread(void *dummy)
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");
 			}
+			udp_up=0;
+			if (!tcp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		
@@ -1415,6 +1439,9 @@ void *tcp_server_thread(void *p)
 			da_tcp_errs++;
 			log_error("Could not get tcp protocol: %s",strerror(errno));
 		}
+		tcp_up=0;
+		if (!udp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 #ifdef ENABLE_IPV4
@@ -1424,6 +1451,9 @@ void *tcp_server_thread(void *p)
 				da_tcp_errs++;
 				log_error("Could not open tcp socket: %s",strerror(errno));
 			}
+			tcp_up=0;
+			if (!udp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		sin4.sin_family=AF_INET;
@@ -1441,6 +1471,9 @@ void *tcp_server_thread(void *p)
 				da_tcp_errs++;
 				log_error("Could not open tcp socket: %s",strerror(errno));
 			}
+			tcp_up=0;
+			if (!udp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		sin6.sin6_family=AF_INET6;
@@ -1457,6 +1490,9 @@ void *tcp_server_thread(void *p)
 			da_tcp_errs++;
 			log_error("Could not bind tcp socket: %s",strerror(errno));
 		}
+		tcp_up=0;
+		if (!udp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 	
@@ -1465,6 +1501,9 @@ void *tcp_server_thread(void *p)
 			da_tcp_errs++;
 			log_error("Could not listen on tcp socket: %s",strerror(errno));
 		}
+		tcp_up=0;
+		if (!udp_up)
+			pdnsd_exit();
 		return NULL;
 	}
 	
@@ -1474,6 +1513,9 @@ void *tcp_server_thread(void *p)
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");
 			}
+			tcp_up=0;
+			if (!udp_up)
+				pdnsd_exit();
 			return NULL;
 		}
 		if ((*csock=accept(sock,NULL,0))==-1) {

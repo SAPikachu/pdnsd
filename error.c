@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.7 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.8 2000/06/22 22:42:02 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -49,8 +49,13 @@ void init_log(void)
  * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
  * softlocks in any functions called after sigwait from main(). */
 #if TARGET==TARGET_LINUX
-void fatal_sig(int sig)
+void thread_sig(int sig)
 {
+	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {
+		/* nonfatal signal. */
+		kill(main_thread,sig);
+		return;
+	}
 	if (waiting) {
 		if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
 			crash_msg("A fatal signal occured.");

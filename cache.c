@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.15 2000/06/22 09:57:34 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.16 2000/06/22 22:42:02 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -926,8 +926,10 @@ void del_cache_int(dns_cent_t *cent)
 	del_dns_hash(&dns_hash,cent->qname);
 	/* delete rrs from the rrl */
 	for (i=0;i<T_MAX;i++) {
-		remove_rrl(cent->rr[i]->lent);
-		del_cent_rrset(cent,i+T_MIN);
+		if (cent->rr[i]) {
+			remove_rrl(cent->rr[i]->lent);
+			del_cent_rrset(cent,i+T_MIN);
+		}
 	}
 	/* free the cent ptrs and rrs */
 	cache_size-=cent->cs;
