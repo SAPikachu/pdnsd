@@ -1,3 +1,5 @@
+$Id: TODO,v 1.2 2000/06/03 19:59:34 thomas Exp $
+
 The pdnsd TODO list.
 
 Task									 status
@@ -139,7 +141,7 @@ under this alias name also				       [-tm, 2000-05-16]
 --------------------------------------------------------------------------------
 Automatic deps						       [-tm, 2000-05-17]
 --------------------------------------------------------------------------------
-When retrieve cached records, always do purge_cent!!	       [open           ]
+FreeBSD support						       [-tm, 2000-06-01]
 --------------------------------------------------------------------------------
 rfc2181 again.						       [itw 	       ]
 -[X] 4.1 UDP Source address selection
@@ -155,8 +157,6 @@ rfc2181 again.						       [itw 	       ]
 ---- 7.3 The SOA.MNAME field (was ok in the docs)
 ---- 8   Time to Live (TTL) (was ok)
 ---- 9   The TC (truncated) header bit (was ok)
---------------------------------------------------------------------------------
-FreeBSD support						       [open	       ]
 --------------------------------------------------------------------------------
 Documentation updates					       [open           ]
 --------------------------------------------------------------------------------

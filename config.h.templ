@@ -1,6 +1,8 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+/* $Id: config.h.templ,v 1.3 2000/06/03 19:59:35 thomas Exp $ */
+
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
 
@@ -69,6 +71,14 @@
  * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
  * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
 #define DNS_NEW_RRS
+
+/* Define this for "hard" RFC 2181 compliance: this RFC states that
+ * implementations should discard answers whose RR sets have multiple
+ * different time stamps. While correct answers are generated, incorrect
+ * ones are normally tolerated and corrected. Full RFC compliance is
+ * however only achieved by deactivating this behaviour and thus being
+ * intolerant. */
+#undef RFC2181_ME_HARDER
 
 /* These are the possible targets. Normally no need to touch them */
 #define TARGET_LINUX 0

@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
+/* $Id: helpers.h,v 1.3 2000/06/03 19:59:35 thomas Exp $ */
+
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
 
@@ -34,7 +37,6 @@ int  str2rhn(unsigned char *str, unsigned char *rhn);
 int in_addr2ip(struct in_addr *ia, unsigned char *qname);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
-unsigned long get_rr_ttlf(dns_cent_t *c, int tp, short *flags);
 
 int is_inaddr_any(pdnsd_a *a);
 int str2pdnsd_a(char *addr, pdnsd_a *a);

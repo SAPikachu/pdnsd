@@ -28,6 +28,10 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "conff.h"
 
+#ifndef lint
+static char rcsid[]="$Id: error.c,v 1.3 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 pthread_mutex_t loglock;
 
 /*

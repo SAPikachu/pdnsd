@@ -36,6 +36,10 @@ Boston, MA 02111-1307, USA.  */
 #include "netdev.h"
 #include "error.h"
 
+#ifndef lint
+static char rcsid[]="$Id: dns_query.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
 		       * We just use it as a debugging aid, and it is not really needed since we use tcp 
 		       * connections */
@@ -46,7 +50,7 @@ unsigned short rid=0; /* rid is the value we fill into the id field. It does not
  * Note aside: Is locking of the added records required? (surely not for data integrity, but maybe for
  * efficiency in not fetching records twice)
  */
-static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int dlen, void *data , int tp, int flags, time_t queryts)
+static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int dlen, void *data , int tp, int flags, time_t queryts, unsigned long serial)
 {
 	dns_cent_t ce;
 	unsigned char buf[256];
@@ -59,7 +63,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 	} else {
 		/* try to find a matching record in cache */
 		if (have_cached(buf)) {
- 			return add_cache_rr(buf,ttl,queryts,flags,dlen,data,tp);
+ 			return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
 		} else {
 			if (init_cent(&ce, buf)) {
 				if (add_cent_rr(&ce, ttl, queryts,flags, dlen, data, tp)) {
@@ -86,7 +90,7 @@ typedef struct {
  * The domain names of all name servers found are placed in *ns, which is automatically grown
  * It may be null initially and must be freed when you are done with it.
  */
-static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts)
+static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial)
 {
 	unsigned char oname[256];
 	unsigned char db[530];
@@ -135,7 +139,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, len, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, len, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				if (ntohs(rhdr->type)==T_NS) {
 					/* add to the nameserver list. */
@@ -174,7 +178,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 			case T_MX:
@@ -199,7 +203,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 			case T_SOA:
@@ -225,7 +229,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 #ifdef DNS_NEW_RRS
@@ -251,7 +255,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 			case T_SRV:
@@ -271,7 +275,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 			case T_NXT:
@@ -291,7 +295,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 			case T_NAPTR:
@@ -331,12 +335,12 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 				break;
 #endif
 			default:
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, ntohs(rhdr->rdlength), *ptr, ntohs(rhdr->type),flags,queryts))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, ntohs(rhdr->rdlength), *ptr, ntohs(rhdr->type),flags,queryts,serial))
 					return RC_SERVFAIL;
 			}
 		}
@@ -377,7 +381,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
  * If you want to tell me that this function has a truly ugly coding style, ah, well...
  * You are right, somehow, but I feel it is conceptually elegant ;-)
  */
-static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns) 
+static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns, unsigned long serial) 
 {
 	struct protoent *pe;
 	int i,rv;
@@ -826,7 +830,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	if (!*aa) {
 		st->flags|=CF_NOAUTH;
 	}
-	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,ns,queryts)!=RC_OK) {
+	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,ns,queryts,serial)!=RC_OK) {
 		free_cent(**ent);
 		free(*ent);
 		free(st->recvbuf);
@@ -834,7 +838,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	}
 
 	if (ntohs(st->recvbuf->nscount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,st->flags,ns,queryts)!=RC_OK) {
+		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,ns,queryts,serial)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -843,7 +847,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	}
 	
 	if (ntohs(st->recvbuf->arcount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,st->flags,ns,queryts)!=RC_OK) {
+		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,ns,queryts,serial)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -957,8 +961,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 	dns_cent_t *nent,*servent;
 	query_serv_t serv;
 	unsigned char nsbuf[256],nsname[256];
+	unsigned long serial=get_serial();
 	ns_t *ns=NULL;
-	rr_bucket_t *rr;
 #ifdef DEBUG
 	char buf[ADDRSTR_MAXLEN];
 #endif
@@ -976,7 +980,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			for (i=0;i<mc;i++) {
 				if (q->qs[PAR_QUERIES*j+i].state!=QS_DONE) {
 					qo=0;
-					if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[PAR_QUERIES*j+i],&ns))==RC_OK) {
+					if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[PAR_QUERIES*j+i],&ns,serial))==RC_OK) {
 						for (k=0;k<mc;k++) {
 							p_cancel_query(&q->qs[PAR_QUERIES*j+k]);
 						}
@@ -1101,11 +1105,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		 * so that it won't be used again unless it is necessary.
 		 */
 		for (j=0;j<T_NUM;j++) {
-			rr=(*ent)->rr[j];
-			while(rr) {
-				rr->ttl=0;
-				rr=rr->next;
-			}
+			if ((*ent)->rr[j])
+				(*ent)->rr[j]->ttl=0;
 		}
 	}
 	free(ns);
@@ -1172,7 +1173,6 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	int auth=0;
 	int i,nopurge=0;
 	short flags=0;
-	rr_bucket_t *rr;
 
 	DEBUG_MSG3("Starting cached resolve for: %s, query %s\n",name,get_tname(thint));
 	if ((*cached=lookup_cache(name))) {
@@ -1180,22 +1180,20 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		auth=0;
 		nopurge=0;
 		for (i=0;i<T_MAX;i++) {
-			rr=(*cached)->rr[i];
-			while (rr) {
-				if (rr->flags&CF_LOCAL || rr->ttl>=time(NULL)-rr->ts) {
-					if (!rr->flags&CF_NOAUTH) {
-						auth=1;
-					}
-					if (rr->flags&CF_NOPURGE) {
-						nopurge=1;
-					}
-					if (auth && nopurge)
-						break;
+			if ((*cached)->rr[i] && ((*cached)->rr[i]->flags&CF_LOCAL || 
+						 (*cached)->rr[i]->ttl>=time(NULL)-(*cached)->rr[i]->ts)) {
+				if (!(*cached)->rr[i]->flags&CF_NOAUTH) {
+					auth=1;
 				}
-				rr=rr->next;
+				if ((*cached)->rr[i]->flags&CF_NOPURGE) {
+					nopurge=1;
+				}
+				if (auth && nopurge)
+					break;
 			}
 		}
-		ttl=get_rr_ttlf(*cached,thint,&flags);
+		flags=(*cached)->rr[thint-T_MIN]->flags;
+		ttl=(*cached)->rr[thint-T_MIN]->ttl;
 		if (thint>=QT_MIN && thint<=QT_MAX  && !auth)
 			need_req=!(flags&CF_LOCAL);
 		else {

@@ -36,6 +36,10 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 #include "netdev.h"
 
+#ifndef lint
+static char rcsid[]="$Id: servers.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 pthread_t stt;
 pthread_mutex_t servers_lock;
 int fexecerr=1;

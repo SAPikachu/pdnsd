@@ -32,8 +32,12 @@ Boston, MA 02111-1307, USA.  */
 #include "netdev.h"
 #include "error.h"
 
+#ifndef lint
+static char rcsid[]="$Id: netdev.c,v 1.5 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 /*
- * These portion is Linux-specific. Please write interface-detection routines for other
+ * These portion is Linux/FreeBSD specific. Please write interface-detection routines for other
  * flavours of Unix if you can and want.
  */
 

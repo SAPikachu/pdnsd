@@ -1,5 +1,8 @@
 #!/bin/sh
+# $Id: exec-flex.sh,v 1.2 2000/06/03 19:59:35 thomas Exp $
+
 # This is a script to run lex or flex and determine whether yylineno is available
+
 lexer=$1;
 cc=$2;
 file=$3;

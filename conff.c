@@ -31,6 +31,10 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 #include "y.tab.h"
 
+#ifndef lint
+static char rcsid[]="$Id: conff.c,v 1.4 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif

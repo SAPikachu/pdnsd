@@ -38,6 +38,11 @@ Boston, MA 02111-1307, USA.  */
  *#include "icmp.h"
  *#include "netdev.h"
  */
+
+#ifndef lint
+static char rcsid[]="$Id: main.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 #ifdef DEBUG_YY
 extern int yydebug;
 #endif

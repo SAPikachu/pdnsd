@@ -1,3 +1,5 @@
+# $Id: Makefile,v 1.8 2000/06/03 19:59:34 thomas Exp $
+#
 # Following are the variables you should set to values describing your local
 # system
 #------------------------------------------------------------------------------

@@ -18,9 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
+#ifndef lint
+static char rcsid[]="$Id: icmp.c,v 1.5 2000/06/03 19:59:35 thomas Exp $";
+#endif
 
 /*
- * This is truly Linux-specific at this time, as I have to admit. If anyone
+ * This should now work on both Linux and FreeBSD. If anyone
  * with experience in other Unix flavors wants to contribute platform-specific
  * code, he is very welcome. 
  */

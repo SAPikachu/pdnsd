@@ -32,6 +32,9 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "error.h"
 
+#ifndef lint
+static char rcsid[]="$Id: status.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#endif
 
 char fifo_path[1024];
 

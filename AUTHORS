@@ -1,3 +1,5 @@
+$Id: AUTHORS,v 1.2 2000/06/03 19:59:34 thomas Exp $
+
 pdnsd was written by Thomas Moestl (tmoestl@gmx.net)
 
 Small parts of this program are based on code that  was taken from nmap (IP 
@@ -8,5 +10,5 @@ others.
 Torben Janssen contributed the files in rc/Redhat.
 Soeren J. Peters contributed patches and suggestions for Red Hat compatability.
 
-Thanks to Byrial Jensen, Fraser McCrossan, Joachim Dorner, Alan Swanson and
-Bert Frederiks for reporting bugs!
+Thanks to Byrial Jensen, Fraser McCrossan, Joachim Dorner, Alan Swanson,
+Bert Frederiks and Jonathan Hudson for reporting bugs!

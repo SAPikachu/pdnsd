@@ -26,6 +26,10 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "helpers.h"
 
+#ifndef lint
+static char rcsid[]="$Id: hash.c,v 1.3 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes only strings with the allowed dns characters
  * [a-zA-Z0-9\-\.] = 54, but with case-insensitivity = 38

@@ -30,6 +30,10 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "conff.h"
 
+#ifndef lint
+static char rcsid[]="$Id: helpers.c,v 1.5 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 /*
  * This is to exit pdnsd from any thread.
  */
@@ -187,70 +191,6 @@ int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
 	memcpy(rrn,rr+1,rr->rdlen);
 	rhn2str(rrn,name);
 	return 1;
-}
-
-unsigned long get_rr_ttlf(dns_cent_t *c, int tp, short *flags)
-{
-	time_t ttl=0;
-	time_t res;
-	int i;
-	short tf;
-	unsigned char brrn[256], bname[256];
-	rr_bucket_t *rrb;
-
-	if (tp>=QT_MIN) {
-		switch (tp) {
-		case QT_ALL:
-			*flags=0;
-			for (i=T_MIN;i<=T_MAX;i++) {
-				res=get_rr_ttlf(c,i,&tf);
-				*flags|=tf;
-				if (res>ttl)
-					ttl=res;
-			}
-			break;
-		case QT_MAILA:
-			*flags=0;
-			res=get_rr_ttlf(c,T_MD,&tf);
-			*flags|=tf;
-			if (res>ttl)
-				ttl=res;
-			res=get_rr_ttlf(c,T_MF,&tf);
-			*flags|=tf;
-			if (res>ttl)
-				ttl=res;
-			break;
-		case QT_MAILB:
-			*flags=0;
-			res=get_rr_ttlf(c,T_MB,&tf);
-			*flags|=tf;
-			if (res>ttl)
-				ttl=res;
-			res=get_rr_ttlf(c,T_MG,&tf);
-			*flags|=tf;
-			if (res>ttl)
-				ttl=res;
-			res=get_rr_ttlf(c,T_MR,&tf);
-			*flags|=tf;
-			if (res>ttl)
-				ttl=res;
-			break;
-		}
-		return ttl;
-	}
-
-	follow_cname_chain(c,bname,brrn);
-	*flags=0;
-	rrb=c->rr[tp-T_MIN];
-	while (rrb) {
-		if (!ttl)
-			ttl=1;  /* indicate that we actually found a record */
-		if (rrb->ts+rrb->ttl>ttl)
-			ttl=rrb->ts+rrb->ttl;
-		*flags|=rrb->flags; /*combine the flags*/
-		rrb=rrb->next;
-	}
-	return ttl;
 }
 
 int str2pdnsd_a(char *addr, pdnsd_a *a)

@@ -35,6 +35,10 @@ Boston, MA 02111-1307, USA.  */
  * NO_YYLINENO if we may not use yylineno */
 #include "lex.inc.h"
 
+#ifndef lint
+static char rcsid[]="$Id: conf.y,v 1.3 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 dns_cent_t c_cent;
 pdnsd_a c_a;
 unsigned char c_soa_owner[256];

@@ -18,6 +18,8 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
+/* $Id: cache.h,v 1.4 2000/06/03 19:59:35 thomas Exp $ */
+
 #ifndef _CACHE_H_
 #define _CACHE_H_
 
@@ -34,38 +36,36 @@ struct rr_lent_s;
  */
 typedef struct rr_b_s  {
 	struct rr_b_s    *next;                   /* this is the next pointer in the dns_cent_t list. */
-	struct rr_b_s    *prev;                   /* this is the next pointer in the dns_cent_t list. */
-	struct rr_lent_s *lent;                   /* this points to the list entry */
-	time_t           ttl;
-	time_t           ts;
-	short            flags;
 	unsigned short   rdlen;
 } rr_bucket_t;
 
 typedef struct {
-	struct rr_b_s    *next;                   /* this is the next pointer in the dns_cent_t list. */
-	struct rr_b_s    *prev;                   /* this is the next pointer in the dns_cent_t list. */
 	struct rr_lent_s *lent;                   /* this points to the list entry */
 	time_t           ttl;
 	time_t           ts;
 	short            flags;
-	unsigned short   rdlen;
+	unsigned long    serial;                  /* we use the serial to determine whether additional records belonged to one answer */
+	rr_bucket_t      *rrs;
 } rr_set_t;
+
+
+typedef struct {
+	unsigned short   rdlen;
+/*	data (with length rdlen) follows here;*/
+} rr_fbucket_t;
 
 typedef struct {
 	time_t           ttl;
 	time_t           ts;
 	short            flags;
-	unsigned short   rdlen;
-/*	data (with length rdlen) follows here;*/
-} rr_file_t;
+} rr_fset_t;
 
 
 typedef struct {
 	unsigned char    *qname;                  /*Name of the query in dotted notation*/
 	int              num_rr;                  /*The number of rrs. When this decreases to 0, the cent is deleted. */
 	unsigned long    cs;                      /*size of the rrs*/
-	rr_bucket_t      *(rr[T_NUM]);            /*The records. Use the type id-T_MIN as index, */
+	rr_set_t         *(rr[T_NUM]);            /*The records. Use the type id-T_MIN as index, */
 } dns_cent_t;
 
 typedef struct {
@@ -74,7 +74,7 @@ typedef struct {
 } dns_file_t;
 
 typedef struct rr_lent_s {
-	rr_bucket_t      *rr;
+	rr_set_t         *rrset;
 	dns_cent_t       *cent;
 	int              tp;
 	struct rr_lent_s *next;
@@ -89,7 +89,7 @@ typedef struct rr_lent_s {
 #define CF_NOAUTH      4       /* Non-authoritative record */
 #define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written to cache records, but used
 			          by add_cent_rr */
-#define CF_ADDITIONAL 16       /* This was fetched as an additional record. */
+#define CF_ADDITIONAL 16       /* This was fetched as an additional or "off-topic" record. */
 
 /*
  * This is the time in secs any record remains at least in the cache before it is purged.
@@ -112,7 +112,7 @@ int have_cent_rr(dns_cent_t *cent, int tp, void *data, int dlen, time_t ttl, tim
 int have_cached(unsigned char *name);
 dns_cent_t *lookup_cache(unsigned char *name);
 void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases);
-int add_cache_rr(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp);
+int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
 
 int mk_flag_val(servparm_t *server);
 int init_cent(dns_cent_t *cent, unsigned char *qname);
@@ -125,5 +125,7 @@ void free_cent(dns_cent_t cent);
 
 dns_cent_t *copy_cent(dns_cent_t *cent);
 rr_bucket_t *copy_rr(rr_bucket_t *rr);
+
+unsigned long get_serial(void);
 
 #endif

@@ -23,6 +23,11 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include "helpers.h"
 #include "dns.h"
+
+#ifndef lint
+static char rcsid[]="$Id: dns.c,v 1.2 2000/06/03 19:59:35 thomas Exp $";
+#endif
+
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
  * taking sz as the remaining msg size (it is returned decremented by the name length, ready for further use) and
  * a source pointer (it is returned pointing to the location after the name). msgsize is the size of the whole message,
