@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.33 2001/02/25 00:56:25 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.34 2001/02/25 01:29:41 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -429,7 +429,8 @@ int main(int argc,char *argv[])
 			if (snprintf(dbgdir, sizeof(dbgdir), "%s/pdnsd.debug", global.cache_dir) < sizeof(dbgdir)) {
 				if (!(dbg=fopen(dbgdir,"w")))
 					debug_p=0;
-			}
+			} else
+				debug_p=0;
 		}
 #endif
 	} else {

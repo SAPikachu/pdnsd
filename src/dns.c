@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.13 2001/01/24 19:47:01 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.14 2001/02/25 01:29:41 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -401,7 +401,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errb
 			while (isdchar(*p) || *p=='.') p++;
 			*p='\0';
 			memset(b2,'\0',257);
-			strncpy((char *)b2,(char *)pn,256);
+			strncpy((char *)b2,(char *)pn,255);
 			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
 				b2[strlen((char *)b2)]='.';
 			}

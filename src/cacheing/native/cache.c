@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.16 2000/11/28 22:05:54 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.17 2001/02/25 01:29:44 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -792,24 +792,24 @@ void read_disk_cache()
 	int dtsz=512;
 	rr_fset_t sh;
 	rr_fbucket_t rr;
-	unsigned char *data=calloc(dtsz,1);
+	unsigned char *data;
 	unsigned char num_rr;
 	char path[1024];
 	unsigned long cnt;
 	FILE *f;
 	unsigned char nb[256];
 
-	if (!data) {
+	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
+		log_warn("Cache file path too long.",path,strerror(errno));
+		return;
+	}		
+
+	if (!(data = calloc(dtsz,1))) {
 		log_warn("Out of memory in reading cache file. Exiting.");
 		pdnsd_exit();
 		free(data);
 		return;
 	}
-
-	strncpy(path,global.cache_dir,1023);
-	path[1023]='\0';
-	strncat(path,"/pdnsd.cache",1023-strlen(path));
-	path[1023]='\0';
 
 	if (!(f=fopen(path,"r"))) {
 		log_warn("Could not open disk cache file %s: %s",path,strerror(errno));
@@ -939,10 +939,10 @@ void write_disk_cache()
 	dns_hash_pos_t pos;
 	FILE *f;
 
-	strncpy(path,global.cache_dir,1023);
-	path[1023]='\0';
-	strncat(path,"/pdnsd.cache",1023-strlen(path));
-	path[1023]='\0';
+	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
+		log_warn("Cache file path too long.",path,strerror(errno));
+		return;
+	}		
 
 	if (!(f=fopen(path,"w"))) {
 		log_warn("Could not open disk cache file %s: %s",path,strerror(errno));

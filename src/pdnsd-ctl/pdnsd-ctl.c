@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.6 2001/02/25 00:56:29 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.7 2001/02/25 01:29:47 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -130,7 +130,8 @@ int open_sock(char *pipe)
 	}
 
 	a.sun_family=AF_UNIX;
-	strncpy(a.sun_path,pipe,100);
+	strncpy(a.sun_path,pipe,99);
+	a.sun_path[98]='\0';
 
 	if (connect(s,(struct sockaddr *)&a,sizeof(a))==-1) {
 		printf("Error: could not open socket: %s\n",strerror(errno));
