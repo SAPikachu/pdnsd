@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.16 2000/11/04 23:14:57 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.17 2000/11/05 14:59:44 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -86,6 +86,7 @@ unsigned char *nm;
 %token <num> SCHEME_FILE
 %token <num> LINKDOWN_KLUGE
 %token <num> MAX_TTL
+%token <num> MIN_TTL
 %token <num> RUN_AS
 %token <num> STRICT_SETUID
 %token <num> PARANOID
@@ -103,6 +104,9 @@ unsigned char *nm;
 %token <num> TCP_QTIMEOUT
 %token <num> C_PAR_QUERIES
 %token <num> C_RAND_RECS
+%token <num> NEG_TTL
+%token <num> NEG_RRS_POL
+%token <num> NEG_DOMAIN_POL
 
 %token <num> IP
 %token <num> PORT
@@ -260,6 +264,10 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			{
 				global.max_ttl=$3;
 			}
+		| MIN_TTL '=' NUMBER ';'
+			{
+				global.min_ttl=$3;
+			}
 		| RUN_AS '=' STRING ';'
 			{
 				strncpy(global.run_as,(char *)$3,20);
@@ -377,6 +385,28 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					global.rnd_recs=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in randomize_recs= option.");
+					YYERROR;
+				}
+			}
+		| NEG_TTL '=' NUMBER ';'
+			{
+				global.neg_ttl=$3;
+			}
+		| NEG_RRS_POL '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF || $3==C_AUTH) {
+					global.neg_rrs_pol=$3;
+				} else {
+					yyerror("bad qualifier in neg_rrs_pol= option.");
+					YYERROR;
+				}
+			}
+		| NEG_DOMAIN_POL '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF || $3==C_AUTH) {
+					global.neg_domain_pol=$3;
+				} else {
+					yyerror("bad qualifier in neg_domain_pol= option.");
 					YYERROR;
 				}
 			}

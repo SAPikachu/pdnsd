@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.11 2000/10/21 11:28:37 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.12 2000/11/05 14:59:43 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -62,6 +62,7 @@ C_CLOSE \*\/
 <INITIAL>"scheme_file"                  {return SCHEME_FILE;}
 <INITIAL>"linkdown_kluge"		{return LINKDOWN_KLUGE;}
 <INITIAL>"max_ttl"			{return MAX_TTL;}
+<INITIAL>"min_ttl"			{return MIN_TTL;}
 <INITIAL>"run_as"			{return RUN_AS;}
 <INITIAL>"strict_setuid"		{return STRICT_SETUID;}
 <INITIAL>"paranoid"			{return PARANOID;}
@@ -79,6 +80,9 @@ C_CLOSE \*\/
 <INITIAL>"tcp_qtimeout"			{return TCP_QTIMEOUT;}
 <INITIAL>"par_queries"			{return C_PAR_QUERIES;}
 <INITIAL>"randomize_recs"		{return C_RAND_RECS;}
+<INITIAL>"neg_ttl"			{return NEG_TTL;}
+<INITIAL>"neg_rrs_pol"			{return NEG_RRS_POL;}
+<INITIAL>"neg_domain_pol"		{return NEG_DOMAIN_POL;}
 
 <INITIAL>"ip"				{return IP;}
 <INITIAL>"port"				{return PORT;}
@@ -123,6 +127,7 @@ C_CLOSE \*\/
 <INITIAL>"tcp_udp"			{yylval.num=TCP_UDP;return CONST;}
 <INITIAL>"included"			{yylval.num=C_INCLUDED;return CONST;}
 <INITIAL>"excluded"			{yylval.num=C_EXCLUDED;return CONST;}
+<INITIAL>"auth"				{yylval.num=C_AUTH;return CONST;}
 
 <INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}

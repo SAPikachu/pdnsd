@@ -32,16 +32,18 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.14 2000/10/30 18:22:16 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.15 2000/11/05 14:59:44 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
 #error "CACHEDIR must be defined. Please look into your Makefile!"
 #endif
 #ifdef ENABLE_IPV4
-globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme",20,30,TCP_TIMEOUT,PAR_QUERIES,1};
+globparm_t global={2048,CACHEDIR,53,{{INADDR_ANY}},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
+		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
 #else
-globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/var/lib/pcmcia/scheme",20,30, TCP_TIMEOUT,PAR_QUERIES,1};
+globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,120,900,C_AUTH,C_AUTH,"",1,0,0600,"/var/lib/pcmcia/scheme",
+		   20,30,TCP_TIMEOUT,PAR_QUERIES,1};
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4

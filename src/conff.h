@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.10 2000/10/21 11:28:37 thomas Exp $ */
+/* $Id: conff.h,v 1.11 2000/11/05 14:59:44 thomas Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -76,6 +76,10 @@ typedef struct {
 	pdnsd_a       a;
 	char          lndown_kluge;
 	long          max_ttl;
+	long          min_ttl;
+	long          neg_ttl;
+	int           neg_rrs_pol;
+	int           neg_domain_pol;
 	char          run_as[21];
 	char          strict_suid;
 	char          paranoid;

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: consts.h,v 1.4 2000/10/15 19:50:13 thomas Exp $ */
+/* $Id: consts.h,v 1.5 2000/11/05 14:59:44 thomas Exp $ */
 
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
@@ -39,5 +39,6 @@ Boston, MA 02111-1307, USA.  */
 #define C_DIALD    11
 #define C_INCLUDED 12
 #define C_EXCLUDED 13
+#define C_AUTH     14
 
 #endif
