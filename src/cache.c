@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.34 2001/06/21 23:58:10 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.35 2001/06/23 20:57:47 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -748,6 +748,7 @@ static void purge_cache(long sz, int lazy)
 	while (*le && (!lazy || cache_size>sz)) {
 		if (!(((*le)->rrset && ((*le)->rrset->flags&CF_LOCAL)) || 
 		      (*le)->cent->flags&DF_LOCAL)) {
+			deleted = 0;
 			ce = (*le)->cent;
 			/* Side effect: if rv!=0, del_cent_rrset was called and *le has advanced one entry.
 			 * ce, however, is still guaranteed to be valid. */
