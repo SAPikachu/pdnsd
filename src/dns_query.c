@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.22 2000/10/30 18:22:16 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.23 2000/11/03 16:08:09 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -840,11 +840,17 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			/* seems as if we have got no recursion avaliable. We will have to do it by ourselves (sigh...) */
 			free(st->recvbuf);
 			st->recvbuf=NULL;
-			st->hdr->rd=0;
-			st->myrid=get_rand16();
-			st->hdr->id=htons(st->myrid);
-			DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-			return -1;
+			if (st->hdr) {
+				st->hdr->rd=0;
+				st->myrid=get_rand16();
+				st->hdr->id=htons(st->myrid);
+				DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				return -1;
+			} else {
+				free(st->hdr);
+				st->state=QS_DONE;
+				return RC_SERVFAIL;
+			}
 		}
 
 		st->state=QS_DONE;

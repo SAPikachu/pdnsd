@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.7 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.8 2000/11/03 16:08:09 thomas Exp $";
 #endif
 
 /*
@@ -152,7 +152,6 @@ static void retest(int i)
 	pthread_mutex_lock(&servers_lock);
 	servers[i].is_up=j;
 	servers[i].i_ts=s_ts;
-	
 }
 
 /*

@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.9 2000/11/02 20:18:56 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.10 2000/11/03 16:08:09 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -494,7 +494,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 		return -1;
 
 #ifdef ENABLE_IPV6
-	if (ping6_isocket==-1)
+	if (run_ipv6 && ping6_isocket==-1)
 		return -1;
 #endif
 
