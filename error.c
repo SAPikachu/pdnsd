@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.9 2000/06/23 14:06:36 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.10 2000/06/24 21:44:21 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -59,6 +59,7 @@ void thread_sig(int sig)
 		if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
 			crash_msg("A fatal signal occured.");
 		pthread_kill(main_thread,SIGTERM);
+		pthread_exit(NULL);
 	} else {
 		crash_msg("An error occured at startup.");
 		_exit(0);

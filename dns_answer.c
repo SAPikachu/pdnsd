@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.19 2000/06/23 21:54:57 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.20 2000/06/24 21:44:21 thomas Exp $";
 #endif
 
 /*
@@ -611,6 +611,20 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 		((std_query_t *)(((unsigned char *)ans)+*rlen))->qclass=htons((&q->first_q)[i].qclass);
 		*rlen+=4;
 	}
+
+	/* Barf if we get a query we cannot answer */
+	for (i=0;i<q->num;i++) {
+		if ((&q->first_q)[i].qtype<T_MIN || ((&q->first_q)[i].qtype>T_MAX && (
+			(&q->first_q)[i].qtype!=QT_MAILA && (&q->first_q)[i].qtype!=QT_MAILB && (&q->first_q)[i].qtype!=QT_ALL))) {
+			ans->rcode=RC_NOTSUPP;
+			return (unsigned char *)ans;
+		}
+		if ((&q->first_q)[i].qclass!=C_IN && (&q->first_q)[i].qclass!=QC_ALL) {
+			ans->rcode=RC_NOTSUPP;
+			return (unsigned char *)ans;
+		}
+	}
+	
 	/* second, the answer section*/
 	for (i=0;i<q->num;i++) {
 		qe=&(&q->first_q)[i];
@@ -842,18 +856,9 @@ static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
 		(&(*q)->first_q)[i].qtype=ntohs(*((unsigned short *)ptr));
 		sz-=2;
 		ptr+=2;
-		if ((&(*q)->first_q)[i].qtype<T_MIN || ((&(*q)->first_q)[i].qtype>T_MAX && (/*(&(*q)->first_q)[i].qtype!=QT_AXFR && */
-			(&(*q)->first_q)[i].qtype!=QT_MAILA && (&(*q)->first_q)[i].qtype!=QT_MAILB && (&(*q)->first_q)[i].qtype!=QT_ALL))) {
-			free(*q);
-			return RC_NOTSUPP; /*unknown type*/
-		}
 		(&(*q)->first_q)[i].qclass=ntohs(*((unsigned short *)ptr));
 		sz-=2;
 		ptr+=2;
-		if ((&(*q)->first_q)[i].qclass!=C_IN && (&(*q)->first_q)[i].qclass!=QC_ALL) {
-			free(*q);
-			return RC_NOTSUPP; /*only C_IN supported*/
-		}
 	}
 	return RC_OK;
 }
@@ -896,6 +901,9 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 	dns_query_t *q;
 	dns_hdr_t *resp=(dns_hdr_t *)calloc(sizeof(dns_hdr_t),1);
 	dns_hdr_t *ans;
+
+
+	DEBUG_MSG1("Received query.\n");
 	if (!resp) {
 		if (da_mem_errs<MEM_MAX_ERRS) {
 			da_mem_errs++;
@@ -912,32 +920,36 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 	hdr=(dns_hdr_t *)data;
 	if (*rlen<2) { 
 		free(resp);
+		DEBUG_MSG1("Message too short.\n");
 		return NULL; /*message too short: no id provided. */
 	}
 	if (*rlen<sizeof(dns_hdr_t)) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,*rlen>=3?hdr->opcode:OP_QUERY,RC_FORMAT);
+		DEBUG_MSG1("Message too short.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->qr==QR_RESP) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_REFUSED);
-		return (unsigned char *)resp;
+		free(resp);
+		DEBUG_MSG1("Response, not query.\n");
+		return NULL; /* RFC says: discard */
 	}
 	if (hdr->opcode!=OP_QUERY) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_NOTSUPP);
+		DEBUG_MSG1("No query.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->z!=0) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_FORMAT);
+		DEBUG_MSG1("Malformed query.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->rcode!=RC_OK) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_FORMAT);
-		return (unsigned char *)resp;
+		free(resp);
+		DEBUG_MSG1("Bad rcode.\n");
+		return NULL; /* discard (may cause error storms */
 	}
 
 	res=decode_query(data,*rlen,&q);
@@ -949,7 +961,7 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 
 #if DEBUG>0
 	if (debug_p) {
-		printf("Received query. Questions are:\n ");
+		printf("Questions are:\n ");
 		for (res=0;res<q->num;res++) {
 			rhn2str((&q->first_q)[res].query,buf);
 			printf("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname((&q->first_q)[res].qclass),(&q->first_q)[res].qclass,get_tname((&q->first_q)[res].qtype),(&q->first_q)[res].qtype,buf);

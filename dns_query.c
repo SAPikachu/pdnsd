@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.12 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.13 2000/06/24 21:44:21 thomas Exp $";
 #endif
 
 /*
@@ -502,7 +502,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		rv=poll(&st->polls,1,0/*PAR_GRAN*/);
 #endif
 		if (rv==0) {
-			if (st->rts-time(NULL)>st->timeout) {
+			if (time(NULL)-st->rts>st->timeout) {
 				free(st->hdr);
 				close(st->sock);
 				/* timed out. Try to mark the server as offline if possible */
@@ -1056,7 +1056,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			for (j=0;j<ns->num;j++) {
 				if (global.paranoid) {
 					/* paranoia mode: don't query name servers that are not responsible */
-					domain_match(&i,(&ns->first_ns)[j].name,rrn,nsname);
+					domain_match(&i,(&ns->first_ns)[j].nsdomain,rrn,nsname);
 					if (nsname[0]!='\0')
 						continue;
 				}
