@@ -23,7 +23,7 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.1.9
+Version: 1.1.9a
 Release: par
 License: GPL
 Group:  Daemons
@@ -65,7 +65,7 @@ and the file README.par in %{_docdir}/%{name}-%{version}
 %setup
 
 %build
-CFLAGS="${CFLAGS:-%{optflags} -Wall}" ./configure \
+CFLAGS="${CFLAGS:-$RPM_OPT_FLAGS -Wall}" ./configure \
 	--prefix=%{_prefix} --sysconfdir=%{_sysconfdir} --mandir=%{_mandir} \
 	--with-cachedir="%{cachedir}" \
 	%{?distro:--with-distribution=%{distro}} --enable-specbuild \
@@ -94,12 +94,12 @@ id -u %{run_as_user} > /dev/null 2>&1 ||
 }
 %endif
 
-rm -rf "%{buildroot}"
-make DESTDIR="%{buildroot}" install
+rm -rf "$RPM_BUILD_ROOT"
+make DESTDIR="$RPM_BUILD_ROOT" install
 cp -f file-list.base file-list
 find doc contrib -not -type d -not -iname makefile -not -name '*.am' -not -name '*.in' |
 sed -e 's/^/%doc --parents /'  >> file-list
-CURDIR=$PWD; cd "%{buildroot}"
+CURDIR=$PWD; cd "$RPM_BUILD_ROOT"
 find . -not -type d -not -name 'pdnsd.conf*' -not -path '.%{_docdir}/*' -not -path './var/*' |
 sed -e 's/^\.//
         \:/man:{
@@ -107,7 +107,7 @@ sed -e 's/^\.//
         }'  >> "$CURDIR/file-list"
 
 %clean
-rm -rf "%{buildroot}"
+rm -rf "$RPM_BUILD_ROOT"
 #rm -rf %{_builddir}/%{name}-%{srcver}
 
 %files -f file-list

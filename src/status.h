@@ -46,6 +46,6 @@ extern int stat_sock;
 #define CTL_R_INVAL  2
 
 void init_stat_sock(void);
-void start_stat_sock(void);
+int start_stat_sock(void);
 
 #endif

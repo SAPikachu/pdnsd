@@ -48,7 +48,7 @@ void thread_sig(int sig);
 /* Note added by Paul Rombouts: In the new Native POSIX Thread Library for Linux (NPTL)
    signal handling has changed from per-thread signal handling to POSIX process signal handling,
    which makes the recommended solution mentioned by Thomas Moestl possible.
-   I this case I can simply define THREAD_SIGINIT to be empty.
+   In this case I can simply define THREAD_SIGINIT to be empty.
    The signals are blocked in main() before any threads are created,
    and we simply never unblock them except by calling sigwait() in main(). */
 

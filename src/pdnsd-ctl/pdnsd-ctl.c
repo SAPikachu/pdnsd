@@ -144,7 +144,7 @@ static const char *help_messages[] =
 static int open_sock(const char *cache_dir)
 {
 	struct sockaddr_un *sa;
-	int sa_size;
+	unsigned int sa_size;
 	int sock;
 
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {

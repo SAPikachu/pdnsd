@@ -1,3 +1,36 @@
+2003-01-16  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/main.c
+	Load the cache from disk without locking cache access because pdnsd
+	is still single-threaded at that point.
+
+2003-01-15  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/hash.c
+	Moved the responsibility for freeing the cache entries referred by
+	the hash buckets from destroy_cache() to free_dns_hash() (which is called
+	by destroy_cache()). Previously, the cache and hash tables were already
+	completely destroyed by the time free_dns_hash() was called, and there was
+	nothing left for free_dns_hash() to free.
+
+2003-01-14  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/hash.c,src/make_hashconvtable.c
+	The hash conversion table is now generated at build time instead
+	of at run time when pdnsd is started up.
+
+2003-01-13  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns.c
+	In add_host() fixed incorrect generation of IPV6 type of name for PTR record
+	due to use of && instead of & as masking operator.
+
+2003-01-13  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/icmp.c, src/dns_answer.c
+	Use unsigned long instead of int error counters to reduce the danger
+	of wraparound.
+
 2003-01-06  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/main.c,src/thread.c,src/thread.h,src/server.c,src/status.c,src/dns_answer.c

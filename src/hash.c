@@ -50,40 +50,27 @@ static char rcsid[]="$Id: hash.c,v 1.12 2001/06/02 23:08:13 tmm Exp $";
  * Some measurements seem to indicate that the hash algorithm is doing reasonable well.
  */
 
-static const unsigned char *posval=(unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_";
-static unsigned char values[256];
+static const unsigned char values[256]={
+#include "hashconvtable.h"
+};
 
 /*
  * The hash structures are the same for an ip and an dns hash, so we use
  * an additional element in debug mode to report misuse.
  */
-static dns_hash_ent_t *hash_buckets[HASH_NUM_BUCKETS];
+dns_hash_ent_t *hash_buckets[HASH_NUM_BUCKETS];
 
-
-/*
- * Make the conversion table for the dns hashes (character-to-number mapping).
- * Call this once before you use the hashes
- */
-void mk_hash_ctable ()
-{
-	unsigned int i;
-	memset(values,strlen(posval),sizeof(values));
-	for (i=0;i<strlen(posval);i++) {
-		values[tolower(posval[i])]=i;
-		values[toupper(posval[i])]=i;
-	}
-}
 
 /*
  * Hash a dns name (dotted) to HASH_SZ bit.
  */
-static long dns_shash(unsigned char *str)
+static long dns_shash(const unsigned char *str)
 {
 	unsigned long acc,i;
-	size_t slen= strlen(str);
+	unsigned char c;
 	acc=0;
-	for (i=0;i<slen;i++) {
-		acc+=values[str[i]]<<(i%(HASH_SZ-5));
+	for (i=0;(c=str[i]);i++) {
+		acc+=values[c]<<(i%(HASH_SZ-5));
 	}
 	acc=(acc&HASH_BITMASK)+((acc&(~HASH_BITMASK))>>HASH_SZ);
 	acc=(acc&HASH_BITMASK)+((acc&(~HASH_BITMASK))>>HASH_SZ);
@@ -96,13 +83,13 @@ static long dns_shash(unsigned char *str)
 /*
  * Hash a dns name (dotted) to 32 bit.
  */
-static unsigned long dns_rhash(unsigned char *str)
+static unsigned long dns_rhash(const unsigned char *str)
 {
 	unsigned long acc,i;
-	size_t slen=strlen(str);
+	unsigned char c;
 	acc=0;
-	for (i=0;i<slen;i++) {
-		acc+=values[str[i]]<<(i%25);
+	for (i=0;(c=str[i]);i++) {
+		acc+=values[c]<<(i%25);
 	}
 #ifdef DEBUG_HASH
 	printf("Diagnostic: dns rhash for %s: %04lx\n",str,acc);
@@ -113,18 +100,18 @@ static unsigned long dns_rhash(unsigned char *str)
 /*
  * Initialize hash to hold a dns hash table
  */
-void mk_dns_hash()
+/* void mk_dns_hash()
 {
 	int i;
 	for(i=0;i<HASH_NUM_BUCKETS;i++)
 		hash_buckets[i]=NULL;
-}
+} */
 
 /*
  * Add an entry to the hash. key is your key, data will be returned
  * by dns_lookup
  */
-void add_dns_hash(unsigned char *key, dns_cent_t *data) 
+void add_dns_hash(const unsigned char *key, dns_cent_t *data) 
 {
 	int idx=dns_shash(key);
 	dns_hash_ent_t *he;
@@ -143,7 +130,7 @@ void add_dns_hash(unsigned char *key, dns_cent_t *data)
  * Delete the first entry indexed by key from the hash. Returns the data field or NULL.
  * Since two cents are not allowed to be for the same host name, there will be only one.
  */
-dns_cent_t *del_dns_hash(unsigned char *key) 
+dns_cent_t *del_dns_hash(const unsigned char *key) 
 {
 	int idx=dns_shash(key);
 	unsigned long rh=dns_rhash(key);
@@ -166,7 +153,7 @@ dns_cent_t *del_dns_hash(unsigned char *key)
  * Lookup in the hash table for key. If it is found, return the data pointer as given by
  * add_dns_hash. If no entry is found, return 0.
  */
-dns_cent_t *dns_lookup(unsigned char *key)
+dns_cent_t *dns_lookup(const unsigned char *key)
 {
 	int idx=dns_shash(key);
 	unsigned long rh=dns_rhash(key);
@@ -191,6 +178,7 @@ void free_dns_hash()
 	for (i=0;i<HASH_NUM_BUCKETS;i++) {
 		he=hash_buckets[i];
 		while (he) {
+			del_cent(he->data);
 			hen=he->next;
 			free(he);
 			he=hen;

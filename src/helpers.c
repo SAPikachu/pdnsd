@@ -216,9 +216,9 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
-/* int rhnlen(unsigned char *rhn)
+/* unsigned int rhnlen(unsigned char *rhn)
 {
-	int i=0;
+	unsigned int i=0;
 	unsigned char lb;
 
 	while((lb=rhn[i]))
@@ -234,11 +234,10 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
  * The answer assembly code uses this; it is guaranteed to not clobber anything
  * after the name.
  */
-int rhncpy(unsigned char *dst, unsigned char *src)
+unsigned int rhncpy(unsigned char *dst, unsigned char *src)
 {
-	int len;
+	unsigned int len = rhnlen(src);
 
-	len = rhnlen(src);
 	PDNSD_ASSERT(len<=256,"rhncpy: src too long!");
 	memcpy(dst,src,len>256?256:len);
 	return len;

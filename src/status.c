@@ -531,7 +531,7 @@ static void *status_thread (void *p)
 void init_stat_sock()
 {
 	struct sockaddr_un *sa;
-	int sa_size = (offsetof(struct sockaddr_un, sun_path) + sizeof("/pdnsd.status") + strlen(global.cache_dir));
+	unsigned int sa_size = (offsetof(struct sockaddr_un, sun_path) + sizeof("/pdnsd.status") + strlen(global.cache_dir));
 
 	sa=(struct sockaddr_un *)alloca(sa_size);
 	stpcpy(stpcpy(sa->sun_path,global.cache_dir),"/pdnsd.status");
@@ -552,13 +552,13 @@ void init_stat_sock()
 #endif
 	/* Early initialization, so that umask can be used race-free. */
 	{
-	  mode_t old_mask = umask((S_IRWXU|S_IRWXG|S_IRWXO)&(~global.ctl_perms));
-	  if (bind(stat_sock,(struct sockaddr *)sa,sa_size)==-1) {
-	    log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
-	    close(stat_sock);
-	    stat_pipe=0;
-	  }
-	  umask(old_mask);
+		mode_t old_mask = umask((S_IRWXU|S_IRWXG|S_IRWXO)&(~global.ctl_perms));
+		if (bind(stat_sock,(struct sockaddr *)sa,sa_size)==-1) {
+			log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
+			close(stat_sock);
+			stat_pipe=0;
+		}
+		umask(old_mask);
 	}
 
 	if(stat_pipe) sock_path= strdup(sa->sun_path);
@@ -567,10 +567,12 @@ void init_stat_sock()
 /*
  * Start the status socket thread (see above)
  */
-void start_stat_sock()
+int start_stat_sock()
 {
-	if (pthread_create(&st,&attr_detached,status_thread,NULL))
+	int rv=pthread_create(&st,&attr_detached,status_thread,NULL);
+	if (rv)
 		log_warn("Failed to start status thread. The status socket will be unuseable");
 	else
 		log_info(2,"Status thread started.");
+	return rv;
 }

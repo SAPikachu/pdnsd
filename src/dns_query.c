@@ -795,7 +795,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 
 	switch (st->state){
 	case QS_INITIAL: {
-		int rrnlen;
+		unsigned int rrnlen;
 		st->sin=SIN_ADDR(st);
 		if (!st->lean_query)
 			st->qt=QT_ALL;

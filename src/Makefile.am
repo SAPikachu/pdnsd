@@ -19,3 +19,5 @@ conf-parse.c: conf-parse.y
 	if cmp -s y.tab.h $*.h; then rm -f y.tab.h; else mv y.tab.h $*.h; fi; \
 	else :; fi
 
+hashconvtable.h: make_hashconvtable
+	./make_hashconvtable > hashconvtable.h

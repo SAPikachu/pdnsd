@@ -755,7 +755,7 @@ rr_el:		NAME '=' STRING ';'
 				}
 				YSTRNCP(c_name, $3, "name");
 				{ /* add a dot at the end */
-					int len=strlen(c_name);
+					unsigned int len=strlen(c_name);
 					if(len==0 || c_name[len-1]!='.') {
 						c_name[len]='.'; c_name[len+1]=0;
 					}
@@ -1021,7 +1021,7 @@ rrneg_el:	NAME '=' STRING ';'
 				}
 				YSTRNCP(c_name,$3, "name");
 				{ /* add a dot at the end */
-					int len=strlen(c_name);
+					unsigned int len=strlen(c_name);
 					if(len==0 || c_name[len-1]!='.') {
 						c_name[len]='.'; c_name[len+1]=0;
 					}
@@ -1135,8 +1135,7 @@ static char *addr_add(servparm_t *sp, char *ipstr)
 static char *slist_add(servparm_t *sp, char *nm, int tp)
 {
  	slist_t *sl;
-	int adddot=0;
-	int nmlen=strlen(nm);
+	unsigned int adddot=0, nmlen=strlen(nm);
 
 	if (nmlen==0 || nm[nmlen-1]!='.') adddot=1;
 	if (nmlen+adddot>255)

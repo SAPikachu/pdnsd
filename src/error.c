@@ -37,15 +37,16 @@ static char rcsid[]="$Id: error.c,v 1.7 2001/06/03 11:00:54 tmm Exp $";
 #endif
 
 pthread_mutex_t loglock = PTHREAD_MUTEX_INITIALIZER;
-int use_lock=0;
+volatile int use_log_lock=0;
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on
  * multiple simultaneous errors.
  */
-/* void init_log(void)
+/* This is now defined as an inline function in error.h */
+/* void init_log_lock(void)
 {
-	use_lock=1;
+	use_log_lock=1;
 } */
 
 /* We crashed? Ooops... */
@@ -62,9 +63,9 @@ void log_error(char *s,...)
 {
 	int ul=0;
 	va_list va;
-	va_start(va,s);
-	if (use_lock)
+	if (use_log_lock)
 		ul=softlock_mutex(&loglock);
+	va_start(va,s);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -74,9 +75,9 @@ void log_error(char *s,...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
+	va_end(va);
 	if (ul)
 		pthread_mutex_unlock(&loglock);
-	va_end(va);
 }
 
 /* Log a warning. If we are a daemon, use the syslog. s is a format string like
@@ -85,9 +86,9 @@ void log_warn(char *s, ...)
 {
 	int ul=0;
 	va_list va;
-	va_start(va,s);
-	if (use_lock)
+	if (use_log_lock)
 		ul=softlock_mutex(&loglock);
+	va_start(va,s);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -97,9 +98,9 @@ void log_warn(char *s, ...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
+	va_end(va);
 	if (ul)
 		pthread_mutex_unlock(&loglock);
-	va_end(va);
 }
 
 /* Log an info if level is <= the current verbosity level.
@@ -107,14 +108,13 @@ void log_warn(char *s, ...)
  * in printf, the optional following arguments are the arguments like in printf */
 void log_info(int level, char *s, ...)
 {
-	va_list va;
-	va_start(va,s);
 	if (level<=verbosity) {
-		if (use_lock)
+		va_list va;
+		if (use_log_lock)
 			if (!softlock_mutex(&loglock)) {
-				va_end(va);
 				return;
 			}
+		va_start(va,s);
 		if (daemon_p) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
 			vsyslog(LOG_INFO,s,va);
@@ -124,8 +124,8 @@ void log_info(int level, char *s, ...)
 			vfprintf(stderr,s,va);
 			fprintf(stderr,"\n");
 		}
-		if (use_lock)
+		va_end(va);
+		if (use_log_lock)
 			pthread_mutex_unlock(&loglock);
 	}
-	va_end(va);
 }

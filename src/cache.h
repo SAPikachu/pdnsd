@@ -140,7 +140,8 @@ extern volatile int use_cache_lock;
 #endif
 
 
-void init_cache(void);
+/* Initialize the cache. Call only once. */
+#define init_cache mk_dns_hash
 
 /* Initialize the cache lock. Call only once. */
 inline static void init_cache_lock()
@@ -164,11 +165,21 @@ int have_cached(unsigned char *name);
 dns_cent_t *lookup_cache(unsigned char *name);
 int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
 
-int mk_flag_val(servparm_t *server);
+inline static int mk_flag_val(servparm_t *server)
+{
+	int fl=0;
+	if (!server->purge_cache)
+		fl|=CF_NOPURGE;
+	if (server->nocache)
+		fl|=CF_NOCACHE;
+	return fl;
+}
+
 int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl  DBGPARAM);
 int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial  DBGPARAM);
 int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp  DBGPARAM);
 void free_cent(dns_cent_t *cent  DBGPARAM);
+void del_cent(dns_cent_t *cent);
 
 /* Because this is empty by now, it is defined as an empty macro to save overhead.*/
 /*void free_rr(rr_bucket_t cent);*/

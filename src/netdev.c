@@ -186,7 +186,8 @@ int if_up(char *devname)
 	int sock;
 	struct ifreq ifr;
 # if TARGET==TARGET_LINUX
-	if (strlen(devname)>4 && strlen(devname)<=6 && strncmp(devname,"ippp",4)==0) {
+	unsigned int devnamelen=strlen(devname);
+	if (devnamelen>4 && devnamelen<=6 && strncmp(devname,"ippp",4)==0) {
 		/* This function didn't manage the interface uptest correctly. Thanks to
 		 * Joachim Dorner for pointing out. 
 		 * The new code (statusif()) was shamelessly stolen from isdnctrl.c of the 

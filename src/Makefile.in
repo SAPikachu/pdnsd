@@ -320,7 +320,8 @@ dns_query.o: dns_query.c ../config.h list.h consts.h ipvers.h \
 error.o: error.c ../config.h error.h thread.h helpers.h cache.h ipvers.h \
 	list.h dns.h rr_types.h conff.h pdnsd_assert.h
 hash.o: hash.c ../config.h hash.h cache.h ipvers.h list.h dns.h \
-	rr_types.h conff.h error.h thread.h helpers.h pdnsd_assert.h
+	rr_types.h conff.h error.h thread.h helpers.h pdnsd_assert.h \
+	hashconvtable.h
 helpers.o: helpers.c ../config.h ipvers.h thread.h error.h helpers.h \
 	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 icmp.o: icmp.c ../config.h ipvers.h icmp.h error.h thread.h helpers.h \
@@ -329,7 +330,7 @@ list.o: list.c ../config.h helpers.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h pdnsd_assert.h
 main.o: main.c ../config.h consts.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h status.h servers.h dns_answer.h dns_query.h \
-	error.h thread.h helpers.h icmp.h pdnsd_assert.h
+	error.h thread.h helpers.h icmp.h pdnsd_assert.h hash.h
 netdev.o: netdev.c ../config.h ipvers.h netdev.h error.h thread.h \
 	helpers.h cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 rr_types.o: rr_types.c rr_types.h ../config.h
@@ -418,6 +419,8 @@ uninstall-am uninstall all-redirect all-am all installdirs-am \
 installdirs mostlyclean-generic distclean-generic clean-generic \
 maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
+hashconvtable.h: make_hashconvtable
+	./make_hashconvtable > hashconvtable.h
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

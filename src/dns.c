@@ -184,7 +184,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 	int add=1;
 	int longest=0,lrem=0,coffs=0;
 	int rl=0;
-	int ilen = rhnlen(in);
+	unsigned ilen = rhnlen(in);
 
 	PDNSD_ASSERT(ilen<=256, "compress_name: name too long");
 
@@ -228,19 +228,13 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 }
 
 
-typedef	struct {
-	struct in_addr ipv4;
-#ifdef ENABLE_IPV6
-	struct in6_addr ipv6;
-#endif
-} pdnsd_ca;
 
 /*
  * Add records for a host as read from a hosts-style file.
  * Returns 1 on success, 0 in an out of memory condition, and -1 when there was a problem with
  * the record data.
  */
-static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
+static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_a *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
 {
 	dns_cent_t ce;
 
@@ -266,26 +260,29 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 		unsigned char b2[256],rhn[256];
 #ifdef ENABLE_IPV4
 		if (tp==T_A) {
+			uint32_t ipa=ntohl(a->ipv4.s_addr);
 # if TARGET==TARGET_BSD
-			snprintf(b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xffl,(ntohl(a->ipv4.s_addr)>>8)&0xffl,
-				 (ntohl(a->ipv4.s_addr)>>16)&0xffl, (ntohl(a->ipv4.s_addr)>>24)&0xffl);
+			snprintf(b2,sizeof(b2),"%li.%li.%li.%li.in-addr.arpa.",ipa&0xffl,(ipa>>8)&0xffl,
+				 (ipa>>16)&0xffl, (ipa>>24)&0xffl);
 # else
-			snprintf(b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
-				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+			snprintf(b2,sizeof(b2),"%i.%i.%i.%i.in-addr.arpa.",ipa&0xff,(ipa>>8)&0xff,
+				 (ipa>>16)&0xff, (ipa>>24)&0xff);
 # endif
 		}
 		else
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 		if (tp==T_AAAA) {
-			unsigned char b4[7];
-			int i;
-			b2[0]='\0';
-			for (i=15;i>=0;i--) {
-				snprintf(b4, sizeof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
-				strncat(b2,b4,sizeof(b2)-strlen(b2)-1);
+			int i,offs=0;
+			for (i=15;i>=0;--i) {
+				unsigned char bt=((unsigned char *)&a->ipv6)[i];
+				int n=snprintf(b2+offs, sizeof(b2)-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
+				if(n<0) return -1;
+				offs+=n;
+				if(offs>=sizeof(b2)) return -1;
 			}
-			strncat(b2,"ip6.int.",sizeof(b2)-strlen(b2)-1);
+			if(!strncp(b2+offs,"ip6.int.",sizeof(b2)-offs))
+				return -1;
 		}
 		else
 #endif
@@ -330,11 +327,11 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 		goto fclose_return;
 	}
 	while(getline(&buf,&buflen,f)>=0) {
-		int last=0,len;
-		unsigned char b2[256],b3[256];
+		unsigned int len;
 		unsigned char *p,*pn,*pi;
+		unsigned char b2[256],b3[256];
 		int tp,sz;
-		pdnsd_ca a;
+		pdnsd_a a;
 
 		p=strchr(buf,'#');
 		if(p) *p=0;
@@ -353,19 +350,17 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 			if(!*++p) goto nextline;
 		} while (isspace(*p));
 		pn=p;
-		for(;;) {
+		do {
 			++p;
-			if(!*p) {last=1; break;}
-			if(isspace(*p)) {*p=0; break;}
-		}
+		} while(*p && !isspace(*p));
 		len=p-pn;
 		if(len>255) continue;
-		strcpy(b2,pn);
+		memcpy(b2,pn,len);
 		if(b2[len-1]!='.') {
 			b2[len]='.';
 			if(++len>255) continue;
-			b2[len]=0;
 		}
+		b2[len]=0;
 		if (!str2rhn(b2,b3))
 			continue;
 		if (inet_aton(pi,&a.ipv4)) {
@@ -377,10 +372,8 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 				tp=T_AAAA;
 				sz=sizeof(struct in6_addr);
 			} else
-				continue;
-#else
-			continue;
 #endif
+			continue;
 		}
 		{
 			int res=add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1);
@@ -392,24 +385,24 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 				continue;
 		}
 		if(aliases) {
-			while(!last) {
-				do {
-					if(!*++p) goto nextline;
-				} while (isspace(*p));
-				pn=p;
+			for(;;) {
 				for(;;) {
+					if(!*p) goto nextline;
+					if(!isspace(*p)) break;
 					++p;
-					if(!*p) {last=1; break;}
-					if(isspace(*p)) {*p=0; break;}
 				}
+				pn=p;
+				do {
+					++p;
+				} while(*p && !isspace(*p));
 				len=p-pn;
 				if(len>255) break;
-				strcpy(b2,pn);
+				memcpy(b2,pn,len);
 				if(b2[len-1]!='.') {
 					b2[len]='.';
 					if(++len>255) break;
-					b2[len]=0;
 				}
+				b2[len]=0;
 				if (!str2rhn(b2,b3))
 					break;
 				if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {

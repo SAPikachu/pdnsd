@@ -336,11 +336,11 @@ unsigned long get_serial()
  */
 
 /* Initialize the cache. Call only once. */
-void init_cache()
+/*void init_cache()
 {
 	mk_hash_ctable();
 	mk_dns_hash();
-}
+} */
 
 /* Initialize the cache lock. Call only once. */
 /* void init_cache_lock()
@@ -352,20 +352,17 @@ void init_cache()
 /* Delete the cache. Call only once */
 void destroy_cache()
 {
-	dns_cent_t *ce;
-	dns_hash_pos_t pos;
-
 	/* lock the cache, in case that any thread is still accessing. */
 	if(!softlock_cache_rw()) {
 		log_error("Lock failed; could not destroy cache on exit.");
 		return;
 	}
-	ce=fetch_first(&pos);
-	while (ce) {
-		del_cache_ent(ce);
-		ce=fetch_next(&pos);
-	}
 	free_dns_hash();
+#if DEBUG>0
+	if(ent_num || cache_size) {
+		DEBUG_MSG("After destroying cache, %ld entries (%ld bytes) remaining.\n",ent_num,cache_size);
+	}
+#endif
 
 #if 0
 TARGET!=TARGET_LINUX
@@ -377,7 +374,8 @@ TARGET!=TARGET_LINUX
 }
 
 /* Make a flag value for a dns_cent_t (dns cache entry) from a server record */
-int mk_flag_val(servparm_t *server)
+/* Now defined as inline function in cache.h */
+/* int mk_flag_val(servparm_t *server)
 {
 	int fl=0;
 	if (!server->purge_cache)
@@ -385,7 +383,7 @@ int mk_flag_val(servparm_t *server)
 	if (server->nocache)
 		fl|=CF_NOCACHE;
 	return fl;
-}
+} */
 
 /* Initialize a dns cache record (dns_cent_t) with the query name (in
  * dotted notation, use rhn2str), a flag value, a timestamp indicating
@@ -1261,6 +1259,22 @@ void add_cache(dns_cent_t *cent)
 	unlock_cache_rw();
 }
 
+/* 
+   Delete a cent from the cache. Call with write locks applied.
+   Does not delete corresponding entry in hash table, call del_cache_ent()
+   or del_cache() for that.
+*/
+void del_cent(dns_cent_t *cent)
+{
+	cache_size -= cent->cs;
+
+	/* free the data referred by the cent and the cent itself */
+	free_cent(cent  DBG0);
+	free(cent);
+
+	ent_num--;
+}
+
 /*
  * Delete a cent from the cache. Call with write locks applied.
  */
@@ -1276,13 +1290,7 @@ static void del_cache_ent(dns_cent_t *cent)
 	else if(data!=cent) {
 		log_warn("pointer returned by del_dns_hash() does not match cache entry in %s, line %d",__FILE__,__LINE__);
 	}
-	cache_size -= cent->cs;
-
-	/* free the data referred by the cent and the cent itself */
-	free_cent(cent  DBG0);
-	free(cent);
-
-	ent_num--;
+	del_cent(cent);
 }
 
 /* Delete a cached record. Performs locking. Call this from the outside, NOT del_cache_ent */
@@ -1292,13 +1300,7 @@ void del_cache(unsigned char *name)
 
 	lock_cache_rw();
 	if ((cent=del_dns_hash(name))) {
-		cache_size -= cent->cs;
-
-		/* free the data referred by the cent and the cent itself */
-		free_cent(cent  DBG0);
-		free(cent);
-
-		ent_num--;
+		del_cent(cent);
 	}
 	unlock_cache_rw();
 }

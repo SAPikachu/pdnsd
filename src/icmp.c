@@ -60,9 +60,9 @@ static char rcsid[]="$Id: icmp.c,v 1.26 2002/01/14 17:39:26 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
-volatile int icmp_errs=0; /* This is only here to minimize log output. Since the 
-			     consequences of a race is only one log message more/less
-			     (out of ICMP_MAX_ERRS), no lock is required. */
+volatile unsigned long icmp_errs=0; /* This is only here to minimize log output. Since the 
+				       consequences of a race is only one log message more/less
+				       (out of ICMP_MAX_ERRS), no lock is required. */
 
 volatile int ping_isocket=-1;
 #ifdef ENABLE_IPV6
@@ -208,8 +208,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	/* !(0000 1000 0000 1001) = 0xff ff f7 f6 */
 	f.data=0xfffff7f6;
 	if (setsockopt(isock,SOL_RAW,ICMP_FILTER,&f,sizeof(f))==-1) {
-		if (icmp_errs<ICMP_MAX_ERRS) {
-			icmp_errs++;
+		if (++icmp_errs<=ICMP_MAX_ERRS) {
 			log_warn("icmp ping: setsockopt() failed: %s", strerror(errno));
 		}
 		return -1;
@@ -241,8 +240,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		to.sin_addr=addr;
 		SET_SOCKA_LEN4(to);
 		if (sendto(isock,&icmpd,ICMP4_ECHO_LEN,0,(struct sockaddr *)&to,sizeof(to))==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
+			if (++icmp_errs<=ICMP_MAX_ERRS) {
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
 
 			}
@@ -258,8 +256,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			tv.tv_usec=0;
 			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
 			if (select(isock+1,&fds,NULL,NULL,&tv)<0) {
-				if (icmp_errs<ICMP_MAX_ERRS) {
-					icmp_errs++;
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
@@ -268,8 +265,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			pfd.fd=isock;
 			pfd.events=POLLIN;
 			if (poll(&pfd,1,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
-				if (icmp_errs<ICMP_MAX_ERRS) {
-					icmp_errs++;
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
@@ -389,8 +385,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	ICMP6_FILTER_SETPASS(ICMP6_TIME_EXCEEDED,&f);
 
 	if (setsockopt(isock,IPPROTO_ICMPV6,ICMP6_FILTER,&f,sizeof(f))==-1) {
-		if (icmp_errs<ICMP_MAX_ERRS) {
-			icmp_errs++;
+		if (++icmp_errs<=ICMP_MAX_ERRS) {
 			log_warn("icmpv6 ping: setsockopt() failed: %s", strerror(errno));
 		}
 		return -1;
@@ -410,8 +405,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		from.sin6_addr=a;
 		SET_SOCKA_LEN6(from);
 		if (sendto(isock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
-			if (icmp_errs<ICMP_MAX_ERRS) {
-				icmp_errs++;
+			if (++icmp_errs<=ICMP_MAX_ERRS) {
 				log_warn("icmpv6 ping: sendto() failed: %s.",strerror(errno));
 
 			}
@@ -427,8 +421,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			tv.tv_usec=0;
 			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
 			if (select(isock+1,&fds,NULL,&fdse,&tv)<0) {
-				if (icmp_errs<ICMP_MAX_ERRS) {
-					icmp_errs++;
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
@@ -437,8 +430,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			pfd.fd=isock;
 			pfd.events=POLLIN;
 			if (poll(&pfd,1,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
-				if (icmp_errs<ICMP_MAX_ERRS) {
-					icmp_errs++;
+				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 

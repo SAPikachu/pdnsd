@@ -42,6 +42,7 @@ typedef struct dns_hash_ent_s {
 
 #define HASH_BITMASK     (HASH_NUM_BUCKETS-1)
 
+extern dns_hash_ent_t *hash_buckets[];
 
 /* A type for position specification for fetch_first and fetch_next */
 typedef struct {
@@ -49,11 +50,16 @@ typedef struct {
 	dns_hash_ent_t *ent;       /* entry */
 } dns_hash_pos_t;
 
-void mk_hash_ctable();
-void mk_dns_hash();
-void add_dns_hash(unsigned char *key, dns_cent_t *data);
-dns_cent_t *del_dns_hash(unsigned char *key);
-dns_cent_t *dns_lookup(unsigned char *key);
+inline static void mk_dns_hash()
+{
+	int i;
+	for(i=0;i<HASH_NUM_BUCKETS;i++)
+		hash_buckets[i]=NULL;
+}
+
+void add_dns_hash(const unsigned char *key, dns_cent_t *data);
+dns_cent_t *del_dns_hash(const unsigned char *key);
+dns_cent_t *dns_lookup(const unsigned char *key);
 void free_dns_hash();
 
 dns_cent_t *fetch_first(dns_hash_pos_t *pos);

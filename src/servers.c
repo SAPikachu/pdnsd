@@ -297,12 +297,14 @@ void *servstat_thread(void *p)
 /*
  * Start the server status thread.
  */
-void start_servstat_thread()
+int start_servstat_thread()
 {
-	if (pthread_create(&stt,&attr_detached,servstat_thread,NULL))
+	int rv=pthread_create(&stt,&attr_detached,servstat_thread,NULL);
+	if (rv)
 		log_warn("Failed to start server status thread. Assuming all servers to be up all time.");
 	else
 		log_info(2,"Server status thread started.");
+	return rv;
 }
 
 /*

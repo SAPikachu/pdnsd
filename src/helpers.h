@@ -56,9 +56,9 @@ char *parsestr2rhn(unsigned char *str, unsigned char *rhn);
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
-inline static int rhnlen(unsigned char *rhn)
+inline static unsigned int rhnlen(unsigned char *rhn)
 {
-	int i=0;
+	unsigned int i=0;
 	unsigned char lb;
 
 	while((lb=rhn[i]))
@@ -66,7 +66,7 @@ inline static int rhnlen(unsigned char *rhn)
 	return i+1;
 }
 
-int rhncpy(unsigned char *dst, unsigned char *src);
+unsigned int rhncpy(unsigned char *dst, unsigned char *src);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
 

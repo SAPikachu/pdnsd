@@ -36,15 +36,15 @@ Boston, MA 02111-1307, USA.  */
 #include "pdnsd_assert.h"
 
 /* --- from error.c */
-volatile extern int waiting;
-extern int use_lock;
+extern volatile int waiting;
+extern volatile int use_log_lock;
 /* --- */
 
 void crash_msg(char *msg);
 
-inline static void init_log(void)
+inline static void init_log_lock(void)
 {
-	use_lock=1;
+	use_log_lock=1;
 }
 
 void log_error(char *s,...) printfunc(1, 2);

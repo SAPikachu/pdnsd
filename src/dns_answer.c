@@ -70,10 +70,10 @@ static char rcsid[]="$Id: dns_answer.c,v 1.60 2002/08/07 08:55:33 tmm Exp $";
 #define UDP_MAX_ERRS 5
 #define MEM_MAX_ERRS 5
 #define MISC_MAX_ERRS 5
-volatile int da_tcp_errs=0;
-volatile int da_udp_errs=0;
-volatile int da_mem_errs=0;
-volatile int da_misc_errs=0;
+volatile unsigned long da_tcp_errs=0;
+volatile unsigned long da_udp_errs=0;
+volatile unsigned long da_mem_errs=0;
+volatile unsigned long da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
 volatile int procs=0;   /* active query processes */
@@ -637,7 +637,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	/* first, add the query to the response */
 	for (i=0;i<DA_NEL(q);i++) {
 		dns_queryel_t *qe=&DA_INDEX(q,i);
-		int qulen=rhnlen(qe->query);
+		unsigned int qulen=rhnlen(qe->query);
 		dns_hdr_t *nans=(dns_hdr_t *)pdnsd_realloc(ans,*rlen+qulen+4);
 		if (!nans) {
 			pdnsd_free(ans);

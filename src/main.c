@@ -45,6 +45,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "helpers.h"
 #include "icmp.h"
+#include "hash.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
@@ -504,16 +505,16 @@ int main(int argc,char *argv[])
 	pthread_attr_init(&attr_detached);
 	pthread_attr_setdetachstate(&attr_detached,PTHREAD_CREATE_DETACHED);
 
-	init_log();
-
-	/* Before this point, cache accesses are not locked because we are single-threaded. */
-	init_cache_lock();
-
 	read_disk_cache();
 
 	/* This must be done before any other thread is started to avoid races. */
 	if (stat_pipe)
 		init_stat_sock();
+
+
+	/* Before this point, logging and cache accesses are not locked because we are single-threaded. */
+	init_log_lock();
+	init_cache_lock();
 
 	sigemptyset(&sigs_msk);
 	sigaddset(&sigs_msk,SIGHUP);
@@ -540,23 +541,37 @@ int main(int argc,char *argv[])
 		_exit(1);
 	}
 
-	start_servstat_thread();
-
-#if TARGET==TARGET_LINUX
-	if (!global.strict_suid) {
-		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
-			_exit(1);
-		}
-	}
+	{
+#if DEBUG>0
+		int thrdsucc=1;
+# define thrdfail (thrdsucc=0);
+#else
+# define thrdfail
 #endif
 
-	if (stat_pipe)
-		start_stat_sock();
+		if(start_servstat_thread()) thrdfail;
 
-	start_dns_servers();
+#if TARGET==TARGET_LINUX
+		if (!global.strict_suid) {
+			if (!run_as(global.run_as)) {
+				log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+				_exit(1);
+			}
+		}
+#endif
 
-	DEBUG_MSGC("All threads started successfully.\n");
+		if (stat_pipe)
+			if(start_stat_sock()) thrdfail;
+
+		start_dns_servers();
+
+#if DEBUG>0
+		if(thrdsucc) {
+			DEBUG_MSGC("All threads started successfully.\n");
+		}
+#endif
+#undef thrdfail
+	}
 
 #if TARGET==TARGET_LINUX && !defined(THREADLIB_NPTL)
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
