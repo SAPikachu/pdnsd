@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.23 2000/07/03 14:13:28 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.24 2000/07/03 22:27:44 thomas Exp $";
 #endif
 
 /*
@@ -901,10 +901,10 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 
 #if DEBUG>0
 	if (debug_p) {
-		printf("Questions are:\n ");
+		fprintf(dbg, "Questions are:\n ");
 		for (res=0;res<q->num;res++) {
 			rhn2str((&q->first_q)[res].query,buf);
-			printf("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname((&q->first_q)[res].qclass),(&q->first_q)[res].qclass,get_tname((&q->first_q)[res].qtype),(&q->first_q)[res].qtype,buf);
+			fprintf(dbg, "\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname((&q->first_q)[res].qclass),(&q->first_q)[res].qclass,get_tname((&q->first_q)[res].qtype),(&q->first_q)[res].qtype,buf);
 		}
 	}
 #endif
