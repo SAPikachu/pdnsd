@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.54 2001/06/03 21:11:43 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.55 2002/01/01 23:54:49 tmm Exp $";
 #endif
 
 /*
@@ -277,7 +277,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		}
 		rrh.rdlength+=blen;
 		*sz+=blen;
-		ilen+=strlen(((char *)(rr+1))+ilen)+1;
+		ilen+=rhnlen(((unsigned char *)(rr+1))+ilen);
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,sizeof(soa_r_t));
 		*sz+=sizeof(soa_r_t);
 		rrh.rdlength+=sizeof(soa_r_t);
@@ -319,7 +319,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		rrh.rdlength=blen;
 		*sz+=blen;
 		ilen=rhnlen((unsigned char *)(rr+1));
-		wlen=(rr->rdlen-ilen)<0?0:(rr->rdlen-ilen);
+		wlen=rr->rdlen < ilen ? 0 : (rr->rdlen - ilen);
 		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)(rr+1))+ilen,wlen);
 		*sz+=wlen;
 		rrh.rdlength+=wlen;

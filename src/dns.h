@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.13 2001/06/02 23:08:13 tmm Exp $ */
+/* $Id: dns.h,v 1.14 2002/01/01 23:54:49 tmm Exp $ */
 
 #ifndef DNS_H
 #define DNS_H
@@ -163,7 +163,7 @@ typedef struct {
  */
 typedef struct {
 	int           index;
-	unsigned char s[255];
+	unsigned char s[256];
 } compel_t;
 
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore);

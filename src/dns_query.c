@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.50 2001/12/30 18:25:40 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.51 2002/01/01 23:54:49 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -122,12 +122,12 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
     unsigned long serial, char trusted, unsigned char *nsdomain, char tc)
 {
 	unsigned char oname[256];
-	unsigned char db[530],tbuf[256];
+	unsigned char db[1030],tbuf[256];
 	rr_hdr_t rhdr;
 	int rc;
 	int i;
 #ifdef DNS_NEW_RRS
-	int j,k;
+	int j,k,tlen;
 #endif
 	int len, uscore;
 	int slen;
@@ -178,8 +178,6 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
-					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, len, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
@@ -210,6 +208,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				nptr=db;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				PDNSD_ASSERT(len <= sizeof(db) - 256, "T_MINFO/T_RP: buffer limit reached");
 				nptr+=len;
 				slen=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
@@ -217,8 +216,6 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				/*nptr+=len;*/
 				slen+=len;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
@@ -243,8 +240,6 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				slen+=len;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
-					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
@@ -255,10 +250,12 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				nptr=db;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				PDNSD_ASSERT(len <= sizeof(db) - 256, "T_MINFO/T_RP: buffer limit reached");
 				nptr+=len;
 				slen=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				PDNSD_ASSERT(len <= sizeof(db) - 20, "T_MINFO/T_RP: buffer limit reached");
 				nptr+=len;
 				slen+=len;
 				if (blcnt<20)
@@ -267,8 +264,6 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				memcpy(nptr,bptr,20); /*copy the rest of the SOA record*/
 				slen+=20;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial, trusted,
 						 nsdomain))
@@ -303,15 +298,15 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				slen=2;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				PDNSD_ASSERT(len <= sizeof(db) - 256, "T_MINFO/T_RP: buffer limit reached");
 				nptr+=len;
 				slen+=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				PDNSD_ASSERT(len <= sizeof(db) - 256, "T_MINFO/T_RP: buffer limit reached");
 				nptr+=len;
 				slen+=len;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
@@ -331,8 +326,6 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				slen+=len;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
 					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
-					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
 					return RC_SERVFAIL;
@@ -344,20 +337,18 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				slen=0;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
+				tlen = len;
 				nptr+=len;
-				/* XXX: This test can go away */
-				if (blcnt<ntohs(rhdr.rdlength)-blcnt+*lcnt)
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)-blcnt+*lcnt<0)
+				if (ntohs(rhdr.rdlength)<blcnt-*lcnt)
 					return RC_FORMAT;
 				len=ntohs(rhdr.rdlength)-blcnt+*lcnt;
+				if (tlen + len > sizeof(db) || blcnt < len)
+					return RC_FORMAT;
 				memcpy(nptr,bptr,len);
 				slen+=len;
 				blcnt-=len;
 				/* XXX: This test can go away */
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
@@ -371,17 +362,26 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr+4;
 				nptr=db+4;
 				slen=4;
-				/* 3 text strings following */
+				/*
+				 * 3 text strings following, the maximum length* being 255 characters for each (this is
+				 * ensured by the type of *bptr), plus one length byte for each, so 3 * 256 = 786 in
+				 * total. In addition, the name below is up to 256 character in size, and the preference
+				 * field is another two bytes in size, so the total length that can be taken up are
+				 * are 1028 characters. This means that the whole record will always fit into db.
+				 */
 				for (j=0;j<3;j++) {
 					if (blcnt<=0)
 						return RC_FORMAT;
+					PDNSD_ASSERT(bptr < db + sizeof(db) - 1, "T_NAPTR: buffer limit reached");
 					k=*bptr;
 					blcnt--;
 					slen++;
 					*nptr=k;
 					nptr++;
 					bptr++;
+					PDNSD_ASSERT(k <= 255, "T_NAPTR: length botched");
 					for (;k>0;k--) {
+						PDNSD_ASSERT(bptr < db + sizeof(db) - 1, "T_NAPTR: buffer limit reached");
 						if (blcnt==0)
 							return RC_FORMAT;
 						*nptr=*bptr;
@@ -391,13 +391,12 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						slen++;
 					}
 				}
+				PDNSD_ASSERT(bptr < db + sizeof(db) - 256, "T_NAPTR: buffer limit reached (name)");
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				/*nptr+=len;*/
 				slen+=len;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
-					return RC_FORMAT;
-				if (ntohs(rhdr.rdlength)>530)
 					return RC_FORMAT;
 				if (!rr_to_cache(*cent, ntohl(rhdr.ttl), oname, slen, db, ntohs(rhdr.type),flags,queryts,serial,trusted,
 						 nsdomain))
@@ -987,7 +986,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	/* Negative cacheing of rr sets */
 	if (st->qt>=T_MIN && st->qt<=T_MAX && !(*ent)->rr[st->qt-T_MIN]) {
-		/* We did not get what we wanted. Cache accoding to policy */
+		/* We did not get what we wanted. Cache according to policy */
 		if (global.neg_rrs_pol==C_ON || (global.neg_rrs_pol==C_AUTH && st->recvbuf->aa)) {
 			ttl=global.neg_ttl;
 			/* If we received a SOA, we should take the ttl of that record. */
