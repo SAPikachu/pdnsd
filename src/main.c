@@ -65,8 +65,8 @@ int run_ipv4=DEFAULT_IPV4;
 #ifdef ENABLE_IPV6
 int run_ipv6=DEFAULT_IPV6;
 #endif
-int tcp_socket=-1;
-int udp_socket=-1;
+volatile int tcp_socket=-1;
+volatile int udp_socket=-1;
 sigset_t sigs_msk;
 char *pidfile=NULL;
 int stat_pipe=0;
@@ -190,7 +190,7 @@ static const char help_message[] =
  */
 int main(int argc,char *argv[])
 {
-	int i,sig,pfd;
+	int i,sig,pfd=-1;  /* Initialized to inhibit compiler warning */
 	char *conf_file=NULL;
 
 	main_thread=pthread_self();

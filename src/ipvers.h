@@ -149,7 +149,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
-#  define SOCKA_A(a) (run_ipv4?SOCKA_A4(a):SOCKA_A6(a))
+#  define SOCKA_A(a) (run_ipv6?SOCKA_A6(a):SOCKA_A4(a))
 # else
 #  define SOCKA_A(a) SOCKA_A4(a)
 # endif

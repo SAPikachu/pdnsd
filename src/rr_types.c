@@ -82,9 +82,9 @@ int rr_tp_byname(char *name)
 {
 	int i;
 
-	for (i=T_MIN;i<=T_MAX;i++) {
-		if (strcmp(name, rr_info[i-T_MIN].name)==0)
-			return i;
+	for (i=0;i<T_NUM;i++) {
+		if (strcmp(name, rr_info[i].name)==0)
+			return i+T_MIN;
 	}
 	return -1; /* invalid */
 }

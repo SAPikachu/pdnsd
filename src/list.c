@@ -36,14 +36,15 @@ static char rcsid[]="$Id: list.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 #ifdef ALLOC_DEBUG
-darray DBGda_create(int sz, char *file, int line)
+darray DBGda_create(size_t sz, char *file, int line)
 {
-	DEBUG_MSG("+ da_create, %s:%d, %d bytes\n", file, line, sz);
+	DEBUG_MSG("+ da_create, %s:%d, %u bytes\n", file, line,
+		  (unsigned int)(sizeof(struct _dynamic_array_dummy_head)+sz*8));
 	return Dda_create(sz);
 }
 #endif
 
-/* darray Dda_create(int sz)
+/* darray Dda_create(size_t sz)
 {
 	darray a;
 
@@ -52,56 +53,51 @@ darray DBGda_create(int sz, char *file, int line)
 	return a;
 } */
 
-darray da_grow1(darray a, int sz)
+darray da_grow1(darray a, size_t sz)
 {
-  PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
-  {
-    int k = a->nel++;
-    if(k!=0 && (k&7)==0) {
-      darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*(k+8));
-      if (tmp==NULL)
-	free(a);
-      return tmp;
-    }
-    else
-      return a;
-  }
+	unsigned int k = (a?a->nel:0);
+	if(!a || (k!=0 && (k&7)==0)) {
+		darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*(k+8));
+		if (tmp==NULL)
+			free(a);
+		a=tmp;
+	}
+	if(a) a->nel=k+1;
+	return a;
 }
 
-inline static int alloc_nel(int n)
+inline static unsigned int alloc_nel(unsigned int n)
 {
   return n==0 ? 8 : (n+7)&(~7);
 }
 
-darray da_resize(darray a, int sz, int n)
+darray da_resize(darray a, size_t sz, unsigned int n)
 {
-  PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
-  PDNSD_ASSERT(n>=0, "da_resize to negative size");
-  {
-    int ael = alloc_nel(a->nel);
-    int new_ael = alloc_nel(n);
-    a->nel=n;
-    if(new_ael != ael) {
-      /* adjust alloced space. */
-      darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
-      if (tmp==NULL)
-	free(a);
-      return tmp;
-    }
-    else
-      return a;
-  }
+	PDNSD_ASSERT(n>=0, "da_resize to negative size");
+	{
+		unsigned int ael = (a?alloc_nel(a->nel):0);
+		unsigned int new_ael = alloc_nel(n);
+		if(new_ael != ael) {
+			/* adjust alloced space. */
+			darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
+			if (tmp==NULL)
+				free(a);
+			a=tmp;
+		}
+		if(a) a->nel=n;
+		return a;
+	}
 }
 
 #ifdef ALLOC_DEBUG
-darray DBGda_free(darray a, char *file, int line)
+void DBGda_free(darray a, size_t sz, char *file, int line)
 {
 	if (a==NULL)
 		{DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);}
 	else
-		{DEBUG_MSG("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);}
+		{DEBUG_MSG("- da_free, %s:%d, %u bytes\n", file, line,
+			   (unsigned int)(sizeof(struct _dynamic_array_dummy_head)+sz*alloc_nel(a->nel)));}
 	free(a);
-	return;
 }
 #endif
 

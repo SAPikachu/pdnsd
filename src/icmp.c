@@ -483,9 +483,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
  */
 int ping(pdnsd_a *addr, int timeout, int rep)
 {
-#ifdef ENABLE_IPV6
-	struct in_addr v4;
-#endif
 
 	if (ping_isocket==-1)
 		return -1;
@@ -503,6 +500,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 	if (run_ipv6) {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
+			struct in_addr v4;
 			v4.s_addr=((long *)&addr->ipv6)[3];
 			return ping4(v4,timeout/10,rep);
 		} else 

@@ -83,8 +83,6 @@ pthread_mutex_t proc_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-volatile int tcp_up=1;
-volatile int udp_up=1;
 
 typedef struct {
 	union {
@@ -145,11 +143,6 @@ int sva_add(sva_array *sva, unsigned char *name, unsigned char *rhn, int tp, rr_
 
 	PDNSD_ASSERT(b->rdlen<=256,"Unexpected type to sva_add");
 	if (sva) {
-		if (*sva==NULL) {
-			if ((*sva=DA_CREATE(sva_t))==NULL) {
-				return 0;
-			}
-		}
 		if ((*sva=DA_GROW1(*sva))==NULL) {
 			return 0;
 		}
@@ -418,8 +411,8 @@ static int add_ar(void *tnm, int tsz, rr_ext_array *ar, unsigned char *nm, time_
 }
 
 #define AR_NUM 5
-int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX}; 
-int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server name */
+static const int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX}; 
+static const int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server name */
 
 /* This adds an rrset, optionally randomizing the first element it adds.
  * if that is done, all rrs after the randomized one appear in order, starting from
@@ -428,11 +421,12 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, comp
     rr_ext_array *ar)
 {
 	rr_bucket_t *b;
-	rr_bucket_t *first;
+	rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
 	int cnt,i;
+	rr_set_t *crrset=cached->rr[tp-T_MIN];
 
-	if (cached->rr[tp-T_MIN] && cached->rr[tp-T_MIN]->rrs) {
-		b=cached->rr[tp-T_MIN]->rrs;
+	if (crrset && crrset->rrs) {
+		b=crrset->rrs;
 		if (global.rnd_recs) {
 			/* in order to have equal chances for each records to be the first, we have to count first. */
 			first=b;
@@ -451,8 +445,8 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, comp
 			b=first;
 		}
 		while (b) {
-			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,cached->rr[tp-T_MIN]->ts,
-				    cached->rr[tp-T_MIN]->ttl,cached->rr[tp-T_MIN]->flags)) 
+			if (!add_rr(ans, sz, b, tp,S_ANSWER,cb,udp,queryts,rrn,crrset->ts,
+				    crrset->ttl,crrset->flags)) 
 				return 0;
 			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
 				/* mark it as added */
@@ -465,7 +459,7 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, comp
 			for (i=0;i<AR_NUM;i++) {
 				if (ar_recs[i]==tp) {
 					if (!add_ar(((unsigned char *)(b+1))+ar_offs[i], b->rdlen-ar_offs[i],ar, (unsigned char *)"",
-					    0,0,0,RRETP_ADD)) {
+						    0,0,0,RRETP_ADD)) {
 						pdnsd_free(*ans);
 						return 0;
 					}
@@ -474,8 +468,8 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, comp
 			}
 			b=b->next;
 			if (global.rnd_recs) {
-			  if(!b) b=cached->rr[tp-T_MIN]->rrs; /* wraparound */
-			  if(b==first)	break;
+				if(!b) b=crrset->rrs; /* wraparound */
+				if(b==first)	break;
 			}
 		}
 	}
@@ -591,17 +585,20 @@ static int add_additional_a(unsigned char *rhn, sva_array *sva, dns_hdr_t **ans,
 
 	rhn2str(rhn,buf);
 	if ((ae=lookup_cache(buf))) {
-		if (ae->rr[T_A-T_MIN])
-		    if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
-					   ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
+		rr_set_t *rrset;
+		rrset=ae->rr[T_A-T_MIN];
+		if (rrset)
+		    if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_A, rrset->rrs,
+					   rrset->ts,rrset->ttl,rrset->flags,S_ADDITIONAL))
 			    retval = 0;
 #ifdef DNS_NEW_RRS
-		if (ae->rr[T_AAAA-T_MIN])
-			if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
-					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
+		rrset=ae->rr[T_AAAA-T_MIN];
+		if (rrset)
+			if (!add_additional_rr(rhn, buf, sva, ans, rlen, udp, queryts, cb, T_AAAA, rrset->rrs,
+					       rrset->ts,rrset->ttl,rrset->flags,S_ADDITIONAL))
 			    retval = 0;
 #endif
-		free_cent(*ae,1);
+		free_cent(ae  DBG1);
 		pdnsd_free(ae);
 	}
 	return retval;
@@ -613,13 +610,13 @@ static int add_additional_a(unsigned char *rhn, sva_array *sva, dns_hdr_t **ans,
  */
 static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *rlen, char udp) 
 {
-	char aa=1;
+	int aa=1;
 	unsigned char buf[256],bufr[256],oname[256];
 	sva_array sva=NULL;
 	int i,rc,hops,cont,cnc=0;
 	time_t queryts=time(NULL);
 	rr_bucket_t *rr;
-	rr_ext_array ar;
+	rr_ext_array ar=NULL;
 	rr_ext_t *rre;
 	compel_array cb=NULL;
 	dns_hdr_t *ans, *nans;
@@ -627,7 +624,6 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	dns_cent_t *cached;
 	std_query_t temp_q;
 
-	ar=NULL;
 	ans=(dns_hdr_t *)pdnsd_calloc(1,sizeof(dns_hdr_t));
 	if (!ans)
 		return NULL;
@@ -677,10 +673,6 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 		}
 	}
 	
-	if ((ar=DA_CREATE(rr_ext_t))==NULL) {
-		pdnsd_free(ans);
-		return NULL;
-	}
 	/* second, the answer section */
 	for (i=0;i<DA_NEL(q);i++) {
 		qe=&DA_INDEX(q,i);
@@ -692,7 +684,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 			cont=0;
 			if ((rc=p_dns_cached_resolve(NULL,buf, bufr, &cached, MAX_HOPS,qe->qtype,queryts))!=RC_OK) {
 				ans->rcode=rc;
-				goto error_ar;
+				goto cleanup_return;
 			}
 			aa=0;
 			strncpy((char *)oname,(char *)buf,sizeof(oname));
@@ -714,11 +706,12 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 			 * of rrs (including 0) 
 			 * We only do this for the last record in a cname chain, to prevent answer bloat. */
 			if (!cont) {
-				if (cached->rr[T_NS-T_MIN]) {
-					rr=cached->rr[T_NS-T_MIN]->rrs;
+				rr_set_t *rrset=cached->rr[T_NS-T_MIN];
+				if (rrset) {
+					rr=rrset->rrs;
 					while (rr) {
-						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
-						    cached->rr[T_NS-T_MIN]->flags,RRETP_AUTH)) {
+						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, rrset->ts, rrset->ttl,
+						    rrset->flags,RRETP_AUTH)) {
 							pdnsd_free(ans);
 							goto error_cached;
 						}
@@ -727,7 +720,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 				}
 			}
 
-			free_cent(*cached,1);
+			free_cent(cached  DBG1);
 			pdnsd_free(cached);
 		} while (cont && hops>=0);
 	}
@@ -736,18 +729,18 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	for (i=0;i<DA_NEL(ar);i++) {
 		rre=&DA_INDEX(ar,i);
 		if (rre->tp == RRETP_AUTH) {
-			if ((rr=create_rr(rre->sz,rre->tnm,1))==NULL) {
+			if ((rr=create_rr(rre->sz,rre->tnm  DBG1))==NULL) {
 				pdnsd_free(ans);
 				goto error_ans;
 			}
 			rhn2str(rre->nm,buf);
 			if (!add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
 			    rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY)) {
-				free_rr(*rr,1);
+				free_rr(*rr);
 				pdnsd_free(rr);
 				goto error_ans;
 			}
-			free_rr(*rr,1);
+			free_rr(*rr);
 			pdnsd_free(rr);
 		}
 	}
@@ -758,77 +751,70 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 		if (!add_additional_a(rre->tnm, &sva, &ans, rlen, udp, queryts, &cb))
 			goto error_ans;
 	}
-	da_free(ar);
-	
-	if (cb)
-		da_free(cb);
-	if (sva)
-		da_free(sva);
+
 	if (aa)
 		ans->aa=1;
-	return (unsigned char *)ans;
+	goto cleanup_return;
 
 	/* You may not like goto's, but here we avoid lots of code duplication. */
 error_cached:
-	free_cent(*cached,1);
+	free_cent(cached  DBG1);
 	pdnsd_free(cached);
 error_ans:
 	ans=NULL; /* already freed if we get here */
-error_ar:
+cleanup_return:
 	da_free(ar);
-	if (cb)
-		da_free(cb);
-	if (sva)
-		da_free(sva);
+	da_free(cb);
+	da_free(sva);
 	return (unsigned char *)ans;
-}	
+}
 
 /*
  * Decode the query (the query messgage is in data and rlen bytes long) into q
  * XXX: data needs to be aligned
  */
-static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
+static int decode_query(unsigned char *data, long rlen, dns_queryel_array *qp)
 {
 	int i,res,l,uscore;
 	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
 	unsigned char *ptr=(unsigned char *)(hdr+1);
 	long sz=rlen-sizeof(dns_hdr_t);
 	dns_queryel_t *qe;
+	dns_queryel_array q;
+	uint16_t qdcount=ntohs(hdr->qdcount);
 	
-	if (ntohs(hdr->qdcount)==0) 
+	if (qdcount==0) 
 		return RC_FORMAT;
 	
-	if (!(*q=DA_CREATE(dns_queryel_t)))
-		return RC_SERVFAIL;
-	
-	for (i=0;i<ntohs(hdr->qdcount);i++) {
-		if (!(*q=DA_GROW1(*q)))
+	q=NULL;
+	for (i=0;i<qdcount;i++) {
+		if (!(q=DA_GROW1(q)))
 			return RC_SERVFAIL;
-		qe=&DA_LAST(*q);
+		qe=&DA_LAST(q);
 		res=decompress_name(data,qe->query,&ptr,&sz,rlen,&l,&uscore);
 		if (res==RC_TRUNC) {
 			if (hdr->tc) {
 				if (i==0) {
-					da_free(*q);
+					da_free(q);
 					return RC_FORMAT; /*not even one complete query*/
 				} else
-					*q=DA_RESIZE(*q,i);
+					q=DA_RESIZE(q,i);
 				break;
 			} else {
-				da_free(*q);
+				da_free(q);
 				return RC_FORMAT;
 			}
 		} else if (res!=RC_OK) {
-			da_free(*q);
+			da_free(q);
 			return res;
 		}
 		if (sz<4) {
 			/* truncated in qname or qclass*/
 			if (i==0) {
-				da_free(*q);
+				da_free(q);
 				return RC_FORMAT; /*not even one complete query*/
 			} else
-				*q=DA_RESIZE(*q,i);
+				q=DA_RESIZE(q,i);
 			break;
 		}
 		/* Use memcpy to avoid unaligned access */
@@ -842,11 +828,12 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
 #ifndef UNDERSCORE
 		/* Underscore only allowed for SRV records. */
 		if (uscore && qe->qtype!=T_SRV && qe->qtype!=T_TXT) {
-			da_free(*q);
+			da_free(q);
 			return RC_FORMAT;
 		}
 #endif
 	}
+	*qp=q;
 	return RC_OK;
 }
 
@@ -854,52 +841,39 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
  * Id is the query id and still in network order.
  * op is the opcode to fill in, rescode - name says it all.
  */
-static dns_hdr_t mk_error_reply(unsigned short id, unsigned short opcode,unsigned short rescode)
+static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned short rescode,dns_hdr_t *rep)
 {
-	dns_hdr_t rep;
-	rep.id=id;
-	rep.qr=QR_RESP;
-	rep.opcode=opcode;
-	rep.aa=0;
-	rep.tc=0;
-	rep.rd=0;
-	rep.ra=1;
-	rep.z1=0;
-	rep.au=0;
-	rep.z2=0;
-	rep.rcode=rescode;
-	rep.qdcount=0;
-	rep.ancount=0;
-	rep.nscount=0;
-	rep.arcount=0;
-	return rep;
+	rep->id=id;
+	rep->qr=QR_RESP;
+	rep->opcode=opcode;
+	rep->aa=0;
+	rep->tc=0;
+	rep->rd=0;
+	rep->ra=1;
+	rep->z1=0;
+	rep->au=0;
+	rep->z2=0;
+	rep->rcode=rescode;
+	rep->qdcount=0;
+	rep->ancount=0;
+	rep->nscount=0;
+	rep->arcount=0;
 }
 
 /*
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
  */
-static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
+static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 {
-#if DEBUG>0
-	unsigned char buf[256];
-#endif
-
+	long rlen= *rlenp;
 	int res;
 	dns_hdr_t *hdr;
 	dns_queryel_array q;
-	dns_hdr_t *resp=(dns_hdr_t *)pdnsd_calloc(1,sizeof(dns_hdr_t));
 	dns_hdr_t *ans;
 	
 
 	DEBUG_MSG("Received query.\n");
-	if (!resp) {
-		if (da_mem_errs<MEM_MAX_ERRS) {
-			da_mem_errs++;
-			log_error("Out of memory in query processing.");
-		}
-		return NULL;
-	}
 	/*
 	 * We will ignore all records that come with a query, except for the actual query records.
 	 * We will send back the query in the response. We will reject all non-queries, and
@@ -907,84 +881,93 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	 * If anyone notices behaviour that is not in standard conformance, please notify me!
 	 */
 	hdr=(dns_hdr_t *)data;
-	if (*rlen<2) { 
-		pdnsd_free(resp);
+	if (rlen<2) { 
 		DEBUG_MSG("Message too short.\n");
 		return NULL; /* message too short: no id provided. */
 	}
-	if (*rlen<sizeof(dns_hdr_t)) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,*rlen>=3?hdr->opcode:OP_QUERY,RC_FORMAT);
+	if (rlen<sizeof(dns_hdr_t)) {
 		DEBUG_MSG("Message too short.\n");
-		return (unsigned char *)resp;
+		res=RC_FORMAT;
+		goto error_reply;
 	}
 	if (hdr->qr==QR_RESP) {
-		pdnsd_free(resp);
 		DEBUG_MSG("Response, not query.\n");
 		return NULL; /* RFC says: discard */
 	}
 	if (hdr->opcode!=OP_QUERY) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_NOTSUPP);
 		DEBUG_MSG("No query.\n");
-		return (unsigned char *)resp;
+		res=RC_NOTSUPP;
+		goto error_reply;
 	}
 	if (hdr->z1!=0 || hdr->z2!=0) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_FORMAT);
 		DEBUG_MSG("Malformed query.\n");
-		return (unsigned char *)resp;
+		res=RC_FORMAT;
+		goto error_reply;
 	}
 	if (hdr->rcode!=RC_OK) {
-		pdnsd_free(resp);
 		DEBUG_MSG("Bad rcode.\n");
 		return NULL; /* discard (may cause error storms) */
 	}
 
-	res=decode_query(data,*rlen,&q);
-	if (res) {
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,res);
-		return (unsigned char *)resp;
+	res=decode_query(data,rlen,&q);
+	if (res!=RC_OK) {
+		goto error_reply;
 	}
 
 #if DEBUG>0
 	if (debug_p) {
-		dns_queryel_t *qe;
-
+		int i;
 		DEBUG_MSG("Questions are:\n");
-		for (res=0;res<DA_NEL(q);res++) {
-			qe=&DA_INDEX(q,res);
+		for (i=0;i<DA_NEL(q);i++) {
+			dns_queryel_t *qe=&DA_INDEX(q,i);
+			unsigned char buf[256];
 			rhn2str(qe->query,buf);
 			DEBUG_MSG("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,buf);
 		}
 	}
 #endif
 
-	if (!(ans=(dns_hdr_t *)compose_answer(q, hdr, rlen, udp))) {
+	if (!(ans=(dns_hdr_t *)compose_answer(q, hdr, rlenp, udp))) {
 		/* An out of memory condition or similar could cause NULL output. Send failure notification */
 		da_free(q);
-		*rlen=sizeof(dns_hdr_t);
-		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_SERVFAIL);
-		return (unsigned char *)resp;
+		res=RC_SERVFAIL;
+		goto error_reply;
 	}
-	pdnsd_free(resp);
 	da_free(q);
 	return (unsigned char *)ans;
+
+
+ error_reply:
+	*rlenp=sizeof(dns_hdr_t);
+	{
+		dns_hdr_t *resp=pdnsd_malloc(sizeof(dns_hdr_t));
+		if (resp) {
+			mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,resp);
+		}
+		else if (++da_mem_errs<=MEM_MAX_ERRS) {
+			log_error("Out of memory in query processing.");
+		}
+		return (unsigned char *)resp;
+	}
 }
 
 /*
  * Called by *_answer_thread exit handler to clean up process count.
  */
-void decrease_procs(void *dummy)
+inline static void decrease_procs()
 {
-	(void)dummy;
+
 	pthread_mutex_lock(&proc_lock);
 	procs--;
 	qprocs--;
 	pthread_mutex_unlock(&proc_lock);
 }
 
+static void udp_answer_thread_cleanup(void *data)
+{
+	pdnsd_free(data);
+	decrease_procs();
+}
 
 /*
  * A thread opened to answer a query transmitted via udp. Data is a pointer to the structure udp_buf_t that
@@ -992,7 +975,7 @@ void decrease_procs(void *dummy)
  * After the query is answered, the thread terminates
  * XXX: data must point to a correctly aligned buffer
  */
-void *udp_answer_thread(void *data)
+static void *udp_answer_thread(void *data)
 {
 	struct msghdr msg;
 	struct iovec v;
@@ -1001,9 +984,8 @@ void *udp_answer_thread(void *data)
 	long rlen=((udp_buf_t *)data)->len;
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
 	unsigned char *resp;
-	socklen_t sl;
-	int tmp,i,thrid;
-	pthread_cleanup_push(decrease_procs, NULL);
+	int thrid;
+	pthread_cleanup_push(udp_answer_thread_cleanup, data);
 	THREAD_SIGINIT;
 
 	if (!global.strict_suid ) {
@@ -1013,18 +995,20 @@ void *udp_answer_thread(void *data)
 		}
 	}
 
-	do {
+	for(;;) {
+		int i;
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
-		if (i <= global.proc_limit) {
+		if (i<=global.proc_limit) {
 			procs++;
 			thrid=thrid_cnt++;
 		}
 		pthread_mutex_unlock(&proc_lock);
-		if (i>global.proc_limit)
-			usleep_r(50000);
-	} while (i>global.proc_limit); 
-		
+		if (i<=global.proc_limit)
+			break;
+		usleep_r(50000);
+	}
+
 	if (pthread_setspecific(thrid_key, &thrid) != 0) {
 		log_error("pthread_setspecific failed.");
 		pdnsd_exit();
@@ -1035,8 +1019,7 @@ void *udp_answer_thread(void *data)
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
 		 * logging is already done. Just exit the thread now.
 		 */
-		pdnsd_free(data);
-		pthread_exit(NULL);
+		pthread_exit(NULL); /* data freed by cleanup handler */
 	}
 	if (rlen>512) {
 		rlen=512;
@@ -1133,12 +1116,12 @@ void *udp_answer_thread(void *data)
 #ifdef SOCKET_LOCKING
 		pthread_mutex_unlock(&s_lock);
 #endif
-		if (da_udp_errs<UDP_MAX_ERRS) {
-			da_udp_errs++;
+		if (++da_udp_errs<=UDP_MAX_ERRS) {
 			log_error("Error in udp send: %s",strerror(errno));
 		}
 	} else {
-		sl=sizeof(tmp);
+		int tmp;
+		socklen_t sl=sizeof(tmp);
 		getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, &sl);
 #ifdef SOCKET_LOCKING
 		pthread_mutex_unlock(&s_lock);
@@ -1146,23 +1129,24 @@ void *udp_answer_thread(void *data)
 	}
 	
 	pdnsd_free(resp);
-	pdnsd_free(data);
+	/* data is freed by cleanup handler */
 	pthread_cleanup_pop(1);
 	return NULL;
 }
 
 int init_udp_socket()
 {
-	int sock;
+	int sock=-1;  /* Initialized to inhibit compiler warning */
 	int so=1;
+	socklen_t sinl=0; /* Initialized to inhibit compiler warning */
+	union {
 #ifdef ENABLE_IPV4
-	struct sockaddr_in sin4;
+		struct sockaddr_in sin4;
 #endif
 #ifdef ENABLE_IPV6
-	struct sockaddr_in6 sin6;
+		struct sockaddr_in6 sin6;
 #endif
-	struct sockaddr *sin;
-	int sinl;
+	} sin;
 	struct protoent *pe=getprotobyname("udp");
 
 	if (!pe) {
@@ -1175,13 +1159,12 @@ int init_udp_socket()
 			log_error("Could not open udp socket: %s",strerror(errno));
 			return -1;
 		}
-		memset(&sin4,0,sizeof(sin4));
-		sin4.sin_family=AF_INET;
-		sin4.sin_port=htons(global.port);
-		sin4.sin_addr=global.a.ipv4;
-		SET_SOCKA_LEN4(sin4);
-		sin=(struct sockaddr *)&sin4;
-		sinl=sizeof(sin4);
+		memset(&sin.sin4,0,sizeof(struct sockaddr_in));
+		sin.sin4.sin_family=AF_INET;
+		sin.sin4.sin_port=htons(global.port);
+		sin.sin4.sin_addr=global.a.ipv4;
+		SET_SOCKA_LEN4(sin.sin4);
+		sinl=sizeof(struct sockaddr_in);
 	}
 #endif
 #ifdef ENABLE_IPV6
@@ -1190,14 +1173,13 @@ int init_udp_socket()
 			log_error("Could not open udp socket: %s",strerror(errno));
 			return -1;
 		}
-		memset(&sin6,0,sizeof(sin6));
-		sin6.sin6_family=AF_INET6;
-		sin6.sin6_port=htons(global.port);
-		sin6.sin6_flowinfo=IPV6_FLOWINFO;
-		sin6.sin6_addr=global.a.ipv6;
-		SET_SOCKA_LEN6(sin6);
-		sin=(struct sockaddr *)&sin6;
-		sinl=sizeof(sin6);
+		memset(&sin.sin6,0,sizeof(struct sockaddr_in6));
+		sin.sin6.sin6_family=AF_INET6;
+		sin.sin6.sin6_port=htons(global.port);
+		sin.sin6.sin6_flowinfo=IPV6_FLOWINFO;
+		sin.sin6.sin6_addr=global.a.ipv6;
+		SET_SOCKA_LEN6(sin.sin6);
+		sinl=sizeof(struct sockaddr_in6);
 	}
 #endif
 
@@ -1230,7 +1212,7 @@ int init_udp_socket()
 	}
 # endif
 #endif
-	if (bind(sock,sin,sinl)!=0) {
+	if (bind(sock,(struct sockaddr *)&sin,sinl)!=0) {
 		log_error("Could not bind to udp socket: %s",strerror(errno));
 		close(sock);
 		return -1;
@@ -1247,13 +1229,7 @@ int init_udp_socket()
 void *udp_server_thread(void *dummy)
 {
 	int sock;
-	long qlen;
-#ifdef ENABLE_IPV4
-	struct sockaddr_in sin4;
-#endif
-#ifdef ENABLE_IPV6
-	struct sockaddr_in6 sin6;
-#endif
+	long qlen=0;  /* Initialized to inhibit compiler warning */
 	pthread_t pt;
 	udp_buf_t *buf;
 	struct msghdr msg;
@@ -1263,7 +1239,7 @@ void *udp_server_thread(void *dummy)
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 	struct in_pktinfo sip;
 #endif
-	(void)dummy; /* To inhibit "unused variable" warning */
+	/* (void)dummy; */ /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
 
@@ -1276,38 +1252,15 @@ void *udp_server_thread(void *dummy)
 	}
 
 	sock=udp_socket;
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		memset(&sin4,0,sizeof(sin4));
-		sin4.sin_family=AF_INET;
-		sin4.sin_port=htons(global.port);
-		sin4.sin_addr=global.a.ipv4;
-		SET_SOCKA_LEN4(sin4);
-	}
-#endif
-#ifdef ENABLE_IPV6
-	if (run_ipv6) {
-		memset(&sin6,0,sizeof(sin6));
-		sin6.sin6_family=AF_INET6;
-		sin6.sin6_port=htons(global.port);
-		sin6.sin6_flowinfo=IPV6_FLOWINFO;
-		sin6.sin6_addr=global.a.ipv6;
-		SET_SOCKA_LEN6(sin6);
-	}
-#endif
 
 	while (1) {
 		if (!(buf=(udp_buf_t *)pdnsd_calloc(1,sizeof(udp_buf_t)))) {
-			if (da_mem_errs<MEM_MAX_ERRS) {
-				da_mem_errs++;
+			if (++da_mem_errs<=MEM_MAX_ERRS) {
 				log_error("Out of memory in request handling.");
 			}
-			udp_up=0;
-			if (!tcp_up)
-				pdnsd_exit();
-			return NULL;
+			break;
 		}
-		
+
 		buf->sock=sock;
 
 		v.iov_base=(char *)buf->buf;
@@ -1339,17 +1292,13 @@ void *udp_server_thread(void *dummy)
 					cmsg=CMSG_NXTHDR(&msg,cmsg);
 				}
 				if (!cmsg) {
-					if (da_udp_errs<UDP_MAX_ERRS) {
-						da_udp_errs++;
+					if (++da_udp_errs<=UDP_MAX_ERRS) {
 						log_error("Could not discover udp destination address");
 					}
-					pdnsd_free(buf);
-					usleep_r(50000);
-					continue;
+					goto free_buf_continue;
 				}
 			} else if (errno!=EINTR) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
+				if (++da_udp_errs<=UDP_MAX_ERRS) {
 					log_error("error in UDP recv: %s", strerror(errno));
 				}
 			}
@@ -1385,18 +1334,14 @@ void *udp_server_thread(void *dummy)
 						cmsg=CMSG_NXTHDR(&msg,cmsg);
 					}
 					if (!cmsg) {
-						if (da_udp_errs<UDP_MAX_ERRS) {
-							da_udp_errs++;
+						if (++da_udp_errs<=UDP_MAX_ERRS) {
 							log_error("Could not discover udp destination address");
 						}
-						pdnsd_free(buf);
-						usleep_r(50000);
-						continue;
+						goto free_buf_continue;
 					}
 				}
 			} else if (errno!=EINTR) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
+				if (++da_udp_errs<=UDP_MAX_ERRS) {
 					log_error("error in UDP recv: %s", strerror(errno));
 				}
 			}
@@ -1409,11 +1354,10 @@ void *udp_server_thread(void *dummy)
 			msg.msg_namelen=sizeof(struct sockaddr_in);
 			qlen=recvmsg(sock,&msg,0);
 			if (qlen<0 && errno!=EINTR) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
+				if (++da_udp_errs<=UDP_MAX_ERRS) {
 					log_error("error in UDP recv: %s", strerror(errno));
 				}
-			}		
+			}
 		}
 # endif
 # ifdef ENABLE_IPV6
@@ -1422,8 +1366,7 @@ void *udp_server_thread(void *dummy)
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
 			qlen=recvmsg(sock,&msg,0);
 			if (qlen<0 && errno!=EINTR) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
+				if (++da_udp_errs<=UDP_MAX_ERRS) {
 					log_error("error in UDP recv: %s", strerror(errno));
 				}
 			}
@@ -1431,15 +1374,7 @@ void *udp_server_thread(void *dummy)
 # endif
 #endif
 
-		if (qlen<0) {
-			pdnsd_free(buf);
-			usleep_r(50000);
-/*			if (errno==EINTR) {
-			close(sock);
-			return NULL;
-			}*/
-			continue;
-		} else {
+		if (qlen>=0) {
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
 				pthread_attr_t attr;
@@ -1451,40 +1386,42 @@ void *udp_server_thread(void *dummy)
 				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 				pthread_create(&pt,&attr,udp_answer_thread,(void *)buf);
 				pthread_attr_destroy(&attr);
+				continue;
 			} else {
 				pthread_mutex_unlock(&proc_lock);
-				pdnsd_free(buf);
-				usleep_r(50000);
 			}
 		}
+	free_buf_continue:
+		pdnsd_free(buf);
+		usleep_r(50000);
 	}
-	close(sock);
+
 	udp_socket=-1;
+	close(sock);
+	if (tcp_socket==-1)
+	  pdnsd_exit();
 	return NULL;
 }
 
 #ifndef NO_TCP_SERVER
+
+static void tcp_answer_thread_cleanup(void *csock)
+{
+	close(*((int *)csock));
+	pdnsd_free(csock);
+	decrease_procs();
+}
+
 /*
  * Process a dns query via tcp. The argument is a pointer to the socket.
  */
-void *tcp_answer_thread(void *csock)
+static void *tcp_answer_thread(void *csock)
 {
-	dns_hdr_t err;
-	unsigned short rlen,olen;
-	long nlen;
 	/* XXX: This should be OK, the original must be (and is) aligned */
 	int sock=*((int *)csock);
-	unsigned char *buf;
-	unsigned char *resp;
-	int i, thrid;
-#ifdef NO_POLL
-	fd_set fds;
-	struct timeval tv;
-#else
-	struct pollfd pfd;
-#endif
+	int thrid;
 
-	pthread_cleanup_push(decrease_procs, NULL);
+	pthread_cleanup_push(tcp_answer_thread_cleanup, csock);
 	THREAD_SIGINIT;
 
 	if (!global.strict_suid) {
@@ -1494,7 +1431,8 @@ void *tcp_answer_thread(void *csock)
 		}
 	}
 
-	do {
+	for (;;) {
+		int i;
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
 		if (i<=global.proc_limit) {
@@ -1502,152 +1440,132 @@ void *tcp_answer_thread(void *csock)
 			thrid=thrid_cnt++;
 		}
 		pthread_mutex_unlock(&proc_lock);
-		if (i>global.proc_limit)
-			usleep_r(50000);
-	} while (i>global.proc_limit);
+		if (i<=global.proc_limit)
+			break;
+		usleep_r(50000);
+	}
 
 	if (pthread_setspecific(thrid_key, &thrid) != 0) {
 		log_error("pthread_setspecific failed.");
 		pdnsd_exit();
 	}
 
-	pdnsd_free(csock);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
 	 * the socket is closed by the other side or by tcp timeout. 
 	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's
 	 * TCP server.*/
 	while (1) {
+		unsigned short rlen,olen;
+		long nlen;
+		unsigned char *buf,*resp;
+
 #ifdef NO_POLL
+		fd_set fds;
+		struct timeval tv;
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
 		tv.tv_usec=0;
 		tv.tv_sec=global.tcp_qtimeout;
-		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
-			close(sock);
-			pthread_exit(NULL);
-		}
+		if (select(sock+1,&fds,NULL,NULL,&tv)<=0)
+			pthread_exit(NULL); /* socket is closed by cleanup handler */
 #else
+		struct pollfd pfd;
 		pfd.fd=sock;
 		pfd.events=POLLIN;
-		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
-			close(sock);
-			pthread_exit(NULL);
-		}
+		if (poll(&pfd,1,global.tcp_qtimeout*1000)<=0)
+			pthread_exit(NULL); /* socket is closed by cleanup handler */
 #endif
 		if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 			/*
 			 * If the socket timed or was closed before we even received the 
 			 * query length, we cannot return an error. So exit silently.
 			 */
-			close(sock);
-			pthread_exit(NULL);
+			pthread_exit(NULL); /* socket is closed by cleanup handler */
 		}
 		rlen=ntohs(rlen);
 		if (rlen == 0) {
 			log_error("TCP zero size query received.\n");
 			pthread_exit(NULL);
 		}
-		buf=(unsigned char *)pdnsd_calloc(rlen,sizeof(unsigned char));
+		buf=(unsigned char *)pdnsd_malloc(rlen);
 		if (!buf) {
-			if (da_mem_errs<MEM_MAX_ERRS) {
-				da_mem_errs++;
+			if (++da_mem_errs<=MEM_MAX_ERRS) {
 				log_error("Out of memory in request handling.");
 			}
-			close (sock);
 			pthread_exit(NULL);
 		}
+		pthread_cleanup_push(free, buf);
 
 #ifdef NO_POLL
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
 		tv.tv_usec=0;
 		tv.tv_sec=global.tcp_qtimeout;
-		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
-			close(sock);
-			pdnsd_free(buf);
-			pthread_exit(NULL);
-		}
+		if (select(sock+1,&fds,NULL,NULL,&tv)<=0)
+			pthread_exit(NULL);  /* buf freed and socket closed by cleanup handlers */
 #else
 		pfd.fd=sock;
 		pfd.events=POLLIN;
-		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
-			close(sock);
-			pdnsd_free(buf);
-			pthread_exit(NULL);
-		}
+		if (poll(&pfd,1,global.tcp_qtimeout*1000)<=0)
+			pthread_exit(NULL);  /* buf freed and socket closed by cleanup handlers */
 #endif
 		if ((olen=read(sock,buf,rlen))<rlen) {
 			/*
 			 * If the promised length was not sent, we should return an error message,
 			 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
 			 */
-			if (olen<=2) {
-				/*
-				 * If we did not get the id, we cannot set a valid reply.
-				 */
-				pdnsd_free(buf);
-				close(sock);
-				pthread_exit(NULL);
-			} else {
-				memcpy(&err,buf,sizeof(err)>olen?olen:sizeof(err));
-				err=mk_error_reply(err.id,olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
+			if (olen>=2) { /* We need the id to send a valid reply. */
+				dns_hdr_t err;
+				mk_error_reply(((dns_hdr_t*)buf)->id,
+					       olen>=3?((dns_hdr_t*)buf)->opcode:OP_QUERY,
+					       RC_FORMAT,
+					       &err);
 				rlen=htons(sizeof(err));
-				if (write_all(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
-					pdnsd_free(buf);
-					close(sock);
-					pthread_exit(NULL);
-				}
-				write_all(sock,&err,sizeof(err)); /* error anyway. */
-				pdnsd_free(buf);
-				close(sock);
-				pthread_exit(NULL);
+				if (write_all(sock,&rlen,sizeof(rlen))==sizeof(rlen))
+					write_all(sock,&err,sizeof(err)); /* error anyway. */
 			}
-		} else {
-			nlen=rlen;
-			if (!(resp=process_query(buf,&nlen,0))) {
-			       /*
-				* A return value of NULL is a fatal error that prohibits even the sending of an error message.
-				* logging is already done. Just exit the thread now.
-				*/
-				pdnsd_free(buf);
-				close(sock);
-				pthread_exit(NULL);
-			}
-			pdnsd_free(buf);
-			rlen=htons(nlen);
-			if (write_all(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
-				pdnsd_free(resp);
-				close(sock);
-				pthread_exit(NULL);
-			}
-			if (write_all(sock,resp,ntohs(rlen))!=ntohs(rlen)) {
-				pdnsd_free(resp);
-				close(sock);
-				pthread_exit(NULL);
-			}
-			pdnsd_free(resp);
+			pthread_exit(NULL); /* buf freed and socket closed by cleanup handlers */
 		}
+
+		nlen=rlen;
+		if (!(resp=process_query(buf,&nlen,0))) {
+			/*
+			 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
+			 * logging is already done. Just exit the thread now.
+			 */
+			pthread_exit(NULL);
+		}
+		pthread_cleanup_pop(1);  /* free(buf) */
+		rlen=htons(nlen);
+		if (write_all(sock,&rlen,sizeof(rlen))!=sizeof(rlen) || 
+		    write_all(sock,resp,nlen)!=nlen) {
+			pdnsd_free(resp);
+			pthread_exit(NULL); /* socket is closed by cleanup handler */
+		}
+		pdnsd_free(resp);
 #ifndef TCP_SUBSEQ
 		/* Do not allow multiple queries in one sequence.*/
-		close(sock);
 		break;
 #endif
 	}
+
+	/* socket is closed by cleanup handler */
 	pthread_cleanup_pop(1);
 	return NULL;
 }
 
 int init_tcp_socket()
 {
-	int sock;
+	int sock=-1;  /* Initialized to inhibit compiler warning */
+	socklen_t sinl=0;  /* Initialized to inhibit compiler warning */
+	union {
 #ifdef ENABLE_IPV4
-	struct sockaddr_in sin4;
+		struct sockaddr_in sin4;
 #endif
 #ifdef ENABLE_IPV6
-	struct sockaddr_in6 sin6;
+		struct sockaddr_in6 sin6;
 #endif
-	struct sockaddr *sin;
-	int sinl;
+	} sin;
 	struct protoent *pe=getprotobyname("tcp");
 
 	if (!pe) {
@@ -1660,13 +1578,12 @@ int init_tcp_socket()
 			log_error("Could not open tcp socket: %s",strerror(errno));
 			return -1;
 		}
-		memset(&sin4,0,sizeof(sin4));
-		sin4.sin_family=AF_INET;
-		sin4.sin_port=htons(global.port);
-		sin4.sin_addr=global.a.ipv4;
-		SET_SOCKA_LEN4(sin4);
-		sin=(struct sockaddr *)&sin4;
-		sinl=sizeof(sin4);
+		memset(&sin.sin4,0,sizeof(struct sockaddr_in));
+		sin.sin4.sin_family=AF_INET;
+		sin.sin4.sin_port=htons(global.port);
+		sin.sin4.sin_addr=global.a.ipv4;
+		SET_SOCKA_LEN4(sin.sin4);
+		sinl=sizeof(struct sockaddr_in);
 	}
 #endif
 #ifdef ENABLE_IPV6
@@ -1675,17 +1592,16 @@ int init_tcp_socket()
 			log_error("Could not open tcp socket: %s",strerror(errno));
 			return -1;
 		}
-		memset(&sin6,0,sizeof(sin6));
-		sin6.sin6_family=AF_INET6;
-		sin6.sin6_port=htons(global.port);
-		sin6.sin6_flowinfo=IPV6_FLOWINFO;
-		sin6.sin6_addr=global.a.ipv6;
-		SET_SOCKA_LEN6(sin6);
-		sin=(struct sockaddr *)&sin6;
-		sinl=sizeof(sin6);
+		memset(&sin.sin6,0,sizeof(struct sockaddr_in6));
+		sin.sin6.sin6_family=AF_INET6;
+		sin.sin6.sin6_port=htons(global.port);
+		sin.sin6.sin6_flowinfo=IPV6_FLOWINFO;
+		sin.sin6.sin6_addr=global.a.ipv6;
+		SET_SOCKA_LEN6(sin.sin6);
+		sinl=sizeof(struct sockaddr_in6);
 	}
 #endif
-	if (bind(sock,sin,sinl)) {
+	if (bind(sock,(struct sockaddr *)&sin,sinl)) {
 		log_error("Could not bind tcp socket: %s",strerror(errno));
 		close(sock);
 		return -1;
@@ -1703,7 +1619,7 @@ void *tcp_server_thread(void *p)
 	int *csock;
 	int first=1;
 
-	(void)p; /* To inhibit "unused variable" warning */
+	/* (void)p; */  /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
 
@@ -1717,37 +1633,26 @@ void *tcp_server_thread(void *p)
 	sock=tcp_socket;
 	
 	if (listen(sock,5)) {
-		if (da_tcp_errs<TCP_MAX_ERRS) {
-			da_tcp_errs++;
+		if (++da_tcp_errs<=TCP_MAX_ERRS) {
 			log_error("Could not listen on tcp socket: %s",strerror(errno));
 		}
-		tcp_up=0;
-		if (!udp_up)
-			pdnsd_exit();
-		return NULL;
+		goto close_sock_return;
 	}
 	
 	while (1) {
-		if (!(csock=(int *)pdnsd_calloc(1,sizeof(int)))) {
-			if (da_mem_errs<MEM_MAX_ERRS) {
-				da_mem_errs++;
+		if (!(csock=(int *)pdnsd_malloc(sizeof(int)))) {
+			if (++da_mem_errs<=MEM_MAX_ERRS) {
 				log_error("Out of memory in request handling.");
 			}
-			tcp_up=0;
-			if (!udp_up)
-				pdnsd_exit();
-			return NULL;
+			break;
 		}
 		if ((*csock=accept(sock,NULL,0))==-1) {
 			pdnsd_free(csock);
-			if (errno!=EINTR && first) {
+			if (errno==EINTR)
+				break;
+			else if (first) {
 				first=0; /* special handling, not da_tcp_errs*/
 				log_error("tcp accept failed: %s",strerror(errno));
-			}
-			if (errno==EINTR) {
-				close(sock);
-				tcp_socket=-1;
-				return NULL;
 			}
 			usleep_r(50000);
 		} else {
@@ -1773,8 +1678,11 @@ void *tcp_server_thread(void *p)
 			}
 		}
 	}
-	close(sock);
+ close_sock_return:
 	tcp_socket=-1;
+	close(sock);
+	if (udp_socket==-1)
+		pdnsd_exit();
 	return NULL;
 }
 #endif
@@ -1785,8 +1693,8 @@ void *tcp_server_thread(void *p)
  */
 void start_dns_servers()
 {
-	
-#ifndef NO_TCP_SERVER       
+
+#ifndef NO_TCP_SERVER
 	if (tcp_socket!=-1) {
 		pthread_attr_t attrt;
 		pthread_attr_init(&attrt);
@@ -1797,7 +1705,7 @@ void start_dns_servers()
 		} else
 			log_info(2,"tcp server thread started.");
 		pthread_attr_destroy(&attrt);
-	}		
+	}
 #endif
 
 	if (udp_socket!=-1) {
@@ -1805,7 +1713,7 @@ void start_dns_servers()
 		pthread_attr_init(&attru);
 		pthread_attr_setdetachstate(&attru,PTHREAD_CREATE_DETACHED);
 		if (pthread_create(&udps,&attru,udp_server_thread,NULL)) {
-			log_error("Could not create tcp server thread. Exiting.");
+			log_error("Could not create udp server thread. Exiting.");
 			pdnsd_exit();
 		} else
 			log_info(2,"udp server thread started.");

@@ -235,7 +235,7 @@ void *servstat_thread(void *p)
 	int i,all_none=1;
 	servparm_t *sp;
 
-	(void)p; /* To inhibit "unused variable" warning */
+	/* (void)p; */  /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
 
@@ -435,7 +435,10 @@ int change_servers(int i, addr_array ar, int c)
 	   goto unlock_mutex;
        }
 
-       sp->atup_a = DA_RESIZE(sp->atup_a, n);
+       if(!(sp->atup_a = DA_RESIZE(sp->atup_a, n))) {
+	 log_warn("Out of memory in change_servers().");
+	 goto unlock_mutex;
+       }
      }
 
      {

@@ -25,10 +25,10 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 #include "cache.h"
 
-typedef struct {
-	void          *next;
-	unsigned long rhash; /* this is a better hash */
-	dns_cent_t    *data;
+typedef struct dns_hash_ent_s {
+	struct dns_hash_ent_s	*next;
+	unsigned long		rhash; /* this is a better hash */
+	dns_cent_t		*data;
 } dns_hash_ent_t;
 
 /* Redefine this if you want another hash size. Should work ;-). The number of hash buckets is computed as power of two;
@@ -40,13 +40,6 @@ typedef struct {
 
 #define HASH_BITMASK     (HASH_NUM_BUCKETS-1)
 
-/*
- * The hash structures are the same for an ip and an dns hash, so we use
- * an additional element in debug mode to report misuse.
- */
-typedef struct {
-	dns_hash_ent_t *(buckets[HASH_NUM_BUCKETS]);
-} dns_hash_t;
 
 /* A type for position specification for fetch_first and fetch_next */
 typedef struct {
@@ -54,18 +47,18 @@ typedef struct {
 	dns_hash_ent_t *ent;       /* entry */
 } dns_hash_pos_t;
 
-void mk_hash_ctable(void);
-void mk_dns_hash(dns_hash_t *hash);
-void add_dns_hash(dns_hash_t *hash,unsigned char *key, dns_cent_t *data);
-dns_cent_t *del_dns_hash(dns_hash_t *hash, unsigned char *key);
-dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key);
-void free_dns_hash(dns_hash_t *hash);
+void mk_hash_ctable();
+void mk_dns_hash();
+void add_dns_hash(unsigned char *key, dns_cent_t *data);
+dns_cent_t *del_dns_hash(unsigned char *key);
+dns_cent_t *dns_lookup(unsigned char *key);
+void free_dns_hash();
 
-dns_cent_t *fetch_first(dns_hash_t *hash, dns_hash_pos_t *pos);
-dns_cent_t *fetch_next(dns_hash_t *hash, dns_hash_pos_t *pos);
+dns_cent_t *fetch_first(dns_hash_pos_t *pos);
+dns_cent_t *fetch_next(dns_hash_pos_t *pos);
 
 #ifdef DBGHASH
-void dumphash(dns_hash_t *hash);
+void dumphash();
 #endif
 
 #endif

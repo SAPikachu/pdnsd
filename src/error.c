@@ -58,7 +58,7 @@ void crash_msg(char *msg)
  * in printf, the optional following arguments are the arguments like in printf */
 void log_error(char *s,...)
 {
-	int ul;
+	int ul=0;
 	va_list va;
 	va_start(va,s);
 	if (use_lock)
@@ -72,7 +72,7 @@ void log_error(char *s,...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	if (use_lock && ul)
+	if (ul)
 		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }
@@ -81,7 +81,7 @@ void log_error(char *s,...)
  * in printf, the optional following arguments are the arguments like in printf */
 void log_warn(char *s, ...)
 {
-	int ul;
+	int ul=0;
 	va_list va;
 	va_start(va,s);
 	if (use_lock)
@@ -95,7 +95,7 @@ void log_warn(char *s, ...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	if (use_lock && ul)
+	if (ul)
 		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }

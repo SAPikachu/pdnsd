@@ -26,8 +26,8 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 
 /* --- from main.c */
-extern int tcp_socket;
-extern int udp_socket;
+extern volatile int tcp_socket;
+extern volatile int udp_socket;
 /* --- */
 
 int init_udp_socket(void);

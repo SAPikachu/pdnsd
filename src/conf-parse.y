@@ -43,6 +43,8 @@ static char rcsid[]="$Id: conf-parse.y,v 1.37 2003/04/06 23:02:46 tmm Exp $";
    Unfortunately, there is no mechanism supported by bison, as far as I know,
    that can be used to insert C declarations into the main scope of yyparse(),
    so we'll have to insert a macro call to YYPARSE_LOCAL_DECL ourselves.
+   Some of these variables are initialized to zero. This is only done
+   to stop the compiler from complaining.
 */
 
 #define YYPARSE_LOCAL_DECL  \
@@ -50,9 +52,9 @@ servparm_t server;  \
 dns_cent_t c_cent;  \
 unsigned char c_owner[256];  \
 unsigned char c_name[256];  \
-time_t c_ttl;  \
-int c_flags;  \
-unsigned char c_aliases, hdtp, htp;
+time_t c_ttl=0;  \
+int c_flags=0;  \
+unsigned char c_aliases=0, hdtp=0, htp=0;
 
 
 #ifndef NO_YYLINENO
@@ -95,7 +97,7 @@ extern int yylineno;
  */
 inline static void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
+  if (!(servers=DA_GROW1(servers))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -212,10 +214,10 @@ file:		/* nothing */		{}
 spec:		GLOBAL '{' glob_s '}'	{}
 		| SERVER '{' {server=serv_presets; } serv_s '}'
 			{
-				if (!server.atup_a) {
+				/* if (!server.atup_a) {
 					yyerror("bad ip or no ip specified in section");
 					YYERROR;
-				}
+				} */
 				if (server.uptest==C_EXEC) {
 					if (!server.uptest_cmd) {
 						yyerror("you must specify uptest_cmd if you specify uptest=exec!");
@@ -247,9 +249,9 @@ spec:		GLOBAL '{' glob_s '}'	{}
 				}
 
 				/* add the authority */
-				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen(c_owner)+1, c_owner, T_NS,0);
-				add_cache(c_cent);
-				free_cent(c_cent,0);
+				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen(c_owner)+1, c_owner, T_NS  DBG0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 			}
 		| NEG '{' 
 				{
@@ -393,6 +395,27 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| C_QUERY_METHOD '=' CONST ';'
 			{
 				if ($3==TCP_ONLY || $3==UDP_ONLY || $3==TCP_UDP) {
+#ifdef NO_TCP_QUERIES
+					if ($3==TCP_ONLY) {
+						yyerror("the tcp_only option is only available when pdnsd is compiled with TCP support.");
+						YYERROR;
+					}
+					else
+#endif
+#ifdef NO_UDP_QUERIES
+					if ($3==UDP_ONLY) {
+						yyerror("the udp_only option is only available when pdnsd is compiled with UDP support.");
+						YYERROR;
+					}
+					else
+#endif
+#if defined(NO_TCP_QUERIES) || defined(NO_UDP_QUERIES)
+					if ($3==TCP_UDP) {
+						yyerror("the tcp_udp option is only available when pdnsd is compiled with both TCP and UDP support.");
+						YYERROR;
+					}
+					else
+#endif
 					query_method=$3;
 				} else {
 					yyerror("bad qualifier in query_method= option.");
@@ -407,6 +430,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					run_ipv6=($3!=C_ON);
 #else
 					yyerror("the run_ipv4 option is only available when pdnsd is compiled with IPv4 AND IPv6 support.");
+					YYERROR;
 #endif
 				} else {
 					yyerror("bad qualifier in run_ipv4= option.");
@@ -688,7 +712,7 @@ rr_el:		NAME '=' STRING ';'
 				}
 				YSTRNCP(c_name, $3, "name");
 				if (c_owner[0]) {
-					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -706,7 +730,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				if (c_name[0]) {
-					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -766,7 +790,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 #endif
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp, 0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp  DBG0);
 				free($3);
 			}
 		| PTR '=' STRING ';'
@@ -785,7 +809,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR  DBG0);
 				free($3);
 			}
 		| MX '=' STRING ',' NUMBER ';'
@@ -810,7 +834,7 @@ rr_el:		NAME '=' STRING ';'
 				ts=htons($5);
 				memcpy(buf,&ts,2);
 				rhncpy(buf+2,c_ptr);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX  DBG0);
 				free($3);
 			}
 		| CNAME '=' STRING ';'
@@ -829,7 +853,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME  DBG0);
 				free($3);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
@@ -870,7 +894,7 @@ rr_el:		NAME '=' STRING ';'
 				idx+=rhncpy(buf+idx,c_soa_r);
 				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 				idx+=sizeof(soa_r_t);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA  DBG0);
 				free($3);
 				free($5);
 			}			
@@ -961,12 +985,12 @@ rrneg_el:	NAME '=' STRING ';'
 					YYERROR;
 				}
 				hdtp=1;
-				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl,0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				add_cache(c_cent);
-				free_cent(c_cent,0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 			}
                 | TYPES '=' rr_type_list ';'
 			{
@@ -988,17 +1012,17 @@ rr_type:   RRTYPE
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0, 0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				if (!add_cent_rrset(&c_cent,$1,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0, 0)) {
-					free_cent(c_cent,0);
+				if (!add_cent_rrset(&c_cent,$1,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0  DBG0)) {
+					free_cent(&c_cent  DBG0);
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				add_cache(c_cent);
-				free_cent(c_cent, 0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 				
 			}
                 ; 
@@ -1024,7 +1048,7 @@ int yyerror (char *s)
  */
 /* void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
+  if (!(servers=DA_GROW1(servers))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -1040,7 +1064,7 @@ static char *addr_add(servparm_t *sp, char *ipstr)
     return "bad ip in ip= option.";
   }
 
-  if (!((sp->atup_a || (sp->atup_a=DA_CREATE(atup_t))) && (sp->atup_a=DA_GROW1(sp->atup_a)))) {
+  if (!(sp->atup_a=DA_GROW1(sp->atup_a))) {
     return "out of memory!";
   }
   at=&DA_LAST(sp->atup_a);
@@ -1054,7 +1078,7 @@ static char *slist_add(servparm_t *sp, char *nm, int tp)
 {
 	slist_t *sl;
 					
-	if (!((sp->alist || (sp->alist=DA_CREATE(slist_t))) && (sp->alist=DA_GROW1(sp->alist)))) {
+	if (!(sp->alist=DA_GROW1(sp->alist))) {
 	  return "out of memory!";
 	}
 	sl=&DA_LAST(sp->alist);

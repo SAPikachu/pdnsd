@@ -37,7 +37,7 @@
  * Otherwise, we need further glue.
  */
 struct _dynamic_array_dummy_head {
-	long int nel;	/* number of elements in array */
+	unsigned long int nel;	/* number of elements in array */
 	double elem[0];	/* dummy for alignment */
 };
 
@@ -45,7 +45,7 @@ typedef struct _dynamic_array_dummy_head  *darray;
 
 /* used in type declarations */
 #define DYNAMIC_ARRAY(typ) \
-        struct _dynamic_array_of_ ## typ {long int nel; typ elem[0]; } 
+        struct _dynamic_array_of_ ## typ {unsigned long int nel; typ elem[0]; } 
 
 #define DA_CREATE(typ) ((struct _dynamic_array_of_ ## typ *)(da_create(sizeof(typ))))
 #define DA_INDEX(a,i) ((a)->elem[i])
@@ -59,7 +59,7 @@ typedef struct _dynamic_array_dummy_head  *darray;
  * Some or all of these should be inline.
  * They aren't macros for type safety.
  */
-inline static darray Dda_create(int sz)
+inline static darray Dda_create(size_t sz)
 {
   darray a;
 
@@ -68,10 +68,10 @@ inline static darray Dda_create(int sz)
   return a;
 }
 
-darray da_grow1(darray a, int sz);
-darray da_resize(darray a, int sz, int n);
+darray da_grow1(darray a, size_t sz);
+darray da_resize(darray a, size_t sz, unsigned int n);
 
-inline static int da_nel(darray a)
+inline static unsigned int da_nel(darray a)
 {
   if (a==NULL)
     return 0;
@@ -80,11 +80,11 @@ inline static int da_nel(darray a)
 
 /* alloc/free debug code.*/
 #ifdef ALLOC_DEBUG
-darray DBGda_create(int sz, char *file, int line);
-darray DBGda_free(darray a, char *file, int line);
+darray DBGda_create(size_t sz, char *file, int line);
+void   DBGda_free(darray a, size_t sz, char *file, int line);
 
 #define da_create(sz)	DBGda_create(sz, __FILE__, __LINE__)
-#define da_free(a)	DBGda_free(a, __FILE__, __LINE__)
+#define da_free(a)	DBGda_free((darray)(a),sizeof((a)->elem[0]), __FILE__, __LINE__)
 #else
 #define da_create	Dda_create
 #define da_free		free

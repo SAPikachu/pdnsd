@@ -2,7 +2,7 @@
                                                                                
 This is the "official" pdnsd documentation and reference written by Thomas
 Moestl with revisions by Paul Rombouts.
-It is up-to-date for version 1.1.8b1-par6. For older documentation, please
+It is up-to-date for version 1.1.8b1-par7. For older documentation, please
 refer to the doc directory of the respective pdnsd package.
 A pdnsd HOWTO ("unofficial" step-by-step installation and setup instructions)
 is available at http://www.geocities.com/sunil_tt/.
@@ -46,6 +46,11 @@ Several pdnsd-specific options are available when building RPM packages:
                         below).                                                
                                                                                
 --with underscores      Has the same effect as --enable-underscores (see below 
+                        ).                                                     
+                                                                               
+--with ipv6             Has the same effect as --enable-ipv6 (see below).      
+                                                                               
+--with tcpqueries       Has the same effect as --enable-tcp-queries (see below 
                         ).                                                     
                                                                                
 --define "distro        Has the same effect as --with-distribution=<distro> (  
@@ -235,13 +240,13 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
                           Specify default tcp query timeout after which the    
                           connection is closed if no full query has been       
 --with-tcp-qtimeout       received. The default is 30s. You can also change    
-                          this option at run time using th tcp_qtimeout config 
+                          this option at run time using the tcp_qtimeout config
                           file option. If you do not use --enable-tcp-server,  
                           is option is not honored.                            
                                                                                
                           Specify the default number of queries that can be    
                           executed in parallel. You can also change this option
---with-par-queries        at run time using th par_queries config file option. 
+--with-par-queries        at run time using the par_queries config file option.
                           See the description of that option for an explanation
                           of what it really does.                              
                           The default for this option is 2.                    
@@ -738,11 +743,15 @@ The supported options in this section are:
 
 
 ip=string;                                                                     
-Give the IP (the IP, not the hostname) of the server. Must be specified.       
+Give the IP (the IP, not the hostname) of the server.                          
 Multiple IP addresses can be given per server section. This can be done by     
 entering multiple lines of the form ip=string; or a single line like this:     
                                                                                
     ip=string,string,string;                                                   
+                                                                               
+IP addresses do not have to be specified in the configuration file. A server   
+section without IP addresses will remain inactive until it is assigned one or  
+more addresses with pdnsd-ctl, the pdnsd control utility.                      
                                                                                
 port=number;                                                                   
 Give the port the remote name server listens on. Default is 53 (the official   
@@ -1162,20 +1171,28 @@ version                                                               print vers
                                                                       pdnsd.cache starting with 0. Use the    
                                                                       status command to view the indices and  
                                                                       labels. You can specify all instead of  
-          (index                                                      an index or label to perform th action  
-server    |        (up|down|     [dns1,dns2,...]                      for all servers registered with pdnsd.  
-          label)   retest)                                            Example:                                
+                                                                      an index or label to perform the action 
+                                                                      for all servers registered with pdnsd.  
+                                                                      Example:                                
                                                                       pdnsd-ctl server 0 retest               
-                                                                      An optional third argument consisting of
-                                                                      a comma-separated list of IP addresses  
-                                                                      can be given. This list will replace the
-                                                                      previous list of addresses of name      
-                                                                      servers used by pdnsd in the specified  
-                                                                      section of the config file. For example 
-                                                                      in the /etc/ppp/ip-up script called by  
-                                                                      pppd you could place the following line:
-                                                                      pdnsd-ctl server isplabel up $DNS1$     
-                                                                      {DNS1:+${DNS2:+,}}$DNS2                 
+          (index                                                      An optional third argument consisting of
+server    |        (up|down|     [dns1,dns2,...]                      a list of IP addresses (separated by    
+          label)   retest)                                            commas or spaces) can be given. This    
+                                                                      list will replace the previous list of  
+                                                                      addresses of name servers used by pdnsd 
+                                                                      in the specified section of the config  
+                                                                      file. For example in the /etc/ppp/ip-up 
+                                                                      script called by pppd you could place   
+                                                                      the following line:                     
+                                                                      pdnsd-ctl server isplabel up $DNS1,$DNS2
+                                                                      If spaces are used to separate addresses
+                                                                      the list will have to be quoted.        
+                                                                      Spurious commas and spaces are ignored. 
+                                                                      The last argument may also be an empty  
+                                                                      string, in which case the existing IP   
+                                                                      addresses are removed and the           
+                                                                      corresponding server section becomes    
+                                                                      inactive.                               
                                                                                                               
                                                                       Delete or invalidate the record of the  
                                                                       given domain name if it is in the cache.
@@ -1358,5 +1375,5 @@ src/status.h     pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 29 July 2003 by Paul Rombouts
+Last revised: 10 Sep 2003 by Paul Rombouts
 

@@ -55,8 +55,8 @@ void log_info(int level, char *s, ...) printfunc(2, 3);
  * want to save the overhead when DEBUG is not defined. 
  * debug_p needs to be defined (by including conff.h), or you
  * will get strange errors.
- * Dont forget your semicolon after the macro call, or you
- * will get other strange errors ;-)
+ * A macro call expands to a complete statement, so a semicolon after
+ * the macro call is redundant.
  * The arguments are normal printfs, so you know how to use the args
  */
 #if DEBUG>0

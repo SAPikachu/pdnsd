@@ -39,10 +39,13 @@ force a retest. The index is assigned in the order of definition in pdnsd.cache
 starting with 0. Use the status command to view the indexes. You can specify all
 instead of an index to perform the action for all servers registered with pdnsd.
 .IP
-An optional third argument can be given consisting of a comma delimited list of
-IP addresses. This list will replace the addresses of name servers used by pdnsd
-for the given server section. This feature is useful for run-time configuration
-of pdnsd with dynamic DNS data in scripts called by ppp or DHCP clients.
+An optional third argument can be given consisting of a list of IP addresses
+separated by commas or spaces. This list will replace the addresses of name
+servers used by pdnsd for the given server section. This feature is useful for
+run-time configuration of pdnsd with dynamic DNS data in scripts called by ppp
+or DHCP clients. The last argument may also be an empty string, which causes
+existing IP addresses to be removed and the corresponding server section to
+become inactive.
 .TP
 \fBrecord\fR
 name (delete|invalidate)

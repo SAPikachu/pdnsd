@@ -219,20 +219,11 @@ int if_up(char *devname)
 
 int is_local_addr(pdnsd_a *a)
 {
-	int i,res;
-#  ifdef ENABLE_IPV4
-	struct protoent *pe;
-	int sock;
-	struct ifreq ifr;
-#  endif
-#  ifdef ENABLE_IPV6
-	char   buf[50];
-	FILE   *f;
-	struct in6_addr b;
-#  endif
 #  ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		res=0;
+		int res=0,i,sock;
+		struct protoent *pe;
+		struct ifreq ifr;
 		if (!(pe=getprotobyname("udp")))
 			return 0;
 		if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
@@ -258,36 +249,45 @@ int is_local_addr(pdnsd_a *a)
 #  endif
 #  ifdef ENABLE_IPV6
 	if (run_ipv6) {
+		int res=0;
+		char   buf[40];
+		FILE   *f;
+		struct in6_addr b;
 		/* the interface configuration and information retrieval is obiously currently done via 
 		 * rt-netlink sockets. I think it is relatively likely to change in an incompatible way the 
 		 * Linux kernel (there seem to be some major changes for 2.4).
 		 * Right now, I just analyze the /proc/net/if_inet6 entry. This may not be the fastest, but 
-		 * should work and is easily to adapt should the format change. */
+		 * should work and is easy to adapt should the format change. */
 		if (!(f=fopen("/proc/net/if_inet6","r")))
 			return 0;
-		/* The address is at the start of the line. We just read 4 characters and insert a ':' 8 
+		/* The address is at the start of the line. We just read 4 characters and insert a ':' 7 
 		 * times. Such, we can use inet_pton conveniently. More portable, that. */
-		while (!feof(f)) {
-			memset(buf,'\0',50);
+		for(;;) {
+			int i,ch;
 			for (i=0;i<8;i++) {
-				for (res=0;res<4;res++) {
-					if ((buf[i*5+res]=fgetc(f))==EOF) {
-						fclose(f);
-						return 0; /* we are at the end of the file and haven't found anything.*/
-					}
+				int j;
+				for (j=0;j<4;j++) {
+					if ((ch=fgetc(f))==EOF)
+						goto fclose_return; /* we are at the end of the file and haven't found anything.*/
+					if(ch=='\n') goto nextline;
+					buf[i*5+j]=ch;
 				}
-				if (i<7)
-					buf[i*5+4]=':';
+				buf[i*5+4]= (i<7 ? ':' : '\0');
 			}
 			if (inet_pton(AF_INET6,buf,&b) == 1) {
 				if (IN6_ARE_ADDR_EQUAL((&a->ipv6),(&b))) {
-					fclose(f);
-					return 1;
+					res=1;
+					goto fclose_return;
 				}
 			}
-			while ((res=fgetc(f))!='\n' && res!=EOF) ;
+			do {
+				if ((ch=fgetc(f))==EOF) goto fclose_return;
+			} while(ch!='\n');
+		nextline:;
 		}
+	fclose_return:
 		fclose(f);
+		return res;
 	}
 #  endif
 	return 0;

@@ -59,14 +59,12 @@ void pdnsd_exit()
 int softlock_mutex(pthread_mutex_t *mutex)
 {
 	int tr=0;
-	while (1)  {
-		if (pthread_mutex_trylock(mutex)==0)
-			return 1;
-		if (tr++>SOFTLOCK_MAXTRIES)
+	while(pthread_mutex_trylock(mutex)) {
+		if (++tr>=SOFTLOCK_MAXTRIES)
 			return 0;
 		usleep_r(10000);
 	}
-	return 0;
+	return 1;
 }
 
 /*
@@ -109,55 +107,45 @@ int run_as(char *user)
 } */
 
 /*
- * Convert a string given in dotted notation to the transport format (lenght byte prepended
+ * Convert a string given in dotted notation to the transport format (length byte prepended
  * domain name parts, ended by a null length sequence)
+ * The memory areas referenced by str and rhn may not overlap.
+ * The buffer rhn points to is assumed to be 256 bytes in size.
  */
 int str2rhn(unsigned char *str, unsigned char *rhn)
 {
-	int i=0;
-	int cnt=0;
-	unsigned char buf[64];
-	int lb;
-	int tcnt=0;
+	int n=0,i,j;
 	
-	do {
-		lb=0;
-		if (lb + cnt >= 255)
-			return 0;
-		while(isdchar(str[lb+cnt])) {
-			if (lb>62)
-				return 0;
-			buf[lb]=str[lb+cnt];
-			lb++;
-			if (lb + cnt >= 255)
-				return 0;
+	for(i=0;;) {
+		int jlim,lb;
+		jlim=i+64;
+		if(jlim>255) jlim=255; /* 255 because the termination 0 has to follow */
+		for(j=i;;++j) {
+			if(!str[j]) goto finish;
+			if(j>=jlim) return 0;
+			if(!isdchar(str[j])) break;
+			rhn[j+1]=str[j];
 		}
-		if (str[lb+cnt]=='\0') {
-			if (lb==0) {
-				if (i==0)
-					return 0;
-				rhn[tcnt]='\0';
-				return 1;
-			}
-			return 0;
-		} else if (str[lb+cnt]=='.') {
-			i++;
-			if (lb+tcnt+1>255) /* 255 because the termination 0 has to follow */
-				return 0;
-			rhn[tcnt]=(unsigned char)lb;
-			tcnt++;
-			memcpy(rhn+tcnt,buf,lb);
-			tcnt+=lb;
-			cnt+=lb+1;
-		} else
+		lb=j-i;
+		if (lb>0 && str[j]=='.') {
+			rhn[i]=(unsigned char)lb;
+			++n;
+			i = j+1;
+		}
+		else
 			return 0;
 				
-	} while (1);
+	}
+ finish:
+	if (j>i || n==0)
+		return 0;
+	rhn[i]=0;
+	return 1;
 }
 
 /*
  * Take a host name as used in the dns transfer protocol (a length byte, followed by the
- * first part of the name, ..., followed by a 0 lenght byte), and return a string (in str,
+ * first part of the name, ..., followed by a 0 length byte), and return a string (in str,
  * length is the same as rhn) in the usual dotted notation. Length checking is done 
  * elsewhere (in decompress_name), this takes names from the cache which are validated.
  * The buffer str points to is assumed to be 256 bytes in size.
@@ -166,29 +154,26 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 {
 	unsigned char lb;
 	int i;
-	int cnt=1;
+	int cnt;
 
-	str[0]='\0';
 	lb=rhn[0];
 	if (!lb) {
-		strcpy((char *)str,".");
-		return;
+		strcpy(str,".");
 	}
- 	while (lb) {
-		for (i=0;i<lb;i++) {
-			PDNSD_ASSERT(cnt < 255,
-			    "rhn2str: string length overflow");
-			str[cnt-1]=rhn[cnt];
+	else {
+		cnt=0;
+		do {
+			PDNSD_ASSERT(cnt+lb < 255,
+				     "rhn2str: string length overflow");
+			for (i=0;i<lb;i++) {
+				str[cnt]=rhn[cnt+1];
+				cnt++;
+			}
+			str[cnt]='.';
 			cnt++;
-		}
-		PDNSD_ASSERT(cnt <= 255,
-		    "rhn2str: string length overflow");
-		str[cnt-1]='.';
+			lb=rhn[cnt];
+		} while(lb);
 		str[cnt]='\0';
-		lb=rhn[cnt];
-		cnt++;
-		if (cnt>255)
-			break;
 	}
 }
 
@@ -211,7 +196,7 @@ int rhncpy(unsigned char *dst, unsigned char *src)
 
 	len = rhnlen(src);
 	PDNSD_ASSERT(len<=256,"rhncpy: src too long!");
-	memcpy((char *)dst,(char *)src,len>256?256:len);
+	memcpy(dst,src,len>256?256:len);
 	return len;
 }
 
@@ -265,7 +250,7 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
  */
 const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 {
-	const char *res;
+	const char *res=NULL;  /* Initialized to inhibit compiler warning */
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		if (!(res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen))) {
@@ -289,7 +274,7 @@ const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 
 const char *socka2str(struct sockaddr *a, char *buf, int maxlen)
 {
-	const char *res;
+	const char *res=NULL;  /* Initialized to inhibit compiler warning */
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		if (!(res=inet_ntop(AF_INET,&((struct sockaddr_in *)a)->sin_addr,buf,maxlen))) {

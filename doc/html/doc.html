@@ -34,7 +34,7 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
     with revisions by Paul Rombouts.<br>
-    It is up-to-date for version 1.1.8b1-par6. For older documentation, please refer to the doc
+    It is up-to-date for version 1.1.8b1-par7. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -93,6 +93,22 @@
 	</td>
 	<td>
 	  Has the same effect as <code>--enable-underscores</code> (<a href="#enableunderscores">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--with&nbsp;ipv6</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--enable-ipv6</code> (<a href="#enableipv6">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--with&nbsp;tcpqueries</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--enable-tcp-queries</code> (<a href="#enabletcpqueries">see below</a>).
 	</td>
       </tr>
       <tr>
@@ -230,6 +246,7 @@
 	  Disable IPv4 networking support (default=enabled)
 	</td>
       </tr>
+      <a name="enableipv6"></a>
       <tr>
 	<td>
 	  <code>--enable-ipv6</code>
@@ -270,6 +287,7 @@
 	  this.
 	</td>
       </tr>
+      <a name="enabletcpqueries"></a>
       <tr>
 	<td>
 	  <code>--enable-tcp-queries </code>
@@ -435,7 +453,7 @@
 	<td>
 	  Specify default tcp query timeout after which the connection is closed
 	  if no full query has been received. The default is 30s.
-	  You can also change this option at run time using th tcp_qtimeout
+	  You can also change this option at run time using the tcp_qtimeout
 	  config file option.
 	  If you do not use <code>--enable-tcp-server</code>, is option is not honored.
 	</td>
@@ -446,7 +464,7 @@
 	</td>
 	<td>
 	  Specify the default number of queries that can be executed in parallel.
-	  You can also change this option at run time using th par_queries
+	  You can also change this option at run time using the par_queries
 	  config file option. See the description of that option for an explanation
 	  of what it really does.<br>
 	  The default for this option is 2.
@@ -1045,12 +1063,15 @@
       <tr>
 	<td>
 	  <b><code>ip=string;</code></b><br>
-	  Give the IP (the IP, <em>not</em> the hostname) of the server.
-	  Must be specified.<br>
+	  Give the IP (the IP, <em>not</em> the hostname) of the server.<br>
 	  Multiple IP addresses can be given per server section.
 	  This can be done by entering multiple lines of the form <code>ip=string;</code>
 	  or a single line like this:
 	  <ul><code>ip=string,string,string;</code></ul>
+	  IP addresses do not have to be specified in the configuration file.
+	  A server section without IP addresses will remain inactive until it is assigned
+	  one or more addresses with <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>,
+	  the pdnsd control utility.
 	</td>
       </tr>
       <tr>
@@ -1593,15 +1614,20 @@
 	  matches the one given with the label option in the respective server section in the config file)
 	  to up or down, or  force a retest. The index is assigned in the order of definition in
 	  pdnsd.cache starting with 0. Use the status command to view the indices and labels.
-	  You can specify <code>all</code> instead of an index or label to perform th action for all
+	  You can specify <code>all</code> instead of an index or label to perform the action for all
 	  servers registered with pdnsd. Example:<br>
 	  <code>pdnsd-ctl&nbsp;server&nbsp;0&nbsp;retest</code><br>
-	  An optional third argument consisting of a comma-separated list of IP addresses can be given.
+	  An optional third argument consisting of a list of IP addresses (separated by commas or spaces)
+	  can be given.
 	  This list will replace the previous list of addresses of name servers used by pdnsd in the
 	  specified section of the config file.
 	  For example in the <code>/etc/ppp/ip-up</code> script called by <code>pppd</code> you could
 	  place the following line:<br>
-	  <code>pdnsd-ctl&nbsp;server&nbsp;isplabel&nbsp;up&nbsp;$DNS1${DNS1:+${DNS2:+,}}$DNS2</code>
+	  <code>pdnsd-ctl&nbsp;server&nbsp;isplabel&nbsp;up&nbsp;$DNS1,$DNS2</code><br>
+	  If spaces are used to separate addresses the list will have to be quoted.
+	  Spurious commas and spaces are ignored.
+	  The last argument may also be an empty string, in which case the existing IP addresses are
+	  removed and the corresponding server section becomes inactive.
 	</td>
       </tr>
       <tr>
@@ -1872,7 +1898,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 29 July 2003 by Paul Rombouts</i>
+      <i>Last revised: 10 Sep 2003 by Paul Rombouts</i>
     </p>
   </body>
 </html>

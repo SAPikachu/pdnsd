@@ -1,3 +1,107 @@
+2003-09-18  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Reordered the code in process_query() so that a buffer for an error response is
+	allocated only when it is actually needed.
+
+2003-09-17  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Added parentheses to correct mistaken operator precedence assumption in cache.c.
+	!cent->flags&DF_NEGATIVE is parsed as (!(cent->flags))&DF_NEGATIVE but I think 
+	what Thomas Moestl must have intended was !((cent->flags)&DF_NEGATIVE).
+
+2003-09-12  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Fixed a mistake which caused the effect of the proxy_only option to be reversed.
+	Thanks to Andrew M. Bishop <amb@gedanken.demon.co.uk> for reporting this bug.
+
+2003-09-11  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.c
+	Rewrote str2rhn() and rhn2str().
+
+2003-09-10  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns.c
+	Rewrote read_hosts(), the function that reads /etc/hosts-style input.
+	I believe the parsing algorithm is more robust now.
+
+2003-09-09  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	Fixed a bug (my fault) that caused improper passing on of flags for the
+	pdnsd-ctl source command.
+	Also reordered some of the code, so that data is validated after all of it
+	has been read from the control socket. This should prevent a "broken pipe"
+	error message if data validation fails.
+	Also fixed the reporting of success or failure of the pdnsd-ctl "neg" command.
+
+2003-09-08  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/list.c
+	Rewrote da_grow1() and da_resize() so that they automatically allocate an array
+	if given a NULL argument. This makes the use of da_create() redundant in most cases.
+
+2003-09-08  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/conf-parse.y,src/servers.c
+	At the suggestion of Greg Norris, I changed the code to allow server sections in the
+	configuration file that don't specify any IP addresses. Such a section will remain
+	inactive until one or more IP addresses are assigned with the control utility pdnsd-ctl.
+
+2003-09-04  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c
+	Oops: in my zeal to declare variables in the smallest possible scope, I ended up
+	using a pointer to a struct that was out of scope. My understanding of compilers tells me
+	it should work out OK in practice, but it is definitely a no-no.
+	Used a union declared in a larger scope instead (which is ugly in another way,
+	but equally efficient).
+	Also removed a section of redundant code in udp_server_thread().
+
+2003-09-01  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Corrected the iteration range of a for loop in p_dns_cached_resolve(), which would
+	otherwise cause an array to be indexed out of bounds in the function set_flags_ttl().
+
+2003-08-31  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Added cleanup handlers for freeing the resources passed on to udp_answer_thread() and
+	tcp_answer_thread(). This should ensure the resources are freed even if the threads get
+	canceled.
+
+2003-08-30  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Revised large portions of code in src/cache.c, used for adding and deleting entries in
+	the cache. In particular, I rewrote purge_cache(), which I believe was incorrect.
+	I wouldn't be surprised if this was the cause of the crashed (defunct) threads that some
+	people were reporting.
+	Also fixed some memory leaks.
+
+2003-08-28  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Eliminated the overhead of allocation debugging in the case that ALLOC_DEBUG is not defined.
+
+2003-08-24  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/conf-parse.y
+	No longer allow certain settings of the query_method option in the configuration file
+	if pdnsd is not compiled with the necessary support.
+	Thanks to Nikolaus Rath <Nikolaus@rath.org> for reporting the bug.
+
+2003-08-23  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/netdev.c
+	Fixed a bug in is_local_addr() where the result of fgetc(f) is restricted to type char
+	before being compared to EOF, which can result in the comparison always being false.
+	Thanks to Gerhard Tonn <GerhardTonn@gammatau.de> for reporting the bug.
+
 2003-07-28  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* doc/html/index.html,doc/html/doc.html,doc/html/dl.html,doc/pdnsd-ctl.8,contrib/README

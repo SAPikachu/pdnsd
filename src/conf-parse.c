@@ -123,6 +123,8 @@ static char rcsid[]="$Id: conf-parse.y,v 1.37 2003/04/06 23:02:46 tmm Exp $";
    Unfortunately, there is no mechanism supported by bison, as far as I know,
    that can be used to insert C declarations into the main scope of yyparse(),
    so we'll have to insert a macro call to YYPARSE_LOCAL_DECL ourselves.
+   Some of these variables are initialized to zero. This is only done
+   to stop the compiler from complaining.
 */
 
 #define YYPARSE_LOCAL_DECL  \
@@ -130,9 +132,9 @@ servparm_t server;  \
 dns_cent_t c_cent;  \
 unsigned char c_owner[256];  \
 unsigned char c_name[256];  \
-time_t c_ttl;  \
-int c_flags;  \
-unsigned char c_aliases, hdtp, htp;
+time_t c_ttl=0;  \
+int c_flags=0;  \
+unsigned char c_aliases=0, hdtp=0, htp=0;
 
 
 #ifndef NO_YYLINENO
@@ -175,7 +177,7 @@ extern int yylineno;
  */
 inline static void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
+  if (!(servers=DA_GROW1(servers))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -186,7 +188,7 @@ static char *addr_add(servparm_t *sp, char *ipstr);
 static char *slist_add(servparm_t *sp, char *nm, int tp);
 
 
-#line 109 "conf-parse.y"
+#line 111 "conf-parse.y"
 #ifndef YYSTYPE
 typedef union {
 long 	      num;
@@ -315,16 +317,16 @@ static const short yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined. */
 static const short yyrline[] =
 {
-       0,   208,   209,   212,   213,   213,   234,   234,   254,   254,
-     264,   264,   281,   282,   285,   294,   298,   302,   306,   314,
-     318,   327,   331,   335,   340,   349,   358,   367,   376,   385,
-     389,   393,   402,   416,   425,   429,   433,   437,   441,   445,
-     454,   458,   467,   476,   488,   502,   503,   506,   516,   529,
-     531,   535,   540,   549,   553,   557,   565,   569,   575,   579,
-     588,   593,   598,   607,   616,   625,   634,   643,   652,   662,
-     672,   679,   680,   683,   698,   716,   720,   729,   772,   791,
-     816,   835,   879,   880,   883,   895,   899,   914,   923,   935,
-     936,   940,   949,   953,   971,   976,   977,   980
+       0,   210,   211,   214,   215,   215,   236,   236,   256,   256,
+     266,   266,   283,   284,   287,   296,   300,   304,   308,   316,
+     320,   329,   333,   337,   342,   351,   360,   369,   378,   387,
+     391,   395,   425,   440,   449,   453,   457,   461,   465,   469,
+     478,   482,   491,   500,   512,   526,   527,   530,   540,   553,
+     555,   559,   564,   573,   577,   581,   589,   593,   599,   603,
+     612,   617,   622,   631,   640,   649,   658,   667,   676,   686,
+     696,   703,   704,   707,   722,   740,   744,   753,   796,   815,
+     840,   859,   903,   904,   907,   919,   923,   938,   947,   959,
+     960,   964,   973,   977,   995,  1000,  1001,  1004
 };
 #endif
 
@@ -1261,28 +1263,28 @@ yyreduce:
   switch (yyn) {
 
 case 1:
-#line 208 "conf-parse.y"
+#line 210 "conf-parse.y"
 {}
     break;
 case 2:
-#line 209 "conf-parse.y"
+#line 211 "conf-parse.y"
 {}
     break;
 case 3:
-#line 212 "conf-parse.y"
+#line 214 "conf-parse.y"
 {}
     break;
 case 4:
-#line 213 "conf-parse.y"
+#line 215 "conf-parse.y"
 {server=serv_presets; }
     break;
 case 5:
-#line 214 "conf-parse.y"
+#line 216 "conf-parse.y"
 {
-				if (!server.atup_a) {
+				/* if (!server.atup_a) {
 					yyerror("bad ip or no ip specified in section");
 					YYERROR;
-				}
+				} */
 				if (server.uptest==C_EXEC) {
 					if (!server.uptest_cmd) {
 						yyerror("you must specify uptest_cmd if you specify uptest=exec!");
@@ -1300,7 +1302,7 @@ case 5:
 			}
     break;
 case 6:
-#line 235 "conf-parse.y"
+#line 237 "conf-parse.y"
 {
 					c_owner[0]='\0';
 					c_name[0]='\0';
@@ -1310,7 +1312,7 @@ case 6:
 				}
     break;
 case 7:
-#line 243 "conf-parse.y"
+#line 245 "conf-parse.y"
 {
 				if (!c_owner[0] || !c_name[0]) {
 				        yyerror("must specify owner and name in a rr record.");
@@ -1318,13 +1320,13 @@ case 7:
 				}
 
 				/* add the authority */
-				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen(c_owner)+1, c_owner, T_NS,0);
-				add_cache(c_cent);
-				free_cent(c_cent,0);
+				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen(c_owner)+1, c_owner, T_NS  DBG0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 			}
     break;
 case 8:
-#line 255 "conf-parse.y"
+#line 257 "conf-parse.y"
 {
 					htp=0;
 					hdtp=0;
@@ -1333,12 +1335,12 @@ case 8:
 				}
     break;
 case 9:
-#line 262 "conf-parse.y"
+#line 264 "conf-parse.y"
 {
 			}
     break;
 case 10:
-#line 265 "conf-parse.y"
+#line 267 "conf-parse.y"
 {
 					c_owner[0]='\0';
 					c_ttl=86400;
@@ -1348,7 +1350,7 @@ case 10:
 				}
     break;
 case 11:
-#line 273 "conf-parse.y"
+#line 275 "conf-parse.y"
 {
 				if (c_owner[0]=='\0') {
 					yyerror("you must specify owner in a source record.");
@@ -1357,15 +1359,15 @@ case 11:
 			}
     break;
 case 12:
-#line 281 "conf-parse.y"
+#line 283 "conf-parse.y"
 {}
     break;
 case 13:
-#line 282 "conf-parse.y"
+#line 284 "conf-parse.y"
 {}
     break;
 case 14:
-#line 286 "conf-parse.y"
+#line 288 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_OFF) {
 					global.perm_cache=0;
@@ -1376,25 +1378,25 @@ case 14:
 			}
     break;
 case 15:
-#line 295 "conf-parse.y"
+#line 297 "conf-parse.y"
 {
 				global.perm_cache=yyvsp[-1].num;
 			}
     break;
 case 16:
-#line 299 "conf-parse.y"
+#line 301 "conf-parse.y"
 {
 				YSTRASSIGN(global.cache_dir, yyvsp[-1].nm);
 			}
     break;
 case 17:
-#line 303 "conf-parse.y"
+#line 305 "conf-parse.y"
 {
 				global.port=yyvsp[-1].num;
 			}
     break;
 case 18:
-#line 307 "conf-parse.y"
+#line 309 "conf-parse.y"
 {
 				if (!str2pdnsd_a(yyvsp[-1].nm,&global.a)) {
 					yyerror("bad ip in server_ip= option.");
@@ -1404,13 +1406,13 @@ case 18:
  			}
     break;
 case 19:
-#line 315 "conf-parse.y"
+#line 317 "conf-parse.y"
 {
 				YSTRASSIGN(global.scheme_file, yyvsp[-1].nm);
                         }
     break;
 case 20:
-#line 319 "conf-parse.y"
+#line 321 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					global.lndown_kluge=(yyvsp[-1].num==C_ON);
@@ -1421,26 +1423,26 @@ case 20:
 			}
     break;
 case 21:
-#line 328 "conf-parse.y"
+#line 330 "conf-parse.y"
 {
 				global.max_ttl=yyvsp[-1].num;
 			}
     break;
 case 22:
-#line 332 "conf-parse.y"
+#line 334 "conf-parse.y"
 {
 				global.min_ttl=yyvsp[-1].num;
 			}
     break;
 case 23:
-#line 336 "conf-parse.y"
+#line 338 "conf-parse.y"
 {
 				YSTRNCP(global.run_as, yyvsp[-1].nm, "run_as");
 				free(yyvsp[-1].nm);
 			}
     break;
 case 24:
-#line 341 "conf-parse.y"
+#line 343 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					global.strict_suid=(yyvsp[-1].num==C_ON);
@@ -1451,7 +1453,7 @@ case 24:
 			}
     break;
 case 25:
-#line 350 "conf-parse.y"
+#line 352 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					global.paranoid=(yyvsp[-1].num==C_ON);
@@ -1462,7 +1464,7 @@ case 25:
 			}
     break;
 case 26:
-#line 359 "conf-parse.y"
+#line 361 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					stat_pipe=(yyvsp[-1].num==C_ON);
@@ -1473,7 +1475,7 @@ case 26:
 			}
     break;
 case 27:
-#line 368 "conf-parse.y"
+#line 370 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					daemon_p=(yyvsp[-1].num==C_ON);
@@ -1484,7 +1486,7 @@ case 27:
 			}
     break;
 case 28:
-#line 377 "conf-parse.y"
+#line 379 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					notcp=(yyvsp[-1].num==C_OFF);
@@ -1495,21 +1497,42 @@ case 28:
 			}
     break;
 case 29:
-#line 386 "conf-parse.y"
+#line 388 "conf-parse.y"
 {
 			  YSTRASSIGN(pidfile,yyvsp[-1].nm);
 			}
     break;
 case 30:
-#line 390 "conf-parse.y"
+#line 392 "conf-parse.y"
 {
 				verbosity=yyvsp[-1].num;
 			}
     break;
 case 31:
-#line 394 "conf-parse.y"
+#line 396 "conf-parse.y"
 {
 				if (yyvsp[-1].num==TCP_ONLY || yyvsp[-1].num==UDP_ONLY || yyvsp[-1].num==TCP_UDP) {
+#ifdef NO_TCP_QUERIES
+					if (yyvsp[-1].num==TCP_ONLY) {
+						yyerror("the tcp_only option is only available when pdnsd is compiled with TCP support.");
+						YYERROR;
+					}
+					else
+#endif
+#ifdef NO_UDP_QUERIES
+					if (yyvsp[-1].num==UDP_ONLY) {
+						yyerror("the udp_only option is only available when pdnsd is compiled with UDP support.");
+						YYERROR;
+					}
+					else
+#endif
+#if defined(NO_TCP_QUERIES) || defined(NO_UDP_QUERIES)
+					if (yyvsp[-1].num==TCP_UDP) {
+						yyerror("the tcp_udp option is only available when pdnsd is compiled with both TCP and UDP support.");
+						YYERROR;
+					}
+					else
+#endif
 					query_method=yyvsp[-1].num;
 				} else {
 					yyerror("bad qualifier in query_method= option.");
@@ -1518,7 +1541,7 @@ case 31:
 			}
     break;
 case 32:
-#line 403 "conf-parse.y"
+#line 426 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
@@ -1526,6 +1549,7 @@ case 32:
 					run_ipv6=(yyvsp[-1].num!=C_ON);
 #else
 					yyerror("the run_ipv4 option is only available when pdnsd is compiled with IPv4 AND IPv6 support.");
+					YYERROR;
 #endif
 				} else {
 					yyerror("bad qualifier in run_ipv4= option.");
@@ -1534,7 +1558,7 @@ case 32:
 			}
     break;
 case 33:
-#line 417 "conf-parse.y"
+#line 441 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					debug_p=(yyvsp[-1].num==C_ON);
@@ -1545,37 +1569,37 @@ case 33:
 			}
     break;
 case 34:
-#line 426 "conf-parse.y"
+#line 450 "conf-parse.y"
 {
 				global.ctl_perms=yyvsp[-1].num;
 			}
     break;
 case 35:
-#line 430 "conf-parse.y"
+#line 454 "conf-parse.y"
 {
 				global.proc_limit=yyvsp[-1].num;
 			}
     break;
 case 36:
-#line 434 "conf-parse.y"
+#line 458 "conf-parse.y"
 {
 				global.procq_limit=yyvsp[-1].num;
 			}
     break;
 case 37:
-#line 438 "conf-parse.y"
+#line 462 "conf-parse.y"
 {
 				global.tcp_qtimeout=yyvsp[-1].num;
 			}
     break;
 case 38:
-#line 442 "conf-parse.y"
+#line 466 "conf-parse.y"
 {
 				global.par_queries=yyvsp[-1].num;
 			}
     break;
 case 39:
-#line 446 "conf-parse.y"
+#line 470 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					global.rnd_recs=(yyvsp[-1].num==C_ON);
@@ -1586,13 +1610,13 @@ case 39:
 			}
     break;
 case 40:
-#line 455 "conf-parse.y"
+#line 479 "conf-parse.y"
 {
 				global.neg_ttl=yyvsp[-1].num;
 			}
     break;
 case 41:
-#line 459 "conf-parse.y"
+#line 483 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF || yyvsp[-1].num==C_AUTH) {
 					global.neg_rrs_pol=yyvsp[-1].num;
@@ -1603,7 +1627,7 @@ case 41:
 			}
     break;
 case 42:
-#line 468 "conf-parse.y"
+#line 492 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF || yyvsp[-1].num==C_AUTH) {
 					global.neg_domain_pol=yyvsp[-1].num;
@@ -1614,7 +1638,7 @@ case 42:
 			}
     break;
 case 43:
-#line 477 "conf-parse.y"
+#line 501 "conf-parse.y"
 {
 				if(yyvsp[-1].num>65536||yyvsp[-1].num<1024) {
 					yyerror("bad value for query_port_start.");
@@ -1628,7 +1652,7 @@ case 43:
 			}
     break;
 case 44:
-#line 489 "conf-parse.y"
+#line 513 "conf-parse.y"
 {
 				if(yyvsp[-1].num>65536||yyvsp[-1].num<1024) {
 					yyerror("bad value for query_port_end.");
@@ -1642,15 +1666,15 @@ case 44:
 			}
     break;
 case 45:
-#line 502 "conf-parse.y"
+#line 526 "conf-parse.y"
 {}
     break;
 case 46:
-#line 503 "conf-parse.y"
+#line 527 "conf-parse.y"
 {}
     break;
 case 47:
-#line 507 "conf-parse.y"
+#line 531 "conf-parse.y"
 {
 			  char *e;
 
@@ -1662,7 +1686,7 @@ case 47:
 			}
     break;
 case 48:
-#line 517 "conf-parse.y"
+#line 541 "conf-parse.y"
 {
 			  char *e;
 
@@ -1674,24 +1698,24 @@ case 48:
 			}
     break;
 case 49:
-#line 529 "conf-parse.y"
+#line 553 "conf-parse.y"
 {}
     break;
 case 50:
-#line 532 "conf-parse.y"
+#line 556 "conf-parse.y"
 {
 				server.port=yyvsp[-1].num;
 			}
     break;
 case 51:
-#line 536 "conf-parse.y"
+#line 560 "conf-parse.y"
 {
 				YSTRNCP(server.scheme, yyvsp[-1].nm, "scheme");
 				free(yyvsp[-1].nm);
 			}
     break;
 case 52:
-#line 541 "conf-parse.y"
+#line 565 "conf-parse.y"
 {
  				if (yyvsp[-1].num==C_PING || yyvsp[-1].num==C_NONE || yyvsp[-1].num==C_IF || yyvsp[-1].num==C_EXEC || yyvsp[-1].num==C_DEV || yyvsp[-1].num==C_DIALD) {
 					server.uptest=yyvsp[-1].num;
@@ -1702,19 +1726,19 @@ case 52:
 			}
     break;
 case 53:
-#line 550 "conf-parse.y"
+#line 574 "conf-parse.y"
 {
 				server.timeout=yyvsp[-1].num;
 			}
     break;
 case 54:
-#line 554 "conf-parse.y"
+#line 578 "conf-parse.y"
 {
 				server.ping_timeout=yyvsp[-1].num;
 			}
     break;
 case 55:
-#line 558 "conf-parse.y"
+#line 582 "conf-parse.y"
 {
 				if (!str2pdnsd_a(yyvsp[-1].nm,&server.ping_a)) {
 					yyerror("bad ip in ping_ip= option.");
@@ -1724,13 +1748,13 @@ case 55:
 			}
     break;
 case 56:
-#line 566 "conf-parse.y"
+#line 590 "conf-parse.y"
 {
 				YSTRASSIGN(server.uptest_cmd, yyvsp[-1].nm);
 			}
     break;
 case 57:
-#line 570 "conf-parse.y"
+#line 594 "conf-parse.y"
 {
 				YSTRASSIGN(server.uptest_cmd, yyvsp[-3].nm);
 				YSTRNCP(server.uptest_usr, yyvsp[-1].nm, "uptest_cmd");
@@ -1738,13 +1762,13 @@ case 57:
 			}
     break;
 case 58:
-#line 576 "conf-parse.y"
+#line 600 "conf-parse.y"
 {
 				server.interval=yyvsp[-1].num;
 			}
     break;
 case 59:
-#line 580 "conf-parse.y"
+#line 604 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ONQUERY) {
 					server.interval=-1;
@@ -1755,21 +1779,21 @@ case 59:
 			}
     break;
 case 60:
-#line 589 "conf-parse.y"
+#line 613 "conf-parse.y"
 {
 				YSTRNCP(server.interface, yyvsp[-1].nm, "interface");
 				free(yyvsp[-1].nm);
 			}
     break;
 case 61:
-#line 594 "conf-parse.y"
+#line 618 "conf-parse.y"
 {
 				YSTRNCP(server.device, yyvsp[-1].nm, "device");
 				free(yyvsp[-1].nm);
   			}
     break;
 case 62:
-#line 599 "conf-parse.y"
+#line 623 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					server.purge_cache=(yyvsp[-1].num==C_ON);
@@ -1780,7 +1804,7 @@ case 62:
 			}
     break;
 case 63:
-#line 608 "conf-parse.y"
+#line 632 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					server.nocache=(yyvsp[-1].num==C_OFF);
@@ -1791,7 +1815,7 @@ case 63:
 			}
     break;
 case 64:
-#line 617 "conf-parse.y"
+#line 641 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					server.lean_query=(yyvsp[-1].num==C_ON);
@@ -1802,7 +1826,7 @@ case 64:
 			}
     break;
 case 65:
-#line 626 "conf-parse.y"
+#line 650 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					server.preset=(yyvsp[-1].num==C_ON);
@@ -1813,7 +1837,7 @@ case 65:
 			}
     break;
 case 66:
-#line 635 "conf-parse.y"
+#line 659 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					server.is_proxy=(yyvsp[-1].num==C_ON);
@@ -1824,7 +1848,7 @@ case 66:
 			}
     break;
 case 67:
-#line 644 "conf-parse.y"
+#line 668 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_INCLUDED || yyvsp[-1].num==C_EXCLUDED || yyvsp[-1].num==C_SIMPLE_ONLY || yyvsp[-1].num==C_FQDN_ONLY) {
 					server.policy=yyvsp[-1].num;
@@ -1835,7 +1859,7 @@ case 67:
 			}
     break;
 case 68:
-#line 653 "conf-parse.y"
+#line 677 "conf-parse.y"
 {
 				char *e;
 				
@@ -1847,7 +1871,7 @@ case 68:
 			}
     break;
 case 69:
-#line 663 "conf-parse.y"
+#line 687 "conf-parse.y"
 {
 				char *e;
 				
@@ -1859,22 +1883,22 @@ case 69:
 			}
     break;
 case 70:
-#line 673 "conf-parse.y"
+#line 697 "conf-parse.y"
 {
 				YSTRNCP(server.label, yyvsp[-1].nm, "label");
 				free(yyvsp[-1].nm);
 			}
     break;
 case 71:
-#line 679 "conf-parse.y"
+#line 703 "conf-parse.y"
 {}
     break;
 case 72:
-#line 680 "conf-parse.y"
+#line 704 "conf-parse.y"
 {}
     break;
 case 73:
-#line 684 "conf-parse.y"
+#line 708 "conf-parse.y"
 {
 				if (strlen(yyvsp[-1].nm)>255) {
 					yyerror("name too long.");
@@ -1882,7 +1906,7 @@ case 73:
 				}
 				YSTRNCP(c_name, yyvsp[-1].nm, "name");
 				if (c_owner[0]) {
-					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -1891,7 +1915,7 @@ case 73:
 			}
     break;
 case 74:
-#line 699 "conf-parse.y"
+#line 723 "conf-parse.y"
 {
 				if (strlen(yyvsp[-1].nm)>255) {
 					yyerror("name too long.");
@@ -1902,7 +1926,7 @@ case 74:
 					YYERROR;
 				}
 				if (c_name[0]) {
-					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -1911,13 +1935,13 @@ case 74:
 			}
     break;
 case 75:
-#line 717 "conf-parse.y"
+#line 741 "conf-parse.y"
 {
 				c_ttl=yyvsp[-1].num;
 			}
     break;
 case 76:
-#line 721 "conf-parse.y"
+#line 745 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					c_flags=(yyvsp[-1].num==C_ON)?DF_LOCAL:0;
@@ -1928,7 +1952,7 @@ case 76:
 			}
     break;
 case 77:
-#line 730 "conf-parse.y"
+#line 754 "conf-parse.y"
 {
 				int sz,tp;
 				struct in_addr ina4;
@@ -1968,12 +1992,12 @@ case 77:
 					YYERROR;
 #endif
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp, 0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp  DBG0);
 				free(yyvsp[-1].nm);
 			}
     break;
 case 78:
-#line 773 "conf-parse.y"
+#line 797 "conf-parse.y"
 {
 				unsigned char c_ptr[256];
 
@@ -1989,12 +2013,12 @@ case 78:
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR  DBG0);
 				free(yyvsp[-1].nm);
 			}
     break;
 case 79:
-#line 792 "conf-parse.y"
+#line 816 "conf-parse.y"
 {
 				unsigned char c_ptr[256];
 				unsigned char buf[532];
@@ -2016,12 +2040,12 @@ case 79:
 				ts=htons(yyvsp[-1].num);
 				memcpy(buf,&ts,2);
 				rhncpy(buf+2,c_ptr);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX  DBG0);
 				free(yyvsp[-3].nm);
 			}
     break;
 case 80:
-#line 817 "conf-parse.y"
+#line 841 "conf-parse.y"
 {
 				unsigned char c_ptr[256];
 
@@ -2037,12 +2061,12 @@ case 80:
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME  DBG0);
 				free(yyvsp[-1].nm);
 			}
     break;
 case 81:
-#line 836 "conf-parse.y"
+#line 860 "conf-parse.y"
 {
 				unsigned char c_soa_owner[256];
 			        unsigned char c_soa_r[256];
@@ -2080,21 +2104,21 @@ case 81:
 				idx+=rhncpy(buf+idx,c_soa_r);
 				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 				idx+=sizeof(soa_r_t);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA,0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA  DBG0);
 				free(yyvsp[-13].nm);
 				free(yyvsp[-11].nm);
 			}
     break;
 case 82:
-#line 879 "conf-parse.y"
+#line 903 "conf-parse.y"
 {}
     break;
 case 83:
-#line 880 "conf-parse.y"
+#line 904 "conf-parse.y"
 {}
     break;
 case 84:
-#line 884 "conf-parse.y"
+#line 908 "conf-parse.y"
 {
 				if (strlen(yyvsp[-1].nm)>255) {
 					yyerror("name too long.");
@@ -2108,13 +2132,13 @@ case 84:
 			}
     break;
 case 85:
-#line 896 "conf-parse.y"
+#line 920 "conf-parse.y"
 {
 				c_ttl=yyvsp[-1].num;
 			}
     break;
 case 86:
-#line 900 "conf-parse.y"
+#line 924 "conf-parse.y"
 {
 				if (!c_owner[0]) {
 					yyerror("you must specify owner before file= in source records.");
@@ -2131,7 +2155,7 @@ case 86:
 			}
     break;
 case 87:
-#line 915 "conf-parse.y"
+#line 939 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					c_aliases=(yyvsp[-1].num==C_ON);
@@ -2142,7 +2166,7 @@ case 87:
 			}
     break;
 case 88:
-#line 924 "conf-parse.y"
+#line 948 "conf-parse.y"
 {
 				if (yyvsp[-1].num==C_ON || yyvsp[-1].num==C_OFF) {
 					c_flags=(yyvsp[-1].num==C_ON)?DF_LOCAL:0;
@@ -2153,15 +2177,15 @@ case 88:
 			}
     break;
 case 89:
-#line 935 "conf-parse.y"
+#line 959 "conf-parse.y"
 {}
     break;
 case 90:
-#line 936 "conf-parse.y"
+#line 960 "conf-parse.y"
 {}
     break;
 case 91:
-#line 941 "conf-parse.y"
+#line 965 "conf-parse.y"
 {
 				if (strlen(yyvsp[-1].nm)>255) {
 					yyerror("name too long.");
@@ -2172,13 +2196,13 @@ case 91:
 			}
     break;
 case 92:
-#line 950 "conf-parse.y"
+#line 974 "conf-parse.y"
 {
 				c_ttl=yyvsp[-1].num;
 			}
     break;
 case 93:
-#line 954 "conf-parse.y"
+#line 978 "conf-parse.y"
 {
 				if (htp) {
 					yyerror("You may not specify types=domain together with other types!");
@@ -2189,29 +2213,29 @@ case 93:
 					YYERROR;
 				}
 				hdtp=1;
-				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl,0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				add_cache(c_cent);
-				free_cent(c_cent,0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 			}
     break;
 case 94:
-#line 972 "conf-parse.y"
+#line 996 "conf-parse.y"
 {
 			}
     break;
 case 95:
-#line 976 "conf-parse.y"
+#line 1000 "conf-parse.y"
 {}
     break;
 case 96:
-#line 977 "conf-parse.y"
+#line 1001 "conf-parse.y"
 {}
     break;
 case 97:
-#line 981 "conf-parse.y"
+#line 1005 "conf-parse.y"
 {
 				if (hdtp) {
 					yyerror("You may not specify types=domain together with other types!.");
@@ -2222,17 +2246,17 @@ case 97:
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0, 0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				if (!add_cent_rrset(&c_cent,yyvsp[0].num,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0, 0)) {
-					free_cent(c_cent,0);
+				if (!add_cent_rrset(&c_cent,yyvsp[0].num,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0  DBG0)) {
+					free_cent(&c_cent  DBG0);
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
-				add_cache(c_cent);
-				free_cent(c_cent, 0);
+				add_cache(&c_cent);
+				free_cent(&c_cent  DBG0);
 				
 			}
     break;
@@ -2469,7 +2493,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1007 "conf-parse.y"
+#line 1031 "conf-parse.y"
 
 
 int yyerror (char *s)
@@ -2490,7 +2514,7 @@ int yyerror (char *s)
  */
 /* void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
+  if (!(servers=DA_GROW1(servers))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -2506,7 +2530,7 @@ static char *addr_add(servparm_t *sp, char *ipstr)
     return "bad ip in ip= option.";
   }
 
-  if (!((sp->atup_a || (sp->atup_a=DA_CREATE(atup_t))) && (sp->atup_a=DA_GROW1(sp->atup_a)))) {
+  if (!(sp->atup_a=DA_GROW1(sp->atup_a))) {
     return "out of memory!";
   }
   at=&DA_LAST(sp->atup_a);
@@ -2520,7 +2544,7 @@ static char *slist_add(servparm_t *sp, char *nm, int tp)
 {
 	slist_t *sl;
 					
-	if (!((sp->alist || (sp->alist=DA_CREATE(slist_t))) && (sp->alist=DA_GROW1(sp->alist)))) {
+	if (!(sp->alist=DA_GROW1(sp->alist))) {
 	  return "out of memory!";
 	}
 	sl=&DA_LAST(sp->alist);

@@ -211,10 +211,7 @@ int main(int argc, char *argv[])
 	char *errmsg=NULL;
 	char msgbuf[256];
 	long ttl;
-	struct in_addr ina4;
-#ifdef ENABLE_IPV6
-	struct in6_addr ina6;
-#endif
+
 	while ((i=getopt(argc, argv, "c:")) != -1) {
 		switch(i) {
 		case 'c':
@@ -249,7 +246,7 @@ int main(int argc, char *argv[])
 		exit(0);
 	} else if (strcmp(argv[0],"list-rrtypes")==0) {
 		printf("Available RR types for the neg command:\n");
-		for (i=0;i<T_MAX;i++)
+		for (i=0;i<T_NUM;i++)
 			printf("%s\n",rr_info[i].name);
 		exit(0);
 	} else {
@@ -280,7 +277,7 @@ int main(int argc, char *argv[])
 			send_string(pf,argv[1]);
 			send_short(pf,match_cmd(argv[2],server_cmds));
 			if(argc<4)
-			  send_short(pf,0);
+			  send_short(pf,~0);
 			else
 			  send_string(pf,argv[3]);
 			goto read_retval;
@@ -311,7 +308,7 @@ int main(int argc, char *argv[])
 			}
 			send_long(pf,ttl);
 			cmd2=0;
-			if (acnt<argc && (strcmp(argv[acnt], "noauth") || argc==6)) {
+			if (acnt<argc && (argc==6 || strcmp(argv[acnt], "noauth"))) {
 				cmd2=match_cmd(argv[acnt],onoff_cmds);
 				acnt++;
 			}
@@ -357,24 +354,32 @@ int main(int argc, char *argv[])
 
 			switch (cmd) {
 			case T_A:
-				if (!inet_aton(argv[2],&ina4)) {
-					fprintf(stderr,"Bad IP for add a option\n");
-					exit(2);
-				}
-				if(write(pf,&ina4,sizeof(ina4))!=sizeof(ina4)) {
-				  perror("Error: could not send IP");
-				  exit(2);
+				{
+					struct in_addr ina4;
+
+					if (!inet_aton(argv[2],&ina4)) {
+						fprintf(stderr,"Bad IP for add a option\n");
+						exit(2);
+					}
+					if(write(pf,&ina4,sizeof(ina4))!=sizeof(ina4)) {
+					  perror("Error: could not send IP");
+					  exit(2);
+					}
 				}
 				break;
 #ifdef ENABLE_IPV6
 			case T_AAAA:
-				if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
-					fprintf(stderr,"Bad IP (v6) for add aaaa option\n");
-					exit(2);
-				}
-				if(write(pf,&ina6,sizeof(ina6))!=sizeof(ina6)) {
-				  perror("Error: could not send IP (v6)");
-				  exit(2);
+				{
+					struct in6_addr ina6;
+
+					if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
+						fprintf(stderr,"Bad IP (v6) for add aaaa option\n");
+						exit(2);
+					}
+					if(write(pf,&ina6,sizeof(ina6))!=sizeof(ina6)) {
+					  perror("Error: could not send IP (v6)");
+					  exit(2);
+					}
 				}
 				break;
 #endif
@@ -425,7 +430,7 @@ int main(int argc, char *argv[])
 			}
 			send_short(pf,tp);
 			send_long(pf,ttl);
-			break;
+			/* fall through */
 
 		read_retval:
 			if((rv=read_short(pf))) {

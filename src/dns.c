@@ -143,15 +143,15 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
 	rhn2str(ms,sbuf+1); /* Change to dotted notation since processing starts from behind, */
 	rhn2str(md,dbuf+1); /* and so it's much easier that way. */
 	/* If this is the root domain, we have two dots. bad. so this special case test: */
-	if (strcmp((char *)&sbuf[1],".")==0) {
+	if (strcmp(&sbuf[1],".")==0) {
 		*o=0;
 		rest[0]='\0';
 		return 0;
 	}
-	if (strlen((char *)sbuf)<2 || strlen((char *)dbuf)<2)
+	slen=strlen(sbuf)-2;
+	dlen=strlen(dbuf)-2;
+	if (sbuf<0 || dlen<0)
 		return 0;
-	slen=strlen((char *)sbuf)-2;
-	dlen=strlen((char *)dbuf)-2;
 	nc=cnt=0;
 	offs=-1;
 	while (cnt<=slen && cnt<=dlen) {
@@ -214,7 +214,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 			out[rl]=192|((coffs&0x3f00)>>8);
 			out[rl+1]=coffs&0xff;
 			rl+=2;
-			add=strlen((char *)brest)!=0;
+			add=strlen(brest)!=0;
 		} else
 			rl=rhncpy(out,in);
 	} else
@@ -222,10 +222,6 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 
 	/* part 2: addition to the cache structure */
 	if (add) {
-		if (!*cb) {
-			if (!(*cb=DA_CREATE(compel_t)))
-			    return 0;
-		}
 		if (!(*cb=DA_GROW1(*cb)))
 			return 0;
 		DA_LAST(*cb).index=offs;
@@ -250,73 +246,69 @@ typedef	struct {
 static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
 {
 	dns_cent_t ce;
-	unsigned char b2[256],rhn[256];
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-	unsigned char b4[7];
-	int i;
-#endif
 
-	if (!init_cent(&ce, pn, flags, time(NULL), 0, 0))
+	if (!init_cent(&ce, pn, flags, time(NULL), 0  DBG0))
 		return 0;
 #ifdef ENABLE_IPV4
 	if (tp==T_A) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp,0)) {
- 			free_cent(ce,0);
-			return 0;
-		}
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp  DBG0))
+			goto free_cent_return0;
 	}
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 	if (tp==T_AAAA) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp,0)) {
- 			free_cent(ce,0);
-			return 0;
-		}
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp  DBG0))
+			goto free_cent_return0;
 	}
 #endif
-	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS,0)) {
-		free_cent(ce,0);
-		return 0;
-	}
-	add_cache(ce);
-	free_cent(ce,0);
+	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS  DBG0))
+		goto free_cent_return0;
+	add_cache(&ce);
+	free_cent(&ce  DBG0);
 	if (reverse) {
+		unsigned char b2[256],rhn[256];
 #ifdef ENABLE_IPV4
-		if (tp==T_A) 
+		if (tp==T_A) {
 # if TARGET==TARGET_BSD
-			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xffl,(ntohl(a->ipv4.s_addr)>>8)&0xffl,
+			snprintf(b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xffl,(ntohl(a->ipv4.s_addr)>>8)&0xffl,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xffl, (ntohl(a->ipv4.s_addr)>>24)&0xffl);
 # else
-			snprintf((char *)b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
+			snprintf(b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
 # endif
+		}
+		else
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 		if (tp==T_AAAA) {
+			unsigned char b4[7];
+			int i;
 			b2[0]='\0';
 			for (i=15;i>=0;i--) {
-				snprintf((char *)b4, sizeof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
-				strncat((char *)b2,(char *)b4,sizeof(b2)-strlen((char *)b2)-1);
+				snprintf(b4, sizeof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
+				strncat(b2,b4,sizeof(b2)-strlen(b2)-1);
 			}
-			strncat((char *)b2,"ip6.int.",sizeof(b2)-strlen((char *)b2)-1);
+			strncat(b2,"ip6.int.",sizeof(b2)-strlen(b2)-1);
 		}
+		else
 #endif
+			return -1;
 		if (!str2rhn(b2,rhn))
 			return -1;
-		if (!init_cent(&ce, b2, flags, time(NULL), 0, 0))
+		if (!init_cent(&ce, b2, flags, time(NULL), 0  DBG0))
 			return 0;
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR,0)) {
- 			free_cent(ce,0);
-			return 0;
-		}
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS,0)) {
- 			free_cent(ce,0);
-			return 0;
-		}
-		add_cache(ce);
-		free_cent(ce,0);
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR  DBG0))
+			goto free_cent_return0;
+		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS  DBG0))
+			goto free_cent_return0;
+		add_cache(&ce);
+		free_cent(&ce  DBG0);
 	}
 	return 1;
+
+ free_cent_return0:
+	free_cent(&ce  DBG0);
+	return 0;
 }
 
 /*
@@ -326,68 +318,65 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
  */
 int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr)
 {
+	int rv=0;
 	FILE *f;
-	unsigned char buf[1025];
-	unsigned char b2[257],b3[256];
-	unsigned char *p,*pn,*pi,lastc;
-	struct in_addr ina4;
-	int tp;
-	int sz;
-	pdnsd_ca a;
+	char *buf;
+	size_t buflen=512;
 
-	buf[1023]='\0';
 	if (!(f=fopen(fn,"r"))) {
 		if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;
 		return 0;
 	}
-	while (!feof(f)) {
-		if (fgets((char *)buf,sizeof(buf),f)==NULL) {
-			if (feof(f))
-				break;
-			if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;
-			fclose(f);
-			return 0;
-		}
-		buf[sizeof(buf)-1]='\0';
+	buf=malloc(buflen);
+	if(!buf) {
+		*errstr=NULL;
+		goto fclose_return;
+	}
+	while(getline(&buf,&buflen,f)>=0) {
+		int last=0,len;
+		unsigned char b2[256],b3[256];
+		unsigned char *p,*pn,*pi;
+		int tp,sz;
+		pdnsd_ca a;
+
+		p=strchr(buf,'#');
+		if(p) *p=0;
 		p=buf;
-		while (*p != '\0') {
-			if (*p=='#') {
-				*p='\0';
-				break;
-			}
-			p++;
+		for(;;) {
+			if(!*p) goto nextline;
+			if(!isspace(*p)) break;
+			++p;
 		}
-		pi=buf;
-		while (*pi==' ' || *pi=='\t') pi++;
-		if (*pi=='\0')
-			continue;
-		pn=pi;
-		while (*pn=='.' || *pn==':' || isxdigit(*pn)) pn++;  /* this includes IPv6 (':') */
-		if (*pn=='\0')
-			continue;
-		*pn='\0';
-		pn++;
-		while (*pn==' ' || *pn=='\t') pn++;
-		if (*pn=='\0')
-			continue;
-		p=pn;
-		while (isdchar(*p) || *p=='.') p++;
-		lastc=*p;
-		*p='\0';
-		memset(b2,'\0',257);
-		strncpy((char *)b2,(char *)pn,255);
-		if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<255) {
-			b2[strlen((char *)b2)]='.';
+		pi=p;
+		do {
+			if(!*++p) goto nextline;
+		} while(!isspace(*p));
+		*p=0;
+		do {
+			if(!*++p) goto nextline;
+		} while (isspace(*p));
+		pn=p;
+		for(;;) {
+			++p;
+			if(!*p) {last=1; break;}
+			if(isspace(*p)) {*p=0; break;}
+		}
+		len=p-pn;
+		if(len>255) continue;
+		strcpy(b2,pn);
+		if(b2[len-1]!='.') {
+			b2[len]='.';
+			if(++len>255) continue;
+			b2[len]=0;
 		}
 		if (!str2rhn(b2,b3))
 			continue;
-		if (inet_aton((char *)pi,&ina4)) {
-			a.ipv4=ina4;
+		if (inet_aton(pi,&a.ipv4)) {
 			tp=T_A;
 			sz=sizeof(struct in_addr);
 		} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
-			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)==1) {
+			if (inet_pton(AF_INET6,pi,&a.ipv6)>0) {
 				tp=T_AAAA;
 				sz=sizeof(struct in6_addr);
 			} else
@@ -396,39 +385,52 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 			continue;
 #endif
 		}
-		switch (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1)) {
-		case 0:
-			*errstr= NULL;
-			return 0;
-		case -1:
-			continue;
-		}
-		while (aliases) {
-			if (lastc=='\0')
-				break;
-			pn=p+1;
-			while (*pn==' ' || *pn=='\t') pn++;
-			if (*pn=='\0')
-				break;
-			p=pn;
-			while (isdchar(*p) || *p=='.') p++;
-			lastc=*p;
-			*p='\0';
-			memset(b2,'\0',257);
-			strncpy((char *)b2,(char *)pn,255);
-			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<255) {
-				b2[strlen((char *)b2)]='.';
-			}
-			if (!str2rhn(b2,b3))
-				break;
-			if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {
+		{
+			int res=add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1);
+			if(res==0) {
 				*errstr= NULL;
-				return 0;
+				goto cleanup_return;
+			}
+			else if(res<0)
+				continue;
+		}
+		if(aliases) {
+			while(!last) {
+				do {
+					if(!*++p) goto nextline;
+				} while (isspace(*p));
+				pn=p;
+				for(;;) {
+					++p;
+					if(!*p) {last=1; break;}
+					if(isspace(*p)) {*p=0; break;}
+				}
+				len=p-pn;
+				if(len>255) break;
+				strcpy(b2,pn);
+				if(b2[len-1]!='.') {
+					b2[len]='.';
+					if(++len>255) break;
+					b2[len]=0;
+				}
+				if (!str2rhn(b2,b3))
+					break;
+				if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {
+					*errstr= NULL;
+					goto cleanup_return;
+				}
 			}
 		}
+	nextline:;
 	}
+	if (feof(f))
+		rv=1;
+	else if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;
+ cleanup_return:
+	free(buf);
+ fclose_return:
 	fclose(f);
-	return 1;
+	return rv;
 }
 
 

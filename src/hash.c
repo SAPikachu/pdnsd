@@ -48,8 +48,15 @@ static char rcsid[]="$Id: hash.c,v 1.12 2001/06/02 23:08:13 tmm Exp $";
  * Some measurements seem to indicate that the hash algorithm is doing reasonable well.
  */
 
-unsigned char *posval=(unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_";
-unsigned char values[256];
+static const unsigned char *posval=(unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_";
+static unsigned char values[256];
+
+/*
+ * The hash structures are the same for an ip and an dns hash, so we use
+ * an additional element in debug mode to report misuse.
+ */
+static dns_hash_ent_t *hash_buckets[HASH_NUM_BUCKETS];
+
 
 /*
  * Make the conversion table for the dns hashes (character-to-number mapping).
@@ -58,8 +65,8 @@ unsigned char values[256];
 void mk_hash_ctable ()
 {
 	unsigned int i;
-	memset(values,strlen((char *)posval),sizeof((char *)values));
-	for (i=0;i<strlen((char *)posval);i++) {
+	memset(values,strlen(posval),sizeof(values));
+	for (i=0;i<strlen(posval);i++) {
 		values[tolower(posval[i])]=i;
 		values[toupper(posval[i])]=i;
 	}
@@ -71,8 +78,9 @@ void mk_hash_ctable ()
 static long dns_shash(unsigned char *str)
 {
 	unsigned long acc,i;
+	size_t slen= strlen(str);
 	acc=0;
-	for (i=0;i<strlen((char *)str);i++) {
+	for (i=0;i<slen;i++) {
 		acc+=values[str[i]]<<(i%(HASH_SZ-5));
 	}
 	acc=(acc&HASH_BITMASK)+((acc&(~HASH_BITMASK))>>HASH_SZ);
@@ -89,8 +97,9 @@ static long dns_shash(unsigned char *str)
 static unsigned long dns_rhash(unsigned char *str)
 {
 	unsigned long acc,i;
+	size_t slen=strlen(str);
 	acc=0;
-	for (i=0;i<strlen((char *)str);i++) {
+	for (i=0;i<slen;i++) {
 		acc+=values[str[i]]<<(i%25);
 	}
 #ifdef DEBUG_HASH
@@ -102,54 +111,51 @@ static unsigned long dns_rhash(unsigned char *str)
 /*
  * Initialize hash to hold a dns hash table
  */
-void mk_dns_hash(dns_hash_t *hash)
+void mk_dns_hash()
 {
 	int i;
-	for(i=0;i<HASH_NUM_BUCKETS;i++) 
-		hash->buckets[i]=NULL;
+	for(i=0;i<HASH_NUM_BUCKETS;i++)
+		hash_buckets[i]=NULL;
 }
 
 /*
  * Add an entry to the hash. key is your key, data will be returned
  * by dns_lookup
  */
-void add_dns_hash(dns_hash_t *hash,unsigned char *key, dns_cent_t *data) 
+void add_dns_hash(unsigned char *key, dns_cent_t *data) 
 {
 	int idx=dns_shash(key);
 	dns_hash_ent_t *he;
-	he=calloc(1,sizeof(dns_hash_ent_t));
+	he=malloc(sizeof(dns_hash_ent_t));
 	if (!he) {
 		log_error("Out of memory.");
 		pdnsd_exit();
 	}
-	he->next=hash->buckets[idx];
+	he->next=hash_buckets[idx];
 	he->rhash=dns_rhash(key);
 	he->data=data;
-	hash->buckets[idx]=he;
+	hash_buckets[idx]=he;
 }
 
 /*
  * Delete the first entry indexed by key from the hash. Returns the data field or NULL.
  * Since two cents are not allowed to be for the same host name, there will be only one.
  */
-dns_cent_t *del_dns_hash(dns_hash_t *hash, unsigned char *key) 
+dns_cent_t *del_dns_hash(unsigned char *key) 
 {
 	int idx=dns_shash(key);
 	unsigned long rh=dns_rhash(key);
-	dns_hash_ent_t **he,*hen;
+	dns_hash_ent_t **hep,*he;
 	dns_cent_t *data;
-	he=&hash->buckets[idx];
-	while (*he) {
-		if ((*he)->rhash==rh) {
-			if (stricomp((char *)key,(char *)(*he)->data->qname)) {
-				hen=*he;
-				*he=(*he)->next;
-				data=hen->data;
-				free(hen);
-				return data;
-			}
+	hep=&hash_buckets[idx];
+	while ((he= *hep)) {
+		if (he->rhash==rh && stricomp(key,he->data->qname)) {
+			*hep=he->next;
+			data=he->data;
+			free(he);
+			return data;
 		}
-		he=(dns_hash_ent_t **)&(*he)->next;
+		hep=&he->next;
 	}
 	return NULL;   /* not found */
 }
@@ -158,18 +164,17 @@ dns_cent_t *del_dns_hash(dns_hash_t *hash, unsigned char *key)
  * Lookup in the hash table for key. If it is found, return the data pointer as given by
  * add_dns_hash. If no entry is found, return 0.
  */
-dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key)
+dns_cent_t *dns_lookup(unsigned char *key)
 {
 	int idx=dns_shash(key);
 	unsigned long rh=dns_rhash(key);
 	dns_hash_ent_t *he;
-	he=hash->buckets[idx];
+	he=hash_buckets[idx];
 	while (he) {
-		if ((he)->rhash==rh) {
-			if (stricomp((char *)key,(char *)he->data->qname))
-				return he->data;
-		}
-		he=(dns_hash_ent_t *)he->next;
+		if (he->rhash==rh && stricomp(key,he->data->qname))
+			return he->data;
+
+		he=he->next;
 	}
 	return NULL;   /* not found */
 }
@@ -177,12 +182,12 @@ dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key)
 /*
  * Delete the whole hash table, freeing all memory
  */
-void free_dns_hash(dns_hash_t *hash)
+void free_dns_hash()
 {
 	int i;
 	dns_hash_ent_t *he,*hen;
 	for (i=0;i<HASH_NUM_BUCKETS;i++) {
-		he=hash->buckets[i];
+		he=hash_buckets[i];
 		while (he) {
 			hen=he->next;
 			free(he);
@@ -198,45 +203,50 @@ void free_dns_hash(dns_hash_t *hash)
  * fetch_next returns the data field of the element after the element that was returned by the last
  * call with the same position argument (or NULL if there is none)
  *
- * Note that these are designed so that you may actually delete the elementes you retrieved from the hash.
+ * Note that these are designed so that you may actually delete the elements you retrieved from the hash.
  */
-dns_cent_t *fetch_first(dns_hash_t *hash, dns_hash_pos_t *pos)
+dns_cent_t *fetch_first(dns_hash_pos_t *pos)
 {
-	for (pos->bucket=0;pos->bucket<HASH_NUM_BUCKETS;pos->bucket++) {
-		if (hash->buckets[pos->bucket]) {
-			pos->ent=hash->buckets[pos->bucket]->next;
-			return hash->buckets[pos->bucket]->data;
+	int i;
+	for (i=0;i<HASH_NUM_BUCKETS;i++) {
+		dns_hash_ent_t *he=hash_buckets[i];
+		if (he) {
+			pos->bucket=i;
+			pos->ent=he->next;
+			return he->data;
 		}
 	}
 	return NULL;
 }
 
-dns_cent_t *fetch_next(dns_hash_t *hash, dns_hash_pos_t *pos)
+dns_cent_t *fetch_next(dns_hash_pos_t *pos)
 {
-	dns_hash_ent_t *he;
-	if (pos->ent) {
-		he=pos->ent;
-		pos->ent=pos->ent->next;
+	dns_hash_ent_t *he=pos->ent;
+	int i;
+	if (he) {
+		pos->ent=he->next;
 		return he->data;
 	}
-	pos->bucket++;
-	for (;pos->bucket<HASH_NUM_BUCKETS;pos->bucket++) {
-		if (hash->buckets[pos->bucket]) {
-			pos->ent=hash->buckets[pos->bucket]->next;
-			return hash->buckets[pos->bucket]->data;
+	
+	for (i=pos->bucket+1;i<HASH_NUM_BUCKETS;i++) {
+		he=hash_buckets[i];
+		if (he) {
+			pos->bucket=i;
+			pos->ent=he->next;
+			return he->data;
 		}
 	}
 	return NULL;
 }
 
 #ifdef DBGHASH
-void dumphash(dns_hash_t *hash)
+void dumphash()
 {
 	int i, j;
 	dns_hash_ent_t *he;
 	
 	for (i=0; i<HASH_NUM_BUCKETS; i++) {
-		for (j=0, he=hash->buckets[i]; he; he=he->next, j++) ;
+		for (j=0, he=hash_buckets[i]; he; he=he->next, j++) ;
 		DEBUG_MSG("bucket %d: %d entries\n", i, j);
 	}
 }

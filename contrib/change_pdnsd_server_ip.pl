@@ -24,8 +24,8 @@ if(@ARGV) {
 }
 
 unless($label =~ /^\".*\"$/) {$label="\"$label\""}
-unless($dns_str =~ /^\".*\"$/) {$dns_str="\"$dns_str\""}
-unless($dns_str =~ /\"\s*\,\s*\"/) {$dns_str =~ s/\,/","/g}
+unless($dns_str =~ /^\".*\"$/) {$dns_str =~ s/^[\s,]*/\"/; $dns_str =~ s/[\s,]*$/\"/}
+unless($dns_str =~ /\"\s*\,\s*\"/) {$dns_str =~ s/[\s,]+/","/g}
 
 my @lines=();
 my $found_section=0;
@@ -86,9 +86,12 @@ while(<CONFFILE>) {
 		}
 	    }
 	    if(!$found_ip) {
-		warn "Server section labeled $label found with no ip specified.\n";
-		close(CONFFILE);
-		exit 2;
+		unless($lines[$sect_end] =~ s/\}\s*$/ ip=$dns_str;\n$&/) {
+		    warn "Can't add ip specification to server section labeled $label.\n";
+		    close(CONFFILE);
+		    exit 2;
+		}
+		$changed=1;
 	    }
         }
         else {

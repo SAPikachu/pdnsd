@@ -83,7 +83,7 @@ typedef struct {
 } dns_file_t;
 
 /*
- * This has two modes: Normally, we have rrest, cent and tp filled in;
+ * This has two modes: Normally, we have rrset, cent and tp filled in;
  * for negatively cached cents, we have rrset set to NULL and tp set to -1
  */
 typedef struct rr_lent_s {
@@ -124,9 +124,23 @@ typedef struct rr_lent_s {
 
 extern volatile int use_cache_lock;
 
+
+#ifdef ALLOC_DEBUG
+#define DBGPARAM ,int dbg
+#define DBGARG ,dbg
+#define DBG0 ,0
+#define DBG1 ,1
+#else
+#define DBGPARAM
+#define DBGARG
+#define DBG0
+#define DBG1
+#endif
+
+
 void init_cache(void);
 
-/* Initialize the cache. Call only once. */
+/* Initialize the cache lock. Call only once. */
 inline static void init_cache_lock()
 {
 	use_cache_lock=1;
@@ -141,7 +155,7 @@ void report_cache_stat(int f);
 /*
  *  add_cache expects the dns_cent_t to be filled.
  */
-void add_cache(dns_cent_t ent);
+void add_cache(dns_cent_t *cent);
 void del_cache(unsigned char *name);
 void invalidate_record(unsigned char *name);
 int have_cached(unsigned char *name);
@@ -149,18 +163,17 @@ dns_cent_t *lookup_cache(unsigned char *name);
 int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
 
 int mk_flag_val(servparm_t *server);
-int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl, int dbg);
-int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg);
-int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp, int dbg);
-void free_cent(dns_cent_t cent, int dbg);
+int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl  DBGPARAM);
+int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial  DBGPARAM);
+int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp  DBGPARAM);
+void free_cent(dns_cent_t *cent  DBGPARAM);
 
 /* Because this is empty by now, it is defined as an empty macro to save overhead.*/
 /*void free_rr(rr_bucket_t cent);*/
-#define free_rr(x, dbg)
+#define free_rr(x)
 
-dns_cent_t *copy_cent(dns_cent_t *cent, int dbg);
-rr_bucket_t *copy_rr(rr_bucket_t *rr, int dbg);
-rr_bucket_t *create_rr(int dlen, void *data, int dbg);
+dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM);
+rr_bucket_t *create_rr(int dlen, void *data  DBGPARAM);
 
 unsigned long get_serial(void);
 

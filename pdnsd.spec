@@ -24,7 +24,7 @@
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
 Version: 1.1.8b1
-Release: par6
+Release: par7
 License: GPL
 Group:  Daemons
 Source: %{name}-%{version}-%{release}.tar.gz
@@ -55,6 +55,9 @@ and the file README.par in %{_docdir}/%{name}-%{version}
 %{!?_with_isdn:It's possible to rebuild the source RPM with isdn support using the rpmbuild option:}
 %{!?_with_isdn:  --with isdn}
 %{?_with_isdn:This package was built with isdn support enabled.}
+%{!?_with_ipv6:It's possible to rebuild the source RPM with ipv6 support using the rpmbuild option:}
+%{!?_with_ipv6:  --with ipv6}
+%{?_with_ipv6:This package was built with ipv6 support.}
 %{?_without_poll:This package was built with the select(2) function instead of poll(2).}
 %{?_with_underscores:This package was built with underscores enabled.}
 
@@ -70,7 +73,9 @@ CFLAGS="${CFLAGS:-%{optflags} -Wall}" ./configure \
 	%{?_with_isdn:--enable-isdn} \
 	%{?_without_poll:--disable-poll} \
 	%{?_with_nptl:--with-thread-lib=nptl} \
-	%{?_with_underscores:--enable-underscores}
+	%{?_with_underscores:--enable-underscores} \
+	%{?_with_ipv6:--enable-ipv6} \
+	%{?_with_tcpqueries:--enable-tcp-queries}
 
 make
 
@@ -80,6 +85,7 @@ make
 id -u %{run_as_user} > /dev/null 2>&1 ||
 /usr/sbin/useradd -c "Proxy DNS daemon" -u %{run_as_uid} \
 	-s /sbin/nologin -r -d "%{cachedir}" %{run_as_user} || {
+  set +x
   echo "Cannot create user \"%{run_as_user}\" with uid=%{run_as_uid}"
   echo "Please select another numerical uid and rebuild with --define \"run_as_uid uid\""
   echo "or create a user named \"%{run_as_user}\" by hand and try again."

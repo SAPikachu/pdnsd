@@ -1,23 +1,25 @@
-	  pdnsd maintenance version 1.1.8b1-par6 by Paul Rombouts
+	  pdnsd maintenance version 1.1.8b1-par7 by Paul Rombouts
 	  =======================================================
 
 This file describes the version of pdnsd that I maintain personally and am
-making available so other people can enjoy the latest features and fixes.
-Thomas Moestl no longer maintains pdnsd himself, so I am effectively the new
-maintainer. Present version is 1.1.8b1-par6 (among other things in this version
-some of the documentation has been revised, see the ChangeLog for details).
+making available so other people can enjoy the latest features and fixes. Thomas
+Moestl no longer maintains pdnsd himself, so I am effectively the new
+maintainer. Present version is 1.1.8b1-par7. In this release I have fixed some
+more bugs and I reworked some of the code for adding and removing entries from
+the cache in an effort to improve efficiency and stability.
+More details can be found in the ChangeLog.
 
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par6.tar.gz you
-must first apply my patch file pdnsd-1.1.8b1-par6.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par7.tar.gz you
+must first apply my patch file pdnsd-1.1.8b1-par7.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the the
 documentation. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par6.diff.gz | patch -p2 -N -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par7.diff.gz | patch -p2 -N -Z
 
 Note: because I have used GNU extensions you will need to compile with gcc and
 link with glibc. This will not be a problem with most Linux distributions.
@@ -63,7 +65,7 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   additional argument after "up|down|retest". This allows me to put something
   like this in my ifup-local script:
 
-  pdnsd-ctl server isp-label up $DNS1,$DNS2
+  pdnsd-ctl server isp-label up "$DNS1 $DNS2"
 
   This was quite tricky to implement because there might be pending queries
   while the addresses are being changed. It certainly was an interesting
@@ -76,6 +78,10 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   because most configuration options are identical for servers belonging to the
   same ISP. It also made the output of "pdnsd-ctl status" more compact. And it
   was necessary to enable a satisfactory implementation of the previous feature.
+  New in 1.1.8b1-par7: At the suggestion of Greg Norris server sections no
+  longer have to specify IP addresses. A server section without IP addresses
+  will remain inactive until it is assigned one more addresses at run-time with
+  pdnsd-ctl.
 
 - I've changed the implementation of dynamic arrays to make it slightly more
   efficient, and improve type safety. I also got rid of several arrays of fixed
@@ -127,9 +133,10 @@ treatment of underscores in domain names.
 
 In addition to the things I've listed above, I've made various little changes to
 fix minor bugs, improve efficiency or elegance, or simply to suit my my own
-coding style. These changes are too numerous to list here, but you can always
-find out about them by comparing the source of my version with Thomas' original
-code.
+coding style. These changes are too numerous to list here, but some of them are
+listed in the ChangeLog. Of course if you are really interested in the
+nitty-gritty you can always compare the source of my version with Thomas'
+original code.
 
 If you have any questions about the modifications I've made, you can send these
 to <p.a.rombouts@home.nl>. Questions about the original pdnsd version should
