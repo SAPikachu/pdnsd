@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.29 2000/11/15 17:27:02 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.30 2001/01/15 22:52:55 thomas Exp $";
 #endif
 
 /*
@@ -1146,6 +1146,7 @@ void *udp_answer_thread(void *data)
 int init_udp_socket()
 {
 	int sock;
+	int so=1;
 #ifdef ENABLE_IPV4
 	struct sockaddr_in sin4;
 #endif
@@ -1191,6 +1192,36 @@ int init_udp_socket()
 		sinl=sizeof(sin6);
 	}
 #endif
+
+#ifdef SRC_ADDR_DISC
+# if (TARGET==TARGET_BSD)
+	if (run_ipv4) {
+#endif
+		/* The following must be set on any case because it also applies for IPv4 packets sent to
+		 * ipv6 addresses. */
+# if  TARGET==TARGET_LINUX 
+		if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
+# else
+		if (setsockopt(sock,IPPROTO_IP,IP_RECVDSTADDR,&so,sizeof(so))!=0) {
+# endif
+			log_error("Could not set options on udp socket: %s",strerror(errno));
+			close(sock);
+			return -1;
+		}
+# if (TARGET==TARGET_BSD)
+	}
+#endif
+
+# ifdef ENABLE_IPV6
+	if (run_ipv6) {
+		if (setsockopt(sock,SOL_IPV6,IPV6_PKTINFO,&so,sizeof(so))!=0) {
+			log_error("Could not set options on udp socket: %s",strerror(errno));
+			close(sock);
+			return -1;
+		}
+	}
+# endif
+#endif
 	if (bind(sock,sin,sinl)!=0) {
 		log_error("Could bind to udp socket: %s",strerror(errno));
 		close(sock);
@@ -1222,7 +1253,6 @@ void *udp_server_thread(void *dummy)
 	struct iovec v;
 	struct cmsghdr *cmsg;
 	char ctrl[512];
-	int so=1;
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 	struct in_pktinfo *sip;
 #endif
@@ -1262,42 +1292,6 @@ void *udp_server_thread(void *dummy)
 	}
 #endif
 
-#if defined (SRC_ADDR_DISC)
-	/* The following must be set on any case because it also applies for IPv4 packets sent to
-	 * ipv6 addresses. */
-# if  TARGET==TARGET_LINUX 
-	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
-# else
-	if (setsockopt(sock,IPPROTO_IP,IP_RECVDSTADDR,&so,sizeof(so))!=0) {
-# endif
-		if (da_udp_errs<UDP_MAX_ERRS) {
-			da_udp_errs++;
-			log_error("Could not set options on udp socket: %s",strerror(errno));
-		}
-		close(sock);
-		udp_socket=-1;
-		udp_up=0;
-		if (!tcp_up)
-			pdnsd_exit();
-		return NULL;
-	}
-# ifdef ENABLE_IPV6
-	if (run_ipv6) {
-		if (setsockopt(sock,SOL_IPV6,IPV6_PKTINFO,&so,sizeof(so))!=0) {
-			if (da_udp_errs<UDP_MAX_ERRS) {
-				da_udp_errs++;
-				log_error("Could not set options on udp socket: %s",strerror(errno));
-			}
-			close(sock);
-			udp_socket=-1;
-			udp_up=0;
-			if (!tcp_up)
-				pdnsd_exit();
-			return NULL;
-		}
-	}
-# endif
-#endif
 	while (1) {
 		if (!(buf=(udp_buf_t *)calloc(sizeof(udp_buf_t),1))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {

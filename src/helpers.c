@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.10 2000/11/28 22:05:50 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.11 2001/01/15 22:52:55 thomas Exp $";
 #endif
 
 /*
@@ -261,23 +261,41 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 
 #endif
 
+/* Appropriately set our random device */
+#ifdef R_DEFAULT
+# if TARGET == TARGET_BSD
+#  define R_ARC4RANDOM 1
+# else
+#  define R_RANDOM 1
+# endif
+#endif
+
 #ifdef RANDOM_DEVICE
 static FILE *rand_file;
+#endif
+
+#if defined(RANDOM_DEVICE) || defined(R_RANDOM)
+void init_crandom()
+{
+	struct timeval tv;
+	struct timezone tz;
+
+	gettimeofday(&tv,&tz);
+	srandom(tv.tv_sec^tv.tv_usec); /* not as guessable as time() */
+}
 #endif
 
 /* initialize the RNG */
 void init_rng()
 {
-	struct timeval tv;
-	struct timezone tz;
 #ifdef RANDOM_DEVICE
 	if (!(rand_file=fopen(RANDOM_DEVICE,"r"))) {
 		log_warn("Could not open %s. Will use the internal random() function, which might be less secure.");
-#endif
-		gettimeofday(&tv,&tz);
-		srandom(tv.tv_sec^tv.tv_usec); /* not as guessable as time() */
-#ifdef RANDOM_DEVICE
+		init_crandom();
 	}
+#endif
+#ifdef R_RANDOM
+	init_crandom();
 #endif
 }
 
@@ -298,11 +316,14 @@ unsigned short get_rand16()
 	if (rand_file) {
 		fread(&rv,sizeof(unsigned short),1, rand_file);
 		return rv;
-	} else {
-#endif
+	} else
 		return random()&0xffff;
-#ifdef RANDOM_DEVICE
-	}
+#endif
+#ifdef R_RANDOM
+	return random()&0xffff;
+#endif
+#ifdef R_ARC4RANDOM
+	return arc4random()&0xffff;
 #endif
 }
 

@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.11 2000/11/01 23:09:34 thomas Exp $ */
+/* $Id: acconfig.h,v 1.12 2001/01/15 22:52:51 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -111,6 +111,9 @@
  * discouraged, as reading from this device blocks when new random bits
  * need to be gathered. */
 #undef RANDOM_DEVICE
+#undef R_DEFAULT
+#undef R_RANDOM
+#undef R_ARC4RANDOM
 /*#define RANDOM_DEVICE "/dev/urandom"*/
 
 /* Designate which database manager to use for cacheing.
