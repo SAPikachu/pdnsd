@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.4 2000/08/08 17:53:15 thomas Exp $ */
+/* $Id: acconfig.h,v 1.5 2000/08/26 11:32:18 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -161,6 +161,7 @@
  * (previously done by a-conf.sh/a-conf.h) */
  
 #undef NO_IN_PKTINFO
+#define SOCKET_LOCKING
 
 /* -- End of User-Configureable Options ------------------------------------- */
 

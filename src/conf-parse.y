@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.6 2000/08/13 13:53:16 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.7 2000/08/26 11:33:34 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -458,8 +458,8 @@ serv_el:	IP '=' STRING ';'
 			}
 		| PRESET '=' CONST ';'
 			{
-				if ($3==C_ON || $3==C_ON) {
-					server.is_up=($3==C_OFF);
+				if ($3==C_ON || $3==C_OFF) {
+					server.is_up=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in preset= option.");
 					YYERROR;

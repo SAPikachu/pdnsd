@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.4 2000/08/20 20:43:22 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.5 2000/08/26 11:33:34 thomas Exp $";
 #endif
 
 /*
@@ -67,6 +67,10 @@ int da_mem_errs=0;
 int da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
+
+#ifdef SOCKET_LOCKING
+pthread_mutex_t s_lock;
+#endif
 
 int tcp_up=1;
 int udp_up=1;
@@ -840,7 +844,7 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 	dns_query_t *q;
 	dns_hdr_t *resp=(dns_hdr_t *)calloc(sizeof(dns_hdr_t),1);
 	dns_hdr_t *ans;
-
+	
 
 	DEBUG_MSG1("Received query.\n");
 	if (!resp) {
@@ -932,6 +936,7 @@ void *udp_answer_thread(void *data)
 	char ctrl[512];
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
+	int tmp;
 #ifdef ENABLE_IPV6
 	char buf[ADDRSTR_MAXLEN];
 #endif
@@ -1016,13 +1021,24 @@ void *udp_answer_thread(void *data)
 # endif
 	}
 #endif
-
+	
+	/* Lock the socket, and clear the error flag before dropping the lock */
+#ifdef SOCKET_LOCKING
+	pthread_mutex_lock(&s_lock);
+#endif
 	if (sendmsg(((udp_buf_t *)data)->sock,&msg,0)<0) {
+#ifdef SOCKET_LOCKING
+		pthread_mutex_unlock(&s_lock);
+#endif
 		if (da_udp_errs<UDP_MAX_ERRS) {
 			da_udp_errs++;
 			log_error("Error in udp send: %s",strerror(errno));
 		}
 	}
+	getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, sizeof(tmp));
+#ifdef SOCKET_LOCKING
+	pthread_mutex_unlock(&s_lock);
+#endif
 
 	free(resp);
 	free(data);
@@ -1115,6 +1131,10 @@ void *udp_server_thread(void *dummy)
 	(void)dummy; /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
+
+#ifdef SOCKET_LOCKING
+	pthread_mutex_init(&s_lock,NULL);
+#endif
 
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
@@ -1221,7 +1241,10 @@ void *udp_server_thread(void *dummy)
 					continue;
 				}
 			} else if (errno!=EINTR) {
-				log_error("error in UDP recv: %s", strerror(errno));
+				if (da_udp_errs<UDP_MAX_ERRS) {
+					da_udp_errs++;
+					log_error("error in UDP recv: %s", strerror(errno));
+				}
 			}
 		}
 # endif
@@ -1262,7 +1285,10 @@ void *udp_server_thread(void *dummy)
 					}
 				}
 			} else if (errno!=EINTR) {
-				log_error("error in UDP recv: %s", strerror(errno));
+				if (da_udp_errs<UDP_MAX_ERRS) {
+					da_udp_errs++;
+					log_error("error in UDP recv: %s", strerror(errno));
+				}
 			}
 		}
 # endif
@@ -1273,7 +1299,10 @@ void *udp_server_thread(void *dummy)
 			msg.msg_namelen=sizeof(struct sockaddr_in);
 			qlen=recvmsg(sock,&msg,0);
 			if (qlen<0 && errno!=EINTR) {
-				log_error("error in UDP recv: %s", strerror(errno));
+				if (da_udp_errs<UDP_MAX_ERRS) {
+					da_udp_errs++;
+					log_error("error in UDP recv: %s", strerror(errno));
+				}
 			}		
 		}
 # endif
@@ -1283,7 +1312,10 @@ void *udp_server_thread(void *dummy)
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
 			qlen=recvmsg(sock,&msg,0);
 			if (qlen<0 && errno!=EINTR) {
-				log_error("error in UDP recv: %s", strerror(errno));
+				if (da_udp_errs<UDP_MAX_ERRS) {
+					da_udp_errs++;
+					log_error("error in UDP recv: %s", strerror(errno));
+				}
 			}
 		}
 # endif
