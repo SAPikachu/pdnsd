@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.38 2001/03/25 20:48:55 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.39 2001/03/28 15:03:26 tmm Exp $";
 #endif
 
 /*
@@ -1029,14 +1029,12 @@ void *udp_answer_thread(void *data)
 	do {
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
+		if (i <= global.proc_limit)
+			procs++;
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
 			usleep_r(50000);
 	} while (i>global.proc_limit); 
-
-	pthread_mutex_lock(&proc_lock);
-	procs++;
-	pthread_mutex_unlock(&proc_lock);
 		
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
@@ -1496,14 +1494,12 @@ void *tcp_answer_thread(void *csock)
 	do {
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
+		if (i<=global.proc_limit)
+			procs++;
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
 			usleep_r(50000);
 	} while (i>global.proc_limit);
-
-	pthread_mutex_lock(&proc_lock);
-	procs++;
-	pthread_mutex_unlock(&proc_lock);
 
 	free(csock);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until

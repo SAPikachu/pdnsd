@@ -1,5 +1,5 @@
 /* servers.c - manage a set of dns servers
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.9 2000/11/15 17:27:02 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.10 2001/03/28 15:03:27 tmm Exp $";
 #endif
 
 /*
@@ -164,36 +164,32 @@ static void retest(int i)
  */
 void *servstat_thread(void *p)
 {
-	int i,j,all_none=1;
-	time_t s_ts;
+	int i,all_none=1;
 
 	(void)p; /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
 
+	pthread_mutex_lock(&servers_lock);
 	for (i=0;i<serv_num;i++) {
-		s_ts=time(NULL);
-		j=uptest(servers[i]);
 		if (servers[i].uptest!=C_NONE || servers[i].scheme[0]) {
 			all_none=0;
 		}
-		pthread_mutex_lock(&servers_lock);
-		servers[i].is_up=j;
-		servers[i].i_ts=s_ts;
-		pthread_mutex_unlock(&servers_lock);
+		retest(i);
 	}
+	pthread_mutex_unlock(&servers_lock);
 	if (all_none)
 		return NULL; /* we need no server status thread. */
 	while (1) {
 		schm[0] = '\0';
+		pthread_mutex_lock(&servers_lock);
 		for (i=0;i<serv_num;i++) {
-			pthread_mutex_lock(&servers_lock);
 			if (servers[i].interval>0 && (time(NULL)-servers[i].i_ts>servers[i].interval ||
 						      servers[i].i_ts>time(NULL))) { /* kluge for clock skew */
 				retest(i);
 			}
-			pthread_mutex_unlock(&servers_lock);
 		}
+		pthread_mutex_unlock(&servers_lock);
 		usleep_r(500000);
 	}
 	return NULL;
@@ -246,19 +242,9 @@ void mark_server(int idx, int up)
 
 void perform_uptest(int idx)
 {
-	servparm_t srv;
-	time_t s_ts;
-	int j;
-
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
-	srv=servers[idx];
-	s_ts=time(NULL);
-	pthread_mutex_unlock(&servers_lock);
-	j=uptest(srv);
-	pthread_mutex_lock(&servers_lock);
-	servers[idx].is_up=j;
-	servers[idx].i_ts=s_ts;
+	retest(idx);
 	pthread_mutex_unlock(&servers_lock);
 }
 

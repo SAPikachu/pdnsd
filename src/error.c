@@ -1,5 +1,5 @@
 /* error.c - Error handling
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -30,7 +30,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.3 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.4 2001/03/28 15:03:27 tmm Exp $";
 #endif
 
 pthread_mutex_t loglock;

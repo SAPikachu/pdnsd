@@ -1,5 +1,5 @@
 /* cache.c - Keep the dns caches.
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.20 2001/03/25 20:49:01 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.21 2001/03/28 15:03:31 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0

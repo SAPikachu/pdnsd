@@ -1,5 +1,5 @@
-#/* hash.c - Manage hashes for cached dns records
-   Copyright (C) 2000 Thomas Moestl
+/* hash.c - Manage hashes for cached dns records
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.4 2001/03/28 14:18:22 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.5 2001/03/28 15:03:31 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
