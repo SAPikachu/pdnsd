@@ -51,13 +51,16 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.9 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.10 2000/06/25 14:25:51 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
 int icmp_errs=0; /* This is only here to minimize log output. Since the 
 		    consequences of a race is only one log message more/less
 		    (out of ICMP_MAX_ERRS), no lock is required. */
+
+int ping_isocket;
+int ping_osocket;
 
 #if TARGET==TARGET_BSD
 # define icmphdr   icmp

@@ -30,10 +30,11 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.10 2000/06/24 21:44:21 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.11 2000/06/25 14:25:51 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
+int waiting=0;
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on

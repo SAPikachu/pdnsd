@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.8 2000/06/22 22:42:02 thomas Exp $ */
+/* $Id: error.h,v 1.9 2000/06/25 14:25:51 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -27,8 +27,9 @@ Boston, MA 02111-1307, USA.  */
 #include <stdio.h>
 #include <signal.h>
 
-/* --- From main.c */
+/* --- from main.c */
 extern sigset_t sigs_msk;
+/* --- from error.c */
 extern int waiting;
 /* --- */
 

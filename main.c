@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.11 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.12 2000/06/25 14:25:51 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -65,11 +65,8 @@ pthread_t main_thread;
 
 int tcp_socket;
 int udp_socket;
-int ping_isocket;
-int ping_osocket;
 
 sigset_t sigs_msk;
-int waiting=0;
 
 /* Print version and licensing information */
 void print_info (void)

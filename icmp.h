@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: icmp.h,v 1.3 2000/06/24 18:58:06 thomas Exp $ */
+/* $Id: icmp.h,v 1.4 2000/06/25 14:25:51 thomas Exp $ */
 
 #ifndef _ICMP_H_
 #define _ICMP_H_
@@ -27,10 +27,8 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include "ipvers.h"
 
-/* --- form main.c */
 extern int ping_isocket;
 extern int ping_osocket;
-/* --- */
 
 /* initialize a socket for pinging */
 void init_ping_socket(void);
