@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.10 2000/06/05 17:40:17 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.11 2000/06/05 19:01:02 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -675,7 +675,7 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	
 	nump=ftell(f);
 	fwrite(&num_rr,sizeof(num_rr),1,f); /* write a dummy at first, since we do no know the number */
-	if (rrs->flags&CF_LOCAL)
+	if (!rrs || rrs->flags&CF_LOCAL)
 		return;
 
 	sh.ttl=rrs->ttl;
@@ -742,9 +742,11 @@ void write_disk_cache()
 		/* now, write the rr's */
 		aloc=1;
 		for (j=0;j<T_NUM;j++) {
-			if (!(le->rr[j]->flags&CF_LOCAL)) {
-				aloc=0;
-				break;
+			if (le->rr[j]) {
+				if (!(le->rr[j]->flags&CF_LOCAL)) {
+					aloc=0;
+					break;
+				}
 			}
 		}
 		if (!aloc) {
