@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.13 2000/08/13 13:53:09 thomas Exp $
+$Id: THANKS,v 1.14 2000/08/20 20:43:18 thomas Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -15,8 +15,10 @@ James MacLean
 Sourav K. Mandal
 Fraser McCrossan
 Markus Mohr
+Alexandre Nunes
 Wolfgang Ocker
 Soenke J. Peters
+Brian Schroeder
 Daniel Smolik
 Norbert Steinl
 Alan Swanson

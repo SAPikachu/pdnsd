@@ -1,6 +1,7 @@
-# $Id: Makefile.am,v 1.3 2000/07/29 18:45:11 thomas Exp $
+# $Id: Makefile.am,v 1.4 2000/08/20 20:43:25 thomas Exp $
 
-CFLAGS += -I.. -I../..
+#CFLAGS += -I.. -I../..
+INCLUDES = -I.. -I../..
 
 noinst_LIBRARIES = libcache.a
 

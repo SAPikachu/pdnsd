@@ -1,8 +1,8 @@
-dnl $Id: configure.in,v 1.1 2000/08/12 23:00:54 thomas Exp $
+dnl $Id: configure.in,v 1.2 2000/08/20 20:43:18 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-test -z $CFLAGS && CFLAGS="-Wcomment -Wformat -Wimplicit -Wunused -Wall -pedantic -Os"
+test -z "$CFLAGS" && CFLAGS="-Wcomment -Wformat -Wimplicit -Wunused -Wall -pedantic -Os"
 
 PACKAGE="pdnsd"
 VERSION=`cat version`

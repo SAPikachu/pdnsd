@@ -1,4 +1,4 @@
-# $Id: pdnsd.spec.in,v 1.1 2000/07/20 20:03:05 thomas Exp $
+# $Id: pdnsd.spec.in,v 1.2 2000/08/20 20:43:18 thomas Exp $
 %define name  @PACKAGE@
 %define ver      @VERSION@
 %define rel 1
@@ -27,7 +27,7 @@ and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 %setup
 
 %build
-./configure --prefix=%{prefix}
+./configure --prefix=%{prefix} --with-distribution=%{distro}
 %__make
 
 %install
@@ -64,4 +64,5 @@ fi
 %changelog
 * Tue Jul 11 2000 Sourav K. Mandal <smandal@mit.edu>
 - autoconf/automake modifications
-
+* Tue Aug 15 Thomas Moestl <tmoestl@gmx.net>
+- Added the distro for configure

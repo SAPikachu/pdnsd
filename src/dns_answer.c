@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.3 2000/07/29 18:45:06 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.4 2000/08/20 20:43:22 thomas Exp $";
 #endif
 
 /*
@@ -1220,6 +1220,8 @@ void *udp_server_thread(void *dummy)
 					usleep(50000);
 					continue;
 				}
+			} else if (errno!=EINTR) {
+				log_error("error in UDP recv: %s", strerror(errno));
 			}
 		}
 # endif
@@ -1259,6 +1261,8 @@ void *udp_server_thread(void *dummy)
 						continue;
 					}
 				}
+			} else if (errno!=EINTR) {
+				log_error("error in UDP recv: %s", strerror(errno));
 			}
 		}
 # endif
@@ -1268,6 +1272,9 @@ void *udp_server_thread(void *dummy)
 			msg.msg_name=&buf->addr.sin4;
 			msg.msg_namelen=sizeof(struct sockaddr_in);
 			qlen=recvmsg(sock,&msg,0);
+			if (qlen<0 && errno!=EINTR) {
+				log_error("error in UDP recv: %s", strerror(errno));
+			}		
 		}
 # endif
 # ifdef ENABLE_IPV6
@@ -1275,6 +1282,9 @@ void *udp_server_thread(void *dummy)
 			msg.msg_name=&buf->addr.sin6;
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
 			qlen=recvmsg(sock,&msg,0);
+			if (qlen<0 && errno!=EINTR) {
+				log_error("error in UDP recv: %s", strerror(errno));
+			}
 		}
 # endif
 #endif
@@ -1282,10 +1292,11 @@ void *udp_server_thread(void *dummy)
 		if (qlen<0) {
 			free(buf);
 			usleep(50000);
-			if (errno==EINTR) {
-				close(sock);
-				return NULL;
-			}
+/*			if (errno==EINTR) {
+			close(sock);
+			return NULL;
+			}*/
+			continue;
 		} else {
 			buf->len=qlen;
 			pthread_attr_init(&attr);
