@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.5 2000/08/26 11:33:34 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.6 2000/08/28 19:42:37 thomas Exp $";
 #endif
 
 /*
@@ -936,6 +936,7 @@ void *udp_answer_thread(void *data)
 	char ctrl[512];
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
+	socklen_t sl;
 	int tmp;
 #ifdef ENABLE_IPV6
 	char buf[ADDRSTR_MAXLEN];
@@ -1035,7 +1036,8 @@ void *udp_answer_thread(void *data)
 			log_error("Error in udp send: %s",strerror(errno));
 		}
 	}
-	getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, sizeof(tmp));
+	sl=sizeof(tmp);
+	getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, &sl);
 #ifdef SOCKET_LOCKING
 	pthread_mutex_unlock(&s_lock);
 #endif
