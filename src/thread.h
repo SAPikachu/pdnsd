@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: thread.h,v 1.3 2001/05/19 14:57:30 tmm Exp $ */
+/* $Id: thread.h,v 1.4 2002/06/24 09:46:31 tmm Exp $ */
 
 #ifndef _THREAD_H_
 #define _THREAD_H_
@@ -44,6 +44,7 @@ void thread_sig(int sig);
  * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
 #if TARGET==TARGET_LINUX
 #define THREAD_SIGINIT	do { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
+                             signal(SIGINT,thread_sig);                    \
                              signal(SIGILL,thread_sig);                    \
 	                     signal(SIGABRT,thread_sig);                   \
 	                     signal(SIGFPE,thread_sig);                    \
@@ -51,6 +52,7 @@ void thread_sig(int sig);
 	                     signal(SIGTSTP,thread_sig);                   \
                              signal(SIGTTOU,thread_sig);                   \
                     	     signal(SIGTTIN,thread_sig);                   \
+                             signal(SIGTERM, thread_sig);                  \
                              signal(SIGPIPE, SIG_IGN);                     \
                         } while (0);
 
