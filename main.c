@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.3 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.4 2000/06/06 16:09:52 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -101,7 +101,8 @@ void print_help (void)
 	printf("-d\t\t--or--\n");
 	printf("--daemon\tStart pdnsd in daemon mode (as background process.)\n");
 	printf("-g\t\t--or--\n");
-	printf("--debug\t\tPrint some debug messages on the cosole (disables -d).\n");
+	printf("--debug\t\tPrint some debug messages on the console or to the\n");
+	printf("\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n");
 	printf("-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n");
 	printf("\t\t(normal operation) to 3 (many messages for debugging).\n");
 	printf("\t\tUse like -v2\n");

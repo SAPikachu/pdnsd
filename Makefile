@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.9 2000/06/03 21:17:57 thomas Exp $
+# $Id: Makefile,v 1.10 2000/06/06 16:09:52 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -35,8 +35,13 @@ LEXFLAGS=-i
 #
 # The following line is for linux: 
 LIBS=-lpthread -lefence
-# and this for BSD:
-#LIBS=-lc_r
+# and this for BSD (just leave it empty):
+#LIBS=
+# OS-specific C compiler flags for the linking stage.
+# This is for linux (just leave it empty)
+LFLAGS=
+# This is for FreeBSD:
+#LFLAGS=-pthread
 #------------------------------------------------------------------------------
 # (End of options) 
 # The following lines just define variables for the C compiler derived from the
@@ -67,7 +72,7 @@ $(OBJS): .deps
 	make -f .deps CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' $(OBJS)
 
 pdnsd: .deps $(OBJS)  
-	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o pdnsd
+	$(CC) $(CFLAGS) $(OBJS) $(LIBS) $(LFLAGS) -o pdnsd
 
 y.tab.c y.tab.h: conf.y
 	$(YACC) conf.y  $(YACCFLAGS)
