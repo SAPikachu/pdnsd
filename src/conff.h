@@ -18,13 +18,14 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.19 2001/07/01 21:03:15 tmm Exp $ */
+/* $Id: conff.h,v 1.20 2002/01/29 23:49:47 tmm Exp $ */
 
 #ifndef CONFF_H
 #define CONFF_H
 
-/* XXX should use the system defined one */
-#define MAXPATH 1024
+/* XXX: should use the system defined ones. */
+#define MAXPATH		1024
+#define	MAXIFNAME	31
 
 #include <config.h>
 #include <stdio.h>
@@ -54,8 +55,8 @@ typedef struct {
 	time_t           interval;
 	time_t           ping_timeout;
         char             scheme[32];
-	char             interface[7];
- 	char             device[7];
+	char             interface[MAXIFNAME];
+ 	char             device[MAXIFNAME];
 	char             uptest_cmd[513];
 	char             uptest_usr[21];
 	char             label[32];
