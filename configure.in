@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.30 2001/05/17 14:14:27 tmm Exp $
+dnl $Id: configure.in,v 1.31 2001/05/22 18:04:59 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -70,14 +70,14 @@ AC_ARG_ENABLE(isdn,
   test $enableval = "yes" && AC_DEFINE(ISDN_SUPPORT))
 
 AC_ARG_ENABLE(ipv4,
-[  --disable-ipv4            Disable IPv4 networking support 
+[  --disable-ipv4              Disable IPv4 networking support 
                               (default=enabled)],
   have_ipv4=$enableval)
 
 test $have_ipv4 = "yes" && AC_DEFINE(ENABLE_IPV4)
 
 AC_ARG_ENABLE(ipv6,
-[  --enable-ipv6            Enable IPv6 networking support],
+[  --enable-ipv6               Enable IPv6 networking support],
 [ if test $enableval = "yes" ; then
     AC_DEFINE(ENABLE_IPV6)
     if test $have_ipv4 != "yes" ; then
@@ -166,7 +166,7 @@ AC_ARG_ENABLE(poll,
   
 AC_ARG_ENABLE(new-rrs,
 [  --disable-new-rrs           Disable new DNS RR types, may cause problems
-				with some resolvers],
+			      with some resolvers],
    newrr=$enableval)
   
 test $newrr = "yes" && AC_DEFINE(DNS_NEW_RRS)
@@ -191,6 +191,10 @@ elif test "$randomdev" = default ; then
 else
 	AC_DEFINE_UNQUOTED(RANDOM_DEVICE, "$randomdev")  
 fi
+
+AC_ARG_ENABLE(underscores,
+[  --enable-underscores        Allow _ in domain names],
+   test $enableval = "yes" && AC_DEFINE(UNDERSCORE))
 
 AC_ARG_WITH(default-id,
 [  --with-default-id=id        Specify default uid/gid for pdnsd 

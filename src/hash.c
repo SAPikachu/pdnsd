@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.10 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.11 2001/05/22 18:05:02 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
@@ -44,9 +44,14 @@ static char rcsid[]="$Id: hash.c,v 1.10 2001/05/19 14:57:30 tmm Exp $";
  * The ip hash was removed. I don't think it concentrated the collisions too much.
  * If it does, the hash algorithm needs to be changed, rather than using another
  * hash.
+ * Some measurements seem to indicate that the hash algorithm is doing reasonable well.
  */
 
-unsigned char *posval=(unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-";
+unsigned char *posval=(unsigned char *)"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
+#ifdef UNDERSCORE
+"_"
+#endif
+;
 unsigned char values[256];
 
 /*

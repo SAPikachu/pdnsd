@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.26 2001/05/22 17:24:03 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.27 2001/05/22 18:05:02 tmm Exp $";
 #endif
 
 /*
@@ -98,7 +98,11 @@ int run_as(char *user)
  */
 int isdchar (unsigned char c)
 {
-	if ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-')
+	if ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-'
+#ifdef UNDERSCORE
+	    || c=='_'
+#endif
+	   )
 		return 1;
 	return 0;
 }

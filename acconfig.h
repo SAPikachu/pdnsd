@@ -1,19 +1,15 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.12 2001/01/15 22:52:51 thomas Exp $ */
+/* $Id: acconfig.h,v 1.13 2001/05/22 18:04:59 tmm Exp $ */
 
-/* ONLY EDIT config.h.in, NEVER config.h!
- * config.h MAY BE OVERWRITTEN BY make! */
-
-/* -- Target Selection ------------------------------------------------------ */
+/* ONLY EDIT acconfig.h, NEVER config.h or config.h.in!
+ * config.h MAY BE OVERWRITTEN BY make, config.h.in by autoheader! */
 
 /* Define your Target here. Currently defined are TARGET_LINUX (any 
  * architecture) and TARGET_BSD (experimental; tested on FreeBSD, hopefully 
  * works for other BSD variants) */
 #define TARGET TARGET_LINUX 
-
-/* -- Feature Options -------------------------------------------------------- */
 
 /* change the #undef to #define if you do not want to compile with special 
  * ISDN support for Linux. Note that the ISDN support will not compile ok on 
@@ -127,8 +123,6 @@
 /* yylineno not provided by flex */
 #undef NO_YYLINENO
 
-/* -- Debugging Options ------------------------------------------------------ */
-
 /* This is for various debugging facilities that produce debug output and
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG
@@ -177,16 +171,13 @@
 /*default value for parallel query number */
 #define PAR_QUERIES   2 
 
-/* -- End of User-Configureable Options ------------------------------------- */
-
 /* These are the possible targets. Normally no need to touch these 
  * definitions. */
 #define TARGET_LINUX 0
 #define TARGET_BSD   1
 
-/* Possible dbm's for cacheing */
-#define DBM_NATIVE   0
-#define DBM_GDBM     1
+/* Allow _ in domain names? */
+#undef UNDERSCORE
  
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT

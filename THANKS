@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.31 2001/05/04 20:13:41 tmm Exp $
+$Id: THANKS,v 1.32 2001/05/22 18:04:59 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -39,6 +39,7 @@ Marko Stolle
 Markus Storm
 Alan Swanson
 Lyonel Vincent
+Eelco Vriezekolk
 Paul Wagland
 Sverker Wiberg
 Michael Wiedmann
