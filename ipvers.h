@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.5 2000/06/13 12:12:27 thomas Exp $ */
+/* $Id: ipvers.h,v 1.6 2000/06/23 17:35:13 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -121,7 +121,7 @@ struct in_pktinfo
 # define SET_SOCKA_LEN6(socka)
 #endif
 
-#ifndef ENABLE_IPV6
+#ifdef ENABLE_IPV6
 # define ADDRSTR_MAXLEN INET6_ADDRSTRLEN
 #else
 # ifdef INET_ADDRSTRLEN
