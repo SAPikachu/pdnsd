@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.32 2002/01/02 17:07:04 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.33 2002/01/03 13:33:06 tmm Exp $";
 #endif
 
 /*
@@ -48,6 +48,7 @@ static char rcsid[]="$Id: helpers.c,v 1.32 2002/01/02 17:07:04 tmm Exp $";
 void pdnsd_exit()
 {
 	pthread_kill(main_thread,SIGTERM);
+	pthread_exit(NULL);
 }
 
 /*
