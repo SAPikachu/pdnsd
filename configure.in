@@ -1,8 +1,10 @@
-dnl $Id: configure.in,v 1.11 2000/10/25 18:46:15 thomas Exp $
+dnl $Id: configure.in,v 1.12 2000/10/30 18:22:14 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-test -z "$CFLAGS" && CFLAGS="-Wcomment -Wformat -Wimplicit -Wunused -Wall -pedantic -Os"
+test -z "$CFLAGS" && CFLAGS="-Wcomment -Wformat -Wimplicit -Wunused -Wall -pedantic -Os -D_REENTRANT -D_THREAD_SAFE"
+
+CFLAGS="$CFLAGS -DCONFDIR=\"\\\"@sysconfdir@\\\"\""
 
 PACKAGE="pdnsd"
 VERSION=`cat version`
@@ -305,12 +307,17 @@ if test $target = "Linux"; then
   AC_CHECK_LIB(pthread, pthread_kill)
 fi
 if test $target = "BSD" ; then
-  LDFLAGS="-L/usr/local/lib $LDFLAGS"
-  AC_SUBST(LDFLAGS)
-  AC_CHECK_LIB(lthread, pthread_kill)
-  AC_CHECK_LIB(gcc_r, free)
-  INCLUDES="-I/usr/local/include/pthread/linuxthreads"
-  AC_SUBST(INCLUDES)
+#  AC_CHECK_LIB(pthread, pthread_kill)
+#  LDFLAGS="-pthread $LDFLAGS"
+#  AC_SUBST(LDFLAGS)
+  CFLAGS="$CFLAGS -pthread"
+  AC_SUBST(CFLAGS)
+#  LDFLAGS="-L/usr/local/lib $LDFLAGS"
+#  AC_SUBST(LDFLAGS)
+#  AC_CHECK_LIB(lthread, pthread_kill)
+#  AC_CHECK_LIB(gcc_r, free)
+#  INCLUDES="-I/usr/local/include/pthread/linuxthreads"
+#  AC_SUBST(INCLUDES)
 fi
 
 if test "$cachegdbm" = "gdbm"; then

@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.16 2000/10/18 20:55:01 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.17 2000/10/30 18:22:16 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -68,11 +68,13 @@ int stat_pipe=0;
 int notcp=0;
 int sigr=0;
 
+/*
 #if TARGET==TARGET_BSD
 void bsd_sighnd (int sig) {
 	sigr=sig;
 }
 #endif
+*/
 
 /* Print version and licensing information */
 void print_info (void)
@@ -130,7 +132,7 @@ void print_help (void)
 	       M_PRESET==UDP_ONLY?"-muo":(M_PRESET==TCP_ONLY?"-mto":"mtu"));
 	printf("-c\t\t--or--\n");
 	printf("--config-file\tspecifies the file the configuration is read from.\n");
-	printf("\t\tDefault is /etc/pdnsd.conf\n");
+	printf("\t\tDefault is %s/pdnsd.conf\n",CONFDIR);
 #ifdef ENABLE_IPV4
 	printf("-4\t\tenables IPv4 support. IPv6 support is automatically\n");
 	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV4?"On":"Off");
@@ -150,7 +152,7 @@ int main(int argc,char *argv[])
 {
 	int i,sig,pfd;
 	struct passwd *pws;
-	char *conf_file="/etc/pdnsd.conf";
+	char *conf_file=CONFDIR"/pdnsd.conf";
 #if DEBUG>0
 	char dbgdir[1024];
 #endif
@@ -428,7 +430,7 @@ int main(int argc,char *argv[])
 #else
 	/* The whole BSD signal handling stuff is DIRTY, I know. But somehow, the FreeBSD thread
 	   implementation does not like sigwait and the like. If someone can explain me, I will be glad to fix it. */
-	signal(SIGILL,bsd_sighnd);
+/*	signal(SIGILL,bsd_sighnd);
 	signal(SIGABRT,bsd_sighnd);
 	signal(SIGFPE,bsd_sighnd);
 	signal(SIGSEGV,bsd_sighnd);
@@ -439,7 +441,9 @@ int main(int argc,char *argv[])
 		signal(SIGQUIT,bsd_sighnd);
 	}
 	while (!sigr) usleep(250000);
-	sig=sigr;
+	sig=sigr;*/
+	waiting=1;
+	sigwait(&sigs_msk,&sig);
 #endif
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
 	write_disk_cache();

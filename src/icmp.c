@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.6 2000/10/19 21:51:00 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.7 2000/10/30 18:22:16 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -224,6 +224,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		sum += (sum >> 16);
 		icmpd.icmp_cksum=~sum;
 
+		memset(&from,0,sizeof(from));
 		from.sin_family=AF_INET;
 		from.sin_port=0;
 		from.sin_addr=addr;
@@ -387,6 +388,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		icmpd.icmp6_id=htons((short)id);
 		icmpd.icmp6_seq=htons((short)i);
 		
+		memset(&from,0,sizeof(from));
 		from.sin6_family=AF_INET6;
 		from.sin6_flowinfo=IPV6_FLOWINFO;
 		from.sin6_port=0;

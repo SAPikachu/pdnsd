@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.17 2000/10/21 13:02:21 thomas Exp $
+$Id: AUTHORS,v 1.18 2000/10/30 18:22:14 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -22,6 +22,8 @@ Alexandre Nunes		contributed autoconf fixes
 Wolfgang Ocker		contributed the server_ip option
 Soenke J. Peters	contributed patches and suggestions for RedHat 
 			compatability
+Roman Shterenzon	contributed many helpful hints and patches for
+			FreeBSD compatability.
 Lyonel Vincent		extended the serve_aliases option to support an
 			arbitrary number of aliases
 Paul Wagland		contributed a patches for bind9-compatability

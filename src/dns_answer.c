@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.21 2000/10/23 21:55:37 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.22 2000/10/30 18:22:16 thomas Exp $";
 #endif
 
 /*
@@ -1139,6 +1139,7 @@ int init_udp_socket()
 			log_error("Could not open udp socket: %s",strerror(errno));
 			return -1;
 		}
+		memset(&sin4,0,sizeof(sin4));
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
@@ -1153,6 +1154,7 @@ int init_udp_socket()
 			log_error("Could not open udp socket: %s",strerror(errno));
 			return -1;
 		}
+		memset(&sin6,0,sizeof(sin6));
 		sin6.sin6_family=AF_INET6;
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
@@ -1215,6 +1217,7 @@ void *udp_server_thread(void *dummy)
 	sock=udp_socket;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
+		memset(&sin4,0,sizeof(sin4));
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
@@ -1223,6 +1226,7 @@ void *udp_server_thread(void *dummy)
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
+		memset(&sin6,0,sizeof(sin6));
 		sin6.sin6_family=AF_INET6;
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
@@ -1599,6 +1603,7 @@ int init_tcp_socket()
 			log_error("Could not open tcp socket: %s",strerror(errno));
 			return -1;
 		}
+		memset(&sin4,0,sizeof(sin4));
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
@@ -1613,10 +1618,10 @@ int init_tcp_socket()
 			log_error("Could not open tcp socket: %s",strerror(errno));
 			return -1;
 		}
+		memset(&sin6,0,sizeof(sin6));
 		sin6.sin6_family=AF_INET6;
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
-		sin6.sin6_addr=in6addr_any;
 		sin6.sin6_addr=global.a.ipv6;
 		SET_SOCKA_LEN6(sin6);
 		sin=(struct sockaddr *)&sin6;

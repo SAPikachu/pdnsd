@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.21 2000/10/25 18:46:17 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.22 2000/10/30 18:22:16 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -989,6 +989,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 		return 0;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
+		memset(&q->qs[q->num-1].a.sin4,0,sizeof(q->qs[q->num-1].a.sin4));
 		q->qs[q->num-1].a.sin4.sin_family=AF_INET;
 		q->qs[q->num-1].a.sin4.sin_port=htons(port);
 		q->qs[q->num-1].a.sin4.sin_addr=a->ipv4;
@@ -999,6 +1000,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
+		memset(&q->qs[q->num-1].a.sin6,0,sizeof(q->qs[q->num-1].a.sin6));
 		q->qs[q->num-1].a.sin6.sin6_family=AF_INET6;
 		q->qs[q->num-1].a.sin6.sin6_port=htons(port);
 		q->qs[q->num-1].a.sin6.sin6_flowinfo=IPV6_FLOWINFO;

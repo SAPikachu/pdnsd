@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.11 2000/10/19 16:18:06 thomas Exp $
+# $Id: Makefile.am,v 1.12 2000/10/30 18:22:14 thomas Exp $
 
 SUBDIRS = src
 
@@ -8,24 +8,24 @@ doc/pdnsd.conf.in doc/html/dl.html doc/html/doc.html doc/html/faq.html \
 doc/html/index.html doc/txt/faq.txt doc/txt/intro.txt doc/txt/manual.txt
 
 install-data-hook:
-	if test -f $(DESTDIR)/etc/pdnsd.conf; then \
-	  cp $(DESTDIR)/etc/pdnsd.conf $(DESTDIR)/etc/pdnsd.conf.old ; \
-	  echo -e "\n\nBacked up your old pdnsd.conf to pdnsd.conf.old\n\n" ; \
-	fi
-	$(mkinstalldirs) $(DESTDIR)/etc
+#	if test -f $(DESTDIR)/$(sysconfdir)/pdnsd.conf; then \
+#	  cp $(DESTDIR)/$(sysconfdir)/pdnsd.conf $(DESTDIR)/$(sysconfdir)/pdnsd.conf.old ; \
+#	  echo -e "\n\nBacked up your old pdnsd.conf to pdnsd.conf.old\n\n" ; \
+#	fi
+	$(mkinstalldirs) $(DESTDIR)/$(sysconfdir)
 	# For both source installs and RPM builds
-	if test "$(USER)" = "root"; then \
-	  $(INSTALL) -o 0 -g 0 -m 644 doc/pdnsd.conf $(DESTDIR)/etc/pdnsd.conf ; \
+	if test `whoami` = "root"; then \
+	  $(INSTALL) -o 0 -g 0 -m 644 doc/pdnsd.conf $(DESTDIR)/$(sysconfdir)/pdnsd.conf.sample ; \
 	else \
-	  $(INSTALL) -m 644 doc/pdnsd.conf $(DESTDIR)/etc/pdnsd.conf ; \
+	  $(INSTALL) -m 644 doc/pdnsd.conf $(DESTDIR)/$(sysconfdir)/pdnsd.conf.sample ; \
 	fi
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
 	if test "$(cachedbm)" = "native"; then \
-	  echo -en "\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache; \
+	  dd if=/dev/zero of=$(DESTDIR)$(cachedir)/pdnsd.cache bs=1 count=4; \
 	else \
 	  touch $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	fi
-	if test "$(USER)" = "root"; then \
+	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	fi
 	chmod 0640 $(DESTDIR)$(cachedir)/pdnsd.cache

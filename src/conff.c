@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.13 2000/10/21 11:28:37 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.14 2000/10/30 18:22:16 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -91,7 +91,7 @@ void read_config_file(char *nm)
 	FILE *in;
 	struct stat sb;
 	if (nm==NULL) {
-		nm="/etc/pdnsd.conf";
+		nm=CONFDIR"/pdnsd.conf";
 	} 
 	if (stat(nm,&sb)!=0) {
 		fprintf(stderr,"Error: Could not stat conf file %s: %s\n",nm,strerror(errno));
