@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.27 2001/05/09 18:47:50 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.28 2001/05/09 22:52:17 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1095,39 +1095,49 @@ void write_disk_cache()
  */
 static int cr_check_add(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags)
 {
-	int i, ncf = 0;
+	int i, ncf = 0, olda = 0;
 	time_t nttl = 0, rttl;
 	struct rr_infos *rri = &rr_info[tp-T_MIN];
 	
 	if (flags & CF_NEGATIVE)
 		return 1;		/* no constraints here. */
 
-	for (i = 0; i < T_NUM; i++) {
-		/* Should be symmetric; check both ways anyway. */
-		if ((rri->class & rr_info[i].excludes) ||
-		    (rri->excludes & rr_info[i].class)) {
-			ncf++;
-			rttl = cent->rr[i]->ttl + cent->rr[i]->ts - time(NULL);
-			nttl += rttl > 0 ? rttl : 0;
+	if (!(flags & CF_LOCAL)) {
+		for (i = 0; i < T_NUM; i++) {
+			/* Should be symmetric; check both ways anyway. */
+			if (cent->rr[i] && !(cent->rr[i]->flags & CF_NEGATIVE) &&
+			    ((rri->class & rr_info[i].excludes) ||
+			    (rri->excludes & rr_info[i].class))) {
+				ncf++;
+				rttl = cent->rr[i]->ttl + cent->rr[i]->ts - time(NULL);
+				nttl += rttl > 0 ? rttl : 0;
+				if (cent->rr[i]->flags & CF_LOCAL) {
+					olda = 1;
+					break;
+				}
+			}
 		}
+		if (olda)	/* old was authoritative */
+			return 0;
+		if (ncf == 0)	/* no conflicts */
+			return 1;
+		/* Medium ttl of conflicting records */
+		nttl /= ncf;
 	}
-	/* Medium ttl of conflicting records */
-	nttl /= ncf;
-	if (nttl > ttl) {
-		/* old records precede */
-		return 0;
-	} else {
+	if ((flags & CF_LOCAL) || ttl > nttl) {
 		/* remove the old records, so that the new one can be added */
 		for (i = 0; i < T_NUM; i++) {
 			/* Should be symmetric; check both ways anyway. */
-			if ((rri->class & rr_info[i].excludes) ||
-			    (rri->excludes & rr_info[i].class)) {
+			if (cent->rr[i] && !(cent->rr[i]->flags & CF_NEGATIVE) &&
+			    ((rri->class & rr_info[i].excludes) ||
+			    (rri->excludes & rr_info[i].class))) {
 				remove_rrl(cent->rr[i]->lent);
 				del_cent_rrset(cent,i+T_MIN,0);
 			}
 		}
 		return 1;
 	}
+	/* old records precede */
 	return 0;
 }
 
@@ -1402,7 +1412,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 			if (ret->rr[tp-T_MIN])
 				had=1;
 			if ((rrb=create_rr(dlen,data,0))) {
-				cr_add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0);
+				add = cr_add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0);
 				if (add < 0) {
 					free_rr(*rrb,0);
 					free(rrb);

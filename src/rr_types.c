@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.4 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: rr_types.c,v 1.5 2001/05/09 22:52:17 tmm Exp $";
 #endif
 
 /* Macro for standard records. No need to use it. Use with care (can produce
@@ -34,7 +34,6 @@ static char rcsid[]="$Id: rr_types.c,v 1.4 2001/05/09 17:51:52 tmm Exp $";
  * Membership in multiple classes could be added. */
 struct rr_infos rr_info[]= {
 	RR_ENT("A", 		RECORD),
-	RR_ENT("NS", 		IDEM),
 	RR_ENT("NS", 		IDEM),
 	RR_ENT("MD", 		IDEM),
 	RR_ENT("MF", 		IDEM),
@@ -52,7 +51,7 @@ struct rr_infos rr_info[]= {
 	RR_ENT("TXT", 		RECORD),
 #ifdef DNS_NEW_RRS
 	RR_ENT("RP",		RECORD),
-	RR_ENT("AFSDB",	RECORD),
+	RR_ENT("AFSDB",		RECORD),
 	RR_ENT("X25",		RECORD),
 	RR_ENT("ISDN",		RECORD),
 	RR_ENT("RT",		RECORD),
@@ -69,7 +68,7 @@ struct rr_infos rr_info[]= {
 	RR_ENT("NIMLOC",	RECORD),
 	RR_ENT("SRV",		RECORD),
 	RR_ENT("ATMA",		RECORD),
-	RR_ENT("NAPTR",	RECORD),
+	RR_ENT("NAPTR",		RECORD),
 	RR_ENT("KX",		RECORD)
 #endif
 };
