@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.9 2000/10/14 23:29:08 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.10 2000/10/15 22:11:41 thomas Exp $";
 #endif
 
 /*
@@ -1385,12 +1385,7 @@ void *tcp_answer_thread(void *csock)
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
-#ifdef NO_POLL
-	fd_set fds;
-	struct timeval tv;
-#else
-	struct pollfd pfd;
-#endif
+	time_t  ts;
 
 
 	THREAD_SIGINIT;
@@ -1409,34 +1404,33 @@ void *tcp_answer_thread(void *csock)
 	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's
 	 * TCP server.*/
 	while (1) {
-#ifdef NO_POLL
-		/* FIXME: we need to see how much we actually got (Nonblocking read &
-		 * return checking) */
-		FD_ZERO(&fds);
-		FD_SET(sock, &fds);
-		tv.tv_usec=(TCP_TIMEOUT%1000)*1000;
-		tv.tv_sec=TCP_TIMEOUT/1000;
-		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
-			close(sock);
-			break;
-		}
-#else
-		pfd.fd=sock;
-		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
-		if (poll(&pfd,1,TCP_TIMEOUT)<1) {
-			close(sock);
-			break;
-		}
-#endif
-/*		fcntl(sock,F_SETFL,O_NONBLOCK);*/
-		if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
-			/*
-			 * If the socket timed or was closed before we even received the 
-			 * query length, we cannot return an error. So exit silently.
-			 */
-			close(sock);
-			return NULL; 
-		}
+		/* We do _not_ use poll/select here, because this is not out point! This is not for
+		 * multiplexing or the like, but to ensure that we cannot be DoSsed by very slow
+		 * tcp transmissions. If I would just select(), the attacker could just write
+		 * less than the expected amount of data, and we would be stuck again.
+		 * Therefore, this nonblocking wait.
+		 */
+		fcntl(sock,F_SETFL,O_NONBLOCK);
+		ts=time(NULL);
+		do {
+			if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
+				if (errno!=EWOULDBLOCK) {
+				        /*
+				         * If the socket timed or was closed before we even received the 
+				         * query length, we cannot return an error. So exit silently.
+ 				         */
+					close(sock);
+					return NULL; 
+				} else {
+					if (time(NULL)-ts>TCP_TIMEOUT) {
+						close(sock);
+						return NULL; 
+					}
+				}
+			} else
+				break;
+			usleep(50000);
+		} while (1);
 		rlen=ntohs(rlen);
 		buf=(unsigned char *)calloc(sizeof(unsigned char),rlen);
 		if (!buf) {
@@ -1447,71 +1441,68 @@ void *tcp_answer_thread(void *csock)
 			close (sock);
 			return NULL;
 		}
-#ifdef NO_POLL
-		FD_ZERO(&fds);
-		FD_SET(sock, &fds);
-		tv.tv_usec=(TCP_TIMEOUT%1000)*1000;
-		tv.tv_sec=TCP_TIMEOUT/1000;
-		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
-			close(sock);
-			break;
-		}
-#else
-		pfd.fd=sock;
-		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
-		if (poll(&pfd,1,TCP_TIMEOUT)<1) {
-			close(sock);
-			break;
-		}
-#endif
-		if ((olen=read(sock,buf,rlen))<rlen) {
-/*			fcntl(sock,F_SETFL,0);*/
-				/*
-				 * If the promised length was not sent, we should return an error message,
-				 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
-				 */
-			if (olen<=2) {
-				/*
-				 * If we did not get the id, we cannot set a valid reply.
-				 */
-				free(buf);
-				close(sock);
-				return NULL;
+		ts=time(NULL);
+		do {
+			if ((olen=read(sock,buf,rlen))<rlen) {
+				if (errno==EWOULDBLOCK) {
+					/* In this case, we loop until timeout */
+					if (time(NULL)-ts>TCP_TIMEOUT) {
+						free(buf);
+						close(sock);
+						return NULL;
+					}
+				} else {
+					fcntl(sock,F_SETFL,0);
+				        /*
+					 * If the promised length was not sent, we should return an error message,
+					 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
+					 */
+					if (olen<=2) {
+						/*
+						 * If we did not get the id, we cannot set a valid reply.
+						 */
+						free(buf);
+						close(sock);
+						return NULL;
+					} else {
+						err=mk_error_reply(*((unsigned short *)buf),olen>=3?((dns_hdr_t *)buf)->opcode:OP_QUERY,RC_FORMAT);
+						if (write(sock,&err,sizeof(err))!=sizeof(err)) {
+							free(buf);
+							close(sock);
+							return NULL;
+						}
+					}
+					
+				}
 			} else {
-				err=mk_error_reply(*((unsigned short *)buf),olen>=3?((dns_hdr_t *)buf)->opcode:OP_QUERY,RC_FORMAT);
-				if (write(sock,&err,sizeof(err))!=sizeof(err)) {
+				fcntl(sock,F_SETFL,0);
+				nlen=rlen;
+				if (!(resp=process_query(buf,&nlen,0))) {
+				        /*
+					 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
+					 * logging is already done. Just exit the thread now.
+					 */
 					free(buf);
 					close(sock);
 					return NULL;
 				}
-				
-			}
-		} else {
-/*			fcntl(sock,F_SETFL,0);*/
-			nlen=rlen;
-			if (!(resp=process_query(buf,&nlen,0))) {
-				/*
-				 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
-				 * logging is already done. Just exit the thread now.
-				 */
 				free(buf);
-				close(sock);
-				return NULL;
-			}
-			free(buf);
-			rlen=htons(nlen);
-			if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
+				rlen=htons(nlen);
+				if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
+					free(resp);
+					close(sock);
+					return NULL;
+				}
+				if (write(sock,resp,ntohs(rlen))!=ntohs(rlen)) {
+					free(resp);
+					close(sock);
+					return NULL;
+				}
 				free(resp);
-				close(sock);
-				return NULL;
+				break;
 			}
-			if (write(sock,resp,ntohs(rlen))!=ntohs(rlen)) {
-				free(resp);
-				close(sock);
-				return NULL;
-			}
-			free(resp);
-		}
+			usleep(50000);
+		} while (1);
 #ifdef TCP_NOSUBSEQ
 		/* Do not allow multiple queries in one Sequence.*/
 		close(sock);
