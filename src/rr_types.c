@@ -22,11 +22,11 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.6 2001/05/12 22:39:58 tmm Exp $";
+static char rcsid[]="$Id: rr_types.c,v 1.7 2001/05/19 15:00:26 tmm Exp $";
 #endif
 
 /* Macro for standard records. No need to use it. Use with care (can produce
- * strange-lookdiung error messages) */
+ * strange-looking error messages) */
 #define RR_ENT(name,tp) {name, RRCL_ ## tp, RRX_ ## tp}
 
 /* There could be a separate table detailing the relationship of types, but this
