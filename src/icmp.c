@@ -53,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.8 2000/11/02 17:22:36 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.9 2000/11/02 20:18:56 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -72,6 +72,7 @@ int ping6_isocket=-1;
 # define iphdr     ip
 # define ip_ihl    ip_hl
 # define ip_saddr  ip_src.s_addr
+# define ip_daddr  ip_dst.s_addr
 #else
 # define ip_saddr  saddr
 # define ip_daddr  daddr
@@ -85,6 +86,14 @@ int ping6_isocket=-1;
 # define icmp_id un.echo.id
 # define icmp_seq un.echo.sequence
 #endif
+
+#if TARGET==TARGET_BSD
+# define ICMP_DEST_UNREACH   ICMP_UNREACH
+# define ICMP_TIME_EXCEEDED ICMP_TIMXCEED    
+#endif
+
+#define ICMP_BASEHDR_LEN  8
+#define ICMP4_ECHO_LEN    ICMP_BASEHDR_LEN
 
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 /*
@@ -135,16 +144,14 @@ static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg
 	if (elen<sizeof(struct iphdr))
 		return 0;
 	iph=(struct iphdr *)errmsg;
-	if (memcmp(&iph->ip_daddr, &to->s_addr, sizeof(struct in_addr))!=0)
-		return 0;
-	if (elen<iph->ip_ihl*4+sizeof(struct icmphdr)+sizeof(struct iphdr))
+	if (elen<iph->ip_ihl*4+ICMP_BASEHDR_LEN+sizeof(struct iphdr))
 		return 0;
 	icmph=(struct icmphdr *)(errmsg+iph->ip_ihl*4);
-	eiph=(struct iphdr *)(icmph+1);
-	if (elen<iph->ip_ihl*4+sizeof(struct icmphdr)+eiph->ip_ihl*4+8)
+	eiph=(struct iphdr *)(((char *)icmph)+ICMP_BASEHDR_LEN);
+	if (elen<iph->ip_ihl*4+ICMP_BASEHDR_LEN+eiph->ip_ihl*4+8)
 		return 0;
-	data=((char *)eiph)+eiph->ihl*4;
-	return icmph->icmp_type!=errtype && memcmp(&to->s_addr, &eiph->ip_daddr, 4)==0 &&
+	data=((char *)eiph)+eiph->ip_ihl*4;
+	return icmph->icmp_type==errtype && memcmp(&to->s_addr, &eiph->ip_daddr, sizeof(to->s_addr))==0 &&
 		memcmp(data, packet, plen<8?plen:8)==0;
 }
 
@@ -162,7 +169,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	struct protoent *pe;
 	int SOL_IP;
 #endif
-	struct sockaddr_in from;
+	struct sockaddr_in from,to;
 	struct icmphdr icmpd;
 	struct icmphdr *icmpp;
 	unsigned long sum;
@@ -223,12 +230,12 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		sum += (sum >> 16);
 		icmpd.icmp_cksum=~sum;
 
-		memset(&from,0,sizeof(from));
-		from.sin_family=AF_INET;
-		from.sin_port=0;
-		from.sin_addr=addr;
-		SET_SOCKA_LEN4(from);
-		if (sendto(isock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
+		memset(&to,0,sizeof(to));
+		to.sin_family=AF_INET;
+		to.sin_port=0;
+		to.sin_addr=addr;
+		SET_SOCKA_LEN4(to);
+		if (sendto(isock,&icmpd,ICMP4_ECHO_LEN,0,(struct sockaddr *)&to,sizeof(to))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
@@ -264,25 +271,26 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			}
 #endif
 
-			printf("poll yield.\n");
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse)) {
 #else
 			if (pfd.revents&POLLIN || pfd.revents&POLLERR) {
 #endif
+				
 				sl=sizeof(from);
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
-					if (len>sizeof(struct iphdr) && len-((struct iphdr *)buf)->ip_ihl*4>=sizeof(struct icmphdr)) {
+					if (len>sizeof(struct iphdr) && len-((struct iphdr *)buf)->ip_ihl*4>=ICMP_BASEHDR_LEN) {
 						icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
 						if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
 						    icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
 							return (i-ntohs(icmpp->icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
-						}
-					} else {
-						/* No regular echo reply. Maybe an error? */
-						if (icmp4_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin_addr, buf, len, ICMP_DEST_UNREACH) ||
-						    icmp4_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin_addr, buf, len, ICMP_TIME_EXCEEDED)) {
-							return -1;
+						} else {
+							/* No regular echo reply. Maybe an error? */
+							if (icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_DEST_UNREACH) ||
+							    icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_TIME_EXCEEDED)) {
+								return -1;
+							}
+							
 						}
 					}
 				} else {
@@ -299,21 +307,18 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 /* Takes a packet as send out and a recieved ICMPv6 packet and looks whether the ICMPv6 packet is 
  * an error reply on the sent-out one. packet is only the packet (without IPv6 header).
- * errmsg does not include an IPv6 header. to is the address the sent packet went to,
- * from is the address the error msg came from.
+ * errmsg does not include an IPv6 header. to is the address the sent packet went to.
  * This is specialized for icmpv6: It zeros out the checksum field, which is filled in
  * by the kernel, and expects that the checksum field in the sent-out packet is zeroed out too
  * We need a little magic to parse the anwer, as there could be extension headers present, end
  * we don't know their length a priori.*/
-static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, struct in6_addr *from, char *errmsg, int elen, int errtype)
+static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errmsg, int elen, int errtype)
 {
 	struct icmp6_hdr *icmph;
 	struct ip6_hdr *eiph;
 	char *data;
 	int rlen,nxt;
 		
-	if (!IN6_ARE_ADDR_EQUAL(from,to))
-		return 0;
 	if (elen<sizeof(struct icmp6_hdr)+sizeof(struct ip6_hdr))
 		return 0;
 	icmph=(struct icmp6_hdr *)errmsg;
@@ -323,8 +328,6 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, struct in6_
 	rlen=elen-sizeof(struct icmp6_hdr)-sizeof(struct ip6_hdr);
 	data=(char *)(eiph+1);
 	nxt=eiph->ip6_nxt;
-	if (rlen<sizeof(struct ip6_hbh))
-		return 0;
 	/* Now, jump over any known option header that might be present, and then
 	 * try to compare the packets. */
 	while (nxt!=IPPROTO_ICMPV6) {
@@ -340,7 +343,7 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, struct in6_
 	if (rlen<sizeof(struct icmp6_hdr))
 		return 0;
 	((struct icmp6_hdr *)data)->icmp6_cksum=0;
-	return icmph->icmp6_type!=errtype && memcmp(data, packet, plen<rlen?plen:rlen)==0;
+	return icmph->icmp6_type==errtype && memcmp(data, packet, plen<rlen?plen:rlen)==0;
 }
 
 /* IPv6/ICMPv6 ping. Called from ping (see below) */
@@ -458,12 +461,12 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
 						    ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
 							return (i-ntohs(icmpp->icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
-						}
-					} else {
-						/* No regular echo reply. Maybe an error? */
-						if (icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, &a, buf, len, ICMP6_DST_UNREACH) ||
-						    icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, &a, buf, len, ICMP6_TIME_EXCEEDED)) {
-							return -1;
+						} else {
+							/* No regular echo reply. Maybe an error? */
+							if (icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, buf, len, ICMP6_DST_UNREACH) ||
+							    icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, buf, len, ICMP6_TIME_EXCEEDED)) {
+								return -1;
+							}
 						}
 					}
 				} else {
@@ -489,6 +492,11 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 
 	if (ping_isocket==-1)
 		return -1;
+
+#ifdef ENABLE_IPV6
+	if (ping6_isocket==-1)
+		return -1;
+#endif
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
