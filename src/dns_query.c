@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.54 2002/05/24 20:33:30 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.55 2002/07/04 18:08:39 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1207,17 +1207,18 @@ static int p_recursive_query(darray q, unsigned char *rrn, unsigned char *name, 
 				FD_ZERO(&reads);
 				FD_ZERO(&writes);
 				for (i=0;i<mc;i++) {
-					if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
-						if (q->qs[global.par_queries*j+i].timeout>maxto)
-							maxto=q->qs[global.par_queries*j+i].timeout;
-						if (q->qs[global.par_queries*j+i].sock>maxfd)
-							maxfd=q->qs[global.par_queries*j+i].sock;
-						switch (q->qs[global.par_queries*j+i].event) {
+					qs=DA_INDEX(q,global.par_queries*j+i,query_stat_t);
+					if (qs->state!=QS_DONE) {
+						if (qs->timeout>maxto)
+							maxto=qs->timeout;
+						if (qs->sock>maxfd)
+							maxfd=qs->sock;
+						switch (qs->event) {
 						case QEV_READ:
-							FD_SET(q->qs[global.par_queries*j+i].sock,&reads);
+							FD_SET(qs->sock,&reads);
 							break;
 						case QEV_WRITE:
-							FD_SET(q->qs[global.par_queries*j+i].sock,&writes);
+							FD_SET(qs->sock,&writes);
 							break;
 						}
 						pc++;
