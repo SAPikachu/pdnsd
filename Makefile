@@ -80,7 +80,7 @@ ChangeLog:
 	rcs2log -R -u "thomas	Thomas Moestl	tmoestl@gmx.net" > ChangeLog
 
 test:
-	cd test; make CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' LIBS='$(LIBS)'
+	cd test; make CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)'
 
 .PHONY: all clean mclean distclean dist install
 

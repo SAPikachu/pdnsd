@@ -31,14 +31,6 @@ Boston, MA 02111-1307, USA.  */
 pthread_mutex_t loglock;
 
 /*
- * This is to exit pdnsd from any thread.
- */
-void pdnsd_exit()
-{
-	pthread_kill(main_thread,SIGTERM);
-}
-
-/*
  * Initialize a mutex for io-locking in order not to produce gibberish on
  * multiple simultaneous errors.
  */

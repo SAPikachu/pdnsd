@@ -23,8 +23,6 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include <stdio.h>
 
-void pdnsd_exit(void);
-
 void init_log(void);
 void log_error(char *s,...);
 void log_warn(char *s, ...);

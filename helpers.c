@@ -26,6 +26,23 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "helpers.h"
 #include "cache.h"
+#include "conff.h"
+
+/*
+ * This is to exit pdnsd from any thread.
+ */
+void pdnsd_exit()
+{
+	pthread_kill(main_thread,SIGTERM);
+}
+
+/*
+ * This is to exit pdnsd from any thread.
+ */
+void pdnsd_exit()
+{
+	pthread_kill(main_thread,SIGTERM);
+}
 
 /*
  * Takes a string and returns it in lower case using tolower(). Since in
