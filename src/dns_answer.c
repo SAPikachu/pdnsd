@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.48 2001/05/10 22:15:53 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.49 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 /*
@@ -76,6 +76,7 @@ pthread_t tcps;
 pthread_t udps;
 volatile int procs=0;   /* active query processes */
 volatile int qprocs=0;  /* queued query processes */
+volatile int thrid_cnt=0;
 pthread_mutex_t proc_lock;
 
 #ifdef SOCKET_LOCKING
@@ -866,7 +867,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	dns_hdr_t *ans;
 	
 
-	DEBUG_MSG1("Received query.\n");
+	DEBUG_MSG("Received query.\n");
 	if (!resp) {
 		if (da_mem_errs<MEM_MAX_ERRS) {
 			da_mem_errs++;
@@ -883,35 +884,35 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	hdr=(dns_hdr_t *)data;
 	if (*rlen<2) { 
 		pdnsd_free(resp);
-		DEBUG_MSG1("Message too short.\n");
+		DEBUG_MSG("Message too short.\n");
 		return NULL; /* message too short: no id provided. */
 	}
 	if (*rlen<sizeof(dns_hdr_t)) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,*rlen>=3?hdr->opcode:OP_QUERY,RC_FORMAT);
-		DEBUG_MSG1("Message too short.\n");
+		DEBUG_MSG("Message too short.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->qr==QR_RESP) {
 		pdnsd_free(resp);
-		DEBUG_MSG1("Response, not query.\n");
+		DEBUG_MSG("Response, not query.\n");
 		return NULL; /* RFC says: discard */
 	}
 	if (hdr->opcode!=OP_QUERY) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_NOTSUPP);
-		DEBUG_MSG1("No query.\n");
+		DEBUG_MSG("No query.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->z1!=0 || hdr->z2!=0) {
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_FORMAT);
-		DEBUG_MSG1("Malformed query.\n");
+		DEBUG_MSG("Malformed query.\n");
 		return (unsigned char *)resp;
 	}
 	if (hdr->rcode!=RC_OK) {
 		pdnsd_free(resp);
-		DEBUG_MSG1("Bad rcode.\n");
+		DEBUG_MSG("Bad rcode.\n");
 		return NULL; /* discard (may cause error storms) */
 	}
 
@@ -926,11 +927,11 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	if (debug_p) {
 		dns_queryel_t *qe;
 
-		fprintf(dbg_file, "Questions are:\n ");
+		DEBUG_MSG("Questions are:\n");
 		for (res=0;res<da_nel(q);res++) {
 			qe=DA_INDEX(q,res,dns_queryel_t);
 			rhn2str(qe->query,buf);
-			fprintf(dbg_file, "\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,buf);
+			DEBUG_MSG("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,buf);
 		}
 	}
 #endif
@@ -976,7 +977,7 @@ void *udp_answer_thread(void *data)
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
 	unsigned char *resp;
 	socklen_t sl;
-	int tmp,i;
+	int tmp,i,thrid;
 #ifdef ENABLE_IPV6
 	char buf[ADDRSTR_MAXLEN];
 #endif
@@ -993,13 +994,20 @@ void *udp_answer_thread(void *data)
 	do {
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
-		if (i <= global.proc_limit)
+		if (i <= global.proc_limit) {
 			procs++;
+			thrid=thrid_cnt++;
+		}
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
 			usleep_r(50000);
 	} while (i>global.proc_limit); 
 		
+	if (pthread_setspecific(thrid_key, &thrid) != 0) {
+		log_error("pthread_setspecific failed.");
+		pdnsd_exit();
+	}
+
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
@@ -1012,7 +1020,7 @@ void *udp_answer_thread(void *data)
 		rlen=512;
 		((dns_hdr_t *)resp)->tc=1; /*set truncated bit*/
 	}
-	DEBUG_MSG4("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,((dns_hdr_t *)resp)->tc,get_ename(((dns_hdr_t *)resp)->rcode));
+	DEBUG_MSG("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,((dns_hdr_t *)resp)->tc,get_ename(((dns_hdr_t *)resp)->rcode));
 
 	v.iov_base=(char *)resp;
 	v.iov_len=rlen;
@@ -1049,15 +1057,15 @@ void *udp_answer_thread(void *data)
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_addr));
 #  endif
 # endif		
-		DEBUG_MSG2("Answering to: %s", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
+		DEBUG_MSG("Answering to: %s", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
 # if defined(SRC_ADDR_DISC)
 #  if TARGET==TARGET_LINUX
-		DEBUG_MSG2(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
+		DEBUG_MSGC(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
 #  else
-		DEBUG_MSG2(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.ai4));
+		DEBUG_MSGC(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.ai4));
 #  endif
 # else
-		DEBUG_MSG1("\n");
+		DEBUG_MSGC("");
 # endif
 	}
 #endif
@@ -1075,11 +1083,11 @@ void *udp_answer_thread(void *data)
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in6_pktinfo));
 # endif
 
-		DEBUG_MSG2("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
+		DEBUG_MSG("Answering to: %s", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,ADDRSTR_MAXLEN));
 # if defined(SRC_ADDR_DISC)
-		DEBUG_MSG2(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
+		DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
 # else
-		DEBUG_MSG1("\n");
+		DEBUG_MSG("");
 # endif
 	}
 #endif
@@ -1436,7 +1444,7 @@ void *tcp_answer_thread(void *csock)
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
-	int i;
+	int i, thrid;
 #ifdef NO_POLL
 	fd_set fds;
 	struct timeval tv;
@@ -1457,12 +1465,19 @@ void *tcp_answer_thread(void *csock)
 	do {
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
-		if (i<=global.proc_limit)
+		if (i<=global.proc_limit) {
 			procs++;
+			thrid=thrid_cnt++;
+		}
 		pthread_mutex_unlock(&proc_lock);
 		if (i>global.proc_limit)
 			usleep_r(50000);
 	} while (i>global.proc_limit);
+
+	if (pthread_setspecific(thrid_key, &thrid) != 0) {
+		log_error("pthread_setspecific failed.");
+		pdnsd_exit();
+	}
 
 	pdnsd_free(csock);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until

@@ -32,10 +32,11 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: thread.c,v 1.4 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 volatile int waiting=0; /* Has the main thread already done sigwait() ? */
+pthread_key_t thrid_key;
 
 /* This is a handler for signals to the threads. We just hand the sigs on to the main thread.
  * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads

@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.40 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.41 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -430,7 +430,7 @@ int main(int argc,char *argv[])
 		dbg_file=stdout;
 #endif
 		printf("pdnsd-%s starting.\n",VERSION);
-		DEBUG_MSG1("Debug messages activated\n");
+		DEBUG_MSGC("Debug messages activated\n");
 	}
 #if TARGET!=TARGET_LINUX
 	if (!final_init())
@@ -438,11 +438,11 @@ int main(int argc,char *argv[])
 #endif
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
-		DEBUG_MSG1("Using IPv4.\n");
+		DEBUG_MSGC("Using IPv4.\n");
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6)
-		DEBUG_MSG1("Using IPv6.\n");
+		DEBUG_MSGC("Using IPv6.\n");
 #endif
 	init_log();
 
@@ -465,6 +465,12 @@ int main(int argc,char *argv[])
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 
+	/* Generate a key for storing our thread id's */
+	if (pthread_key_create(&thrid_key, NULL) != 0) {
+		log_error("pthread_key_create failed.");
+		_exit(1);
+	}
+
 	start_servstat_thread();
 
 #if TARGET==TARGET_LINUX
@@ -481,14 +487,14 @@ int main(int argc,char *argv[])
 
 	start_dns_servers();
 
-	DEBUG_MSG1("All threads started successfully.\n");
+	DEBUG_MSGC("All threads started successfully.\n");
 
 #if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
-	DEBUG_MSG1("Signal caught, writing disk cache.\n");
+	DEBUG_MSGC("Signal caught, writing disk cache.\n");
 	write_disk_cache();
 	destroy_cache();
 	log_warn("Caught signal %i. Exiting.",sig);

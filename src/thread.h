@@ -18,12 +18,13 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: thread.h,v 1.2 2001/05/09 17:51:52 tmm Exp $ */
+/* $Id: thread.h,v 1.3 2001/05/19 14:57:30 tmm Exp $ */
 
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
 #include <config.h>
+#include <pthread.h>
 #include <signal.h>
 
 /* --- from main.c */
@@ -60,6 +61,9 @@ void thread_sig(int sig);
 /* This is a thread-safe usleep(). On systems that have a sane usleep, we use
  * that. Otherwise, we use select() with no fd's.*/
 void usleep_r(unsigned long usec);
+
+/* Key for storing private thread ID's */
+extern pthread_key_t thrid_key;
 
 #endif
 

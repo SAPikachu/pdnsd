@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.29 2001/05/10 22:15:53 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.30 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -479,7 +479,7 @@ static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl
 	cent->rr[tp-T_MIN]->rrs=rr;
 #if DEBUG>0
 	if (cent->rr[tp-T_MIN]->flags&CF_NEGATIVE)
-		DEBUG_MSG2("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
+		DEBUG_MSG("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
 #endif
 	return 1;
 }

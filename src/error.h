@@ -18,14 +18,18 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.10 2001/05/09 17:51:52 tmm Exp $ */
+/* $Id: error.h,v 1.11 2001/05/19 14:57:30 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
 
 #include <config.h>
+#include <time.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <signal.h>
+
+#include "thread.h"
 
 /* --- from error.c */
 volatile extern int waiting;
@@ -51,43 +55,29 @@ void log_info(int level, char *s, ...);
 /* from main.c */
 extern FILE *dbg_file;
 
-#define DEBUG_MSG1(x)							\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x);					\
-		fflush(dbg_file);					\
-	} } while (0)
-#define DEBUG_MSG2(x,y)							\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x,y);					\
-		fflush(dbg_file);					\
-	} } while (0)
-#define DEBUG_MSG3(x,y,z)						\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x,y,z);				\
-		fflush(dbg_file);					\
-	} } while (0)
-#define DEBUG_MSG4(x,y,z,a)						\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x,y,z,a);				\
-		fflush(dbg_file);					\
-	} } while (0)
-#define DEBUG_MSG5(x,y,z,a,b)						\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x,y,z,a,b);				\
-		fflush(dbg_file);					\
-	} } while (0)
-#define DEBUG_MSG6(x,y,z,a,b,c)						\
-	do { if (debug_p) {						\
-		fprintf(dbg_file,x,y,z,a,b,c);				\
-		fflush(dbg_file);					\
-	} } while (0)
+/* XXX: Through the timestamp generation, this gets a little heavy-weight */
+#define DEBUG_MSG_(c,...)								\
+	do {										\
+		if (debug_p) {								\
+			char DM_ts[32];							\
+			time_t DM_tt = time(NULL);					\
+			struct tm DM_tm;						\
+			int *DM_id;							\
+			localtime_r(&DM_tt, &DM_tm);					\
+			if (!c && strftime(DM_ts, sizeof(DM_ts), "%m/%d %T",		\
+			    &DM_tm) > 0 &&						\
+			    (DM_id = (int *)pthread_getspecific(thrid_key)) != NULL)	\
+				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);		\
+			fprintf(dbg_file,__VA_ARGS__);					\
+			fflush(dbg_file);						\
+		}									\
+	} while (0)
+
+#define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
+#define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
 #else
-#define DEBUG_MSG1(x) 
-#define DEBUG_MSG2(x,y) 
-#define DEBUG_MSG3(x,y,z) 
-#define DEBUG_MSG4(x,y,z,a)
-#define DEBUG_MSG5(x,y,z,a,b)
-#define DEBUG_MSG6(x,y,z,a,b,c)
+#define DEBUG_MSG(...)
+#define DEBUG_MSGC(...)
 #endif
 
 /*

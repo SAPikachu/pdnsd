@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.25 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.26 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -185,17 +185,17 @@ void *status_thread (void *p)
 	do {
 		res=sizeof(ra);
 		if ((rs=accept(sock,(struct sockaddr *)&ra,&res))!=-1) {
-			DEBUG_MSG1("Status socket query pending.\n");
+			DEBUG_MSG("Status socket query pending.\n");
 			read(rs,&cmd,sizeof(cmd));
 			switch(ntohs(cmd)) {
 			case CTL_STATS:
-				DEBUG_MSG1("Received STATUS query.\n");
+				DEBUG_MSG("Received STATUS query.\n");
 				fsprintf(rs,"pdnsd-%s running on %s.\n",VERSION,nm.nodename);
 				report_cache_stat(rs);
 				report_conf_stat(rs);
 				break;
 			case CTL_SERVER:
-				DEBUG_MSG1("Received SERVER command.\n");
+				DEBUG_MSG("Received SERVER command.\n");
 				if (!fsgets(rs,buf,sizeof(buf))) {
 					print_serr(rs,"Bad server label.");
 					break;
@@ -241,7 +241,7 @@ void *status_thread (void *p)
 				}
 				break;
 			case CTL_RECORD:
-				DEBUG_MSG1("Received RECORD command.\n");
+				DEBUG_MSG("Received RECORD command.\n");
 				if ((cmd=read_short(rs))<-1)
 					break;
 				if (!read_domain(rs, buf, sizeof(buf)))
@@ -260,7 +260,7 @@ void *status_thread (void *p)
 				}
 				break;
 			case CTL_SOURCE:
-				DEBUG_MSG1("Received SOURCE command.\n");
+				DEBUG_MSG("Received SOURCE command.\n");
 				if (!fsgets(rs,fn,1024)) {
 					print_serr(rs,"Bad filename name.");
 					break;
@@ -283,7 +283,7 @@ void *status_thread (void *p)
 					print_serr(rs,errbuf);
 				break;
 			case CTL_ADD:
-				DEBUG_MSG1("Received ADD command.\n");
+				DEBUG_MSG("Received ADD command.\n");
 				if ((cmd=read_short(rs))<-1)
 					break;
 				if (!read_domain(rs, buf, sizeof(buf)))
@@ -354,11 +354,11 @@ void *status_thread (void *p)
 				print_succ(rs);
 				break;
 			case CTL_NEG:
-				DEBUG_MSG1("Received NEG command.\n");
+				DEBUG_MSG("Received NEG command.\n");
 				if (!read_domain(rs, buf, sizeof(buf)))
 					break;
 				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
-					DEBUG_MSG1("NEG: received bad domain name.\n");
+					DEBUG_MSG("NEG: received bad domain name.\n");
 					print_serr(rs,"Bad domain name.");
 					break;
 				}
@@ -367,7 +367,7 @@ void *status_thread (void *p)
 				if ((ttl=read_long(rs))<-1)
 					break;
 				if (cmd!=255 && (cmd<T_MIN || cmd>T_MAX)) {
-					DEBUG_MSG1("NEG: received bad record type.\n");
+					DEBUG_MSG("NEG: received bad record type.\n");
 					print_serr(rs,"Bad record type.");
 					break;
 				}

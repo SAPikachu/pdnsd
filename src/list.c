@@ -31,13 +31,13 @@
 #include "list.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: list.c,v 1.4 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: list.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 #ifdef ALLOC_DEBUG
 darray DBGda_create(int sz, char *file, int line)
 {
-	DEBUG_MSG4("+ da_create, %s:%d, %d bytes\n", file, line, DA_ALIGNSZ(sz));
+	DEBUG_MSG("+ da_create, %s:%d, %d bytes\n", file, line, DA_ALIGNSZ(sz));
 	return Dda_create(sz);
 }
 #endif
@@ -97,9 +97,9 @@ int da_nel(darray a)
 darray DBGda_free(darray a, char *file, int line)
 {
 	if (a==NULL)
-		DEBUG_MSG3("- da_free, %s:%d, not initialized\n", file, line);
+		DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);
 	else
-		DEBUG_MSG4("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);
+		DEBUG_MSG("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);
 	Dda_free(a);
 	return;
 }
