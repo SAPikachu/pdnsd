@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.11 2001/04/10 23:01:58 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.12 2001/04/11 17:55:05 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -82,7 +82,7 @@ void print_help(void)
 	fprintf(stderr,"\tSet the status of the server with the given index to up or down, or\n");
 	fprintf(stderr,"\tforce a retest. The index is assigned in the order of definition in\n");
 	fprintf(stderr,"\tpdnsd.cache starting with 0. Use the status command to view the indexes.\n");
-	fprintf(stderr,"\tYou can specify all instead of an index to perform th action for all\n");
+	fprintf(stderr,"\tYou can specify all instead of an index to perform the action for all\n");
 	fprintf(stderr,"\tservers registered with pdnsd.\n");
 
 	fprintf(stderr,"record\tname\t(delete|invalidate)\n");

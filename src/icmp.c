@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.20 2001/04/03 21:10:52 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.21 2001/04/11 17:54:57 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -146,9 +146,9 @@ static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg
 	if (elen<sizeof(struct iphdr))
 		return 0;
 	memcpy(&iph,errmsg,sizeof(iph));
-	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+sizeof(iph))
+	if (iph.ip_p!=IPPROTO_ICMP || elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+sizeof(eiph))
 		return 0;
-	memcpy(&icmph,errmsg+iph.ip_hl*4,sizeof(icmph));
+	memcpy(&icmph,errmsg+iph.ip_hl*4,ICMP_BASEHDR_LEN);
 	memcpy(&eiph,errmsg+iph.ip_hl*4+ICMP_BASEHDR_LEN,sizeof(eiph));
 	if (elen<iph.ip_hl*4+ICMP_BASEHDR_LEN+eiph.ip_hl*4+8)
 		return 0;
@@ -314,7 +314,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
  * errmsg does not include an IPv6 header. to is the address the sent packet went to.
  * This is specialized for icmpv6: It zeros out the checksum field, which is filled in
  * by the kernel, and expects that the checksum field in the sent-out packet is zeroed out too
- * We need a little magic to parse the anwer, as there could be extension headers present, end
+ * We need a little magic to parse the answer, as there could be extension headers present, end
  * we don't know their length a priori.*/
 static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errmsg, int elen, int errtype)
 {
@@ -325,7 +325,7 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 	int rlen,nxt;
 
 	/* XXX: lots of memcpy here to avoid unaligned access faults on alpha */
-	if (elen<sizeof(struct icmp6_hdr)+sizeof(struct ip6_hdr))
+	if (elen<sizeof(icmph)+sizeof(eiph))
 		return 0;
 	memcpy(icmph,errmsg,sizeof(icmph));
 	memcpy(eiph,errmsg+sizeof(icmph),sizeof(eiph));
@@ -337,11 +337,13 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 	/* Now, jump over any known option header that might be present, and then
 	 * try to compare the packets. */
 	while (nxt!=IPPROTO_ICMPV6) {
-		memcpy(hbh,data,sizeof(hbh));
 		/* Those are the headers we understand. */
 		if (nxt!=IPPROTO_HOPOPTS && nxt!=IPPROTO_ROUTING && nxt!=IPPROTO_DSTOPTS)
 			return 0;
-		if (rlen<sizeof(hbh) || rlen<hbh.ip6h_len)
+		if (rlen<sizeof(hbh))
+			return 0;
+		memcpy(hbh,data,sizeof(hbh));
+		if (rlen<hbh.ip6h_len)
 			return 0;
 		rlen-=hbh.ip6h_len;
 		nxt=hbh.ip6h_nxt;
@@ -375,21 +377,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #else
 	struct pollfd pfd;
 #endif
-	/*
-#if TARGET!=TARGET_LINUX
-	int SOL_IPV6;
-	struct protoent *pe;
-
-	if (!(pe=getprotobyname("ipv6"))) {
-		if (icmp_errs<ICMP_MAX_ERRS) {
-			icmp_errs++;
-			log_warn("icmp ping: getprotobyname() failed: %s",strerror(errno));
-		}
-		return -1;
-	}
-	SOL_IPV6=pe->p_proto;
-#endif
-	*/
 
 	isock=ping6_isocket;
 
@@ -466,8 +453,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 					if (len>=sizeof(struct icmp6_hdr)) {
 						/* we get packets without IPv6 header, luckily */
 						memcpy(&icmpp, buf, sizeof(icmpp));
-						/* The address comparation was diked out because some linux versions
-						 * seem to have problems with it. */
 						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
 						    ntohs(icmpp.icmp6_id)==id && ntohs(icmpp.icmp6_seq)<=i) {
 							return (i-ntohs(icmpp.icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
@@ -491,7 +476,8 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 
 
 /* Perform an icmp ping on a host, returning -1 on timeout or 
- * "host unreachable" or the ping time in 10ths of secs.
+ * "host unreachable" or the ping time in 10ths of secs
+ * (but actually, we are not that accurate any more).
  * timeout in 10ths of seconds, rep is the repetition count
  */
 int ping(pdnsd_a *addr, int timeout, int rep)
@@ -510,21 +496,21 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
-		return ping4(addr->ipv4,timeout/10,rep);
+		return ping4(addr->ipv4,timeout*10,rep);
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			v4.s_addr=((long *)&addr->ipv6)[3];
-			return ping4(v4,timeout/10,rep);
+			return ping4(v4,timeout*10,rep);
 		} else 
-			return ping6(addr->ipv6,timeout/10,rep);
+			return ping6(addr->ipv6,timeout*10,rep);
 	}
 #endif
 	return -1;
 }
 
 #else
-# error "No OS macro defined. Please look into config.h.templ."
+# error "Huh! No OS macro defined!"
 #endif /*TARGET==TARGET_LINUX || TARGET==TARGET_BSD*/

@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
 #include "config.h"
 #include <sys/types.h>
 #include <sys/time.h>
@@ -38,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.19 2001/04/11 03:30:10 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.20 2001/04/11 17:54:57 tmm Exp $";
 #endif
 
 /*
@@ -114,16 +115,13 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 	unsigned char b2[2];
 	int lb;
 	int tcnt=0;
-	b2[0]=b2[1]='\0';
 	
 	do {
 		lb=0;
-		buf[0]='\0';
 		while(isdchar(str[lb+cnt])) {
 			if (lb>62)
 				return 0;
-			b2[0]=str[lb+cnt];
-			strcat((char *)buf,(char *)b2);
+			buf[lb]=str[lb+cnt];
 			lb++;
 		}
 		if (str[lb+cnt]=='\0') {
@@ -136,12 +134,12 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 			return 0;
 		} else if (str[lb+cnt]=='.') {
 			i++;
-			if (lb+tcnt+1>254) /* 254 because the termination 0 has to follow */
+			if (lb+tcnt+1>255) /* 255 because the termination 0 has to follow */
 				return 0;
 			rhn[tcnt]=(unsigned char)lb;
 			tcnt++;
-			strcpy((char *)&rhn[tcnt],(char *)buf);
-			tcnt+=strlen((char *)buf);
+			memcpy(rhn+tcnt,buf,lb);
+			tcnt+=lb;
 			cnt+=lb+1;
 		} else
 			return 0;
@@ -160,6 +158,7 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 	unsigned char lb;
 	int i;
 	int cnt=1;
+
 	str[0]='\0';
 	lb=rhn[0];
 	if (!lb) {
@@ -242,6 +241,10 @@ int is_inaddr_any(pdnsd_a *a)
 	return 0;
 }
 
+/*
+ * This is used for user output only, so it does not matter when an error occurs
+ * and we leave the string empty.
+ */
 char *pdnsd_a2str(pdnsd_a *a, char *str, int maxlen)
 {
 #ifdef ENABLE_IPV4
@@ -252,7 +255,10 @@ char *pdnsd_a2str(pdnsd_a *a, char *str, int maxlen)
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		inet_ntop(AF_INET6,&a->ipv6,str,maxlen);
+		if (inet_ntop(AF_INET6,&a->ipv6,str,maxlen)==NULL) {
+			log_error("inet_ntop: %s", strerror(errno));
+			str[0]='\0';
+		}
 	}
 #endif
 	return str;
@@ -272,7 +278,10 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 #endif
 #ifdef ENABLE_IPV6
 	if (run_ipv6) {
-		inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,str,maxlen);
+		if (inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,str,maxlen)==NULL)
+			log_error("inet_ntop: %s", strerror(errno));
+			str[0]='\0';
+		}
 	}
 #endif
 	return str;
@@ -293,7 +302,7 @@ char *socka2str(struct sockaddr *a, char *str, int maxlen)
 static FILE *rand_file;
 #endif
 
-#if defined(RANDOM_DEVICE) || defined(R_RANDOM)
+#ifdef R_RANDOM
 void init_crandom()
 {
 	struct timeval tv;
@@ -305,17 +314,18 @@ void init_crandom()
 #endif
 
 /* initialize the PRNG */
-void init_rng()
+int init_rng()
 {
 #ifdef RANDOM_DEVICE
 	if (!(rand_file=fopen(RANDOM_DEVICE,"r"))) {
-		log_warn("Could not open %s. Will use the internal random() function, which might be less secure.");
-		init_crandom();
+		log_error("Could not open %s.");
+		return 0;
 	}
 #endif
 #ifdef R_RANDOM
 	init_crandom();
 #endif
+	return 1;
 }
 
 void free_rng()
@@ -333,7 +343,10 @@ unsigned short get_rand16()
 	unsigned short rv;
 
 	if (rand_file) {
-		fread(&rv,sizeof(unsigned short),1, rand_file);
+		if (fread(&rv,sizeof(rv),1, rand_file)!=sizeof(rv)) {
+			log_error("Error while reading from random device: %s", strerror(errno));
+			pdnsd_exit();
+		}
 		return rv;
 	} else
 		return random()&0xffff;

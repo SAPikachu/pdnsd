@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.36 2001/04/06 21:30:36 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.37 2001/04/11 17:54:57 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -174,7 +174,7 @@ int main(int argc,char *argv[])
 	struct passwd *pws;
 	char *conf_file=CONFDIR"/pdnsd.conf";
 #if DEBUG>0
-	char dbgdir[1024];
+	char dbgdir[MAXPATH];
 #endif
 	FILE *pf;
 #ifndef O_NOFOLLOW
@@ -337,12 +337,12 @@ int main(int argc,char *argv[])
 	}
 
 	if (daemon_p && pidfile[0]) {
-		unlink(pidfile);
-#ifdef O_NOFOLLOW		
-		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600))==-1) {
-			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+		if (unlink(pidfile)!=0 && errno!=ENOENT) {
+			log_error("Error: could not unlink pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
+#ifdef O_NOFOLLOW		
+		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600))==-1) {
 #else
 		/* 
 		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the 
@@ -351,10 +351,10 @@ int main(int argc,char *argv[])
 		 * supported, this is just-in-case code.
 		 */
 		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))==-1) {
+#endif
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
-#endif
 		if (!(pf=fdopen(pfd,"w"))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
@@ -366,7 +366,8 @@ int main(int argc,char *argv[])
 	}
 	if (np)
 		init_ping_socket();
-	init_rng();
+	if (!init_rng())
+		exit(1);
 #if TARGET==TARGET_LINUX
 	if (!final_init())
 		exit(1);
@@ -484,33 +485,15 @@ int main(int argc,char *argv[])
 
 #if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
-	waiting=1;
-	sigwait(&sigs_msk,&sig);
-#else
-/*	signal(SIGILL,bsd_sighnd);
-	signal(SIGABRT,bsd_sighnd);
-	signal(SIGFPE,bsd_sighnd);
-	signal(SIGSEGV,bsd_sighnd);
-	signal(SIGTERM,bsd_sighnd);
-	if (!daemon_p) {
-		signal(SIGINT,bsd_sighnd);
-		signal(SIGQUIT,bsd_sighnd);
-	}
-	while (!sigr) usleep_r(250000);
-	sig=sigr;*/
-	waiting=1;
-	sigwait(&sigs_msk,&sig);
 #endif
+	waiting=1;
+	sigwait(&sigs_msk,&sig);
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
 	write_disk_cache();
 	destroy_cache();
 	log_warn("Caught signal %i. Exiting.",sig);
 	if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
 		crash_msg("This is a fatal signal probably triggered by a bug.");
-#if DEBUG>0
-	if (debug_p && daemon_p)
-		fclose(dbg);
-#endif
 	if (ping_isocket!=-1)
 		close(ping_isocket);
 #ifdef ENABLE_IPV6
@@ -521,5 +504,9 @@ int main(int argc,char *argv[])
 		unlink(sock_path); /* Delete the socket */
 	}
 	free_rng();
+#if DEBUG>0
+	if (debug_p && daemon_p)
+		fclose(dbg);
+#endif
 	_exit(0);
 }

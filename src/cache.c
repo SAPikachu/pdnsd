@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.22 2001/04/10 22:21:12 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.23 2001/04/11 17:55:01 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -238,7 +238,7 @@ static void unlock_cache_rw(void)
 /* These are a special version of the ordinary read lock functions. The lock "soft" to avoid deadlocks: they will give up
  * after a certain number of bad trials. You have to check the exit status though.
  * To avoid blocking mutexes, we cannot use condition variables here. Never mind, these are only used on
- * exit*/
+ * exit. */
 static int softlock_cache_r(void)
 {
 	int lk=0;
@@ -316,7 +316,7 @@ static int softunlock_cache_rw(void)
 
 unsigned long l_serial=1;
 
-unsigned long get_serial ()
+unsigned long get_serial()
 {
 	unsigned long rv;
 	lock_cache_rw();
@@ -351,7 +351,7 @@ void destroy_cache()
 	dns_cent_t *ce;
 	dns_hash_pos_t pos;
 
-	/* lock the cache, in case that any thread is still accssing. */
+	/* lock the cache, in case that any thread is still accessing. */
 	softlock_cache_rw();
 	ce=fetch_first((dns_hash_t *)&dns_hash, &pos);
 	while (ce) {
@@ -425,7 +425,7 @@ rr_bucket_t *create_rr(int dlen, void *data)
  * Adds an empty. rrset_t with the requested data to a cent. This is exactly what you need to
  * to do to create a negatively cached cent.
  */
-int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
+int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
 {
 	if (!(cent->rr[tp-T_MIN]=calloc(sizeof(rr_set_t),1)))
 		return 0;
@@ -447,9 +447,8 @@ int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, 
  */
 static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
 {
-	if (cent->flags&(DF_LOCAL) && cent->flags&DF_NEGATIVE) {
-		return 1; /* ignore. Local has precedence */
-	}
+	if ((cent->flags&DF_LOCAL) && (cent->flags&DF_NEGATIVE))
+		return 1; /* ignore. Local has precedence. */
 
 	if (!cent->rr[tp-T_MIN]) {
 		if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial))
@@ -500,7 +499,7 @@ int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags, int dlen, 
 }
 
 /* Free a complete rrset including all memory. Returns the size of the memory freed */
-int del_cent_rrset(dns_cent_t *cent, int tp)
+static int del_cent_rrset(dns_cent_t *cent, int tp)
 {
 	rr_bucket_t *rrb,*rrn;
 	int rv=0;
@@ -542,7 +541,7 @@ void free_cent(dns_cent_t cent)
 	for (i=0;i<T_NUM;i++) {
 		del_cent_rrset(&cent, i+T_MIN);
 	}
-	free (cent.qname);
+	free(cent.qname);
 }
 
 static long get_rrlent_ts(rr_lent_t *le)
@@ -553,8 +552,8 @@ static long get_rrlent_ts(rr_lent_t *le)
 }
 
 /* insert a rrset into the rr_l list. This modifies the rr_set_t if rrs is not NULL! 
- * The rrset address needs to be constant afterwards 
- * call with locks applied*/
+ * The rrset address needs to be constant afterwards.
+ * Call with locks applied. */
 static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 {
 	rr_lent_t *le,*ne;
@@ -596,7 +595,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 	return ne;
 }
 
-/* Remove a rr from the rr_l list. Call with locks applied*/
+/* Remove a rr from the rr_l list. Call with locks applied. */
 static void remove_rrl(rr_lent_t *le)
 {
 	if (le->next)
@@ -676,12 +675,12 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
  * This was pretty large once upon a time ;-), but now, since we operate in rrsets, was
  * shrinked drastically.
  * If the record is in the cache, we need rw-locks applied.
- * returns the size of the freed memory.
+ * Returns the size of the freed memory.
  */
 static int purge_rrset(dns_cent_t *cent, int tp)
 {
 	if (cent->rr[tp-T_MIN] && !(cent->rr[tp-T_MIN]->flags&CF_NOPURGE || cent->rr[tp-T_MIN]->flags&CF_LOCAL) &&
-	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl<time(NULL)+CACHE_LAT) {
+	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl+CACHE_LAT<time(NULL)) {
 		/* well, it must go. */
 		remove_rrl(cent->rr[tp-T_MIN]->lent);
 		return del_cent_rrset(cent,tp);
@@ -694,15 +693,15 @@ static int purge_rrset(dns_cent_t *cent, int tp)
  * Since the cent may actually become empty and be deleted, you may not use it after this call until
  * you refetch its address from the hash (if it is still there).
  * returns the size of the freed memory.
- * force means to delete the cent even when it's not timed out.
+ * Force means to delete the cent even when it's not timed out.
  */
 static int purge_cent(dns_cent_t *cent, int delete)
 {
 	int rv=0;
 	int i;
-	for (i=T_MIN;i<=T_MAX;i++) {
+	
+	for (i=T_MIN;i<=T_MAX;i++)
 		rv+=purge_rrset(cent,i);
-	}
 	/* if the record was purged empty, delete it from the cache. */
 	if (cent->num_rrs==0 && delete && (!cent->flags&DF_NEGATIVE || 
 					   ((time(NULL)-cent->ts>cent->ttl+CACHE_LAT) && !cent->flags&DF_LOCAL))) {
@@ -800,14 +799,13 @@ void read_disk_cache()
 	unsigned char nb[256];
 
 	if (snprintf(path, sizeof(path), "%s/pdnsd.cache", global.cache_dir)>=sizeof(path)) {
-		log_warn("Cache file path too long.",path,strerror(errno));
+		log_warn("Cache file path too long.");
 		return;
-	}		
+	}
 
 	if (!(data = calloc(dtsz,1))) {
 		log_warn("Out of memory in reading cache file. Exiting.");
 		pdnsd_exit();
-		free(data);
 		return;
 	}
 
@@ -852,6 +850,7 @@ void read_disk_cache()
 			if (fread(&num_rr,sizeof(num_rr),1,f)!=1) {
 				log_warn("Error in disk cache file.");
 				free(data);
+				free_cent(ce);
 				fclose(f);
 				return;
 			}
@@ -859,18 +858,22 @@ void read_disk_cache()
 				if (fread(&sh,sizeof(sh),1,f)!=1) {
 					log_warn("Error in disk cache file.");
 					free(data);
+					free_cent(ce);
 					fclose(f);
 					return;
 				}
 				/* Add the rrset header in any case (needed for negative cacheing */
 				add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0);
 				for (;num_rr>1;num_rr--) {
-					if (!read_rr(&rr,&data,&dtsz,f))
+					if (!read_rr(&rr,&data,&dtsz,f)) {
+						free_cent(ce);
 						return;
+					}
 					if (!add_cent_rr(&ce,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,i+T_MIN)) {
 						log_error("Out of memory in reading cache file. Exiting.");
 						pdnsd_exit();
 						free(data);
+						free_cent(ce);
 						fclose(f);
 						return;
 					}
@@ -878,13 +881,14 @@ void read_disk_cache()
 			}
 		}
 		add_cache(ce);
+		free_cent(ce);
 	}
 	free(data);
 	fclose(f);
 }
 
 /* write an rr to the file f */
-static void write_rrset(rr_set_t *rrs, FILE *f)
+static int write_rrset(rr_set_t *rrs, FILE *f)
 {
 	rr_bucket_t *rr;
 	rr_fset_t sh;
@@ -892,15 +896,28 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	unsigned char num_rr=0;  /* 0 means nothing, 1 means header only, 1 means header + 1 records ... */
 	long nump,oldp;
 	
- 	nump=ftell(f);
-	fwrite(&num_rr,sizeof(num_rr),1,f); /* write a dummy at first, since we do no know the number */
+ 	if ((nump=ftell(f))==-1) {
+		log_error("Error while writing disk cache: %s", strerror(errno));
+		fclose(f);
+		return 0;
+	}
+	/* write a dummy at first, since we do no know the number */
+	if (fwrite(&num_rr,sizeof(num_rr),1,f)!=1) {
+		log_error("Error while writing disk cache: %s", strerror(errno));
+		fclose(f);
+		return 0;
+	}
 	if (!rrs || rrs->flags&CF_LOCAL)
-		return;
+		return 1;
 
 	sh.ttl=rrs->ttl;
 	sh.ts=rrs->ts;
 	sh.flags=rrs->flags;
-	fwrite(&sh,sizeof(sh),1,f);
+	if (fwrite(&sh,sizeof(sh),1,f)!=1) {
+		log_error("Error while writing disk cache: %s", strerror(errno));
+		fclose(f);
+		return 0;
+	}
 	rr=rrs->rrs;
 	/* We only write a maximum of 256 of a kind (type) for one domain. This would be already overkill and probably does not happen.
 	 * we want to get along with only one char, because most rr rows are empty (even more with DNS_NEW_RRS), and so the usage
@@ -909,14 +926,21 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	while (rr && num_rr<255) {
 		num_rr++;
 		rf.rdlen=rr->rdlen;
-		fwrite(&rf,sizeof(rf),1,f);
-		fwrite((rr+1),rf.rdlen,1,f);
+		if (fwrite(&rf,sizeof(rf),1,f)!=1 || fwrite((rr+1),rf.rdlen,1,f)!=1) {
+			log_error("Error while writing disk cache: %s", strerror(errno));
+			fclose(f);
+			return 0;
+		}
 		rr=rr->next;
 	}
-	oldp=ftell(f);
-	fseek(f,nump,SEEK_SET);
-	fwrite(&num_rr,sizeof(num_rr),1,f);  /* write the real number */
-	fseek(f,oldp,SEEK_SET);
+	if ((oldp=ftell(f))==-1 || fseek(f,nump,SEEK_SET)==-1 || 
+	    fwrite(&num_rr,sizeof(num_rr),1,f)!=1 ||  /* write the real number */
+	    fseek(f,oldp,SEEK_SET)==-1) {
+		log_error("Error while writing disk cache: %s", strerror(errno));
+		fclose(f);
+		return 0;
+	}
+	return 1;
 }
 
 
@@ -966,7 +990,13 @@ void write_disk_cache()
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
-	fwrite((char *)&ent_num,sizeof(en),1,f); /*we don't know the real size by now, so write a dummy*/
+	/* we don't know the real size by now, so write a dummy */
+	if (fwrite((char *)&ent_num,sizeof(en),1,f)!=1) {
+		log_error("Error while writing disk cache: %s", strerror(errno));
+		fclose(f);
+		softunlock_cache_r();
+		return;
+	}
 
 	le=fetch_first((dns_hash_t *)&dns_hash,&pos);
 	while (le) {
@@ -984,17 +1014,26 @@ void write_disk_cache()
 			df.flags=le->flags;
 			df.ts=le->ts;
 			df.ttl=le->ttl;
-			fwrite(&df,sizeof(dns_file_t),1,f);
-			fwrite(le->qname,df.qlen,1,f);
-
+			if (fwrite(&df,sizeof(dns_file_t),1,f)!=1 ||
+			    fwrite(le->qname,df.qlen,1,f)!=1) {
+				log_error("Error while writing disk cache: %s", strerror(errno));
+				fclose(f);
+				softunlock_cache_r();
+				return;
+			}
+			
 			for (i=0;i<T_NUM;i++) {
-				write_rrset(le->rr[i],f);
+				if (!write_rrset(le->rr[i],f)) {
+					softunlock_cache_r();
+					return;
+				}
 			}
 		}
 		le=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
-	fseek(f,0,SEEK_SET);
-	fwrite(&en,sizeof(en),1,f); /*write the real size.*/
+	/* write the real size. */
+	if (fseek(f,0,SEEK_SET)==-1 || fwrite(&en,sizeof(en),1,f)!=1)
+		log_error("Error while writing disk cache: %s", strerror(errno));
 	fclose(f);
 	softunlock_cache_r();
 }
@@ -1159,7 +1198,7 @@ void del_cache(unsigned char *name)
 
 
 /* Invalidate a record by resetting the fetch time to 0. This means that it will be refreshed
- * if possible (and will only be served when purge_cache=off; */
+ * if possible (and will only be served when purge_cache=off;) */
 void invalidate_record(unsigned char *name)
 {
 	dns_cent_t *ce;

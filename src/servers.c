@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.12 2001/04/06 21:30:36 tmm Exp $";
+static char rcsid[]="$Id: servers.c,v 1.13 2001/04/11 17:54:58 tmm Exp $";
 #endif
 
 /*
@@ -129,8 +129,16 @@ int uptest (servparm_t serv)
 			execl("/bin/sh", "uptest_sh","-c",serv.uptest_cmd,NULL);
 			_exit(1); /* failed execl */
 		} else {
-			waitpid(pid,&ret,0);
-			ret=(WEXITSTATUS(ret)==0);
+			while (1) {
+				if (waitpid(pid,&ret,0)!=0) {
+					ret=0;
+					break;
+				}
+				if (WIFEXITED(ret)) {
+					ret=(WEXITSTATUS(ret)==0);
+					break;
+				}
+			}
 		}
 	}
 	return ret;
