@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: status.h,v 1.10 2001/05/09 17:51:52 tmm Exp $ */
+/* $Id: status.h,v 1.11 2001/05/30 21:04:15 tmm Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_
@@ -42,6 +42,7 @@ extern char sock_path[MAXPATH];
 #define CTL_R_DELETE 1
 #define CTL_R_INVAL  2
 
-void init_stat_fifo(void);
+void init_stat_sock(void);
+void start_stat_sock(void);
 
 #endif

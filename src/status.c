@@ -40,10 +40,11 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.27 2001/05/22 17:24:03 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.28 2001/05/30 21:04:15 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
+int stat_sock;
 
 pthread_t st;
 
@@ -125,17 +126,13 @@ int read_domain(int fh, char *buf, int buflen)
 	return 1;
 }
 
-/*
- * Give out server status information on the fifo "status" in the cache directory.
- * Inquire it by doing "cat <your-server-dir>/status"
- */
 void *status_thread (void *p)
 {
-	int sock,rs,sz,i,updown;
+	int rs,sz,i,updown;
 	socklen_t res;
 	struct utsname nm;
 	short cmd,cmd2;
-	struct sockaddr_un a,ra;
+	struct sockaddr_un ra;
 	char fn[1025];
 	char buf[257],dbuf[256];
 	char errbuf[256];
@@ -144,6 +141,7 @@ void *status_thread (void *p)
 	dns_cent_t cent;
 
 	THREAD_SIGINIT;
+	(void)p; /* To inhibit "unused variable" warning */
 
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
@@ -153,42 +151,14 @@ void *status_thread (void *p)
 	}
 
 	uname(&nm);
-	(void)p; /* To inhibit "unused variable" warning */
-	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(a.sun_path)) {
-		log_warn("cache directory name too long");
-		return NULL;
-	}
-	if (unlink(a.sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
-		log_warn("Failed to unlink %s: %s.",strerror(errno));
-		pdnsd_exit();
-	}
-	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
-		if (errno!=EINTR)
-			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
-		return NULL;
-	}
-	a.sun_family=AF_UNIX;
-#ifdef BSD44_SOCKA
-	a.sun_len=SUN_LEN(&a);
-#endif
-	if (bind(sock,(struct sockaddr *)&a,sizeof(a))==-1) {
-		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
-		close(sock);
-		return NULL;
-	}
-	/* We cannot use the umask here, because we are threaded and it is shared. The socket cannot be used
-	 * before connect, so there is no danger if we tighten permissions (which, by the way, are 0500
-	 * initally so they won't be). The directory is our cache directory, which is assumed not to be writable
-	 * for untrusted users, so there is no race. */
-	chmod(sock_path,global.ctl_perms);
-	if (listen(sock,5)==-1) {
+	if (listen(stat_sock,5)==-1) {
 		log_warn("Error: could not listen on socket: %s.\nStatus readback will be impossible",strerror(errno));
-		close(sock);
+		close(stat_sock);
 		return NULL;
 	}
 	do {
 		res=sizeof(ra);
-		if ((rs=accept(sock,(struct sockaddr *)&ra,&res))!=-1) {
+		if ((rs=accept(stat_sock,(struct sockaddr *)&ra,&res))!=-1) {
 			DEBUG_MSG("Status socket query pending.\n");
 			read(rs,&cmd,sizeof(cmd));
 			switch(ntohs(cmd)) {
@@ -402,7 +372,7 @@ void *status_thread (void *p)
 			usleep_r(100000); /* sleep some time. I do not want the query frequency to be too high. */
 		} else {
 			if (errno!=EINTR)
-				log_warn("Failed to open fifo: %s. Status readback will be impossible",strerror(errno));
+				log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
 			return NULL;
 		}
 	} while(1);
@@ -410,16 +380,51 @@ void *status_thread (void *p)
 }
 
 /*
- * Start the fifo thread (see above)
+ * Initialize the status socket
  */
-void init_stat_fifo()
+void init_stat_sock()
+{
+	struct sockaddr_un a;
+	mode_t omask;
+	
+	/* Early initialization, so that umask can be used race-free. */
+	if (snprintf(a.sun_path, sizeof(a.sun_path), "%s/pdnsd.status", global.cache_dir) >= sizeof(a.sun_path)) {
+		log_warn("cache directory name too long");
+		return;
+	}
+	if (unlink(a.sun_path)!=0 && errno!=ENOENT) { /* Delete the socket */
+		log_warn("Failed to unlink %s: %s.",strerror(errno));
+		pdnsd_exit();
+	}
+	if ((stat_sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
+		if (errno!=EINTR)
+			log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+		return;
+	}
+	a.sun_family=AF_UNIX;
+#ifdef BSD44_SOCKA
+	a.sun_len=SUN_LEN(&a);
+#endif
+	omask = umask(global.ctl_perms);
+	if (bind(stat_sock,(struct sockaddr *)&a,sizeof(a))==-1) {
+		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
+		close(stat_sock);
+		return NULL;
+	}
+	umask(omask);
+}
+
+/*
+ * Start the status socket thread (see above)
+ */
+void start_stat_sock()
 {
 	pthread_attr_t attr;
 
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 	if (pthread_create(&st,&attr,status_thread,NULL))
-		log_warn("Failed to start status thread. The status fifo will be unuseable");
+		log_warn("Failed to start status thread. The status socket will be unuseable");
 	else
 		log_info(2,"Status thread started.");
 }

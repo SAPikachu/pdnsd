@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.41 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -451,6 +451,10 @@ int main(int argc,char *argv[])
 
 	read_disk_cache();
 
+	/* This must be done before any other thread is started to avoid races. */
+	if (stat_pipe)
+		init_stat_sock();
+
 	sigemptyset(&sigs_msk);
 	sigaddset(&sigs_msk,SIGILL);
 	sigaddset(&sigs_msk,SIGABRT);
@@ -483,7 +487,7 @@ int main(int argc,char *argv[])
 #endif
 
 	if (stat_pipe)
-		init_stat_fifo();
+		start_stat_sock();
 
 	start_dns_servers();
 
