@@ -66,6 +66,10 @@ volatile unsigned long poll_errs=0;
 
 #define SOCK_ADDR(p) ((struct sockaddr *) &(p)->a)
 
+#ifdef SIN_LEN
+#undef SIN_LEN
+#endif
+
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
 #  define SIN_LEN (run_ipv4?sizeof(struct sockaddr_in):sizeof(struct sockaddr_in6))
@@ -851,7 +855,9 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 				case ECONNREFUSED: /* port unreachable */
 				case ENETDOWN:     /* network down */
 				case EHOSTDOWN:    /* host down */
+#ifdef ENONET
 				case ENONET:       /* machine not on the network */
+#endif
 					/* Mark this server as down for a period of time */
 					sched_server_test(PDNSD_A(st),1,0);
 					st->needs_testing=0;
@@ -906,7 +912,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 		return RC_SERVFAIL; /* mock error code */
 	}
 
-        /* If we reach this code, we have successful received an answer,
+        /* If we reach this code, we have successfully received an answer,
 	 * because we have returned error codes on errors or -1 on AGAIN.
 	 * conditions.
 	 * So we *should* have a correct dns record in recvbuf by now.

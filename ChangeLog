@@ -1,3 +1,10 @@
+2004-05-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Joseph Pecquet has reported that version 1.1.11 does not compile under FreeBSD v4.x
+	because the macro ENONET is undefined. I've bypassed the problem by surrounding
+	the case line using this value with conditional preprocessor directives.
+
 2004-05-08  Paul  Rombouts  <p.a.rombouts@home.nl>
 
 	* src/rc/Slackware/rc.pdnsd
