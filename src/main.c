@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.14 2000/10/14 23:29:08 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.15 2000/10/16 21:41:56 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -460,7 +460,8 @@ int main(int argc,char *argv[])
 	if (ping6_osocket!=-1)
 		close(ping6_osocket);
 #endif
-	unlink(sock_path); /* Delete the socket */
+	if (stat_pipe)
+		unlink(sock_path); /* Delete the socket */
 	free_rng();
 	_exit(0);
 }
