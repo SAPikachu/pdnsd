@@ -1,8 +1,8 @@
-dnl $Id: configure.in,v 1.27 2001/03/25 20:01:31 tmm Exp $
+dnl $Id: configure.in,v 1.28 2001/04/11 16:32:42 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -O"
+test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -g"
 
 CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"@sysconfdir@\\\"\""
 
