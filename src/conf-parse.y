@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.32 2001/04/30 17:02:00 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.33 2001/04/30 22:41:10 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -227,7 +227,6 @@ spec:		GLOBAL '{'
 					hdtp=0;
 					c_name[0]='\0';
 					c_ttl=86400;
-					c_flags=DF_LOCAL;
 				} 
 			rrneg_s '}'
 			{
@@ -834,15 +833,6 @@ rrneg_el:	NAME '=' STRING ';'
 			{
 				c_ttl=$3;
 			}
-		| AUTHREC '=' CONST ';'
-			{
-				if ($3==C_ON || $3==C_OFF) {
-					c_flags=($3==C_ON)?DF_LOCAL:0;
-				} else {
-					yyerror("Bad qualifier in authrec= option.");
-					YYERROR;
-				}
-			}
                 | TYPES '=' NDOMAIN ';'
 			{
 				if (htp) {
@@ -881,7 +871,7 @@ rr_type:   RRTYPE
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, c_flags, time(NULL), 0, 0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0, 0)) {
 					fprintf(stderr,"Out of memory");
 					YYERROR;
 				}

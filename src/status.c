@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.22 2001/04/30 17:02:00 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.23 2001/04/30 22:41:10 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -294,6 +294,8 @@ void *status_thread (void *p)
 				}
 				if ((ttl=read_long(rs))<0)
 					break;
+				if ((cmd2=read_short(rs))<-1)	/* caching flags */
+					break;
 
 				sz=-1;
 				switch (cmd) {
@@ -346,7 +348,7 @@ void *status_thread (void *p)
 					print_serr(rs,"Out of memory");
 					break;
 				}
-				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd,1);
+				add_cent_rr(&cent,ttl,cmd2,CF_LOCAL,sz,dbuf,cmd,1);
 				add_cache(cent);
 				free_cent(cent,1);
 				print_succ(rs);

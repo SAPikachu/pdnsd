@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../cacheing/cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.14 2001/04/30 17:14:58 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.15 2001/04/30 22:41:14 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -307,13 +307,14 @@ int main(int argc, char *argv[])
 				}
 			}
 			send_short(cmd2,pf);
+			send_short(flags,pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
 			if (rv)
 				read(pf,errmsg,255);
 			break;
 		case CTL_ADD:
-			if (argc<4 || argc>6) {
+			if (argc<4 || argc>7) {
 				print_help();
 				exit(2);
 			}
@@ -321,14 +322,25 @@ int main(int argc, char *argv[])
 			send_short(cmd,pf);
 			send_string(pf,argv[3]);
 			ttl=900;
-			if ((cmd!=T_MX && argc==5) || (cmd==T_MX && argc==6)) {
-				tp = cmd==T_MX?5:3;
+			flags=DF_LOCAL;
+			tp = cmd==T_MX?5:3;
+			if (((cmd!=T_MX && argc>=4) || (cmd==T_MX && argc>=6)) && strcmp(argv[tp],"noauth")) {
 				if (sscanf(argv[tp],"%li",&ttl)!=1) {
 					fprintf(stderr,"Bad argument for add\n");
 					exit(2);
 				}
+				tp++;
+			}
+			if (tp<argc && !strcmp(argv[tp],"noauth")) {
+				flags=0;
+				tp++;
+			}
+			if (tp<argc) {
+				fprintf(stderr,"Bad argument for add\n");
+				exit(2);
 			}
 			send_long(ttl,pf);
+			send_short(flags,pf);
 
 			switch (cmd) {
 			case T_A:
