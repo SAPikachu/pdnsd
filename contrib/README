@@ -1,11 +1,16 @@
-$Id: README,v 1.1 2001/02/20 16:41:21 tmm Exp $
+$Id: README,v 1.2 2001/03/25 20:01:33 tmm Exp $
 
 This directory contains user-contributed scripts for use with pdnsd.
 So far there are:
 
-pdnsd_update.pl
+pdnsd_dhcp.pl, save_ram.pl
 	A perl script contributed by Marko Stolle (derived from a script by
 	Mike Stella) to watch a ISC DHCPD leases file and add local records for
 	the hosts listed there. This makes pdnsd useable in a DHCP setup.
 	Please look into the script for usage instructions (you will probably
 	also need to customize som settings there).
+	For details about save_ram.pl, please look into pdnsd_dhcp.pl
+
+dhcp2pdnsd
+	A rc script for pdnsd, also by Marko Stolle. You might need to change
+	it slightly to make it run with your distro.

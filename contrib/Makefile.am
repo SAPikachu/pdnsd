@@ -1,0 +1,1 @@
+EXTRA_DIST = pdnsd_dhcp.pl dhcp2pdnsd README
