@@ -49,7 +49,6 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "error.h"
 
-#if TARGET!=TARGET_BSD
 /*
  * This is for error handling to prevent spewing the log files.
  * Maximums of different message types are set.
@@ -77,11 +76,13 @@ typedef struct {
 	}                  addr;
 
 	union {
-#ifdef ENABLE_IPV4
+#if TARGET==TARGET_LINUX
+# ifdef ENABLE_IPV4
 		struct in_pktinfo   pi4;
-#endif
-#ifdef ENABLE_IPV6
+# endif
+# ifdef ENABLE_IPV6
 		struct in6_pktinfo  pi6;
+# endif
 #endif
 	}                  pi;
 
@@ -883,6 +884,7 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin4;
 		msg.msg_namelen=sizeof(struct sockaddr_in);
+# if TARGET==TARGET_LINUX
 		((udp_buf_t *)data)->pi.pi4.ipi_spec_dst=((udp_buf_t *)data)->pi.pi4.ipi_addr;
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in_pktinfo));
@@ -890,9 +892,11 @@ void *udp_answer_thread(void *data)
 		cmsg->cmsg_type=IP_PKTINFO;
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.pi4,sizeof(struct in_pktinfo));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_pktinfo));
-		
+# endif		
 		DEBUG_MSG2("Answering to: %s, ", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
+# if TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
+# endif
 	}
 #endif
 #ifdef ENABLE_IPV6
@@ -900,15 +904,19 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin6;
 		msg.msg_namelen=sizeof(struct sockaddr_in6);
+# if TARGET==TARGET_LINUX
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in6_pktinfo));
 		cmsg->cmsg_level=SOL_IPV6;
 		cmsg->cmsg_type=IPV6_PKTINFO;
 		memcpy(CMSG_DATA(cmsg),&((udp_buf_t *)data)->pi.pi6,sizeof(struct in6_pktinfo));
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in6_pktinfo));
+# endif
 
 		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,50));
+# if TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,50));
+# endif
 	}
 #endif
 
@@ -1003,6 +1011,8 @@ void *udp_server_thread(void *dummy)
 		close(sock);
 		return NULL;
 	}
+
+#if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
 	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
 		if (da_udp_errs<UDP_MAX_ERRS) {
 			da_udp_errs++;
@@ -1011,6 +1021,7 @@ void *udp_server_thread(void *dummy)
 		close(sock);
 		return NULL;
 	}
+#endif
 
 	while (1) {
 		if (!(buf=(udp_buf_t *)calloc(sizeof(udp_buf_t),1))) {
@@ -1030,7 +1041,8 @@ void *udp_server_thread(void *dummy)
 		msg.msg_control=ctrl;
 		msg.msg_controllen=512;
 
-#ifdef ENABLE_IPV4
+#if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
+# ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
 			msg.msg_namelen=sizeof(struct sockaddr_in);
@@ -1057,8 +1069,8 @@ void *udp_server_thread(void *dummy)
 				continue;
 			}
 		}
-#endif
-#ifdef ENABLE_IPV6
+# endif
+# ifdef ENABLE_IPV6
 		if (run_ipv6) {
 			msg.msg_name=&buf->addr.sin6;
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
@@ -1085,6 +1097,30 @@ void *udp_server_thread(void *dummy)
 				continue;
 			}
 		}
+# endif
+#else /* TARGET==TARGET_LINUX*/
+# ifdef ENABLE_IPV4
+		if (run_ipv4) {
+			msg.msg_name=&buf->addr.sin4;
+			msg.msg_namelen=sizeof(struct sockaddr_in);
+			if ((qlen=recvmsg(sock,&msg,0))<0) {
+				free(buf);
+				usleep(50000);
+				continue;
+			}
+		}
+# endif
+# ifdef ENABLE_IPV6
+		if (run_ipv6) {
+			msg.msg_name=&buf->addr.sin6;
+			msg.msg_namelen=sizeof(struct sockaddr_in6);
+			if ((qlen=recvmsg(sock,&msg,0))<0) {
+				free(buf);
+				usleep(50000);
+				continue;
+			}
+		}
+# endif
 #endif
 		if (qlen==-1) {
 			free(buf);
@@ -1316,4 +1352,3 @@ void start_dns_servers()
 	} else
 		log_info(2,"udp server thread started.");
 }
-#endif
