@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.20 2000/10/23 21:55:37 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.21 2000/10/25 18:46:17 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1527,9 +1527,9 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			need_req=!(flags&CF_LOCAL);
 		else {
 			/*A CNAME as answer is also correct. */
-			if (ttl==0 && !(*cached)->rr[T_CNAME-T_MIN])
+/*			if (ttl==0 && !(*cached)->rr[T_CNAME-T_MIN])
 				need_req=!auth;
-/*			else {*/
+			else {*/
 				if (ttl-queryts+CACHE_LAT<=0)
 					timed=1;
 /*			}*/

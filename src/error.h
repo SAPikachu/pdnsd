@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.2 2000/10/18 20:55:01 thomas Exp $ */
+/* $Id: error.h,v 1.3 2000/10/25 18:46:17 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -79,18 +79,30 @@ void log_info(int level, char *s, ...);
 /* from main.c */
 extern FILE *dbg;
 
-#define DEBUG_MSG1(x)           if (debug_p) \
-                                   fprintf(dbg,x)
-#define DEBUG_MSG2(x,y)         if (debug_p) \
-                                   fprintf(dbg,x,y)
-#define DEBUG_MSG3(x,y,z)       if (debug_p) \
-                                   fprintf(dbg,x,y,z)
-#define DEBUG_MSG4(x,y,z,a)     if (debug_p) \
-                                   fprintf(dbg,x,y,z,a)
-#define DEBUG_MSG5(x,y,z,a,b)   if (debug_p) \
-                                   fprintf(dbg,x,y,z,a,b)
-#define DEBUG_MSG6(x,y,z,a,b,c) if (debug_p) \
-                                   fprintf(dbg,x,y,z,a,b,c)
+#define DEBUG_MSG1(x)           if (debug_p) {\
+                                   fprintf(dbg,x);\
+                                   fflush(dbg);\
+                                }
+#define DEBUG_MSG2(x,y)         if (debug_p) {\
+                                   fprintf(dbg,x,y);\
+                                   fflush(dbg);\
+                                }
+#define DEBUG_MSG3(x,y,z)       if (debug_p) {\
+                                   fprintf(dbg,x,y,z);\
+                                   fflush(dbg);\
+                                }
+#define DEBUG_MSG4(x,y,z,a)     if (debug_p) {\
+                                   fprintf(dbg,x,y,z,a);\
+                                   fflush(dbg);\
+                                }
+#define DEBUG_MSG5(x,y,z,a,b)   if (debug_p) {\
+                                   fprintf(dbg,x,y,z,a,b);\
+                                   fflush(dbg);\
+                                }
+#define DEBUG_MSG6(x,y,z,a,b,c) if (debug_p) {\
+                                   fprintf(dbg,x,y,z,a,b,c);\
+                                   fflush(dbg);\
+                                }
 #else
 #define DEBUG_MSG1(x) 
 #define DEBUG_MSG2(x,y) 
