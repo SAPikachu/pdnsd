@@ -1,5 +1,5 @@
-# $Id: Makefile.am,v 1.4 2000/08/05 16:50:41 thomas Exp $
-EXTRA_DIST = pdnsd
+# $Id: Makefile.am,v 1.5 2000/10/16 21:44:35 thomas Exp $
+#EXTRA_DIST = pdnsd
 
 DISTRO = @distribution@
 
