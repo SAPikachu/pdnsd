@@ -82,8 +82,8 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
     char trusted, unsigned char *nsdomain)
 {
 	dns_cent_t ce;
-	unsigned char buf[256],cbuf[256];
-	int dummy;
+	unsigned char buf[256];
+
 	rhn2str(oname,buf);
 	if (stricomp(buf,cent->qname)) {
 		/* it is for the record we are editing. add_cent_rr is sufficient. 
@@ -95,9 +95,8 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp  DBG1);
 	} else {
-		if (!trusted)
-			domain_match(&dummy, nsdomain, oname, cbuf);
-		if (trusted ||  cbuf[0]=='\0') {
+		int rem;
+		if (trusted ||  (domain_match(nsdomain, oname, &rem, NULL),rem==0)) {
 			/* try to find a matching record in cache */
 			if (have_cached(buf)) {
 				return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
@@ -113,6 +112,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 			}
 		} else {
 #if DEBUG>0
+			unsigned char cbuf[256];
 			rhn2str(nsdomain,cbuf);
 			DEBUG_MSG("Record for %s not in nsdomain %s; dropped.\n",buf,cbuf);
 #endif
@@ -136,10 +136,10 @@ typedef DYNAMIC_ARRAY(nsr_t) *nsr_array;
  * It may be null initially and must be freed when you are done with it.
  */
 static int rrs2cent(dns_cent_t *cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, nsr_array *ns,time_t queryts,
-    unsigned long serial, char trusted, unsigned char *nsdomain, char tc)
+    unsigned long serial, char trusted, unsigned char *nsdomain, char tc, int *dlgt)
 {
 	unsigned char oname[256];
-	unsigned char db[1040],tbuf[256];
+	unsigned char db[1040];
 	rr_hdr_t rhdr;
 	int rc;
 	int i;
@@ -150,7 +150,6 @@ static int rrs2cent(dns_cent_t *cent, unsigned char **ptr, long *lcnt, int recnu
 	int slen;
 	unsigned char *bptr,*nptr;
 	long blcnt;
-	nsr_t *nsr;
 
 	for (i=0;i<recnum;i++) {
 		uint16_t type,rdlength;
@@ -207,10 +206,21 @@ static int rrs2cent(dns_cent_t *cent, unsigned char **ptr, long *lcnt, int recnu
 						 nsdomain))
 					return RC_SERVFAIL;
 				if (type==T_NS) {
-					/* Don't accept possibliy poisoning nameserver entries in paranoid mode */
-					if (!trusted)
-						domain_match(&rc, nsdomain, oname, tbuf);
-					if (trusted ||  tbuf[0]=='\0') {
+					int rem;
+					if(dlgt && global.deleg_only_zones && !(*dlgt)) {
+						int zrm,j;
+						for(j=0;j<DA_NEL(global.deleg_only_zones);++j) {
+							if(domain_match(oname,DA_INDEX(global.deleg_only_zones,j),&rem,&zrm) && zrm==0) {
+								if(rem) break;
+								else    goto no_delegation;
+							}
+						}
+						*dlgt=1;
+					no_delegation:;
+					}
+					/* Don't accept possibly poisoning nameserver entries in paranoid mode */
+					if (trusted ||  (domain_match(nsdomain, oname, &rem,NULL),rem==0)) {
+						nsr_t *nsr;
 						/* add to the nameserver list. */
 						if (!(*ns=DA_GROW1(*ns)))
 							return RC_SERVFAIL;
@@ -292,16 +302,29 @@ static int rrs2cent(dns_cent_t *cent, unsigned char **ptr, long *lcnt, int recnu
 				/* Some nameservers obviously choose to send SOA records instead of NS ones.
 				 * altough I think that this is poor behaviour, we'll have to work around that. */
 				/* Don't accept possibility of poisoning nameserver entries in paranoid mode */
-				if (!trusted) 
-					domain_match(&rc,nsdomain, oname, tbuf);
-				if (trusted ||  tbuf[0]=='\0') {
-					/* add to the nameserver list. */
-					if (!(*ns=DA_GROW1(*ns)))
-						return RC_SERVFAIL;
-					nsr=&DA_LAST(*ns);
-					/* rhn2str will only convert the first name, which is the NS */
-					rhn2str(db,nsr->name);
-					rhncpy(nsr->nsdomain,oname);
+				{
+					int rem;
+					if(dlgt && global.deleg_only_zones && !(*dlgt)) {
+						int zrm,j;
+						for(j=0;j<DA_NEL(global.deleg_only_zones);++j) {
+							if(domain_match(oname,DA_INDEX(global.deleg_only_zones,j),&rem,&zrm) && zrm==0) {
+								if(rem) break;
+								else    goto no_delegation2;
+							}
+						}
+						*dlgt=1;
+					no_delegation2:;
+					}
+					if (trusted || (domain_match(nsdomain, oname, &rem,NULL),rem==0)) {
+						nsr_t *nsr;
+						/* add to the nameserver list. */
+						if (!(*ns=DA_GROW1(*ns)))
+							return RC_SERVFAIL;
+						nsr=&DA_LAST(*ns);
+						/* rhn2str will only convert the first name, which is the NS */
+						rhn2str(db,nsr->name);
+						rhncpy(nsr->nsdomain,oname);
+					}
 				}
 				break;
 #ifdef DNS_NEW_RRS
@@ -763,10 +786,10 @@ static int p_query_sm(query_stat_t *st)
  * If you want to tell me that this function has a truly ugly coding style, ah, well...
  * You are right, somehow, but I feel it is conceptually elegant ;-)
  */
-static int p_exec_query(dns_cent_t **entp, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, nsr_array *ns, unsigned long serial) 
+static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *rrn, int *aa, query_stat_t *st, nsr_array *ns, unsigned long serial) 
 {
 	dns_cent_t *ent;
-	int i,j,rv;
+	int rv;
 	time_t queryts;
 	long lcnt;
 	unsigned char *rrp;
@@ -906,32 +929,17 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *rrn, unsigned char *na
 	/* check & skip the query record. We can ignore undersocres here, because they will be
 	 * detected in the name comparison */
 	{
-		int dummy;
-		if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, &dummy))!=RC_OK) {
+		int uscore;
+		if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, NULL, &uscore))!=RC_OK) {
 			if(rv==RC_TRUNC) rv=RC_FORMAT;
 			goto free_recvbuf_return;
 		}
 	}
 
-	i=0;
-	while(1) {
-		j=nbuf[i];
-		if (nbuf[i]!=rrn[i]) {
-			DEBUG_MSG("Answer does not match query.\n");
-			rv=RC_SERVFAIL;
-			goto free_recvbuf_return;
-		}
-		if (!j) 
-			break;
-		i++;
-		for (;j>0;j--) {
-			if (tolower(nbuf[i])!=tolower(rrn[i])) {
-				DEBUG_MSG("Answer does not match query.\n");
-				rv=RC_SERVFAIL;
-				goto free_recvbuf_return;
-			}
-			i++;
-		}
+	if(!rhnicmp(nbuf,rrn)) {
+		DEBUG_MSG("Answer does not match query.\n");
+		rv=RC_SERVFAIL;
+		goto free_recvbuf_return;
 	}
 	
 	if (lcnt<4) {
@@ -950,6 +958,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *rrn, unsigned char *na
 	/* negative cacheing for domains */
 	if (st->recvbuf->rcode==RC_NAMEERR) {
 		DEBUG_SOCKA_MSG("Server %s returned error code: %s\n", SOCKA2STR(st->sin),get_ename(st->recvbuf->rcode));
+	name_error:
 		/* We did not get what we wanted. Cache according to policy */
 		if (global.neg_domain_pol==C_ON || (global.neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
 			DEBUG_MSG("Cacheing domain %s negative\n",name);
@@ -977,25 +986,55 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *rrn, unsigned char *na
 	if (!*aa)
 		st->flags|=CF_NOAUTH;
 	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,
-		     ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
+		     ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc, NULL)!=RC_OK) {
 		rv=RC_SERVFAIL;
 		goto free_ns_ent_recvbuf_return;
 	}
 
-	if (ntohs(st->recvbuf->nscount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,
-			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
-			rv=RC_SERVFAIL;
-			goto free_ns_ent_recvbuf_return;
+	{
+		int dlgt=0;
+		uint16_t nscount=ntohs(st->recvbuf->nscount);
+		if (nscount)
+			if(rrs2cent(ent,&rrp,&lcnt,nscount, (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,
+				    ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc, &dlgt)!=RC_OK) {
+				rv=RC_SERVFAIL;
+				goto free_ns_ent_recvbuf_return;
+			}
+		if(global.deleg_only_zones) {
+			int i,rrem,zrem;
+			for(i=0;i<DA_NEL(global.deleg_only_zones);++i) {
+				if(domain_match(rrn,DA_INDEX(global.deleg_only_zones,i),&rrem,&zrem) && zrem==0) {
+					if(rrem && !dlgt) {
+#if DEBUG>0
+						unsigned char zstr[256];
+						DEBUG_SOCKA_MSG(nscount?"%s is in %s zone, but no delegation found in authority section returned by server %s\n"
+								       :"%s is in %s zone, but authority section returned by server %s is empty\n",
+								name, (rhn2str(DA_INDEX(global.deleg_only_zones,i),zstr),zstr), SOCKA2STR(st->sin));
+#endif
+						if(nscount) {
+							da_free(*ns); *ns=NULL;
+							free_cent(ent  DBG1);
+							goto name_error;
+						}
+						else {
+							rv=RC_SERVFAIL;
+							goto free_ns_ent_recvbuf_return;
+						}
+					}
+					break;
+				}
+			}
 		}
 	}
-	
-	if (ntohs(st->recvbuf->arcount)>0) {
-		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,
-			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
-			rv=RC_SERVFAIL;
-			goto free_ns_ent_recvbuf_return;
-		}
+
+	{
+		uint16_t arcount=ntohs(st->recvbuf->arcount);
+		if (arcount)
+			if(rrs2cent(ent,&rrp,&lcnt,arcount, (unsigned char *)st->recvbuf,st->recvl,st->flags|CF_ADDITIONAL,
+				    ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc, NULL)!=RC_OK) {
+				rv=RC_SERVFAIL;
+				goto free_ns_ent_recvbuf_return;
+			}
 	}
 
 	/* Negative cacheing of rr sets */
@@ -1143,7 +1182,7 @@ inline static void del_qserv(query_stat_array q)
  * a cached record for that set). This settings cause the record be purged on the next cache addition.
  * It will also not be used again.
  */
-static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned char *name, dns_cent_t **entp, int *nocache, int hops, int thint)
+static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned char *rrn, dns_cent_t **entp, int *nocache, int hops, int thint)
 {
 	dns_cent_t *ent;
 	int aa=0;
@@ -1175,7 +1214,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 			/* The below should not happen any more, but may once again
 			 * (immediate success) */
 			query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
-			rv=p_exec_query(&ent, rrn, name, &aa, qs,&ns,serial);
+			rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
 			if (rv==RC_OK || rv==RC_NAMEERR) {
 				for (k=0;k<mc;k++) {
 					p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
@@ -1325,7 +1364,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 							}
 #endif
 							if (srv_event) {
-								rv=p_exec_query(&ent, rrn, name, &aa, qs,&ns,serial);
+								rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
 								if (rv==RC_OK || rv==RC_NAMEERR) {
 									for (k=0;k<mc;k++) {
 										p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
@@ -1384,14 +1423,14 @@ static int p_recursive_query(query_stat_array q, unsigned char *rrn, unsigned ch
 				nsr_t *nsr=&DA_INDEX(ns,j);
 				
 				if (global.paranoid) {
+					int rem;
 					/* paranoia mode: don't query name servers that are not responsible */
 					/* rhn2str(nsr->nsdomain,nsname); */
-					domain_match(&i,nsr->nsdomain,rrn,nsname);
-					if (nsname[0]!='\0')
+					domain_match(nsr->nsdomain,rrn,&rem,NULL);
+					if (rem!=0)
 						continue;
 				}
-				strncpy(nsname,nsr->name,sizeof(nsname));
-				nsname[sizeof(nsname)-1]='\0';
+				strncp(nsname,nsr->name,sizeof(nsname));
 				if (!str2rhn(nsname,nsbuf))
 					continue;
 				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,
@@ -1500,7 +1539,7 @@ inline static int p_dns_resolve_from(query_stat_array q, unsigned char *name, un
 {
 	int dummy;
 
-	return p_recursive_query(q, rrn, name,cached, &dummy, hops, thint);
+	return p_recursive_query(q, name, rrn, cached, &dummy, hops, thint);
 } 
 
 /*
@@ -1566,7 +1605,7 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
  done:
 	unlock_server_data();
 	if (one_up) {
-		rc=p_recursive_query(serv, rrn, name,&cached,&nocache, hops, thint);
+		rc=p_recursive_query(serv, name, rrn, &cached, &nocache, hops, thint);
 		if (rc==RC_OK) {
 			if (!nocache) {
 				dns_cent_t *tc;

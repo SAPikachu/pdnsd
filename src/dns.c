@@ -34,7 +34,7 @@ static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
  * taking sz as the remaining msg size (it is returned decremented by the name length, ready for further use) and
  * a source pointer (it is returned pointing to the location after the name). msgsize is the size of the whole message,
- * len is the total name lentgh.
+ * len is the total name length.
  * msg and msgsz are needed for decompression (see rfc1035). The returned data is decompressed, but still in the
  * rr name form (length byte - string of that length, terminated by a 0 lenght byte).
  * If uscore is NULL, an underscore will be treated as illegal (except when UNDERSCORE is defined). Otherwise,
@@ -123,52 +123,49 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 		}
 	}
 	*src+=osz-*sz;
-	*len=tpos;
+	if(len) *len=tpos;
 	return RC_OK;
 }
 
-/* Compare the names back-to-forth and return the longest match. The comparison is done at 
- * name granularity. The return value is the length of the match in name elements.
- * The unmatched part of ms is returned in rest (may be empty). o is set to the offset in the
- * domain name md (in length byte-string notation) of the match.
- * rest must point to a buffer of at least 256 bytes.
+/* Compare the names (in length byte-string notation) back-to-forth and return the longest match.
+   The comparison is done at name granularity.
+   The return value is the length of the match in name elements.
+   *os (*od) is set to the offset in the domain name ms (md) of the match.
  */
-int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest)
+int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int *od)
 {
-	unsigned char sbuf[257],dbuf[257];
-	int offs, slen, dlen, cnt, nc;
+	int i,j,k,n,ns=0,nd=0,offs,offd;
+	unsigned char lb,ls[128],ld[128];
 
-	sbuf[0]='.';          /* Prefix the names with '.' : This is done for the special case that */
-	dbuf[0]='.';          /* the domains match exactly, or one is a complete subdomain of another */
-	rhn2str(ms,sbuf+1); /* Change to dotted notation since processing starts from behind, */
-	rhn2str(md,dbuf+1); /* and so it's much easier that way. */
-	/* If this is the root domain, we have two dots. bad. so this special case test: */
-	if (strcmp(&sbuf[1],".")==0) {
-		*o=0;
-		rest[0]='\0';
-		return 0;
+	/* first collect all length bytes */
+	i=0;
+	while((lb=ms[i])) {
+		PDNSD_ASSERT(ns<128, "domain_match: too many name segments");
+		ls[ns++]=lb;
+		i += lb+1;
 	}
-	slen=strlen(sbuf)-2;
-	dlen=strlen(dbuf)-2;
-	if (sbuf<0 || dlen<0)
-		return 0;
-	nc=cnt=0;
-	offs=-1;
-	while (cnt<=slen && cnt<=dlen) {
-		if (tolower(sbuf[slen-cnt])!=tolower(dbuf[dlen-cnt]))
-			break;
-		if (sbuf[slen-cnt]=='.') {
-			/* one complete name part matched. Set the offset */
-			nc++;
-			offs=cnt;
-		}
-		cnt++;
+
+	j=0;
+	while((lb=md[j])) {
+		PDNSD_ASSERT(nd<128, "domain_match: too many name segments");
+		ld[nd++]=lb;
+		j += lb+1;
 	}
-	*o=dlen-offs;
-	memset(rest,'\0',256);
-	if (slen-offs>0) 
-		memcpy(rest,ms,slen-offs);
-	return nc;
+
+	n=ns;  if(n>nd) n=nd;
+
+	for(k=1; offs=i,offd=j,k<=n; ++k) {
+		lb=ls[ns-k];
+		if(lb!=ld[nd-k]) goto mismatch;
+		for(;lb;--lb)
+			if(tolower(ms[--i]) != tolower(md[--j])) goto mismatch;
+		--i; --j;
+	}
+ mismatch:
+
+	if(os) *os=offs;
+	if(od) *od=offd;
+	return k-1;
 }
 
 /* compress the domain name in in and put the result (of maximum length of strlen(in)) and
@@ -184,39 +181,38 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 	int i;
 	int add=1;
 	int coffs=-1;
-	int rv,rl,to;
+	int rv,rl;
 	int longest=0;
 	long ilen;
-	unsigned char rest[256];
 	unsigned char brest[256];
 	rl=0;
 	ilen = rhnlen(in);
 	/* part 1: compression */
-	if (*cb) {
-		for (i=0;i<DA_NEL(*cb);i++) {
-			if ((rv=domain_match(&to, in, DA_INDEX(*cb,i).s,rest))>longest) {
-				/*
-				 * This has some not obvious implications that should be noted: If a 
-				 * domain name as saved in the list has been compressed, we only can
-				 * index the non-compressed part. We rely here that the first occurence
-				 * can't be compressed. So we take the first occurence of a given length.
-				 * This works perfectly, but watch it if you change something.
-				 */
-				rhncpy(brest,rest);
-				longest=rv;
-				coffs=DA_INDEX(*cb,i).index+to;
-			} 
-		}
-		if (coffs>-1) {
-			PDNSD_ASSERT(rhnlen(brest) + 1 <= ilen, "compress_name: length increased");
-			rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
-			PDNSD_ASSERT(rl <= 254, "compress_name: name too long");
-			out[rl]=192|((coffs&0x3f00)>>8);
-			out[rl+1]=coffs&0xff;
-			rl+=2;
-			add=strlen(brest)!=0;
-		} else
-			rl=rhncpy(out,in);
+	for (i=0;i<DA_NEL(*cb);i++) {
+		int rem,to;
+		if ((rv=domain_match(in, DA_INDEX(*cb,i).s, &rem,&to))>longest) {
+			/*
+			 * This has some not obvious implications that should be noted: If a 
+			 * domain name as saved in the list has been compressed, we only can
+			 * index the non-compressed part. We rely here that the first occurence
+			 * can't be compressed. So we take the first occurence of a given length.
+			 * This works perfectly, but watch it if you change something.
+			 */
+			PDNSD_ASSERT(rem<256,"compress_name: name too long");
+			memcpy(brest,in,rem);
+			brest[rem]=0;
+			longest=rv;
+			coffs=DA_INDEX(*cb,i).index+to;
+		} 
+	}
+	if (coffs>=0) {
+		PDNSD_ASSERT(rhnlen(brest) + 1 <= ilen, "compress_name: length increased");
+		rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
+		PDNSD_ASSERT(rl <= 254, "compress_name: name too long");
+		out[rl]=192|((coffs&0x3f00)>>8);
+		out[rl+1]=coffs&0xff;
+		rl+=2;
+		add= brest[0]!='\0';
 	} else
 		rl=rhncpy(out,in);
 
@@ -321,7 +317,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 	int rv=0;
 	FILE *f;
 	char *buf;
-	size_t buflen=512;
+	size_t buflen=256;
 
 	if (!(f=fopen(fn,"r"))) {
 		if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;

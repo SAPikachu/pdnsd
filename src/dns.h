@@ -166,7 +166,7 @@ typedef DYNAMIC_ARRAY(compel_t) *compel_array;
 
 
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore);
-int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest);
+int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int *od);
 int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb);
 
 int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr);

@@ -370,10 +370,10 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(usleep)
-AC_CHECK_FUNCS(gettimeofday mkfifo select socket strerror uname snprintf, true, 
+AC_CHECK_FUNCS(nanosleep gettimeofday mkfifo select socket strerror uname snprintf vsnprintf, true, 
 		AC_MSG_ERROR([One of the functions required for pdnsd were not found.]))
 AC_CHECK_FUNCS(poll, true, AC_DEFINE(NO_POLL))
+AC_CHECK_FUNCS(strdup strndup stpcpy stpncpy getline asprintf)
 
 AC_OUTPUT([
 pdnsd.spec

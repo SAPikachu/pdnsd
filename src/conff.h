@@ -83,6 +83,9 @@ typedef struct {
 } servparm_t;
 typedef DYNAMIC_ARRAY(servparm_t) *servparm_array;
 
+typedef unsigned char *zone_t;
+typedef DYNAMIC_ARRAY(zone_t) *zone_array;
+
 typedef struct {
 	long          perm_cache;
 	char         *cache_dir;
@@ -107,6 +110,7 @@ typedef struct {
 	int           par_queries;
 	int           query_port_start;
 	int           query_port_end;
+	zone_array    deleg_only_zones;
 } globparm_t;
 
 extern globparm_t global;

@@ -891,11 +891,13 @@ void read_disk_cache()
 						goto free_cent_data_fclose;
 					}
 					if (rr.rdlen>dtsz) {
+						unsigned char *tmp;
 						dtsz=rr.rdlen;
-						data=realloc(data,dtsz);
-						if (!data) {
+						tmp=realloc(data,dtsz);
+						if (!tmp) {
 							goto free_cent_data_fclose_exit;
 						}
+						data=tmp;
 					}
 					if (fread(data,rr.rdlen,1,f)!=1) {
 						log_warn_read_error
@@ -928,7 +930,6 @@ void read_disk_cache()
 
  free_cent_data_fclose_exit:
 	free_cent(&ce  DBG0);
-	if(data)
  free_data_fclose_exit:
 	free(data);
  fclose_exit:

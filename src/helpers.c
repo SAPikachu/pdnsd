@@ -115,19 +115,19 @@ int run_as(char *user)
 int str2rhn(unsigned char *str, unsigned char *rhn)
 {
 	int n=0,i,j;
-	
+
 	for(i=0;;) {
 		int jlim,lb;
-		jlim=i+64;
-		if(jlim>255) jlim=255; /* 255 because the termination 0 has to follow */
-		for(j=i;;++j) {
-			if(!str[j]) goto finish;
+		jlim=i+63;
+		if(jlim>254) jlim=254; /* 254 because the termination 0 has to follow */
+		for(j=i; isdchar(str[j]); ++j) {
 			if(j>=jlim) return 0;
-			if(!isdchar(str[j])) break;
 			rhn[j+1]=str[j];
 		}
+		if(!str[j]) break;
+		if(str[j]!='.') return 0;
 		lb=j-i;
-		if (lb>0 && str[j]=='.') {
+		if (lb>0) {
 			rhn[i]=(unsigned char)lb;
 			++n;
 			i = j+1;
@@ -136,11 +136,45 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 			return 0;
 				
 	}
- finish:
+
+	rhn[i]=0;
 	if (j>i || n==0)
 		return 0;
-	rhn[i]=0;
 	return 1;
+}
+
+/*
+  parsestr2rhn is essentially the same as str2rhn, except that it tolerates strings
+  not ending in a dot and returns a message in case of an error.
+ */
+char *parsestr2rhn(unsigned char *str, unsigned char *rhn)
+{
+	int n=0,i=0,j;
+
+	do {
+		int jlim,lb;
+		jlim=i+63;
+		if(jlim>254) jlim=254;
+		for(j=i; isdchar(str[j]); ++j) {
+			if(j>=jlim) return "Domain name element too long";
+			rhn[j+1]=str[j];
+		}
+
+		if(str[j] && str[j]!='.') return "Illegal character in domain name";
+		lb=j-i;
+		if (lb>0) {
+			rhn[i]=(unsigned char)lb;
+			++n;
+			i = j+1;
+		}
+		else if(str[j])
+			return "Empty name element in domain name";
+	} while(str[j]);
+
+	rhn[i]=0;
+	if(n==0)
+		return "Empty or root domain name not allowed";
+	return NULL;
 }
 
 /*
@@ -153,27 +187,25 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 void rhn2str(unsigned char *rhn, unsigned char *str)
 {
 	unsigned char lb;
-	int i;
-	int cnt;
 
 	lb=rhn[0];
 	if (!lb) {
 		strcpy(str,".");
 	}
 	else {
-		cnt=0;
+		int i=0;
 		do {
-			PDNSD_ASSERT(cnt+lb < 255,
+			PDNSD_ASSERT(i+lb < 255,
 				     "rhn2str: string length overflow");
-			for (i=0;i<lb;i++) {
-				str[cnt]=rhn[cnt+1];
-				cnt++;
+			for (;lb;--lb) {
+				str[i]=rhn[i+1];
+				i++;
 			}
-			str[cnt]='.';
-			cnt++;
-			lb=rhn[cnt];
+			str[i]='.';
+			i++;
+			lb=rhn[i];
 		} while(lb);
-		str[cnt]='\0';
+		str[i]='\0';
 	}
 }
 
@@ -304,7 +336,7 @@ const char *socka2str(struct sockaddr *a, char *buf, int maxlen)
 #endif
 
 #ifdef RANDOM_DEVICE
-static FILE *rand_file;
+FILE *rand_file;
 #endif
 
 #ifdef R_RANDOM
@@ -323,7 +355,7 @@ int init_rng()
 {
 #ifdef RANDOM_DEVICE
 	if (!(rand_file=fopen(RANDOM_DEVICE,"r"))) {
-		log_error("Could not open %s.");
+		log_error("Could not open %s.",RANDOM_DEVICE);
 		return 0;
 	}
 #endif
@@ -333,6 +365,7 @@ int init_rng()
 	return 1;
 }
 
+/* The following function is now actually defined as a macro in helpers.h */
 /* void free_rng()
 {
 #ifdef RANDOM_DEVICE
@@ -367,32 +400,32 @@ unsigned short get_rand16()
 /* the following function has been rewritten by Paul Rombouts */
 int fsprintf(int fd, const char *format, ...)
 {
-  int n;
-  va_list va;
+	int n;
+	va_list va;
 
-  {
-    char buf[256];
+	{
+		char buf[256];
 
-    va_start(va,format);
-    n=vsnprintf(buf,sizeof(buf),format,va);
-    va_end(va);
+		va_start(va,format);
+		n=vsnprintf(buf,sizeof(buf),format,va);
+		va_end(va);
 
-    if(n<sizeof(buf)) {
-      if(n>0) n=write_all(fd,buf,n);
-      return n;
-    }
-  }
-  /* retry with a right sized buffer, needs glibc 2.1 or higher to work */
-  {
-    char buf[n+1];
+		if(n<sizeof(buf)) {
+			if(n>0) n=write_all(fd,buf,n);
+			return n;
+		}
+	}
+	/* retry with a right sized buffer, needs glibc 2.1 or higher to work */
+	{
+		char buf[n+1];
 
-    va_start(va,format);
-    n=vsnprintf(buf,sizeof(buf),format,va);
-    va_end(va);
+		va_start(va,format);
+		n=vsnprintf(buf,sizeof(buf),format,va);
+		va_end(va);
 
-    n=write_all(fd,buf,n);
-  }
-  return n;
+		n=write_all(fd,buf,n);
+	}
+	return n;
 }
 
 /*
@@ -423,3 +456,90 @@ int fsprintf(int fd, const char *format, ...)
 		return 0;
 	return 1;
 } */
+
+#ifndef HAVE_GETLINE
+/* Note by Paul Rombouts: I know that getline is a GNU extension and is not really portable,
+   but the alternative standard functions have some real problems.
+   The following substitute does not have exactly the same semantics as the GNU getline,
+   but it should be good enough, as long as the stream doesn't contain any null chars.
+   This version is actually based on fgets_realloc() that I found in the WWWOFFLE source.
+*/
+
+#define BUFSIZE 256
+int getline(char **lineptr, size_t *n, FILE *stream)
+{
+	char *line=*lineptr;
+	size_t sz=*n,i;
+
+	if(!line || sz<BUFSIZE) {
+		sz=BUFSIZE;
+		line = realloc(line,sz);
+		if(!line) return -1;
+		*lineptr=line;
+		*n=sz;
+	}
+
+	for (i=0;;) {
+		char *lni;
+
+		if(!(lni=fgets(line+i,sz-i,stream))) {
+			if(i && feof(stream))
+				break;
+			else
+				return -1;
+		}
+			
+		i += strlen(lni);
+
+		if(i<sz-1 || line[i-1]=='\n')
+			break;
+
+		sz += BUFSIZE;
+		line = realloc(line,sz);
+		if(!line) return -1;
+		*lineptr=line;
+		*n=sz;
+	}
+
+	return i;
+}
+#undef BUFSIZE
+#endif
+
+#ifndef HAVE_ASPRINTF
+int asprintf (char **lineptr, const char *format, ...)
+{
+	int sz=128,n;
+	char *line=malloc(sz);
+	va_list va;
+
+	if(!line) return -1;
+
+	va_start(va,format);
+	n=vsnprintf(line,sz,format,va);
+	va_end(va);
+
+	if(n>=sz) {
+		/* retry with a right sized buffer, needs glibc 2.1 or higher to work */
+		sz=n+1;
+		{
+			char *tmp=realloc(line,sz);
+			if(!tmp) {
+				free(line);
+				return -1;
+			}
+			line=tmp;
+		}
+
+		va_start(va,format);
+		n=vsnprintf(line,sz,format,va);
+		va_end(va);
+	}
+
+	if(n>=0)
+		*lineptr=line;
+	else
+		free(line);
+	return n;
+}
+#endif

@@ -117,21 +117,20 @@ static int read_string(int fh, char *buf, int buflen)
 
 static int read_domain(int fh, char *buf, int buflen)
 {
-	PDNSD_ASSERT(buflen>0, "bad read_domain call");
-	if (read_string(fh,buf,buflen-1)<=0) {
+	/* PDNSD_ASSERT(buflen>0, "bad read_domain call"); */
+	if (read_string(fh,buf,buflen)<=0) {
 		/* print_serr(fh,"Bad domain name."); */
 		return 0;
 	}
 	{
-	  char *p=strchr(buf,0);
-	  if (*(p-1)!='.') {
-		*p='.';
-		*++p='\0';
-	  }
-	  if (p-buf>255) {
-		  /* print_serr(fh,"Bad domain name."); */
-		return 0;
-	  }
+		int len=strlen(buf);
+		if(len==0 || buf[len-1]!='.') {
+			if(len+1>=buflen) {
+				/* print_serr(fh,"Bad domain name."); */
+				return 0;
+			}
+			buf[len]='.'; buf[len+1]=0;
+		}
 	}
 	return 1;
 }
@@ -140,10 +139,10 @@ static void *status_thread (void *p)
 {
 	int rs,i;
 	socklen_t res;
+	struct sockaddr_un ra;
 	struct utsname nm;
 	short cmd,cmd2;
-	struct sockaddr_un ra;
-	char buf[257],dbuf[260];
+	char buf[256],dbuf[260];
 	char owner[256];
 	long ttl;
 	dns_cent_t cent;
@@ -170,6 +169,7 @@ static void *status_thread (void *p)
 		if ((rs=accept(stat_sock,(struct sockaddr *)&ra,&res))!=-1) {
 			DEBUG_MSG("Status socket query pending.\n");
 			if (read_short(rs,&cmd)) {
+			    char *errmsg;
 			    switch(cmd) {
 			    case CTL_STATS:
 				    DEBUG_MSG("Received STATUS query.\n");
@@ -330,18 +330,15 @@ static void *status_thread (void *p)
 					    goto incomplete_command;
 				    if (!read_short(rs,&cmd2))	/* caching flags */
 					    goto incomplete_command;
-				    if (!str2rhn(buf,owner))
+				    if ((errmsg=parsestr2rhn(buf,owner))!=NULL)
 					    goto bad_domain_name;
 				    if (ttl < 0)
 					    goto bad_ttl;
-				    {
-				      char *errstr;
-				      if (read_hosts(fn,owner,ttl,cmd2, cmd,&errstr))
-					print_succ(rs);
-				      else {
-					print_serr(rs,errstr?:"Out of memory.");
-					if(errstr) free(errstr);
-				      }
+				    if (read_hosts(fn,owner,ttl,cmd2, cmd,&errmsg))
+					    print_succ(rs);
+				    else {
+					    print_serr(rs,errmsg?:"Out of memory.");
+					    if(errmsg) free(errmsg);
 				    }
 			    }
 				    break;
@@ -357,7 +354,7 @@ static void *status_thread (void *p)
 					    goto incomplete_command;
 				    if (!read_short(rs,&cmd2))	/* caching flags */
 					    goto incomplete_command;
-				    if (!str2rhn(buf,owner))
+				    if ((errmsg=parsestr2rhn(buf,owner))!=NULL)
 					    goto bad_domain_name;
 				    if (ttl < 0)
 					    goto bad_ttl;
@@ -379,7 +376,7 @@ static void *status_thread (void *p)
 				    case T_PTR:
 					    if (!read_domain(rs, owner, sizeof(owner)))
 						    goto incomplete_command;
-					    if (!str2rhn(owner,dbuf))
+					    if ((errmsg=parsestr2rhn(owner,dbuf))!=NULL)
 						    goto bad_domain_name;
 					    sz=rhnlen(dbuf);
 					    break;
@@ -388,7 +385,7 @@ static void *status_thread (void *p)
 						    goto bad_arg;
 					    if (!read_domain(rs, owner, sizeof(owner)))
 						    goto incomplete_command;
-					    if (!str2rhn(owner,dbuf+2))
+					    if ((errmsg=parsestr2rhn(owner,dbuf+2))!=NULL)
 						    goto bad_domain_name;
 					    sz=rhnlen(dbuf+2)+2;
 					    break;
@@ -413,7 +410,7 @@ static void *status_thread (void *p)
 					    goto incomplete_command;
 				    if (!read_long(rs,&ttl))
 					    goto incomplete_command;
-				    if (!str2rhn(buf,owner)) {
+				    if ((errmsg=parsestr2rhn(buf,owner))!=NULL) {
 					    DEBUG_MSG("NEG: received bad domain name.\n");
 					    goto bad_domain_name;
 				    }
@@ -449,10 +446,10 @@ static void *status_thread (void *p)
 				    print_serr(rs,"Bad arg.");
 				    break;
 			    bad_domain_name:
-				    print_serr(rs,"Bad domain name.");
+				    print_serr(rs,errmsg);
 				    break;
 			    bad_ttl:
-				    print_serr(rs, "Bad TTL");
+				    print_serr(rs, "Bad TTL.");
 				    break;
 			    out_of_memory:
 				    print_serr(rs,"Out of memory.");
@@ -463,6 +460,7 @@ static void *status_thread (void *p)
 			}
 			else {
 				DEBUG_MSG("short status socket query");
+				print_serr(rs,"Command code missing or too short.");
 			}
 			close(rs);
 			usleep_r(100000); /* sleep some time. I do not want the query frequency to be too high. */

@@ -65,6 +65,7 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include "helpers.h"
 #include "netdev.h"
 #include "error.h"
 
@@ -113,8 +114,7 @@ int statusif(char *name)
 		return 0;
 	}
 		
-	memset(&phone, 0, sizeof(phone));
-	strncpy(phone.name, name, sizeof(phone.name)-1);
+	strncp(phone.name, name, sizeof(phone.name));
 	if (ioctl(isdninfo, IIOCNETGPN, &phone)==0)
 		rc=1;
 	close(isdninfo);
@@ -205,8 +205,7 @@ int if_up(char *devname)
 		return 0;
 	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
 		return 0;
-	strncpy(ifr.ifr_name,devname,IFNAMSIZ);
-	ifr.ifr_name[IFNAMSIZ-1]='\0';
+	strncp(ifr.ifr_name,devname,IFNAMSIZ);
 	if (ioctl(sock,SIOCGIFFLAGS,&ifr)==-1) {
 		close(sock);
 		return 0;

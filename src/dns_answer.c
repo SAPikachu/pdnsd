@@ -151,8 +151,7 @@ int sva_add(sva_array *sva, unsigned char *name, unsigned char *rhn, int tp, rr_
 		if (!name)
 			rhn2str(rhn,st->nm);
 		else {
-			strncpy((char *)st->nm,(char *)name,sizeof(st->nm));
-			st->nm[sizeof(st->nm)-1]='\0';
+			strncp(st->nm,name,sizeof(st->nm));
 		}
 		memcpy(st->data,b+1,b->rdlen);
 	}
@@ -611,7 +610,7 @@ static int add_additional_a(unsigned char *rhn, sva_array *sva, dns_hdr_t **ans,
 static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *rlen, char udp) 
 {
 	int aa=1;
-	unsigned char buf[256],bufr[256],oname[256];
+	unsigned char buf[256],bufr[256];
 	sva_array sva=NULL;
 	int i,rc,hops,cont,cnc=0;
 	time_t queryts=time(NULL);
@@ -687,8 +686,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 				goto cleanup_return;
 			}
 			aa=0;
-			strncpy((char *)oname,(char *)buf,sizeof(oname));
-			oname[sizeof(oname)-1]='\0';
+			/* strncp(oname,buf,sizeof(oname)); */
 			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&ar))
 				goto error_cached;
 			cnc=follow_cname_chain(cached,buf,bufr);
@@ -775,7 +773,7 @@ cleanup_return:
  */
 static int decode_query(unsigned char *data, long rlen, dns_queryel_array *qp)
 {
-	int i,res,l,uscore;
+	int i,res,uscore;
 	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
 	unsigned char *ptr=(unsigned char *)(hdr+1);
 	long sz=rlen-sizeof(dns_hdr_t);
@@ -791,7 +789,7 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *qp)
 		if (!(q=DA_GROW1(q)))
 			return RC_SERVFAIL;
 		qe=&DA_LAST(q);
-		res=decompress_name(data,qe->query,&ptr,&sz,rlen,&l,&uscore);
+		res=decompress_name(data,qe->query,&ptr,&sz,rlen,NULL,&uscore);
 		if (res==RC_TRUNC) {
 			if (hdr->tc) {
 				if (i==0) {

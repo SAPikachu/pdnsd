@@ -63,7 +63,8 @@ globparm_t global={
   tcp_qtimeout:      TCP_TIMEOUT,
   par_queries:       PAR_QUERIES,
   query_port_start:  0,
-  query_port_end:    65535
+  query_port_end:    65535,
+  deleg_only_zones:  NULL
 };
 
 servparm_t serv_presets={
@@ -135,7 +136,6 @@ void read_config_file(char *nm)
 /* Report the current configuration into the file (for the status fifo, see status.c) */
 void report_conf_stat(int f)
 {
-	char buf[ADDRSTR_MAXLEN];
 	int i,j;
 	
 	fsprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
@@ -143,7 +143,8 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
 	fsprintf(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
 	fsprintf(f,"\tServer port: %i\n",global.port);
-	fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	{char buf[ADDRSTR_MAXLEN];
+	 fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));}
 	fsprintf(f,"\tIgnore cache when link is down: %s\n",global.lndown_kluge?"on":"off");
 	fsprintf(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
 	fsprintf(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
@@ -160,6 +161,18 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
 	fsprintf(f,"\tQuery port start: %i\n",global.query_port_start);
 	fsprintf(f,"\tQuery port end: %i\n",global.query_port_end);
+	fsprintf(f,"\tDelegation-only zones: ");
+	if(global.deleg_only_zones==NULL) {
+		fsprintf(f,"(none)\n");
+	}
+	else {
+		for(i=0;i<DA_NEL(global.deleg_only_zones);++i) {
+			unsigned char zstr[256];
+			rhn2str(DA_INDEX(global.deleg_only_zones,i),zstr);
+			fsprintf(f,i==0?"%s":", %s",zstr);
+		}
+		fsprintf(f,"\n");
+	}
 	lock_server_data();
 	for(i=0;i<DA_NEL(servers);i++) {
 		servparm_t *st=&DA_INDEX(servers,i);
@@ -167,7 +180,8 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tlabel: %s\n",st->label);
 		for(j=0;j<DA_NEL(st->atup_a);j++) {
 		  atup_t *at=&DA_INDEX(st->atup_a,j);
-		  fsprintf(f,"\tip: %s\n",pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));
+		  {char buf[ADDRSTR_MAXLEN];
+		   fsprintf(f,"\tip: %s\n",pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));}
 		  fsprintf(f,"\tserver assumed available: %s\n",at->is_up?"yes":"no");
 		}		  
 		fsprintf(f,"\tport: %hu\n",st->port);
@@ -178,7 +192,8 @@ void report_conf_stat(int f)
 		else
 		  fsprintf(f,"\tuptest interval: %s\n",st->interval?"onquery":"(never retest)");
 		fsprintf(f,"\tping timeout: %li\n",(long)st->ping_timeout);
-		fsprintf(f,"\tping ip: %s\n",is_inaddr_any(&st->ping_a)?"(using server ip)":pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));
+		{char buf[ADDRSTR_MAXLEN];
+		 fsprintf(f,"\tping ip: %s\n",is_inaddr_any(&st->ping_a)?"(using server ip)":pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));}
 		fsprintf(f,"\tinterface: %s\n",st->interface);
 		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
 		fsprintf(f,"\tuptest command: %s\n",st->uptest_cmd?:"");

@@ -21,6 +21,7 @@ Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 #include <string.h>
+#include "helpers.h"
 #include "conf-parse.h"
 #include "consts.h"
 #include "rr_types.h"
@@ -90,6 +91,7 @@ C_CLOSE \*\/
 <INITIAL>"neg_domain_pol"		{return NEG_DOMAIN_POL;}
 <INITIAL>"query_port_start"		{return QUERY_PORT_START;}
 <INITIAL>"query_port_end"		{return QUERY_PORT_END;}
+<INITIAL>"delegation_only"		{return DELEGATION_ONLY;}
 
 <INITIAL>"ip"				{return IP;}
 <INITIAL>"port"				{return PORT;}

@@ -34,9 +34,9 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
     with revisions by Paul Rombouts.<br>
-    It is up-to-date for version 1.1.8b1-par7. For older documentation, please refer to the doc
+    It is up-to-date for version 1.1.8b1-par8. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
-    A pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
+    A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
     
 
@@ -1047,6 +1047,25 @@
 	  For details see the description of <code>query_port_start</code>.
 	</td>
       </tr>
+      <tr>
+	<td>
+	  <b><code>delegation_only=string;</code></b><br>
+	  <em>Added by Paul Rombouts</em>: This option specifies a "delegation-only" zone.
+	  This means that if pdnsd receives a query for a name that is in a
+	  subdomain of a "delegation-only" zone but the remote name server
+	  returns an answer with an authority section lacking any NS RRs for
+	  subdomains of that zone, pdnsd will answer NXDOMAIN (unknown domain).
+	  This feature can be used for undoing the undesired effects of DNS
+	  "wildcards". Several "delegation-only" zones may be specified together.
+	  Example:
+	  <ul><code>delegation_only="com","net";</code></ul>
+	  This feature is off by default. It is recommended that you only use
+	  this feature if you actually need it, because there is a risk that
+	  some legitimate names will be blocked, especially if the remote
+	  name servers queried by pdnsd return answers with empty authority
+	  sections.
+	</td>
+      </tr>
     </table>
 
     <br>
@@ -1303,13 +1322,19 @@
 	  This options adds an entry to the exclusion/inclusion list. If a domain matches
 	  the name given as string, the server is queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
-	  The domain name given must end in a dot. If it starts with a dot, the whole subdomain
+	  If the given name starts with a dot, the whole subdomain
 	  of the given name including the one of that name is matched, e.g. <code>&quot;foo.bar.&quot</code> 
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to include all subdomains, but not the domain of the given
 	  name itself, place an exact-match exclude rule before the include rule, e.g:
-	  <code>exclude="foo.bar."; include=".foo.bar.";</code>
+	  <code>exclude="foo.bar."; include=".foo.bar.";</code><br>
+	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  required that names given with this and the next option ended in a dot, but since
+	  version 1.1.8b1-par8, pdnsd automatically adds a dot at the end if it
+	  is missing.<br>
+	  pdnsd now also accepts a more compact notation for adding several <code>"include"</code> entries in
+	  one line, e.g.: <ul><code>include=".foo",".bar",".my.dom";</code></ul>
 	</td>
       </tr>
       <tr>
@@ -1318,13 +1343,15 @@
 	  This options adds an entry to the exclusion/inclusion list. If a domain matches
 	  the name given as string, the server is not queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
-	  The domain name given must end in a dot. If it starts with a dot, the whole subdomain
+	  If the given name starts with a dot, the whole subdomain
 	  of the given name including the one of that name is matched, e.g. <code>&quot;foo.bar.&quot</code> 
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to exclude all subdomains, but not the domain of the given
 	  name itself, place an exact-match include rule before the exclude rule, e.g:
-	  <code>include="foo.bar."; exclude=".foo.bar.";</code>
+	  <code>include="foo.bar."; exclude=".foo.bar.";</code><br>
+	  pdnsd now also accepts a more compact notation for adding several <code>"exclude"</code> entries in
+	  one line, e.g.: <ul><code>exclude=".foo",".bar",".my.dom";</code></ul>
 	</td>
       </tr>
     </table>
@@ -1342,12 +1369,16 @@
       <tr>
 	<td>
 	  <b><code>name=string;</code></b><br>
-	  Specifies the name of the resource records, i.e. the domain name of the resource
-	  the record describes. This option must be specified before
-	  any a, soa or ptr records. Only absolute domain names (names ending in the root
-	  domain, in dotted notation ending with a dot) are allowed. For this and all
-	  following arguments that take domain names, you need to specify domain names in
-	  dotted notation (example venera.isi.edu.). Do not forget the dot at the end!
+	  Specifies the name of the resource records, i.e. the domain name of
+	  the resource the record describes. This option must be specified
+	  before any a, soa or ptr records. Names are interpreted as absolute
+	  domain names (i.e. pdnsd assumes they end in the root domain). For
+	  this and all following arguments that take domain names, you need to
+	  specify domain names in dotted notation (example venera.isi.edu.).<br>
+	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  required that domain names given in the configuration file ended in a
+	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
+	  dot at the end if it is missing.
 	</td>
       </tr>
       <tr>
@@ -1472,10 +1503,13 @@
 	  <b><code>name=string;</code></b><br>
 	  Specifies the name of the domain for which negative cache entries are created.
           This option must be specified before the types option. 
-	  Only absolute domain names (names ending in the root
-	  domain, in dotted notation ending with a dot) are allowed.
-	  You need to specify domain names in dotted notation (example venera.isi.edu.). 
-	  Do not forget the dot at the end!
+	  Names are interpreted as absolute domain names (i.e. pdnsd
+	  assumes they end in the root domain).
+	  You need to specify domain names in dotted notation (example venera.isi.edu.).<br>
+	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  required that domain names given in the configuration file ended in a
+	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
+	  dot at the end if it is missing.
 	</td>
       </tr>
       <tr>
@@ -1524,8 +1558,13 @@
 	  Specifies the name of the host pdnsd runs on and that are specified in dns 
 	  answers (specifically, nameserver records).
 	  Must be specified before any file entries.<br>
-	  Only absolute domain names (names ending in the root domain, in dotted notation 
-	  ending with a dot) are allowed. Example: venera.isi.edu.
+	  Names are interpreted as absolute domain names (i.e. pdnsd
+	  assumes they end in the root domain).
+	  You need to specify domain names in dotted notation (example venera.isi.edu.).<br>
+	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  required that domain names given in the configuration file ended in a
+	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
+	  dot at the end if it is missing.
 	</td>
       </tr>
       <tr>
@@ -1606,7 +1645,7 @@
 	<td>server</td>
 	<td>(<i>index</i>|<i>label</i>)</td>
 	<td>(up|down|retest)</td>
-	<td>[<i>dns1,dns2,...</i>]</td>
+	<td>[<i>dns1</i>[,<i>dns2</i>[,...]]]</td>
 	<td></td>
 	<td></td>
 	<td>
@@ -1898,7 +1937,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 10 Sep 2003 by Paul Rombouts</i>
+      <i>Last revised: 09 Oct 2003 by Paul Rombouts</i>
     </p>
   </body>
 </html>

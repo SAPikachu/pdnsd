@@ -53,7 +53,7 @@ dns_cent_t c_cent;  \
 unsigned char c_owner[256];  \
 unsigned char c_name[256];  \
 time_t c_ttl=0;  \
-int c_flags=0;  \
+int c_flags=0,in_or_excluded=0;  \
 unsigned char c_aliases=0, hdtp=0, htp=0;
 
 
@@ -64,6 +64,8 @@ unsigned char c_aliases=0, hdtp=0, htp=0;
  */
 extern int yylineno;
 #endif
+
+int yyerror (char *s); /* To inhibit "implicit declaration" compiler warning */
 
 /* Bah. I want strlcpy. */
 #define YSTRNCP(dst, src, err) 				 \
@@ -106,6 +108,7 @@ inline static void add_server(servparm_t *serv)
 
 static char *addr_add(servparm_t *sp, char *ipstr);
 static char *slist_add(servparm_t *sp, char *nm, int tp);
+static char *zone_add(zone_array *za, char *zone);
 
 %}
 %union {
@@ -153,6 +156,7 @@ unsigned char *nm;
 %token <num> NEG_DOMAIN_POL
 %token <num> QUERY_PORT_START
 %token <num> QUERY_PORT_END
+%token <num> DELEGATION_ONLY
 
 %token <num> IP
 %token <num> PORT
@@ -205,6 +209,7 @@ unsigned char *nm;
 %type <num>  rrneg_el
 %type <num>  rr_type_list
 %type <num>  ip_list;
+%type <num>  inexclude_list;
 
 %%
 file:		/* nothing */		{}
@@ -282,6 +287,28 @@ spec:		GLOBAL '{' glob_s '}'	{}
 
 glob_s:		/* empty*/		{}
 		| glob_s glob_el	{}
+		;
+
+zone_list:	STRING
+			{
+			  char *e;
+
+			  if ((e=zone_add(&global.deleg_only_zones,$1))!=NULL) {
+			    yyerror(e);
+			    YYERROR;
+			  }
+			  free($1);
+			}
+		| zone_list ',' STRING
+			{
+			  char *e;
+
+			  if ((e=zone_add(&global.deleg_only_zones,$3))!=NULL) {
+			    yyerror(e);
+			    YYERROR;
+			  }
+			  free($3);
+			}
 		;
 
 glob_el:	PERM_CACHE '=' CONST ';'
@@ -521,6 +548,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					global.query_port_end=$3;
 				}
 			}
+		| DELEGATION_ONLY '=' zone_list ';' {}
 		;
 
 serv_s:		/* empty */		{}
@@ -549,6 +577,27 @@ ip_list:	STRING
 			}
 		;
 
+inexclude_list:	STRING
+			{
+				char *e;
+				
+				if ((e=slist_add(&server,$1,in_or_excluded))!=NULL) {
+					yyerror(e);
+					YYERROR;
+				}
+				free($1);
+			}
+		| inexclude_list ',' STRING
+			{
+				char *e;
+				
+				if ((e=slist_add(&server,$3,in_or_excluded))!=NULL) {
+					yyerror(e);
+					YYERROR;
+				}
+				free($3);
+			}
+		;
 
 serv_el:	IP '=' ip_list ';'	{}
 
@@ -673,26 +722,8 @@ serv_el:	IP '=' ip_list ';'	{}
 					YYERROR;
 				}
 			}
-		| INCLUDE '=' STRING ';'
-			{
-				char *e;
-				
-				if ((e=slist_add(&server,$3,C_INCLUDED))!=NULL) {
-					yyerror(e);
-					YYERROR;
-				}
-				free($3);
-			}
-		| EXCLUDE '=' STRING ';'
-			{
-				char *e;
-				
-				if ((e=slist_add(&server,$3,C_EXCLUDED))!=NULL) {
-					yyerror(e);
-					YYERROR;
-				}
-				free($3);
-			}
+		| INCLUDE '=' {in_or_excluded=C_INCLUDED;}  inexclude_list ';' {}
+		| EXCLUDE '=' {in_or_excluded=C_EXCLUDED;}  inexclude_list ';' {}
 		| LABEL '=' STRING ';'
 			{
 				YSTRNCP(server.label, $3, "label");
@@ -706,11 +737,23 @@ rr_s:		/* empty */		{}
 
 rr_el:		NAME '=' STRING ';'
 			{
-				if (strlen($3)>255) {
+				char *e;
+				unsigned char buf[256];
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
+					YYERROR;
+				} */
+				if ((e=parsestr2rhn($3,buf))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				YSTRNCP(c_name, $3, "name");
+				{ /* add a dot at the end */
+					int len=strlen(c_name);
+					if(len==0 || c_name[len-1]!='.') {
+						c_name[len]='.'; c_name[len+1]=0;
+					}
+				}
 				if (c_owner[0]) {
 					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
 						fprintf(stderr,"Out of memory.\n");
@@ -721,12 +764,13 @@ rr_el:		NAME '=' STRING ';'
 			}			
 		| OWNER '=' STRING ';'
 			{
-				if (strlen($3)>255) {
+				char *e;
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_owner)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_owner))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				if (c_name[0]) {
@@ -795,18 +839,19 @@ rr_el:		NAME '=' STRING ';'
 			}
 		| PTR '=' STRING ';'
 			{
+				char *e;
 				unsigned char c_ptr[256];
 
 				if (!c_owner[0] || !c_name[0]) {
 					yyerror("you must specify owner and name before a,ptr and soa records.");
 					YYERROR;
 				}
-				if (strlen($3)>255) {
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_ptr)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_ptr))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR  DBG0);
@@ -814,6 +859,7 @@ rr_el:		NAME '=' STRING ';'
 			}
 		| MX '=' STRING ',' NUMBER ';'
 			{
+				char *e;
 				unsigned char c_ptr[256];
 				unsigned char buf[532];
 				uint16_t ts;
@@ -822,12 +868,12 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("you must specify owner and name before mx records.");
 					YYERROR;
 				}
-				if (strlen($3)>255) {
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_ptr)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_ptr))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				memset(buf,0,sizeof(buf));
@@ -839,18 +885,19 @@ rr_el:		NAME '=' STRING ';'
 			}
 		| CNAME '=' STRING ';'
 			{
+				char *e;
 				unsigned char c_ptr[256];
 
 				if (!c_owner[0] || !c_name[0]) {
 					yyerror("you must specify owner and name before cname records.");
 					YYERROR;
 				}
-				if (strlen($3)>255) {
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_ptr)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_ptr))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME  DBG0);
@@ -858,6 +905,7 @@ rr_el:		NAME '=' STRING ';'
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
 			{
+				char *e;
 				unsigned char c_soa_owner[256];
 			        unsigned char c_soa_r[256];
 				unsigned char buf[532];
@@ -868,20 +916,20 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("you must specify owner and name before a, ptr and soa records.");
 					YYERROR;
 				}
-				if (strlen($3)>255) {
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_soa_owner)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_soa_owner))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
-				if (strlen($5)>255) {
+				/* if (strlen($5)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($5,c_soa_r)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($5,c_soa_r))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				c_soa.serial=htonl($7);
@@ -906,12 +954,13 @@ source_s:	/* empty */		{}
 
 source_el:	OWNER '=' STRING ';'
 			{
-				if (strlen($3)>255) {
+				char *e;
+				/* if (strlen($3)>255) {
 					yyerror("name too long.");
 					YYERROR;
-				}
-				if (!str2rhn($3,c_owner)) {
-					yyerror("bad domain name - must end in root domain.");
+				} */
+				if ((e=parsestr2rhn($3,c_owner))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				free($3);
@@ -963,11 +1012,19 @@ rrneg_s:	/* empty */		{}
 
 rrneg_el:	NAME '=' STRING ';'
 			{
-				if (strlen($3)>255) {
-					yyerror("name too long.");
+				char *e;
+				unsigned char buf[256];
+				if ((e=parsestr2rhn($3,buf))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 				YSTRNCP(c_name,$3, "name");
+				{ /* add a dot at the end */
+					int len=strlen(c_name);
+					if(len==0 || c_name[len-1]!='.') {
+						c_name[len]='.'; c_name[len+1]=0;
+					}
+				}
 				free($3);
 			}			
 		| TTL '=' NUMBER ';'
@@ -985,7 +1042,7 @@ rrneg_el:	NAME '=' STRING ';'
 					YYERROR;
 				}
 				hdtp=1;
-				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl  DBG0)) {
+				if (!init_cent(&c_cent, c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
@@ -1012,7 +1069,7 @@ rr_type:   RRTYPE
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0  DBG0)) {
+				if (!init_cent(&c_cent, c_name, 0, time(NULL), 0  DBG0)) {
 					fprintf(stderr,"Out of memory.\n");
 					YYERROR;
 				}
@@ -1057,40 +1114,56 @@ int yyerror (char *s)
 
 static char *addr_add(servparm_t *sp, char *ipstr)
 {
-  atup_t *at;
-  pdnsd_a addr;
+	atup_t *at;
+	pdnsd_a addr;
 
-  if(!str2pdnsd_a(ipstr,&addr)) {
-    return "bad ip in ip= option.";
-  }
+	if(!str2pdnsd_a(ipstr,&addr)) {
+		return "bad ip in ip= option.";
+	}
 
-  if (!(sp->atup_a=DA_GROW1(sp->atup_a))) {
-    return "out of memory!";
-  }
-  at=&DA_LAST(sp->atup_a);
-  at->a = addr;
-  at->is_up=0;
-  at->i_ts=0;
-  return NULL;
+	if (!(sp->atup_a=DA_GROW1(sp->atup_a))) {
+		return "out of memory!";
+	}
+	at=&DA_LAST(sp->atup_a);
+	at->a = addr;
+	at->is_up=0;
+	at->i_ts=0;
+	return NULL;
 }
 
 static char *slist_add(servparm_t *sp, char *nm, int tp)
 {
-	slist_t *sl;
-					
+ 	slist_t *sl;
+	int adddot=0;
+	int nmlen=strlen(nm);
+
+	if (nmlen==0 || nm[nmlen-1]!='.') adddot=1;
+	if (nmlen+adddot>255)
+		return "include/exclude: name too long!";
 	if (!(sp->alist=DA_GROW1(sp->alist))) {
-	  return "out of memory!";
+		return "out of memory!";
 	}
 	sl=&DA_LAST(sp->alist);
 	sl->rule=tp;
-	if (strlen(nm)>255)
-	  return "include/exclude: name too long!";
-	if (!(sl->domain=strdup(nm)))
-	  return "out of memory!";
-	{
-	  char *p=strchr(sl->domain,0);
-	  if (p==sl->domain || *(p-1)!='.') 
-	    return "domain name must end in dot for include=/exclude=.";
+
+	if (!(sl->domain=malloc(nmlen+adddot+1)))
+		return "out of memory!";
+	strcpy(sl->domain,nm);
+	if(adddot) {
+		sl->domain[nmlen]='.';
+		sl->domain[nmlen+1]='\0';
 	}
+	return NULL;
+}
+
+static char *zone_add(zone_array *za, char *zone)
+{
+	char *err;
+	unsigned char rhn[256];
+
+	if((err=parsestr2rhn(zone,rhn)))
+		return err;
+	if(!(*za=DA_GROW1(*za)) || !(DA_LAST(*za)=strdup(rhn)))
+		return "out of memory!";
 	return NULL;
 }

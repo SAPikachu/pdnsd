@@ -2,10 +2,10 @@
                                                                                
 This is the "official" pdnsd documentation and reference written by Thomas
 Moestl with revisions by Paul Rombouts.
-It is up-to-date for version 1.1.8b1-par7. For older documentation, please
+It is up-to-date for version 1.1.8b1-par8. For older documentation, please
 refer to the doc directory of the respective pdnsd package.
-A pdnsd HOWTO ("unofficial" step-by-step installation and setup instructions)
-is available at http://www.geocities.com/sunil_tt/.
+A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
+setup instructions) is available at http://www.geocities.com/sunil_tt/.
 
 0. Installation
 
@@ -729,6 +729,22 @@ Only used if query_port_start is given. Defines the last port of the range
 started by query_port_start used for querys by pdnsd. The default is 65535,    
 which is also the maximum legal value for this option. For details see the     
 description of query_port_start.                                               
+                                                                               
+delegation_only=string;                                                        
+Added by Paul Rombouts: This option specifies a "delegation-only" zone. This   
+means that if pdnsd receives a query for a name that is in a subdomain of a    
+"delegation-only" zone but the remote name server returns an answer with an    
+authority section lacking any NS RRs for subdomains of that zone, pdnsd will   
+answer NXDOMAIN (unknown domain). This feature can be used for undoing the     
+undesired effects of DNS "wildcards". Several "delegation-only" zones may be   
+specified together. Example:                                                   
+                                                                               
+    delegation_only="com","net";                                               
+                                                                               
+This feature is off by default. It is recommended that you only use this       
+feature if you actually need it, because there is a risk that some legitimate  
+names will be blocked, especially if the remote name servers queried by pdnsd  
+return answers with empty authority sections.                                  
 
 
 2.1.2 server Section
@@ -924,25 +940,36 @@ include=string;
 This options adds an entry to the exclusion/inclusion list. If a domain matches
 the name given as string, the server is queried if this was the first matching 
 rule (see also the entry for policy).                                          
-The domain name given must end in a dot. If it starts with a dot, the whole    
-subdomain of the given name including the one of that name is matched, e.g.    
-"foo.bar." will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar. 
+If the given name starts with a dot, the whole subdomain of the given name     
+including the one of that name is matched, e.g. "foo.bar." will match the      
+domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.                           
 If it does not start in a dot, only exactly the given name (ignoring the case, 
 of course) will be matched (hint: if you want to include all subdomains, but   
 not the domain of the given name itself, place an exact-match exclude rule     
 before the include rule, e.g: exclude="foo.bar."; include=".foo.bar.";         
+Note added by Paul Rombouts: Previous versions of pdnsd required that names    
+given with this and the next option ended in a dot, but since version          
+1.1.8b1-par8, pdnsd automatically adds a dot at the end if it is missing.      
+pdnsd now also accepts a more compact notation for adding several "include"    
+entries in one line, e.g.:                                                     
+                                                                               
+    include=".foo",".bar",".my.dom";                                           
                                                                                
 exclude=string;                                                                
 This options adds an entry to the exclusion/inclusion list. If a domain matches
 the name given as string, the server is not queried if this was the first      
 matching rule (see also the entry for policy).                                 
-The domain name given must end in a dot. If it starts with a dot, the whole    
-subdomain of the given name including the one of that name is matched, e.g.    
-"foo.bar." will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar. 
+If the given name starts with a dot, the whole subdomain of the given name     
+including the one of that name is matched, e.g. "foo.bar." will match the      
+domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.                           
 If it does not start in a dot, only exactly the given name (ignoring the case, 
 of course) will be matched (hint: if you want to exclude all subdomains, but   
 not the domain of the given name itself, place an exact-match include rule     
 before the exclude rule, e.g: include="foo.bar."; exclude=".foo.bar.";         
+pdnsd now also accepts a more compact notation for adding several "exclude"    
+entries in one line, e.g.:                                                     
+                                                                               
+    exclude=".foo",".bar",".my.dom";                                           
 
 
 2.1.3 rr Section
@@ -959,10 +986,13 @@ intended and not capable to work as a full-featured name server.
 name=string;                                                                   
 Specifies the name of the resource records, i.e. the domain name of the        
 resource the record describes. This option must be specified before any a, soa 
-or ptr records. Only absolute domain names (names ending in the root domain, in
-dotted notation ending with a dot) are allowed. For this and all following     
-arguments that take domain names, you need to specify domain names in dotted   
-notation (example venera.isi.edu.). Do not forget the dot at the end!          
+or ptr records. Names are interpreted as absolute domain names (i.e. pdnsd     
+assumes they end in the root domain). For this and all following arguments that
+take domain names, you need to specify domain names in dotted notation (example
+venera.isi.edu.).                                                              
+Note added by Paul Rombouts: Previous versions of pdnsd required that domain   
+names given in the configuration file ended in a dot, but since version        
+1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.   
                                                                                
 owner=string;                                                                  
 Specifies the name of the host pdnsd runs on and that is specified in dns      
@@ -1065,10 +1095,12 @@ entry in your search list in addition to the entries given above!
 
 name=string;                                                                   
 Specifies the name of the domain for which negative cache entries are created. 
-This option must be specified before the types option. Only absolute domain    
-names (names ending in the root domain, in dotted notation ending with a dot)  
-are allowed. You need to specify domain names in dotted notation (example      
-venera.isi.edu.). Do not forget the dot at the end!                            
+This option must be specified before the types option. Names are interpreted as
+absolute domain names (i.e. pdnsd assumes they end in the root domain). You    
+need to specify domain names in dotted notation (example venera.isi.edu.).     
+Note added by Paul Rombouts: Previous versions of pdnsd required that domain   
+names given in the configuration file ended in a dot, but since version        
+1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.   
                                                                                
 ttl=number;                                                                    
 Specifies the ttl (time to live) for all resource records in this section after
@@ -1107,8 +1139,12 @@ owner=string;
 Specifies the name of the host pdnsd runs on and that are specified in dns     
 answers (specifically, nameserver records). Must be specified before any file  
 entries.                                                                       
-Only absolute domain names (names ending in the root domain, in dotted notation
-ending with a dot) are allowed. Example: venera.isi.edu.                       
+Names are interpreted as absolute domain names (i.e. pdnsd assumes they end in 
+the root domain). You need to specify domain names in dotted notation (example 
+venera.isi.edu.).                                                              
+Note added by Paul Rombouts: Previous versions of pdnsd required that domain   
+names given in the configuration file ended in a dot, but since version        
+1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.   
                                                                                
 ttl=number;                                                                    
 Specifies the ttl (time to live) for all resource records in this section after
@@ -1155,119 +1191,119 @@ In the following table, keywords are in a normal font, while placeholders are
 in italics.
 Alternatives are specified like (alt1|alt2|alt3).
 
-Command   Options                                                     Description                             
-                                                                                                              
-help                                                                  print a command summary.                
-                                                                                                              
-version                                                               print version info                      
-                                                                                                              
-                                                                      Set the status of the server with the   
-                                                                      given index or label (where the given   
-                                                                      label matches the one given with the    
-                                                                      label option in the respective server   
-                                                                      section in the config file) to up or    
-                                                                      down, or force a retest. The index is   
-                                                                      assigned in the order of definition in  
-                                                                      pdnsd.cache starting with 0. Use the    
-                                                                      status command to view the indices and  
-                                                                      labels. You can specify all instead of  
-                                                                      an index or label to perform the action 
-                                                                      for all servers registered with pdnsd.  
-                                                                      Example:                                
-                                                                      pdnsd-ctl server 0 retest               
-          (index                                                      An optional third argument consisting of
-server    |        (up|down|     [dns1,dns2,...]                      a list of IP addresses (separated by    
-          label)   retest)                                            commas or spaces) can be given. This    
-                                                                      list will replace the previous list of  
-                                                                      addresses of name servers used by pdnsd 
-                                                                      in the specified section of the config  
-                                                                      file. For example in the /etc/ppp/ip-up 
-                                                                      script called by pppd you could place   
-                                                                      the following line:                     
-                                                                      pdnsd-ctl server isplabel up $DNS1,$DNS2
-                                                                      If spaces are used to separate addresses
-                                                                      the list will have to be quoted.        
-                                                                      Spurious commas and spaces are ignored. 
-                                                                      The last argument may also be an empty  
-                                                                      string, in which case the existing IP   
-                                                                      addresses are removed and the           
-                                                                      corresponding server section becomes    
-                                                                      inactive.                               
-                                                                                                              
-                                                                      Delete or invalidate the record of the  
-                                                                      given domain name if it is in the cache.
-                                                                      Invalidation means that the record is   
-                                                                      marked as timed out, and such is        
-                                                                      reloaded if possible (if purge_cache is 
-                                                                      set to on, it will be deleted in any    
-record    name     (delete|                                           case).                                  
-                   invalidate)                                        For local records (i.e., records that   
-                                                                      were given in the config file using a rr
-                                                                      section, records read from a hosts-style
-                                                                      file and records added using pdnsd-ctl),
-                                                                      invalidation has no effect. Deletion    
-                                                                      will work, though. Example:             
-                                                                      pdnsd-ctl record localhost. delete      
-                                                                                                              
-                                                                      Load a hosts-style file. Works like     
-                                                                      using the pdnsd source option. owner and
-                                                                      ttl are used as in the source section.  
-                                                                      ttl has a default of 900 (it does not   
-                                                                      need to be specified). The next to last 
-                                                                      option corresponds to the serve_aliases 
-                                                                      option, and is off by default (i.e. if  
-source    fn       owner         [ttl]             [(on|   [noauth]   it is not specified). noauth is used to 
-                                                   off)]              make the domains non-authoritative -    
-                                                                      please see the description of the       
-                                                                      authrec config file options for a       
-                                                                      description of what that means. fn is   
-                                                                      the filename. The file must be readable 
-                                                                      by pdnsd! Example:                      
-                                                                      pdnsd-ctl source /etc/                  
-                                                                      hosts localhost. 900 off                
-                                                                                                              
-                                                                      Add a record of the given type to the   
-                                                                      pdnsd cache, replacing existing records 
-add       a        addr          name              [ttl]   [noauth]   for the same name and type. The 2nd     
-                                                                      argument corresponds to the argument of 
-                                                                      the option in the rr section that is    
-                                                                      named like the first option: a is a     
-                                                                      record for hostname-to-address mapping, 
-                                                                      aaaa is the same thing for IPv6         
-add       aaaa     addr          name              [ttl]   [noauth]   addresses, and ptr is for               
-                                                                      address-to-hostname mapping. See the    
-                                                                      documentation for the rr section for    
-                                                                      more details. The ttl is optional, the  
-                                                                      default is 900 seconds. noauth is used  
-                                                                      to make the domains non-authoritative - 
-add       ptr      host          name              [ttl]   [noauth]   please see the description of the       
-                                                                      authrec config file options for a       
-                                                                      description of what that means. If you  
-                                                                      want no other record than the newly     
-                                                                      added in the cache, do                  
-                                                                      pdnsdctl record name delete before      
-add       cname    host          name              [ttl]   [noauth]   adding records. This is also better when
-                                                                      overwriting local records. Example:     
-                                                                      pdnsd-ctl add a 127.0.0.1 localhost. 900
-                                                                                                              
-                                                                                                              
-                                                                      Add a negative cached record to pdnsd's 
-neg       name     [type]        [ttl]                                cache, replacing existing records for   
-                                                                      the same name and type. If no type is   
-                                                                      given, the whole domain is cached       
-                                                                      negative. For negative cached records,  
-                                                                      errors are immediately returned on a    
-                                                                      query, without querying other servers   
-                                                                      first. The ttl is optional, the default 
-                                                                      is 900 seconds.                         
-                                                                      You can get a list of all types you can 
-                                                                      pass to this command using pdnsd-ctl    
-                                                                      list-rrtypes. The type is treated       
-                                                                      case-sensitive! Example:                
-                                                                      pdnsd-ctl neg foo.bar A 900             
-                                                                      pdnsd-ctl neg foo.baz 900               
-                                                                                                              
-                                                                                                              
+Command   Options                                              Description                             
+                                                                                                       
+help                                                           print a command summary.                
+                                                                                                       
+version                                                        print version info                      
+                                                                                                       
+                                                               Set the status of the server with the   
+                                                               given index or label (where the given   
+                                                               label matches the one given with the    
+                                                               label option in the respective server   
+                                                               section in the config file) to up or    
+                                                               down, or force a retest. The index is   
+                                                               assigned in the order of definition in  
+                                                               pdnsd.cache starting with 0. Use the    
+                                                               status command to view the indices and  
+                                                               labels. You can specify all instead of  
+                                                               an index or label to perform the action 
+                                                               for all servers registered with pdnsd.  
+                                                               Example:                                
+                                                               pdnsd-ctl server 0 retest               
+          (index                 [dns1                         An optional third argument consisting of
+server    |        (up|down|     [,dns2                        a list of IP addresses (separated by    
+          label)   retest)       [,...]]]                      commas or spaces) can be given. This    
+                                                               list will replace the previous list of  
+                                                               addresses of name servers used by pdnsd 
+                                                               in the specified section of the config  
+                                                               file. For example in the /etc/ppp/ip-up 
+                                                               script called by pppd you could place   
+                                                               the following line:                     
+                                                               pdnsd-ctl server isplabel up $DNS1,$DNS2
+                                                               If spaces are used to separate addresses
+                                                               the list will have to be quoted.        
+                                                               Spurious commas and spaces are ignored. 
+                                                               The last argument may also be an empty  
+                                                               string, in which case the existing IP   
+                                                               addresses are removed and the           
+                                                               corresponding server section becomes    
+                                                               inactive.                               
+                                                                                                       
+                                                               Delete or invalidate the record of the  
+                                                               given domain name if it is in the cache.
+                                                               Invalidation means that the record is   
+                                                               marked as timed out, and such is        
+                                                               reloaded if possible (if purge_cache is 
+                                                               set to on, it will be deleted in any    
+record    name     (delete|                                    case).                                  
+                   invalidate)                                 For local records (i.e., records that   
+                                                               were given in the config file using a rr
+                                                               section, records read from a hosts-style
+                                                               file and records added using pdnsd-ctl),
+                                                               invalidation has no effect. Deletion    
+                                                               will work, though. Example:             
+                                                               pdnsd-ctl record localhost. delete      
+                                                                                                       
+                                                               Load a hosts-style file. Works like     
+                                                               using the pdnsd source option. owner and
+                                                               ttl are used as in the source section.  
+                                                               ttl has a default of 900 (it does not   
+                                                               need to be specified). The next to last 
+                                                               option corresponds to the serve_aliases 
+                                                               option, and is off by default (i.e. if  
+source    fn       owner         [ttl]      [(on|   [noauth]   it is not specified). noauth is used to 
+                                            off)]              make the domains non-authoritative -    
+                                                               please see the description of the       
+                                                               authrec config file options for a       
+                                                               description of what that means. fn is   
+                                                               the filename. The file must be readable 
+                                                               by pdnsd! Example:                      
+                                                               pdnsd-ctl source /etc/                  
+                                                               hosts localhost. 900 off                
+                                                                                                       
+                                                               Add a record of the given type to the   
+                                                               pdnsd cache, replacing existing records 
+add       a        addr          name       [ttl]   [noauth]   for the same name and type. The 2nd     
+                                                               argument corresponds to the argument of 
+                                                               the option in the rr section that is    
+                                                               named like the first option: a is a     
+                                                               record for hostname-to-address mapping, 
+                                                               aaaa is the same thing for IPv6         
+add       aaaa     addr          name       [ttl]   [noauth]   addresses, and ptr is for               
+                                                               address-to-hostname mapping. See the    
+                                                               documentation for the rr section for    
+                                                               more details. The ttl is optional, the  
+                                                               default is 900 seconds. noauth is used  
+                                                               to make the domains non-authoritative - 
+add       ptr      host          name       [ttl]   [noauth]   please see the description of the       
+                                                               authrec config file options for a       
+                                                               description of what that means. If you  
+                                                               want no other record than the newly     
+                                                               added in the cache, do                  
+                                                               pdnsdctl record name delete before      
+add       cname    host          name       [ttl]   [noauth]   adding records. This is also better when
+                                                               overwriting local records. Example:     
+                                                               pdnsd-ctl add a 127.0.0.1 localhost. 900
+                                                                                                       
+                                                                                                       
+                                                               Add a negative cached record to pdnsd's 
+neg       name     [type]        [ttl]                         cache, replacing existing records for   
+                                                               the same name and type. If no type is   
+                                                               given, the whole domain is cached       
+                                                               negative. For negative cached records,  
+                                                               errors are immediately returned on a    
+                                                               query, without querying other servers   
+                                                               first. The ttl is optional, the default 
+                                                               is 900 seconds.                         
+                                                               You can get a list of all types you can 
+                                                               pass to this command using pdnsd-ctl    
+                                                               list-rrtypes. The type is treated       
+                                                               case-sensitive! Example:                
+                                                               pdnsd-ctl neg foo.bar A 900             
+                                                               pdnsd-ctl neg foo.baz 900               
+                                                                                                       
+                                                                                                       
 
 
 
@@ -1375,5 +1411,5 @@ src/status.h     pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 10 Sep 2003 by Paul Rombouts
+Last revised: 09 Oct 2003 by Paul Rombouts
 

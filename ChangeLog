@@ -1,3 +1,46 @@
+2003-10-18  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.h,src/helpers.c
+	Fixed a mistake that caused a compile error when using the --with-random-device
+	configuration option.
+	Thanks to Daniel Black for reporting this bug.
+
+2003-10-02  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* conf-lex.l.in,src/conf-parse.y,src/conff.h,src/conff.c,src/dns_query.c
+	Made the "delegation_only" feature configurable.
+
+2003-09-25  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.c,src/helpers.h
+	Added alternative implementations of strdup, strndup, stpcpy, getline and asprintf
+	in an effort to make the code more portable.
+
+2003-09-22  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.c,src/conf-parse.y
+	Made some changes to the parser of the configuration file so that domain names
+	missing a dot at the end will be tolerated.
+
+2003-09-21  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Implemented a first version of the "delegation-only" feature.
+	It has been "hard-coded" to work for "com" and "net" zones,
+	and is not yet configurable.
+
+2003-09-21  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns.c
+	Rewrote domain_match(). Also changed the way it is used.
+	I believe it has a cleaner semantics now.
+
+2003-09-21  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Changed the order of the arguments of p_exec_query() and p_recursive_query()
+	to make it more consistent with the other functions.
+
 2003-09-18  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c

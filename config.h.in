@@ -241,6 +241,9 @@
 /* Define if you have the snprintf function.  */
 #undef HAVE_SNPRINTF
 
+/* Define if you have the vsnprintf function.  */
+#undef HAVE_VSNPRINTF
+
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
 
@@ -250,8 +253,26 @@
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME
 
-/* Define if you have the usleep function.  */
-#undef HAVE_USLEEP
+/* Define if you have the nanosleep function.  */
+#undef HAVE_NANOSLEEP
+
+/* Define if you have the strdup function.  */
+#undef HAVE_STRDUP
+
+/* Define if you have the strndup function.  */
+#undef HAVE_STRNDUP
+
+/* Define if you have the stpcpy function.  */
+#undef HAVE_STPCPY
+
+/* Define if you have the stpncpy function.  */
+#undef HAVE_STPNCPY
+
+/* Define if you have the getline function.  */
+#undef HAVE_GETLINE
+
+/* Define if you have the asprintf function.  */
+#undef HAVE_ASPRINTF
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H

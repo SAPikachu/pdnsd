@@ -300,7 +300,8 @@ distdir: $(DISTFILES)
 	done
 cache.o: cache.c ../config.h cache.h ipvers.h list.h dns.h rr_types.h \
 	conff.h hash.h helpers.h error.h thread.h debug.h pdnsd_assert.h
-conf-lex.o: conf-lex.c ../config.h conf-parse.h consts.h rr_types.h
+conf-lex.o: conf-lex.c ../config.h helpers.h cache.h ipvers.h list.h \
+	pdnsd_assert.h dns.h rr_types.h conff.h conf-parse.h consts.h
 conf-parse.o: conf-parse.c ../config.h ipvers.h conff.h list.h consts.h \
 	cache.h dns.h rr_types.h dns_query.h helpers.h pdnsd_assert.h
 conff.o: conff.c ../config.h ipvers.h conff.h list.h consts.h helpers.h \

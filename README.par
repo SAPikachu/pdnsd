@@ -1,28 +1,31 @@
-	  pdnsd maintenance version 1.1.8b1-par7 by Paul Rombouts
+	  pdnsd maintenance version 1.1.8b1-par8 by Paul Rombouts
 	  =======================================================
 
 This file describes the version of pdnsd that I maintain personally and am
 making available so other people can enjoy the latest features and fixes. Thomas
 Moestl no longer maintains pdnsd himself, so I am effectively the new
-maintainer. Present version is 1.1.8b1-par7. In this release I have fixed some
-more bugs and I reworked some of the code for adding and removing entries from
-the cache in an effort to improve efficiency and stability.
-More details can be found in the ChangeLog.
+maintainer. This version is 1.1.8b1-par8. This release has a new
+"delegation-only" feature that can be used to block Verisign's Sitefinder
+service. For details how to configure it, see below. Furthermore I have provided
+alternative implementations for some of the GNU extensions I used to improve
+portability. In particular, the code should build on FreeBSD again.
+More details about other changes can be found in the ChangeLog.
 
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par7.tar.gz you
-must first apply my patch file pdnsd-1.1.8b1-par7.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par8.tar.gz you
+must first apply my patch file pdnsd-1.1.8b1-par8.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the the
 documentation. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par7.diff.gz | patch -p2 -N -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par8.diff.gz | patch -p2 -N -Z
 
-Note: because I have used GNU extensions you will need to compile with gcc and
-link with glibc. This will not be a problem with most Linux distributions.
+Note: I have used GNU extensions so there may be some portability issues. I have
+supplied alternatives for some of the less portable functions. There should be no
+problem with most Linux distributions.
 
 That's it! You should now be able to compile, install and run pdnsd. See the
 documentation in doc/html/doc.html or doc/txt/manual.txt for more detailed
@@ -67,6 +70,8 @@ don't have to read it if you simply want to run pdnsd as you're used to.
 
   pdnsd-ctl server isp-label up "$DNS1 $DNS2"
 
+  For more details how to use pdnsd-ctl read the updated documentation in
+  the doc/html directory.
   This was quite tricky to implement because there might be pending queries
   while the addresses are being changed. It certainly was an interesting
   exercise in writing multi-threaded code for me.
@@ -122,6 +127,19 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   fully qualified domain names (i.e. the name has at least one dot in-between).
   I find these options useful for controlling which name servers (if any) will
   be used by pdnsd for simple host names.
+
+- New in 1.1.8b1-par8: I've added a new "delegation_only" option that can be
+  used to undo the unwanted effects of DNS "wildcards". It works roughly as the
+  feature by the same name in BIND. It is turned off by default. To block
+  Verisign's Sitefinder, add the following line to the global section of the
+  confuration file:
+
+	delegation_only="com","net";
+
+  If you find that this feature blocks some legitimate domain names, you will
+  probably need to add the address of a nameserver that provides good authority
+  information. More information can be found at
+  http://www.phys.uu.nl/~rombouts/pdnsd/delegationonly.html
 
 I've also included a number of bug-fixes contained in a patch file supplied to
 me by Thomas Moestl. In addition to the things I had already fixed, the

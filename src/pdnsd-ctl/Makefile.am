@@ -4,7 +4,7 @@ sbin_PROGRAMS = pdnsd-ctl
 
 pdnsd_ctl_SOURCES = pdnsd-ctl.c
 pdnsd_ctl_LDADD =  rr_types.o
-pdnsd_ctl_DEPENDENCIES = ../rr_types.o
+pdnsd_ctl_DEPENDENCIES = rr_types.o
 
 # These are Symlinks we want to have in the package
 #EXTRA_DIST = rr_types.h

@@ -13,3 +13,9 @@ pdnsd_SOURCES = conf-parse.y conf-lex.l conff.c consts.c debug.c dns.c dns_answe
 
 SUBDIRS = pdnsd-ctl rc test
 
+conf-parse.c: conf-parse.y
+	$(YACC) $(AM_YFLAGS) $(YFLAGS) $< && perl yyparse_local_decl.pl y.tab.c > $*.c
+	if test -f y.tab.h; then \
+	if cmp -s y.tab.h $*.h; then rm -f y.tab.h; else mv y.tab.h $*.h; fi; \
+	else :; fi
+

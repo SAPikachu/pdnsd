@@ -26,6 +26,8 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
+#include <ctype.h>
 #include "cache.h"
 #include "pdnsd_assert.h"
 
@@ -46,6 +48,7 @@ inline static int isdchar (unsigned char c)
 
 void rhn2str(unsigned char *rhn, unsigned char *str);
 int  str2rhn(unsigned char *str, unsigned char *rhn);
+char *parsestr2rhn(unsigned char *str, unsigned char *rhn);
 inline static int rhnlen(unsigned char *rhn)
 {
 	return strlen(rhn)+1;
@@ -94,13 +97,14 @@ const char *socka2str(struct sockaddr *a, char *buf, int maxlen);
 #endif
 
 int init_rng(void);
-inline static void free_rng(void)
-{
 #ifdef RANDOM_DEVICE
-	if (rand_file)
-		fclose(rand_file);
+extern FILE *rand_file;
+/* Because this is usually empty, it is now defined as a macro to save overhead.*/
+#define free_rng() {if (rand_file) fclose(rand_file);}
+#else
+#define free_rng()
 #endif
-}
+
 unsigned short get_rand16(void);
 
 int fsprintf(int fd, const char *format, ...) printfunc(2, 3);
@@ -128,13 +132,85 @@ inline static int stricomp(const char *a, const char *b)
   return !strcasecmp(a,b);
 }
 
+/* compare two names in length byte - string format */
+inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
+{
+	int i=0;
+	unsigned char lb;
+	for(;;) {
+		lb=a[i];
+		if(lb!=b[i]) return 0;
+		if(!lb) break;
+		++i;
+		for(;lb;--lb) {
+			if(tolower(a[i])!=tolower(b[i])) return 0;
+			++i;
+		}
+	}
+	return 1;
+}
+
 /* Bah. I want strlcpy. */
 inline static int strncp(char *dst, const char *src, int dstsz)
 {
-  char *p=stpncpy(dst,src,dstsz);
-  if(p<dst+dstsz) return 1;
-  *(p-1)='\0';
-  return 0;
+#ifdef HAVE_STPNCPY
+	char *p=stpncpy(dst,src,dstsz);
+	if(p<dst+dstsz) return 1;
+	*(p-1)='\0';
+	return 0;
+#else
+	strncpy(dst,src,dstsz);
+	if(strlen(src)<dstsz) return 1;
+	dst[dstsz-1]='\0';
+	return 0;
+#endif
 }
 
+#ifndef HAVE_STRDUP
+inline static char *strdup(const char *s)
+{
+	size_t sz=strlen(s)+1;
+	char *cp=malloc(sz);
+	if(cp)
+		memcpy(cp,s,sz);
+	return cp;
+}
 #endif
+
+#ifndef HAVE_STRNDUP
+/* This version may allocate a buffer that is unnecessarily large,
+   but I'm always going to use it with n<strlen(s)
+*/
+inline static char *strndup(const char *s, size_t n)
+{
+	char *cp;
+	cp=malloc(n+1);
+	if(cp) {
+		memcpy(cp,s,n);
+		cp[n]='\0';
+	}
+	return cp;
+}
+#endif
+
+#ifndef HAVE_STPCPY
+inline static char *stpcpy (char *dest, const char *src)
+{
+  register char *d = dest;
+  register const char *s = src;
+
+  while ((*d++ = *s++) != '\0');
+
+  return d - 1;
+}
+#endif
+
+#ifndef HAVE_GETLINE
+int getline(char **lineptr, size_t *n, FILE *stream);
+#endif
+
+#ifndef HAVE_ASPRINTF
+int asprintf (char **lineptr, const char *format, ...);
+#endif
+
+#endif /* HELPERS_H */
