@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.7 2001/04/11 03:30:14 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.8 2001/04/30 15:34:32 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
@@ -226,3 +226,16 @@ dns_cent_t *fetch_next(dns_hash_t *hash, dns_hash_pos_t *pos)
 	}
 	return NULL;
 }
+
+#ifdef DBGHASH
+void dumphash(dns_hash_t *hash)
+{
+	int i, j;
+	dns_hash_ent_t *he;
+	
+	for (i=0; i<HASH_NUM_BUCKETS; i++) {
+		for (j=0, he=hash->buckets[i]; he; he=he->next, j++) ;
+		DEBUG_MSG3("bucket %d: %d entries\n", i, j);
+	}
+}
+#endif

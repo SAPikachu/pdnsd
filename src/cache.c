@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.24 2001/04/12 18:48:31 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.25 2001/04/30 15:34:31 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -149,7 +149,7 @@ volatile int use_cache_lock=0;
 /*
  * Prototypes for internal use
  */
-static void purge_cache(long sz);
+static void purge_cache(long sz, int lazy);
 static void del_cache_int(dns_cent_t *cent);
 static void del_cache_int_rrl(dns_cent_t *cent);
 static void remove_rrl(rr_lent_t *le);
@@ -455,7 +455,7 @@ int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, u
  */
 static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
 {
-	if ((cent->flags&DF_LOCAL) && (cent->flags&DF_NEGATIVE))
+	if ((cent->flags&DF_LOCAL) && !(flags&CF_LOCAL))
 		return 1; /* ignore. Local has precedence. */
 
 	if (!cent->rr[tp-T_MIN]) {
@@ -728,18 +728,40 @@ static int purge_cent(dns_cent_t *cent, int delete)
  * - for cached sets with CF_NOPURGE not set: delete if timed out
  * - additional: delete oldest sets.
  */
-static void purge_cache(long sz)
+static void purge_cache(long sz, int lazy)
 {
 	dns_cent_t *ce;
-	dns_hash_pos_t pos;
-	rr_lent_t **le/*,*next*/;
+	rr_lent_t **le;
+	int deleted;
 
-	/* first, purge all rrs row-wise. This only affects timed-out records. */
-	ce=fetch_first((dns_hash_t *)&dns_hash, &pos);
-	while (ce) {
-		cache_size-=purge_cent(ce,1);
-		ce=fetch_next((dns_hash_t *)&dns_hash,&pos);
+	/* Walk the cache list from the oldest entries to the newest, deleting timed-out
+	 * records.
+	 * XXX: We walk the list a second time if this did not free up enough space - this
+	 * should be done better. */
+	le=(rr_lent_t **)&rrset_l;
+	while (*le && (!lazy || cache_size>sz)) {
+		if (!(((*le)->rrset && ((*le)->rrset->flags&CF_LOCAL)) || 
+		      (*le)->cent->flags&CF_LOCAL)) {
+			ce = (*le)->cent;
+			/* Side effect: if rv!=0, del_cent_rrset was called and *le has advanced on entry.
+			 * ce, however, is still guaranteed to be valid. */
+			if ((*le)->rrset) {
+				deleted=purge_rrset(ce, (*le)->tp);
+				cache_size-=deleted;
+			}
+			if (ce->num_rrs==0 && (!ce->flags&DF_NEGATIVE || 
+					   ((time(NULL)-ce->ts>ce->ttl+CACHE_LAT) && !ce->flags&DF_LOCAL))) {
+				del_cache_int(ce);
+				if (!deleted)
+					remove_rrl(*le);
+			} else
+				if (!deleted)
+					le=&(*le)->next;
+		} else
+			le=&(*le)->next;
 	}
+	if (cache_size<=sz)
+		return;
 	/* we are still above the desired cache size. Well, delete records from the oldest to
 	 * the newest. This is the case where nopurge records are deleted anyway. Only local
 	 * records are kept in any case.*/
@@ -898,6 +920,9 @@ void read_disk_cache()
 	}
 	free(data);
 	fclose(f);
+#ifdef DBGHASH
+	dumphash(&dns_hash);
+#endif
 }
 
 /* write an rr to the file f */
@@ -992,7 +1017,7 @@ void write_disk_cache()
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
-	purge_cache((long)global.perm_cache*1024);
+	purge_cache((long)global.perm_cache*1024, 0);
 	if (!softunlock_cache_rw()) {
 		fclose(f);
 		crash_msg("Lock failed; could not write disk cache.");
@@ -1160,7 +1185,7 @@ void add_cache(dns_cent_t cent)
 		cache_size+=ce->cs;
 	}
 
-	purge_cache((long)global.perm_cache*1024+MCSZ);
+	purge_cache((long)global.perm_cache*1024+MCSZ, 1);
 	unlock_cache_rw();
 }
 

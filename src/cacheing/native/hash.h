@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: hash.h,v 1.1 2000/07/21 20:04:41 thomas Exp $ */
+/* $Id: hash.h,v 1.2 2001/04/30 15:34:32 tmm Exp $ */
 
 #ifndef _HASH_H_
 #define _HASH_H_
@@ -64,5 +64,8 @@ void free_dns_hash(dns_hash_t *hash);
 dns_cent_t *fetch_first(dns_hash_t *hash, dns_hash_pos_t *pos);
 dns_cent_t *fetch_next(dns_hash_t *hash, dns_hash_pos_t *pos);
 
+#ifdef DBGHASH
+void dumphash(dns_hash_t *hash);
+#endif
 
 #endif
