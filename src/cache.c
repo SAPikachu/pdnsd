@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.30 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.31 2001/05/22 16:33:00 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -397,6 +397,7 @@ int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, ti
 {
 	int i;
 
+	/* This mimics strdup, which is not really portable unfortunately */
 	cent->qname=cache_calloc(sizeof(unsigned char),strlen((char *)qname)+1, dbg);
 	if (cent->qname == NULL)
 		return 0;

@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.43 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.44 2001/05/22 16:33:00 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1298,7 +1298,8 @@ static int p_recursive_query(darray q, unsigned char *rrn, unsigned char *name, 
 					if (nsname[0]!='\0')
 						continue;
 				}
-				strcpy((char *)nsname,(char *)nsr->name);
+				strncpy((char *)nsname,(char *)nsr->name,sizeof(nsname));
+				nsname[sizeof(nsname)-1]='\0';
 				if (!str2rhn(nsname,nsbuf))
 					continue;
 				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,

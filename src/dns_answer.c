@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.49 2001/05/19 14:57:30 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.50 2001/05/22 16:33:00 tmm Exp $";
 #endif
 
 /*
@@ -155,8 +155,10 @@ int sva_add(darray *sva, unsigned char *name, unsigned char *rhn, int tp, rr_buc
 		st->tp=tp;
 		if (!name)
 			rhn2str(rhn,st->nm);
-		else
-			strcpy((char *)st->nm,(char *)name);
+		else {
+			strncpy((char *)st->nm,(char *)name,sizeof(st->nm));
+			st->nm[sizeof(st->nm)-1]='\0';
+		}
 		memcpy(st->data,b+1,b->rdlen);
 	}
 	return 1;
@@ -678,7 +680,8 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 				goto error_ar;
 			}
 			aa=0;
-			strcpy((char *)oname,(char *)buf);
+			strncpy((char *)oname,(char *)buf,sizeof(oname));
+			oname[sizeof(oname)-1]='\0';
 			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&ar))
 				goto error_cached;
 			cnc=follow_cname_chain(cached,buf,bufr);

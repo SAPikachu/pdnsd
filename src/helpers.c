@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.24 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.25 2001/05/22 16:33:00 tmm Exp $";
 #endif
 
 /*
@@ -186,13 +186,14 @@ int rhnlen(unsigned char *rhn)
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
- * Returns number of characters copied.
+ * Returns number of characters copied. dst is assumed to be 255 bytes in size.
  */
 int rhncpy(unsigned char *dst, unsigned char *src)
 {
-	/* We can use strlen/strcpy here, because a rhn is terminated by a 0 length byte. */
+	/* We can use strlen/strncpy here, because a rhn is terminated by a 0 length byte. */
 	PDNSD_ASSERT(rhnlen(src)<=256,"rhncpy: src too long!");
-	strcpy((char *)dst,(char *)src);
+	strncpy((char *)dst,(char *)src,256);
+	dst[255]='\0';
 	return rhnlen(src);
 }
 
