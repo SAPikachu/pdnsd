@@ -1,4 +1,4 @@
-$Id: TODO,v 1.16 2000/10/17 20:34:44 thomas Exp $
+$Id: TODO,v 1.17 2000/10/17 22:11:38 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -208,7 +208,7 @@ Access lists for servers				       [-tm, 2000-10-15]
 ================================================================================
 --------------------------------------------------------------------------------
 Code cleanup:						       [open           ]
--[ ] get rid of O_NONBLOCK where possible
+-[X] get rid of O_NONBLOCK where possible
 -[ ] check sizeofs and fixed sizes given to functions:
      strncpy, strncat, memcpy, snprintf, read, write, bind, 
      connect, accept, recvfrom, sendto

@@ -25,6 +25,8 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #include "config.h"
+#include <sys/poll.h>
+#include <sys/time.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -51,7 +53,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.3 2000/10/08 12:16:08 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.4 2000/10/17 22:11:45 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -140,7 +142,8 @@ void init_ping_socket()
 static int ping4(struct in_addr addr, int timeout, int rep)
 {
 	char buf[1024];
-	int i,tm;
+	int i;
+	long tm;
 	int rve=1;
 	int len;
 	int isock,osock;
@@ -158,6 +161,12 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	unsigned short *ptr;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
+#ifdef NO_POLL
+	fd_set fds;
+	struct timeval tv;
+#else
+	struct pollfd pfd[2];
+#endif
 
 #if TARGET!=TARGET_LINUX	
 	if (!(pe=getprotobyname("ip"))) {
@@ -186,7 +195,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		return -1;
 	}
 #endif
-	fcntl(isock,F_SETFL,O_NONBLOCK);
 	if (setsockopt(osock,SOL_IP,IP_RECVERR,&rve,sizeof(rve))==-1) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
 			icmp_errs++;
@@ -220,7 +228,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		from.sin_port=0;
 		from.sin_addr=addr;
 		SET_SOCKA_LEN4(from);
-		fcntl(osock,F_SETFL,0);
 		if (sendto(osock,&icmpd,8,0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
@@ -229,34 +236,71 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			}
 			return -1;
 		}
-		fcntl(osock,F_SETFL,O_NONBLOCK);
 		/* listen for reply. */
-		tm=0;
+		tm=time(NULL);
 		do {
-			memset(&msg,0,sizeof(msg));
-			msg.msg_control=buf;
-			msg.msg_controllen=1024;
-			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
-				if (*((unsigned int *)buf)!=0) {
-					return -1;  /* error in sending (e.g. no route to host) */
+#ifdef NO_POLL
+			FD_ZERO(&fds);
+			FD_SET(osock, &fds);
+			FD_SET(isock, &fds);
+			tv.tv_usec=0;
+			tv.tv_sec=timeout<(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
+			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<1) {
+				if (icmp_errs<ICMP_MAX_ERRS) {
+					icmp_errs++;
+					log_warn("poll/select failed: %s",strerror(errno));
 				}
+				return -1; 
 			}
-			sl=sizeof(from);
-			if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
-				if (len>20 && len-((struct iphdr *)buf)->ip_ihl*4>=8) {
-					icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
-					if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
-					     icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
-						return (i-ntohs(icmpp->icmp_seq))*timeout+tm; /* return the number of ticks */
+#else
+			pfd[0].fd=osock;
+			pfd[0].events=POLL_IN;
+			pfd[1].fd=isock;
+			pfd[1].events=POLL_IN;
+			if (poll(pfd,2,timeout<(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<1) {
+				if (icmp_errs<ICMP_MAX_ERRS) {
+					icmp_errs++;
+					log_warn("poll/select failed: %s",strerror(errno));
+				}
+				return -1; 
+			}
+#endif
+
+#ifdef NO_POLL
+			if (FD_ISSET(osock,&fds)) {
+#else
+			if (pfd[0].revents|POLL_IN) {
+#endif
+				memset(&msg,0,sizeof(msg));
+				msg.msg_control=buf;
+				msg.msg_controllen=1024;
+				if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
+					if (*((unsigned int *)buf)!=0) {
+						return -1;  /* error in sending (e.g. no route to host) */
 					}
 				}
-			} else {
-				if (errno!=EAGAIN)
-					return -1; /* error */
 			}
-			usleep(100000);
-			tm++;
-		} while (tm<timeout);
+
+#ifdef NO_POLL
+			if (FD_ISSET(isock,&fds)) {
+#else
+			if (pfd[1].revents|POLL_IN) {
+#endif
+				sl=sizeof(from);
+				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
+					if (len>20 && len-((struct iphdr *)buf)->ip_ihl*4>=8) {
+						icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
+						if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
+						    icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
+							return (i-ntohs(icmpp->icmp_seq))*timeout+tm; /* return the number of ticks */
+						}
+					}
+				} else {
+					if (errno!=EAGAIN)
+						return -1; /* error */
+				}
+			}
+		} while (time(NULL)-tm<timeout);
 	}
 	return -1; /* no answer */
 }
@@ -276,7 +320,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 static int ping6(struct in6_addr a, int timeout, int rep)
 {
 	char buf[1024];
-	int i,tm;
+	int i;
+	long tm;
 	int rve=1;
 /*	int ck_offs=2;*/
 	int len;
@@ -291,6 +336,12 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #if TARGET!=TARGET_LINUX
 	int SOL_IPV6;
 	struct protoent *pe;
+#ifdef NO_POLL
+	fd_set fds;
+	struct timeval tv;
+#else
+	struct pollfd pfd[2];
+#endif
 
 	if (!(pe=getprotobyname("ipv6"))) {
 		if (icmp_errs<ICMP_MAX_ERRS) {
@@ -315,7 +366,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		}
 		return -1;
 	}
-	fcntl(isock,F_SETFL,O_NONBLOCK);
 	
 	/* enable error queueing and checksumming. --checksumming should be on by default.*/
 	if (setsockopt(osock,SOL_IPV6,IPV6_RECVERR,&rve,sizeof(rve))==-1 /*|| 
@@ -340,7 +390,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		from.sin6_addr=a;
 		SET_SOCKA_LEN6(from);
 /*		printf("to: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
-		fcntl(osock,F_SETFL,0);
 		if (sendto(osock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
@@ -349,39 +398,77 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			}
 			return -1;
 		}
-		fcntl(osock,F_SETFL,O_NONBLOCK);
 		/* listen for reply. */
-		tm=0;
+		tm=time(NULL);
 		do {
-			memset(&msg,0,sizeof(msg));
-			msg.msg_control=buf;
-			msg.msg_controllen=1024;
-			if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
-				if (*((unsigned int *)buf)!=0) {
-					return -1;  /* error in sending (e.g. no route to host) */
+#ifdef NO_POLL
+			FD_ZERO(&fds);
+			FD_SET(osock, &fds);
+			FD_SET(isock, &fds);
+			tv.tv_usec=0;
+			tv.tv_sec=timeout<(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
+			if (select((isock>osock?isock:osock)+1,&fds,NULL,NULL,&tv)<1) {
+				if (icmp_errs<ICMP_MAX_ERRS) {
+					icmp_errs++;
+					log_warn("poll/select failed: %s",strerror(errno));
 				}
+				return .-1; 
 			}
-			sl=sizeof(from);
-/*			printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
-			if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
-				if (len>=sizeof(struct icmp6_hdr)) {
-/*	   			        printf("reply: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
-				        /* we get packets without IPv6 header, luckily */
-					icmpp=(struct icmp6_hdr *)buf;
-				        /* The address comparation was diked out because some linux versions
-				         * seem to have problems with it. */
-					if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
-						ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
-						return (i-ntohs(icmpp->icmp6_seq))*timeout+tm; /* return the number of ticks */
+#else
+			pfd[0].fd=osock;
+			pfd[0].events=POLL_IN;
+			pfd[1].fd=isock;
+			pfd[1].events=POLL_IN;
+			if (poll(pfd,2,timeout<(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<1) {
+				if (icmp_errs<ICMP_MAX_ERRS) {
+					icmp_errs++;
+					log_warn("poll/select failed: %s",strerror(errno));
+				}
+				return .-1; 
+
+			}
+#endif
+
+#ifdef NO_POLL
+			if (FD_ISSET(osock,&fds)) {
+#else
+			if (pfd[0].revents|POLL_IN) {
+#endif
+				memset(&msg,0,sizeof(msg));
+				msg.msg_control=buf;
+				msg.msg_controllen=1024;
+				if (recvmsg(osock,&msg,MSG_ERRQUEUE)!=-1) {
+					if (*((unsigned int *)buf)!=0) {
+						return -1;  /* error in sending (e.g. no route to host) */
 					}
 				}
-			} else {
-				if (errno!=EAGAIN)
-					return -1; /* error */
 			}
-			usleep(100000);
-			tm++;
-		} while (tm<timeout);
+
+#ifdef NO_POLL
+			if (FD_ISSET(isock,&fds)) {
+#else
+			if (pfd[1].revents|POLL_IN) {
+#endif
+				sl=sizeof(from);
+/*	        		printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
+				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
+					if (len>=sizeof(struct icmp6_hdr)) {
+/*	   			        printf("reply: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
+						/* we get packets without IPv6 header, luckily */
+						icmpp=(struct icmp6_hdr *)buf;
+						/* The address comparation was diked out because some linux versions
+						 * seem to have problems with it. */
+						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
+						    ntohs(icmpp->icmp6_id)==id && ntohs(icmpp->icmp6_seq)<=i) {
+							return (i-ntohs(icmpp->icmp6_seq))*timeout+tm; /* return the number of ticks */
+						}
+					}
+				} else {
+					if (errno!=EAGAIN)
+						return -1; /* error */
+				}
+			}
+		} while (time(NULL)-tm<timeout);
 	}
 	return -1; /* no answer */
 }
@@ -410,9 +497,9 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			v4.s_addr=((long *)&addr->ipv6)[3];
-			return ping4(v4,timeout,rep);
+			return ping4(v4,timeout/10,rep);
 		} else 
-			return ping6(addr->ipv6,timeout,rep);
+			return ping6(addr->ipv6,timeout/10,rep);
 	}
 #endif
 	return -1;
