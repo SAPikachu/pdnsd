@@ -42,18 +42,44 @@ void thread_sig(int sig);
  * So, for Linux, we have to install the fatal_sig handler. 
  * It seems to me that signal handlers in fact aren't shared between threads
  * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
-#if TARGET==TARGET_LINUX
-#define THREAD_SIGINIT	{ pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);     \
-                             signal(SIGILL,thread_sig);                    \
-	                     signal(SIGABRT,thread_sig);                   \
-	                     signal(SIGFPE,thread_sig);                    \
-	                     signal(SIGSEGV,thread_sig);                   \
-	                     signal(SIGTSTP,thread_sig);                   \
-                             signal(SIGTTOU,thread_sig);                   \
-                    	     signal(SIGTTIN,thread_sig);                   \
-                             signal(SIGPIPE, SIG_IGN);                     \
-                        }
 
+/* Note added by Paul Rombouts: In the new Native POSIX Thread Library for Linux (NPTL)
+   signal handling has changed from per-thread signal handling to POSIX process signal handling,
+   which makes the recommended solution mentioned by Thomas Moestl possible.
+   I this case I can simply define THREAD_SIGINIT to be empty.
+   The signals are blocked in main() before any threads are created,
+   and we simply never unblock them except by calling sigwait() in main(). */
+
+#if TARGET==TARGET_LINUX
+# ifdef THREADLIB_NPTL
+# define THREAD_SIGINIT
+# else
+#  ifdef THREADLIB_LINUXTHREADS2
+#  define THREAD_SIGINIT   { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
+			     signal(SIGINT,thread_sig);			   \
+			     signal(SIGILL,thread_sig);			   \
+			     signal(SIGABRT,thread_sig);		   \
+			     signal(SIGFPE,thread_sig);			   \
+			     signal(SIGSEGV,thread_sig);		   \
+			     signal(SIGTSTP,thread_sig);		   \
+			     signal(SIGTTOU,thread_sig);		   \
+			     signal(SIGTTIN,thread_sig);		   \
+			     signal(SIGTERM, thread_sig);		   \
+			     signal(SIGPIPE, SIG_IGN);			   \
+			   }
+#  else
+#  define THREAD_SIGINIT   { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
+			     signal(SIGILL,thread_sig);			   \
+			     signal(SIGABRT,thread_sig);		   \
+			     signal(SIGFPE,thread_sig);			   \
+			     signal(SIGSEGV,thread_sig);		   \
+			     signal(SIGTSTP,thread_sig);		   \
+			     signal(SIGTTOU,thread_sig);		   \
+			     signal(SIGTTIN,thread_sig);		   \
+			     signal(SIGPIPE, SIG_IGN);			   \
+			   }
+#  endif
+# endif
 #else
 #define THREAD_SIGINIT pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL)
 #endif

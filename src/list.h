@@ -52,8 +52,8 @@ typedef struct _dynamic_array_dummy_head  *darray;
 /* Used often, so make special-case macro here */
 #define DA_LAST(a) ((a)->elem[(a)->nel-1])
 
-#define DA_GROW1(a,typ) ((struct _dynamic_array_of_ ## typ *)da_grow1((darray)(a),sizeof(typ)))
-#define DA_RESIZE(a,typ,n) ((struct _dynamic_array_of_ ## typ *)da_resize((darray)(a),sizeof(typ),n))
+#define DA_GROW1(a) ((typeof (a))da_grow1((darray)(a),sizeof((a)->elem[0])))
+#define DA_RESIZE(a,n) ((typeof (a))da_resize((darray)(a),sizeof((a)->elem[0]),n))
 #define DA_NEL(a) da_nel((darray)(a))
 /*
  * Some or all of these should be inline.

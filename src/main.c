@@ -473,6 +473,7 @@ int main(int argc,char *argv[])
 		init_stat_sock();
 
 	sigemptyset(&sigs_msk);
+	sigaddset(&sigs_msk,SIGHUP);
 	sigaddset(&sigs_msk,SIGILL);
 	sigaddset(&sigs_msk,SIGABRT);
 	sigaddset(&sigs_msk,SIGFPE);

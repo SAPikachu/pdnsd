@@ -132,7 +132,7 @@ void read_config_file(char *nm)
 	fclose(in);
 }
 
-/* Report the currenct configuration into the file (for the status fifo, see status.c) */
+/* Report the current configuration into the file (for the status fifo, see status.c) */
 void report_conf_stat(int f)
 {
 	char buf[ADDRSTR_MAXLEN];
@@ -144,20 +144,20 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
 	fsprintf(f,"\tServer port: %i\n",global.port);
 	fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
-	fsprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
+	fsprintf(f,"\tIgnore cache when link is down: %s\n",global.lndown_kluge?"on":"off");
 	fsprintf(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
 	fsprintf(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
 	fsprintf(f,"\tNegative ttl: %li\n",(long)global.neg_ttl);
-	fsprintf(f,"\tNegative RRS policy: %s\n",global.neg_rrs_pol==C_ON?"on":(global.neg_rrs_pol==C_OFF?"off":"auth"));
-	fsprintf(f,"\tNegative domain policy: %s\n",global.neg_domain_pol==C_ON?"on":(global.neg_domain_pol==C_OFF?"off":"auth"));
+	fsprintf(f,"\tNegative RRS policy: %s\n",const_name(global.neg_rrs_pol));
+	fsprintf(f,"\tNegative domain policy: %s\n",const_name(global.neg_domain_pol));
 	fsprintf(f,"\tRun as: %s\n",global.run_as);
-	fsprintf(f,"\tStrict run as: %i\n",global.strict_suid);
-	fsprintf(f,"\tParanoid mode (cache pollution prevention): %i\n",global.paranoid);
+	fsprintf(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
+	fsprintf(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
 	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
 	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
 	fsprintf(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
-	fsprintf(f,"\tRandomize records in answer: %i\n",global.rnd_recs);
+	fsprintf(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
 	fsprintf(f,"\tQuery port start: %i\n",global.query_port_start);
 	fsprintf(f,"\tQuery port end: %i\n",global.query_port_end);
 	lock_server_data();
@@ -185,11 +185,11 @@ void report_conf_stat(int f)
 		fsprintf(f,"\tuptest user: %s\n",st->uptest_usr[0]?st->uptest_usr:"(process owner)");
 		if (st->scheme[0]!='\0')
 			fsprintf(f,"\tscheme: %s\n", st->scheme);
-		fsprintf(f,"\tforce cache purging: %i\n",st->purge_cache);
-		fsprintf(f,"\tserver is cached: %i\n",!st->nocache);
-		fsprintf(f,"\tlean query: %i\n",st->lean_query);
-		fsprintf(f,"\tUse only proxy?: %i\n",st->is_proxy);
-		fsprintf(f,"\tDefault policy: %s\n",st->policy==C_INCLUDED?"included":"excluded");
+		fsprintf(f,"\tforce cache purging: %s\n",st->purge_cache?"on":"off");
+		fsprintf(f,"\tserver is cached: %s\n",st->nocache?"off":"on");
+		fsprintf(f,"\tlean query: %s\n",st->lean_query?"on":"off");
+		fsprintf(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
+		fsprintf(f,"\tDefault policy: %s\n",const_name(st->policy));
 		fsprintf(f,"\tPolicies:\n");
 		if (st->alist==NULL) {
 			fsprintf(f,"\t\t(none)\n");

@@ -81,9 +81,14 @@ ac_help="$ac_help
   --enable-tcp-subseq         Enable multiple dns querys using one
 			      tcp connection"
 ac_help="$ac_help
-  --with-tcp-qtimeout=secs    Specify default parallel query number (default=2)"
+  --with-par-queries=num      Specify default parallel query number (default=2)"
 ac_help="$ac_help
   --enable-specbuild          Only used when build pdnsd from spec files"
+ac_help="$ac_help
+  --with-thread-lib=lib       Specify thread library (for Linux only).
+			      Possible values: LinuxThreads (default),
+			      LinuxThreads2 (implements a fix for newer glibcs)
+			      or NPTL (Native POSIX Thread Library)"
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -621,6 +626,7 @@ tempdir="/tmp";
 randomdev=default
 freebsd_pthread="4"
 specbuild=no
+threadlib=linuxthreads
 
 ac_aux_dir=
 for ac_dir in $srcdir $srcdir/.. $srcdir/../..; do
@@ -1254,6 +1260,25 @@ if test "${enable_specbuild+set}" = set; then
   specbuild=$enableval
 fi
 
+
+# Check whether --with-thread-lib or --without-thread-lib was given.
+if test "${with_thread_lib+set}" = set; then
+  withval="$with_thread_lib"
+  threadlib=$withval
+fi
+
+
+if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
+	cat >> confdefs.h <<\EOF
+#define THREADLIB_NPTL 1
+EOF
+  
+elif test "$threadlib" = linuxthreads2 -o "$threadlib" = LinuxThreads2 -o "$threadlib" = lt2; then
+	cat >> confdefs.h <<\EOF
+#define THREADLIB_LINUXTHREADS2 1
+EOF
+  
+fi
 
 
 

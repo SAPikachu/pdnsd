@@ -220,6 +220,12 @@
 /* Allow _ in domain names? */
 #undef UNDERSCORE
 
+/* Assume the Native POSIX Thread Library instead of LinuxThreads ? */
+#undef THREADLIB_NPTL
+
+/* If we are using LinuxThreads, implement the fix needed for newer glibcs ? */
+#undef THREADLIB_LINUXTHREADS2
+
 /* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 

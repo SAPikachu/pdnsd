@@ -43,7 +43,7 @@ pthread_key_t thrid_key;
  * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads
  * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
  * softlocks (see below) in any functions called after sigwait from main(). */
-#if TARGET==TARGET_LINUX
+#if TARGET==TARGET_LINUX && !defined(THREADLIB_NPTL)
 void thread_sig(int sig)
 {
 	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {

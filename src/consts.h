@@ -28,21 +28,23 @@ Boston, MA 02111-1307, USA.  */
 #define C_ERR      -1
 #define C_RRTOFFS  64
 
-#define C_ON        0
-#define C_OFF       1
-#define C_PING      2
-#define C_NONE      3
-#define C_IF        4
-#define C_EXEC      5
-#define C_ONQUERY   6
-#define UDP_ONLY    7
-#define TCP_ONLY    8
-#define TCP_UDP     9
-#define C_DEV      10
-#define C_DIALD    11
-#define C_INCLUDED 12
-#define C_EXCLUDED 13
-#define C_AUTH     14
+#define C_ON           0
+#define C_OFF          1
+#define C_PING         2
+#define C_NONE         3
+#define C_IF           4
+#define C_EXEC         5
+#define C_ONQUERY      6
+#define UDP_ONLY       7
+#define TCP_ONLY       8
+#define TCP_UDP        9
+#define C_DEV         10
+#define C_DIALD       11
+#define C_INCLUDED    12
+#define C_EXCLUDED    13
+#define C_SIMPLE_ONLY 14
+#define C_FQDN_ONLY   15
+#define C_AUTH        16
 
 int lookup_const(char *name);
 const char *const_name(int c);  /* Added by Paul Rombouts */

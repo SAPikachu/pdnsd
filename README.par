@@ -1,21 +1,21 @@
-	  Alternative pdnsd implementation - version 1.1.8b1-par3
+	  Alternative pdnsd implementation - version 1.1.8b1-par4
 	  ======================================================
 
 This file describes the customized version of pdnsd that I use personally and am
 making available so other people can run it and/or study the source code.
-Present version is 1.1.8b1-par3 (see the note near the end of this file for the
-differences between this version and 1.1.7a-par).
+Present version is 1.1.8b1-par4 (this version introduces extended configuration
+options for inclusion/exclusion lists, see the note further below).
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par3.tar.gz you
-must first apply my patch file pdnsd-1.1.8b1-par3.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par4.tar.gz you
+must first apply my patch file pdnsd-1.1.8b1-par4.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the
 INSTALL file. Use a freshly untarred copy of Thomas Moestl's original version
-1.1.7a source, cd into the source directory and apply the command:
+1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par3.diff.gz | patch -p2 -N -E -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par4.diff.gz | patch -p2 -N -Z
 
 Note: because I have used GNU extensions you will need to compile with gcc and
 link with glibc. This will not be a problem with most Linux distributions.
@@ -28,6 +28,23 @@ all. In that case prefix the configure command with the desired compiler flags
 like this:
 
     CFLAGS="-O1 -g -Wall" ./configure ...
+
+I have added a new configuration option "--with-thread-lib=<lib>", which you
+should use if you experience problems with signal handling under Linux. The
+usual symptom is failure by pdnsd to save the cache to disk, and
+/var/cache/pdnsd/pdnsd.cache remaining empty. If you experience this kind of
+trouble, try reconfiguring with different values for the --with-thread-lib
+option. The allowable values are "linuxthreads" (the default), "linuxthreads2"
+(or "lt2" for short), and "nptl". I recommend that you first configure and
+compile without the --with-thread-lib option, then if you experience trouble try
+again with --with-thread-lib=lt2 and recompile.
+If your Linux system has an implementation of the Native POSIX Thread Library,
+which is the case with Red Hat 9 for instance, you should use
+--with-thread-lib=nptl .
+Ideally, I would like to write a configure script which automatically detects
+which kind of thread library is being used on a Linux system, but I don't have a
+clue yet how to do this. If you can help me with this please write to me at the
+email address listed at the end of this file.
 
 The rest of this file describes some modifications I've made, but you don't have
 to read it if you simply want to run pdnsd as you're used to.
@@ -85,15 +102,22 @@ to read it if you simply want to run pdnsd as you're used to.
   sequential order. Anyway, it turned out my hunch paid off: no more error
   messages about "pdnsd.cache" in my logfile.
 
+- New in 1.1.8b1-par4: I've extended the configuration options for policies of
+  inclusion/exclusion lists in server sections. The new policies options are
+  "simple_only" and "fqdn_only". Setting policy=simple_only will cause the
+  server to used only for simple hostnames if no other rule matches. On the
+  other hand, setting policy=fqdn_only will cause the server to be used only for
+  fully qualified domain names (i.e. the name has at least one dot in-between).
+  I find these options useful for controlling which name servers (if any) will
+  be used by pdnsd for simple host names.
 
-Compared to version 1.1.7a-par no new functionality has been added in
-1.1.8b1-par3, but I've included a number of bug-fixes contained in a patch file
-supplied to me by Thomas Moestl. In addition to the things I had already fixed,
-the following issues are addressed: some memory leaks, dropping of root
-privileges before calling uptest scripts in case pdnsd was started setuid root
-(which is a bad idea anyway), passing on open fd's to uptests, integer overruns
-in the status reporting code, fixing string passing from the lexer, more
-consistent treatment of underscores in domain names.
+I've also included a number of bug-fixes contained in a patch file supplied to
+me by Thomas Moestl. In addition to the things I had already fixed, the
+following issues are addressed: some memory leaks, dropping of root privileges
+before calling uptest scripts in case pdnsd was started setuid root (which is a
+bad idea anyway), passing on open fd's to uptests, integer overruns in the
+status reporting code, fixing string passing from the lexer, more consistent
+treatment of underscores in domain names.
 
 In addition to the things I've listed above, I've made various little changes to
 fix minor bugs, improve efficiency or elegance, or simply to suit my my own

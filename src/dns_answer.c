@@ -150,7 +150,7 @@ int sva_add(sva_array *sva, unsigned char *name, unsigned char *rhn, int tp, rr_
 				return 0;
 			}
 		}
-		if ((*sva=DA_GROW1(*sva,sva_t))==NULL) {
+		if ((*sva=DA_GROW1(*sva))==NULL) {
 			return 0;
 		}
 		st=&DA_LAST(*sva);
@@ -403,7 +403,7 @@ static int add_ar(void *tnm, int tsz, rr_ext_array *ar, unsigned char *nm, time_
 	rr_ext_t *re;
 
 	PDNSD_ASSERT(tsz <= 256, "add_ar: tsz botch");
-	if ((*ar=DA_GROW1(*ar,rr_ext_t))==NULL) {
+	if ((*ar=DA_GROW1(*ar))==NULL) {
 		return 0;
 	}
 	re=&DA_LAST(*ar);
@@ -802,7 +802,7 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
 		return RC_SERVFAIL;
 	
 	for (i=0;i<ntohs(hdr->qdcount);i++) {
-		if (!(*q=DA_GROW1(*q,dns_queryel_t)))
+		if (!(*q=DA_GROW1(*q)))
 			return RC_SERVFAIL;
 		qe=&DA_LAST(*q);
 		res=decompress_name(data,qe->query,&ptr,&sz,rlen,&l,&uscore);
@@ -812,7 +812,7 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
 					da_free(*q);
 					return RC_FORMAT; /*not even one complete query*/
 				} else
-					*q=DA_RESIZE(*q,dns_queryel_t,i);
+					*q=DA_RESIZE(*q,i);
 				break;
 			} else {
 				da_free(*q);
@@ -828,7 +828,7 @@ static int decode_query(unsigned char *data, long rlen, dns_queryel_array *q)
 				da_free(*q);
 				return RC_FORMAT; /*not even one complete query*/
 			} else
-				*q=DA_RESIZE(*q,dns_queryel_t,i);
+				*q=DA_RESIZE(*q,i);
 			break;
 		}
 		/* Use memcpy to avoid unaligned access */

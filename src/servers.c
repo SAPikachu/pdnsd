@@ -435,7 +435,7 @@ int change_servers(int i, addr_array ar, int c)
 	   goto unlock_mutex;
        }
 
-       sp->atup_a = DA_RESIZE(sp->atup_a, atup_t, n);
+       sp->atup_a = DA_RESIZE(sp->atup_a, n);
      }
 
      {

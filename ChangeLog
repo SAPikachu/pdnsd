@@ -1,3 +1,26 @@
+2003-06-28  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* acconfig.h,configure.in,src/thread.h
+	Extended the configuration option --with-thread-lib.
+	Configuring with --with-thread-lib=linuxthreads2 will cause the alternative
+	definition of THREAD_SIGINIT suggested by Thomas Moestl to be used.
+
+2003-06-27  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/consts.h,src/consts.c,src/conff.c,src/conf-parse.y,src/dns_answer.c
+	Added two new configuration options for policies of inclusion/exclusion lists.
+	The new policies options are "simple_only" and "fqdn_only".
+	This allows me to control to which name servers pdnsd will direct queries for
+	simple host names.
+	I also polished the code a bit in report_conf_stat(), used for reporting the current configuration.
+
+2003-06-20  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* acconfig.h,configure.in,src/thread.h,src/thread.c
+	Added a configuration option --with-thread-lib=nptl.
+	This causes the macro THREAD_SIGINIT to be defined as empty in src/thread.h,
+	and thread_sig() in src/thread.c is never used.
+
 2003-06-11  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/thread.h

@@ -35,21 +35,24 @@ typedef struct {
 
 /* Order alphabetically!! */
 static const_t consts[]={
-	{C_AUTH,    "auth"},
-	{C_DEV,     "dev"},
-	{C_DIALD,   "diald"},
-	{C_EXCLUDED,"excluded"},
-	{C_EXEC,    "exec"},
-	{C_IF,      "if"},
-	{C_INCLUDED,"included"},
-	{C_NONE,    "none"},
-	{C_OFF,     "off"},
-	{C_ON,      "on"},
-	{C_ONQUERY, "onquery"},
-	{C_PING,    "ping"},
-	{TCP_ONLY,  "tcp_only"},
-	{TCP_UDP,   "tcp_udp"},
-	{UDP_ONLY,  "udp_only"}};
+	{C_AUTH,       "auth"},
+	{C_DEV,        "dev"},
+	{C_DIALD,      "diald"},
+	{C_EXCLUDED,   "excluded"},
+	{C_EXEC,       "exec"},
+	{C_FQDN_ONLY,  "fqdn_only"},
+	{C_IF,         "if"},
+	{C_INCLUDED,   "included"},
+	{C_NONE,       "none"},
+	{C_OFF,        "off"},
+	{C_ON,         "on"},
+	{C_ONQUERY,    "onquery"},
+	{C_PING,       "ping"},
+	{C_SIMPLE_ONLY,"simple_only"},
+	{TCP_ONLY,     "tcp_only"},
+	{TCP_UDP,      "tcp_udp"},
+	{UDP_ONLY,     "udp_only"}
+};
 
 /* Added by Paul Rombouts */
 static const char *const_names[]={
@@ -67,7 +70,9 @@ static const char *const_names[]={
   "diald",      /* 11 */
   "included",   /* 12 */
   "excluded",   /* 13 */
-  "auth"        /* 14 */
+  "simple_only",/* 14 */
+  "fqdn_only",  /* 15 */
+  "auth"        /* 16 */
 };
 	 
 static int cmp_const(const void *key, const void *el)

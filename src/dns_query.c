@@ -210,7 +210,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 							if (!(*ns=DA_CREATE(nsr_t)))
 								return RC_SERVFAIL;
 						}
-						if (!(*ns=DA_GROW1(*ns,nsr_t)))
+						if (!(*ns=DA_GROW1(*ns)))
 							return RC_SERVFAIL;
 						nsr=&DA_LAST(*ns);
 						rhn2str(db,nsr->name);
@@ -298,7 +298,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						if (!(*ns=DA_CREATE(nsr_t)))
 							return RC_SERVFAIL;
 					}
-					if (!(*ns=DA_GROW1(*ns,nsr_t)))
+					if (!(*ns=DA_GROW1(*ns)))
 						return RC_SERVFAIL;
 					nsr=&DA_LAST(*ns);
 					/* rhn2str will only convert the first name, which is the NS */
@@ -1084,7 +1084,7 @@ static int add_qserv(query_stat_array *q, pdnsd_a *a, int port, time_t timeout, 
 		if ((*q=DA_CREATE(query_stat_t))==NULL)
 			return 0;
 	}
-	if ((*q=DA_GROW1(*q,query_stat_t))==NULL)
+	if ((*q=DA_GROW1(*q))==NULL)
 		return 0;
 	
 	qs=&DA_LAST(*q);
@@ -1524,14 +1524,13 @@ inline static int p_dns_resolve_from(query_stat_array q, unsigned char *name, un
  * This checks the given name to resolve against the access list given for the server using the
  * include=, exclude= and policy= parameters.
  */
-static int use_server(servparm_t *s, unsigned char *name)
+static int use_server(servparm_t *s, const unsigned char *name)
 {
 	int i;
-	slist_t *sl;
-	
+
 	if (s->alist) {
 		for (i=0;i<DA_NEL(s->alist);i++) {
-			sl=&DA_INDEX(s->alist,i);
+			slist_t *sl=&DA_INDEX(s->alist,i);
 			if (sl->domain[0]=='.') {
 				int strlen_diff = strlen(name)-strlen(sl->domain);
 				/* match this domain and all subdomains */
@@ -1546,6 +1545,13 @@ static int use_server(servparm_t *s, unsigned char *name)
 
 		}
 	}
+
+	if (s->policy==C_SIMPLE_ONLY || s->policy==C_FQDN_ONLY) {
+                const char *dot=strchr(name,'.');
+                if(!dot || !*(dot+1)) return s->policy==C_SIMPLE_ONLY;
+                else return s->policy==C_FQDN_ONLY;
+        }
+
 	return s->policy==C_INCLUDED;
 }
 

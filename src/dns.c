@@ -226,7 +226,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 			if (!(*cb=DA_CREATE(compel_t)))
 			    return 0;
 		}
-		if (!(*cb=DA_GROW1(*cb, compel_t)))
+		if (!(*cb=DA_GROW1(*cb)))
 			return 0;
 		DA_LAST(*cb).index=offs;
 		rhncpy(DA_LAST(*cb).s,in);

@@ -175,7 +175,7 @@ extern int yylineno;
  */
 inline static void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers,servparm_t)))) {
+  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -1826,7 +1826,7 @@ case 66:
 case 67:
 #line 644 "conf-parse.y"
 {
-				if (yyvsp[-1].num==C_INCLUDED || yyvsp[-1].num==C_EXCLUDED) {
+				if (yyvsp[-1].num==C_INCLUDED || yyvsp[-1].num==C_EXCLUDED || yyvsp[-1].num==C_SIMPLE_ONLY || yyvsp[-1].num==C_FQDN_ONLY) {
 					server.policy=yyvsp[-1].num;
 				} else {
 					yyerror("bad qualifier in policy= option.");
@@ -2490,7 +2490,7 @@ int yyerror (char *s)
  */
 /* void add_server(servparm_t *serv)
 {
-  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers,servparm_t)))) {
+  if (!((servers || (servers=DA_CREATE(servparm_t))) && (servers=DA_GROW1(servers)))) {
     fprintf(stderr,"Error: out of memory.\n");
     exit(1);
   }
@@ -2506,7 +2506,7 @@ static char *addr_add(servparm_t *sp, char *ipstr)
     return "bad ip in ip= option.";
   }
 
-  if (!((sp->atup_a || (sp->atup_a=DA_CREATE(atup_t))) && (sp->atup_a=DA_GROW1(sp->atup_a,atup_t)))) {
+  if (!((sp->atup_a || (sp->atup_a=DA_CREATE(atup_t))) && (sp->atup_a=DA_GROW1(sp->atup_a)))) {
     return "out of memory!";
   }
   at=&DA_LAST(sp->atup_a);
@@ -2520,7 +2520,7 @@ static char *slist_add(servparm_t *sp, char *nm, int tp)
 {
 	slist_t *sl;
 					
-	if (!((sp->alist || (sp->alist=DA_CREATE(slist_t))) && (sp->alist=DA_GROW1(sp->alist,slist_t)))) {
+	if (!((sp->alist || (sp->alist=DA_CREATE(slist_t))) && (sp->alist=DA_GROW1(sp->alist)))) {
 	  return "out of memory!";
 	}
 	sl=&DA_LAST(sp->alist);

@@ -179,6 +179,12 @@
 /* Allow _ in domain names? */
 #undef UNDERSCORE
  
+/* Assume the Native POSIX Thread Library instead of LinuxThreads ? */
+#undef THREADLIB_NPTL
+
+/* If we are using LinuxThreads, implement the fix needed for newer glibcs ? */
+#undef THREADLIB_LINUXTHREADS2
+
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT 1
 #define _THREAD_SAFE 1

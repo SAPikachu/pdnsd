@@ -266,7 +266,7 @@ static void *status_thread (void *p)
 						  print_serr(rs,"Bad server ip");
 						  goto free_ar;
 						}
-						if(!(ar=DA_GROW1(ar,pdnsd_a))) {
+						if(!(ar=DA_GROW1(ar))) {
 						  print_serr(rs,"Out of memory");
 						  goto switch_break;
 						}
