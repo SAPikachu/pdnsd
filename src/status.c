@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.23 2001/04/30 22:41:10 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.24 2001/05/01 20:31:48 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -178,7 +178,7 @@ void *status_thread (void *p)
 	}
 	chmod(sock_path,global.ctl_perms);
 	if (listen(sock,5)==-1) {
-		log_warn("Error: could not listen onsocket: %s.\nStatus readback will be impossible",strerror(errno));
+		log_warn("Error: could not listen on socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(sock);
 		return NULL;
 	}
@@ -344,11 +344,11 @@ void *status_thread (void *p)
 				if (sz<0)
 					break;
 			
-				if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL, time(NULL), 0, 1)) {
+				if (!init_cent(&cent, (unsigned char *)buf, cmd2, time(NULL), 0, 1)) {
 					print_serr(rs,"Out of memory");
 					break;
 				}
-				add_cent_rr(&cent,ttl,cmd2,CF_LOCAL,sz,dbuf,cmd,1);
+				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd,1);
 				add_cache(cent);
 				free_cent(cent,1);
 				print_succ(rs);
@@ -377,7 +377,7 @@ void *status_thread (void *p)
 						break;
 					}
 				} else {
-					if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL, time(NULL), 0, 1)) {
+					if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0, 1)) {
 						print_serr(rs,"Out of memory");
 						break;
 					}

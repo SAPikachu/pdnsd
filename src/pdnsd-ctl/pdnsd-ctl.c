@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../cacheing/cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.15 2001/04/30 22:41:14 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.16 2001/05/01 20:31:53 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -82,9 +82,9 @@ void print_help(void)
 	fprintf(stderr,"server\tindex\t(up|down|retest)\n");
 	fprintf(stderr,"\tSet the status of the server with the given index to up or down, or\n");
 	fprintf(stderr,"\tforce a retest. The index is assigned in the order of definition in\n");
-	fprintf(stderr,"\tpdnsd.cache starting with 0. Use the status command to view the indexes.\n");
-	fprintf(stderr,"\tYou can specify the label of a server (matches the label= option) instead\n");
-	fprintf(stderr,"\tof an index to make this easier.\n");
+	fprintf(stderr,"\tpdnsd.cache starting with 0. Use the status command to see the indexes.\n");
+	fprintf(stderr,"\tYou can specify the label of a server (matches the label option)\n");
+	fprintf(stderr,"\tinstead of an index to make this easier.\n");
 	
 	fprintf(stderr,"\tYou can specify all instead of an index to perform the action for all\n");
 	fprintf(stderr,"\tservers registered with pdnsd.\n");
@@ -99,10 +99,11 @@ void print_help(void)
 	fprintf(stderr,"\tof 900 (it does not need to be specified). The last option corresponds\n");
 	fprintf(stderr,"\tto the serve_aliases option, and is off by default. fn is the filename\n");
 
-	fprintf(stderr,"add\ta\taddr\tname\t[ttl]\n");
-	fprintf(stderr,"add\taaaa\taddr\tname\t[ttl]\n");
-	fprintf(stderr,"add\tptr\thost\tname\t[ttl]\n");
-	fprintf(stderr,"add\tcname\thost\tname\t[ttl]\n");
+	fprintf(stderr,"add\ta\taddr\tname\t[ttl]\t[noauth]\n");
+	fprintf(stderr,"add\taaaa\taddr\tname\t[ttl]\t[noauth]\n");
+	fprintf(stderr,"add\tptr\thost\tname\t[ttl]\t[noauth]\n");
+	fprintf(stderr,"add\tcname\thost\tname\t[ttl]\t[noauth]\n");
+	fprintf(stderr,"add\tmx\thost\tname\tpref\t[ttl]\t[noauth]\n");
 	fprintf(stderr,"\tAdd a record of the given type to the pdnsd cache, replacing existing\n");
 	fprintf(stderr,"\trecords for the same name and type. The 2nd argument corresponds\n");
  	fprintf(stderr,"\tto the argument of the option in the rr section that is named like\n");
@@ -323,8 +324,8 @@ int main(int argc, char *argv[])
 			send_string(pf,argv[3]);
 			ttl=900;
 			flags=DF_LOCAL;
-			tp = cmd==T_MX?5:3;
-			if (((cmd!=T_MX && argc>=4) || (cmd==T_MX && argc>=6)) && strcmp(argv[tp],"noauth")) {
+			tp = cmd==T_MX?5:4;
+			if (tp<argc && strcmp(argv[tp],"noauth")) {
 				if (sscanf(argv[tp],"%li",&ttl)!=1) {
 					fprintf(stderr,"Bad argument for add\n");
 					exit(2);
@@ -344,10 +345,6 @@ int main(int argc, char *argv[])
 
 			switch (cmd) {
 			case T_A:
-				if (argc>5) {
-					fprintf(stderr,"Too many arguments\n");
-					exit(2);
-				}
 				if (!inet_aton(argv[2],&ina4)) {
 					fprintf(stderr,"Bad IP for add a option\n");
 					exit(2);
@@ -356,10 +353,6 @@ int main(int argc, char *argv[])
 				break;
 #ifdef ENABLE_IPV6
 			case T_AAAA:
-				if (argc>5) {
-					fprintf(stderr,"Too many arguments\n");
-					exit(2);
-				}
 				if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
 					fprintf(stderr,"Bad IP (v6) for add aaaa option\n");
 					exit(2);
@@ -369,17 +362,9 @@ int main(int argc, char *argv[])
 #endif
 			case T_PTR:
 			case T_CNAME:
-				if (argc>5) {
-					fprintf(stderr,"Too many arguments\n");
-					exit(2);
-				}
 				send_string(pf,argv[2]);
 				break;
 			case T_MX:
-				if (argc<5) {
-					fprintf(stderr,"Too few arguments\n");
-					exit(2);
-				}
 				if (sscanf(argv[4], "%hd", &tp)!=1) {
 					fprintf(stderr,"Bad number.\n");
 					exit(2);
