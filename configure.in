@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.25 2001/02/25 00:56:23 tmm Exp $
+dnl $Id: configure.in,v 1.26 2001/03/25 19:22:23 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -24,7 +24,7 @@ def_id="nobody"
 have_rcsids="no"
 udp_queries="yes"
 tcp_queries="no"
-allcachedbms="native gdbm" ; cachedbm="native" ; unuseddbms="" ;
+allcachedbms="native" ; cachedbm="native" ; unuseddbms="" ;
 tempdir="/tmp";
 randomdev=default
 freebsd_pthread="4"
@@ -66,7 +66,7 @@ AC_SUBST(cachedir)
 
 AC_ARG_WITH(dbm,
 [  --with-dbm=dbm              Specifiy database manager to use for 
-                              cacheing (default=native; others: gdbm)],
+                              cacheing (default=native)],
   cachedbm=$withval)
 
 unuseddbms=""
@@ -81,9 +81,6 @@ AC_SUBST(unuseddbms)
 case "$cachedbm" in
   native)
     AC_DEFINE(CACHE_DBM, DBM_NATIVE)
-	;;
-  gdbm)
-    AC_DEFINE(CACHE_DBM, DBM_GDBM)
 	;;
   *)
     AC_MSG_ERROR([--with-dbm dbm selected not supported.])
@@ -342,21 +339,11 @@ if test $target = "BSD" ; then
 #  fi;
 fi
 
-if test "$cachegdbm" = "gdbm"; then
-  AC_CHECK_LIB(gdbm, gdbm_open, ,
-    AC_MSG_ERROR([Must have libgdbm.so if gdbm cacheing is specified.]))
-fi
-
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h malloc.h sys/ioctl.h sys/time.h syslog.h unistd.h netinet/in.h)
 
-if test "$cachegdbm" = "gdbm"; then
-  AC_CHECK_HEADER(gdbm.h, , 
-    AC_MSG_ERROR([Must have gdbm.h if gdbm cacheing is specified.]))
-fi
-	
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_PID_T
@@ -398,7 +385,6 @@ src/conf-lex.l
 src/pdnsd-ctl/Makefile
 src/cacheing/Makefile
 src/cacheing/native/Makefile
-src/cacheing/gdbm/Makefile
 src/rc/Makefile
 src/rc/RedHat/Makefile
 src/rc/RedHat/pdnsd
