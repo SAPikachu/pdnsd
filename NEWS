@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.19 2001/06/03 21:11:41 tmm Exp $
+$Id: NEWS,v 1.20 2001/07/02 18:24:05 tmm Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -135,3 +135,8 @@ answer section any more if no answers are found (this violates the RFC's).
 It may be put in the authority section in a later version.
 There are also various bugfixes in this release.
 Upgrade is recommended.
+
+Version 1.1.6 adds the query_port_start and query_port_end options (contributed
+by Andreas Steinmetz), that allow confining the ports pdnsd uses for outgoing
+queries to a certain range. It also fixes numerous bugs, one of which could
+cause pdnsd to hang; update is therefore recommended.
