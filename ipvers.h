@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.10 2000/07/03 14:13:28 thomas Exp $ */
+/* $Id: ipvers.h,v 1.11 2000/07/15 21:32:51 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -64,7 +64,7 @@ extern int run_ipv4;
 extern int run_ipv6;
 #endif
 
-#if TARGET==LINUX && defined(NO_IN_PKTINFO)
+#if TARGET==TARGET_LINUX && defined(NO_IN_PKTINFO)
 struct in_pktinfo
 {
 	int		ipi_ifindex;

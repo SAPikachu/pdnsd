@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.20 2000/07/06 21:55:24 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.21 2000/07/15 21:32:50 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -271,7 +271,10 @@ void init_cache()
 void destroy_cache()
 {
 	free_dns_hash(&dns_hash);
+#if TARGET!=TARGET_LINUX
+	/* under Linux, this frees no resources but may hang on a crash */
 	pthread_mutex_destroy(&lock_mutex);
+#endif
 }
 
 /* Make a flag value for a dns_cent_t (dns cache entry) from a server record */
@@ -551,7 +554,7 @@ static int purge_rrset(dns_cent_t *cent, int tp)
  * you refetch its address from the hash (if it is still there).
  * returns the size of the freed memory.
  */
-static int purge_cent(dns_cent_t *cent)
+static int purge_cent(dns_cent_t *cent, int delete)
 {
 	int rv=0;
 	int i;
@@ -559,7 +562,7 @@ static int purge_cent(dns_cent_t *cent)
 		rv+=purge_rrset(cent,i);
 	}
 	/* if the record was purged empty, delete it from the cache. */
-	if (cent->num_rr==0) {
+	if (cent->num_rr==0 && delete) {
 		del_cache_int(cent); /* this will subtract the cent's left size off cache_size */
 	}
 	return rv;
@@ -579,7 +582,7 @@ static void purge_cache(unsigned long sz)
 	/* first, purge all rrs row-wise. This only affects timed-out records. */
 	ce=fetch_first(&dns_hash, &pos);
 	while (ce) {
-		cache_size-=purge_cent(ce);
+		cache_size-=purge_cent(ce,1);
 		ce=fetch_next(&dns_hash,&pos);
 	}
 	/* we are still above the desired cache size. Well, delete records from the oldest to
@@ -796,15 +799,18 @@ void write_disk_cache()
 	
 	/* purge cache down to allowed size*/
 	if (!softlock_cache_rw()) {
+		fclose(f);
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
 	purge_cache((long)global.perm_cache*1024);
 	if (!softunlock_cache_rw()) {
+		fclose(f);
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
 	if (!softlock_cache_r()) {
+		fclose(f);
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
@@ -981,7 +987,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	lock_cache_rw();
 	if ((ret=dns_lookup(&dns_hash,name))) {
 		/* purge the record. */
-		purge_cent(ret);
+		purge_cent(ret,0);
 		cache_size-=ret->cs;
 		if (ret->rr[tp-T_MIN] &&  
 		    ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
@@ -1006,7 +1012,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 							return 0;
 						}
 					}
-					purge_cent(ret);
+					purge_cent(ret,1);
 					rv=1;
 				}
 			}

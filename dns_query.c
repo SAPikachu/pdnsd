@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.22 2000/07/12 14:24:27 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.23 2000/07/15 21:32:51 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -192,7 +192,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 							(*ns)->num=1;
 						} else {
 							(*ns)->num++;
-							if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
+							if (!(*ns=realloc(*ns,sizeof(ns_t)+sizeof(nsr_t)*((*ns)->num-1)))) {
 								return RC_SERVFAIL;
 							}
 						}
