@@ -1,21 +1,21 @@
-	  Alternative pdnsd implementation - version 1.1.8b1-par
+	  Alternative pdnsd implementation - version 1.1.8b1-par2
 	  ======================================================
 
 This file describes the customized version of pdnsd that I use personally and am
 making available so other people can run it and/or study the source code.
-Present version is 1.1.8b1-par (see the note near the end of this file for the
+Present version is 1.1.8b1-par2 (see the note near the end of this file for the
 differences between this version and 1.1.7a-par).
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par.tar.gz you
-must first apply my patch file pdnsd-1.1.8b1-par.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.8b1-par2.tar.gz you
+must first apply my patch file pdnsd-1.1.8b1-par2.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the
 INSTALL file. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par.diff.gz | patch -p2 -N -E -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.8b1-par2.diff.gz | patch -p2 -N -E -Z
 
 Note: because I have used GNU extensions you will need to compile with gcc and
 link with glibc. This will not be a problem with most Linux distributions.
@@ -80,7 +80,7 @@ to read it if you simply want to run pdnsd as you're used to.
 
 
 Compared to version 1.1.7a-par no new functionality has been added in
-1.1.8b1-par, but I've included a number of bug-fixes contained in a patch file
+1.1.8b1-par2, but I've included a number of bug-fixes contained in a patch file
 supplied to me by Thomas Moestl. In addition to the things I had already fixed,
 the following issues are addressed: some memory leaks, dropping of root
 privileges before calling uptest scripts in case pdnsd was started setuid root

@@ -1535,7 +1535,8 @@ static int use_server(servparm_t *s, unsigned char *name)
 			if (sl->domain[0]=='.') {
 				int strlen_diff = strlen(name)-strlen(sl->domain);
 				/* match this domain and all subdomains */
-				if (strlen_diff>=0 && stricomp(name+strlen_diff,sl->domain))
+				if ((strlen_diff==-1 && stricomp(name,sl->domain+1)) ||
+				    (strlen_diff>=0 && stricomp(name+strlen_diff,sl->domain)))
 					return sl->rule==C_INCLUDED;
 			} else {
 				/* match this domain exactly */

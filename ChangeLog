@@ -1,3 +1,9 @@
+2003-06-06  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c:
+	Discovered that I failed to preserve the semantics of Thomas Moestl's code
+	when I rewrote a section of code in use_server(). Fixed.
+
 2003-05-19  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/cache.c,src/conf-lex.l.in,src/conf-parse.y,src/conff.h,src/dns_answer.c,src/dns_query.c,src/servers.c:
