@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.10 2000/10/18 16:21:34 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.11 2000/10/18 20:55:01 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -545,10 +545,9 @@ static int p_query_sm(query_stat_t *st)
 		/* make the socket non-blocking for connect only, so that connect will not
 		 * hang */
 		fcntl(st->sock,F_SETFL,O_NONBLOCK);
-		st->rts=time(NULL);
 		if ((rv=connect(st->sock,st->sin,st->sinl))!=0)
 		{
-			if (errno==EINPROGRESS) {
+			if (errno==EINPROGRESS || errno==EPIPE) {
 				st->nstate=QSN_TCPCONNECT;
 				st->event=QEV_WRITE; /* wait for writablility; the connect is then done */
 				return -1;
@@ -557,7 +556,7 @@ static int p_query_sm(query_stat_t *st)
 				st->nstate=QSN_DONE;
 				return RC_TCPREFUSED;
 			} else {
-				/* Since "connection refused" does not cost any time, we do not try to switch the
+				/* Since immediate connect() errors does not cost any time, we do not try to switch the
 				 * server status to offline */
 				close(st->sock);
 				DEBUG_MSG3("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
@@ -568,16 +567,22 @@ static int p_query_sm(query_stat_t *st)
 			st->nstate=QSN_TCPCONNECT;
 		}
 		/* fall through in case of not EINPROGRESS */
-
 	case QSN_TCPCONNECT:
 		fcntl(st->sock,F_SETFL,0); /* reset O_NONBLOCK */
 		/* Since we selected/polled, writeability should be no problem. If connect worked instantly,
 		 * the buffer is empty and there is also no problem*/
 		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
-			close(st->sock);
-			DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-			st->nstate=QSN_DONE;
-			return RC_SERVFAIL; /* mock error code */
+			if (errno==ECONNREFUSED || errno==EPIPE) {
+				/* This error may be delayed from connect() */
+				close(st->sock);
+				st->nstate=QSN_DONE;
+				return RC_TCPREFUSED;
+			} else {
+				close(st->sock);
+				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
 		}
 		st->nstate=QSN_TCPLWRITTEN;
 		st->event=QEV_WRITE;
@@ -1075,21 +1080,19 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		 * build a poll/select set for all active queries and call them accordingly. */
 		qo=1;
 		for (i=0;i<mc;i++) {
-			if (q->qs[global.par_queries*j+i].state!=QS_DONE) {
-				qo=0;
-				/* The below should not happen any more, but may once again
-				 * (immediate success) */
-				if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
-					for (k=0;k<mc;k++) {
-						p_cancel_query(&q->qs[global.par_queries*j+k]);
-					}
-					se=global.par_queries*j+i;
-					*sv=q->qs[global.par_queries*j+i].si;
-					DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
-					done=1;
-					break;
-				} 
-			}
+			qo=0;
+			/* The below should not happen any more, but may once again
+			 * (immediate success) */
+			if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
+				for (k=0;k<mc;k++) {
+					p_cancel_query(&q->qs[global.par_queries*j+k]);
+				}
+				se=global.par_queries*j+i;
+				*sv=q->qs[global.par_queries*j+i].si;
+				DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,sizeof(buf)));
+				done=1;
+				break;
+			} 
 		}
 		if (!done) {
 			/* we do time keeping by hand, because poll/select might be interrupted and
@@ -1122,7 +1125,14 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 							FD_SET(q->qs[global.par_queries*j+i].sock,&writes);
 							break;
 							}
+						pc++;
 					}
+				}
+				if (pc==0) {
+					/* In this case, ALL are done and we do not need to cancel any
+					 * query. */
+					done=1;
+					break;
 				}
 				maxto-=time(NULL)-ts;
 				tv.tv_sec=maxto>0?maxto:0;
@@ -1146,10 +1156,24 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 						pc++;
 					}
 				}
+				if (pc==0) {
+					/* In this case, ALL are done and we do not need to cancel any
+					 * query. */
+					done=1;
+					break;
+				}
 				maxto-=time(NULL)-ts;
 				srv=poll(polls,pc,maxto>0?(maxto*1000):0);
 # endif
-				/* FIXME: look after srv! */
+				if (srv<0) {
+					log_warn("poll/select failed: %s",strerror(errno));
+					for (k=0;k<mc;k++) {
+						p_cancel_query(&q->qs[global.par_queries*j+k]);
+					}
+					rv=RC_SERVFAIL;
+					done=1;
+					break;
+				}
 				
 				qo=1;
 				for (i=0;i<mc;i++) {
@@ -1170,10 +1194,10 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 #ifdef NO_POLL
 							switch (q->qs[global.par_queries*j+i].event) {
 							case QEV_READ:
-								srv=FD_ISSET(polls[k].fd==q->qs[global.par_queries*j+i].sock,&reads);
+								srv=FD_ISSET(q->qs[global.par_queries*j+i].sock,&reads);
 								break;
 							case QEV_WRITE:
-								srv=FD_ISSET(polls[k].fd==q->qs[global.par_queries*j+i].sock,&writes);
+								srv=FD_ISSET(q->qs[global.par_queries*j+i].sock,&writes);
 								break;
 							}
 #else

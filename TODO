@@ -1,4 +1,4 @@
-$Id: TODO,v 1.17 2000/10/17 22:11:38 thomas Exp $
+$Id: TODO,v 1.18 2000/10/18 20:54:59 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -211,7 +211,8 @@ Code cleanup:						       [open           ]
 -[X] get rid of O_NONBLOCK where possible
 -[ ] check sizeofs and fixed sizes given to functions:
      strncpy, strncat, memcpy, snprintf, read, write, bind, 
-     connect, accept, recvfrom, sendto
+     connect, accept, recvfrom, sendto, socka2str (check fot
+     *_MAXLEN)
 --------------------------------------------------------------------------------
 Make parallel queries configureable			      [open            ]
 --------------------------------------------------------------------------------

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.12 2000/10/17 09:43:33 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.13 2000/10/18 20:55:01 thomas Exp $";
 #endif
 
 /*
@@ -1423,7 +1423,7 @@ void *tcp_answer_thread(void *csock)
 		FD_SET(sock, &fds);
 		tv.tv_usec=0;
 		tv.tv_sec=global.tcp_qtimeout;
-		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
+		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
 			close(sock);
 			return NULL; 
 		}
@@ -1459,7 +1459,7 @@ void *tcp_answer_thread(void *csock)
 		FD_SET(sock, &fds);
 		tv.tv_usec=0;
 		tv.tv_sec=global.tcp_qtimeout;
-		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
+		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
 			close(sock);
 			free(buf);
 			return NULL; 
