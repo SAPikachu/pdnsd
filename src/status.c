@@ -36,12 +36,22 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.3 2000/07/21 21:55:35 thomas Exp $";
 #endif
 
 char fifo_path[1024]="/tmp/.pdnsd-status";
 
 pthread_t st;
+
+/* Print an error to the socket */
+void print_serr(int rs, char *msg)
+{
+	short cmd;
+
+	cmd=htons(1);
+	write(rs,&cmd,sizeof(cmd));
+	fsprintf(rs,"Server index out of range.");
+}
 
 /*
  * Give out server status information on the fifo "status" in the cache directory.
@@ -52,7 +62,7 @@ void *status_thread (void *p)
 	int sock,rs;
 	socklen_t res;
 	struct utsname nm;
-	short cmd;
+	short cmd,cmd2;
 	struct sockaddr_un a,ra;
 
 	THREAD_SIGINIT;
@@ -103,7 +113,16 @@ void *status_thread (void *p)
 				report_conf_stat(rs);
 				break;
 			case CTL_SERVER:
+				read(rs,&cmd,sizeof(cmd));
+				cmd=ntohs(cmd);
+				read(rs,&cmd2,sizeof(cmd2));
+				cmd2=ntohs(cmd2);
+				if (cmd<0 || cmd>=serv_num) {
+					print_serr(rs,"Server index out of range.");
+				}
 				break;
+			default:
+				print_serr(rs,"Unknown command.");
 			}
 			close(rs);
 			usleep(100000); /* sleep some time. I do not want the query frequency to be too high. */

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.3 2000/07/21 21:55:35 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -146,7 +146,6 @@ int main(int argc,char *argv[])
 #endif
 	FILE *pf;
 
-	mk_hash_ctable();
 	main_thread=pthread_self();
 	
 #ifdef DEBUG_YY

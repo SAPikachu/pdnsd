@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: status.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
+/* $Id: status.h,v 1.3 2000/07/21 21:55:35 thomas Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_
@@ -30,6 +30,11 @@ extern char fifo_path[1024];
 /* The commands for pdnsd-ctl */
 #define CTL_STATS   1 /* Give out stats (like the "traditional" status pipe) */
 #define CTL_SERVER  2 /* Enable or disable a server */
+#define CTL_RECORD  3 /* Delete or invalidate records */
+
+#define CTL_S_UP     1
+#define CTL_S_DOWN   2
+#define CTL_S_RETEST 3
 
 void init_stat_fifo(void);
 
