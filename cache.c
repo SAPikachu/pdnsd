@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.17 2000/06/26 21:04:28 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.18 2000/07/03 14:13:28 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -1010,10 +1010,18 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	return rv;
 }
 
+typedef	struct {
+	struct in_addr ipv4;
+#ifdef ENABLE_IPV6
+	struct in6_addr ipv6;
+#endif
+} pdnsd_ca;
+
+
 /*
  * Add records for a host as read from a hosts-style file
  */
-static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_a *a, int a_sz, time_t ttl, int tp, int reverse)
+static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int tp, int reverse)
 {
 	dns_cent_t ce;
 	unsigned char b2[256],rhn[256];
@@ -1091,7 +1099,7 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 	struct in_addr ina4;
 	int tp;
 	int sz;
-	pdnsd_a a;
+	pdnsd_ca a;
 
 	buf[1023]='\0';
 	if (!(f=fopen(fn,"r"))) {
@@ -1132,13 +1140,9 @@ void read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases)
 		if (!str2rhn(pn,b3))
 			continue;
 		if (inet_aton((char *)pi,&ina4)) {
-/*#ifndef ENABLE_IPV4
-			continue;
-#else*/
 			a.ipv4=ina4;
 			tp=T_A;
 			sz=sizeof(struct in_addr);
-/*#endif*/
 		} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
 			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)) {

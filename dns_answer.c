@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.22 2000/06/29 10:24:51 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.23 2000/07/03 14:13:28 thomas Exp $";
 #endif
 
 /*
@@ -452,13 +452,15 @@ static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t
 
 	rhn2str(rhn,buf);
 	if ((ae=lookup_cache(buf))) {
-		if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
-				       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
-			return 0;
+		if (ae->rr[T_A-T_MIN])
+		    if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
+					   ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
+			    return 0;
 #ifdef DNS_NEW_RRS
-		if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
-				       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
-			return 0;
+		if (ae->rr[T_AAAA-T_MIN])
+			if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
+					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
+				return 0;
 #endif
 		free_cent(*ae);
 		free(ae);
