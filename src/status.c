@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.28 2001/05/30 21:04:15 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.29 2001/05/30 21:13:59 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -405,7 +405,7 @@ void init_stat_sock()
 #ifdef BSD44_SOCKA
 	a.sun_len=SUN_LEN(&a);
 #endif
-	omask = umask(global.ctl_perms);
+	omask = umask((S_IRWXU|S_IRWXG|S_IRWXO)&(~global.ctl_perms));
 	if (bind(stat_sock,(struct sockaddr *)&a,sizeof(a))==-1) {
 		log_warn("Error: could not bind socket: %s.\nStatus readback will be impossible",strerror(errno));
 		close(stat_sock);
