@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.3 2001/03/25 19:18:56 tmm Exp $";
+static char rcsid[]="$Id: hash.c,v 1.4 2001/03/28 14:18:22 tmm Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
@@ -139,7 +139,7 @@ dns_cent_t *del_dns_hash(dns_hash_t *hash, unsigned char *key)
 	he=&hash->buckets[idx];
 	while (*he) {
 		if ((*he)->rhash==rh) {
-			if (strcmp((char *)key,(char *)(*he)->data->qname)==0) { /*both tolower*/
+			if (stricomp((char *)key,(char *)(*he)->data->qname)) {
 				hen=*he;
 				*he=(*he)->next;
 				data=hen->data;
@@ -164,7 +164,7 @@ dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key)
 	he=&hash->buckets[idx];
 	while (*he) {
 		if ((*he)->rhash==rh) {
-			if (strcmp((char *)key,(char *)(*he)->data->qname)==0) { /*both tolower*/
+			if (stricomp((char *)key,(char *)(*he)->data->qname)) {
 				return (*he)->data;
 			}
 		}
