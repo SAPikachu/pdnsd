@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.4 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.5 2000/06/04 21:22:18 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -1173,7 +1173,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	int rc;
 	int need_req=0;
 	int timed=0;
-	long ttl;
+	long ttl=0;
 	int auth=0;
 	int i,nopurge=0;
 	short flags=0;
@@ -1196,8 +1196,10 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					break;
 			}
 		}
-		flags=(*cached)->rr[thint-T_MIN]->flags;
-		ttl=(*cached)->rr[thint-T_MIN]->ttl;
+		if ((*cached)->rr[thint-T_MIN]) {
+			flags=(*cached)->rr[thint-T_MIN]->flags;
+			ttl=(*cached)->rr[thint-T_MIN]->ts+(*cached)->rr[thint-T_MIN]->ttl;
+		}
 		if (thint>=QT_MIN && thint<=QT_MAX  && !auth)
 			need_req=!(flags&CF_LOCAL);
 		else {

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.8 2000/06/04 17:55:16 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.9 2000/06/04 21:22:18 thomas Exp $";
 #endif
 
 /*
@@ -118,6 +118,7 @@ typedef struct {
 typedef struct {
 	unsigned short tp;
 	unsigned char nm[256];
+	unsigned char data[256];
 } sva_t; 
 
 /*
@@ -426,6 +427,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 						(*sva)[*svan-1].tp=i;
 						rhn2str(rrn,buf);
 						strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+						memcpy((*sva)[*svan-1].data,b+1,b->rdlen);
 					}
 					b=b->next;
 				}
@@ -448,6 +450,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 					(*sva)[*svan-1].tp=qe.qtype;
 					rhn2str(rrn,buf);
 					strcpy((char *)(*sva)[*svan-1].nm,(char *)buf);
+					memcpy((*sva)[*svan-1].data,b+1,b->rdlen);
 				}
 				b=b->next;
 			}
@@ -617,7 +620,8 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	while (au) {
 		rc=1;
 		for (j=0;j<svan;j++) {
-			if (sva[j].tp==T_NS && strcmp((char *)sva[j].nm,(char *)buf)==0) {
+			if (sva[j].tp==T_NS && strcmp((char *)sva[j].nm,(char *)buf)==0 && 
+			    memcmp(sva[j].data,(&au->rr)+1,au->rr.rdlen==0)) {
 				rc=0;
 				break;
 			}
@@ -647,6 +651,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			}
 			sva[svan-1].tp=T_NS;
 			strcpy((char *)sva[svan-1].nm,(char *)buf);
+			memcpy(sva[svan-1].data,(&au->rr)+1,au->rr.rdlen);
 		}
 		au=au->next;
 	}
@@ -659,6 +664,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 				if ((ae=lookup_cache(buf))) {
 				/* Check if already added; no double additionals */
 					rc=1;
+					/* We do NOT look at the data field here, because I feel one address is enough. */
 					for (j=0;j<svan;j++) {
 						if (sva[j].tp==T_A && strcmp((char *)sva[j].nm,(char *)buf)==0) {
 							rc=0;
@@ -678,25 +684,38 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 							rr=ae->rr[T_A-T_MIN]->rrs;
 							add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,(unsigned char *)(at+1),
 							       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
+							/* mark it as added */
+							svan++;
+							if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+								free_cent(*cached);
+								free(cached);
+								if (cb)
+								free(cb);
+								return NULL;
+							}
+							sva[svan-1].tp=T_A;
+							strcpy((char *)sva[svan-1].nm,(char *)buf);
+							memcpy(sva[svan-1].data,rr+1,rr->rdlen);
 						}
 #ifdef DNS_NEW_RRS
 						if (ae->rr[T_AAAA-T_MIN] && rc6) {
 							rr=ae->rr[T_AAAA-T_MIN]->rrs;
 							add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,(unsigned char *)(at+1),
 						       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
+							/* mark it as added */
+							svan++;
+							if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+								free_cent(*cached);
+								free(cached);
+								if (cb)
+									free(cb);
+								return NULL;
+							}
+							sva[svan-1].tp=T_AAAA;
+							strcpy((char *)sva[svan-1].nm,(char *)buf);
+							memcpy(sva[svan-1].data,rr+1,rr->rdlen);
 						}
 #endif
-						/* mark it as added */
-						svan++;
-						if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
-							free_cent(*cached);
-							free(cached);
-							if (cb)
-								free(cb);
-							return NULL;
-						}
-						sva[svan-1].tp=T_A;
-						strcpy((char *)sva[svan-1].nm,(char *)buf);
 					}
 					free_cent(*ae);
 					free(ae);
@@ -712,6 +731,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 		rhn2str(ar->buf,buf);
 		if ((ae=lookup_cache(buf))) {
 			rc=1;
+			/* We do NOT look at the data field here, because I feel one address is enough. */
 			for (i=0;i<svan;i++) {
 				if (sva[j].tp==T_A && strcmp((char *)sva[i].nm,(char *)buf)==0) {
 					rc=0;
@@ -731,12 +751,36 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 					rr=ae->rr[T_A-T_MIN]->rrs;
 					add_rr(&ans, rlen, rr, T_A, S_ADDITIONAL, &cb, udp,queryts,ar->buf,
 					       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags); 
+						/* mark it as added */
+					svan++;
+					if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+						free_cent(*cached);
+						free(cached);
+						if (cb)
+								free(cb);
+						return NULL;
+					}
+					sva[svan-1].tp=T_A;
+					strcpy((char *)sva[svan-1].nm,(char *)buf);
+					memcpy(sva[svan-1].data,rr+1,rr->rdlen);
 				}
 #ifdef DNS_NEW_RRS
 				if (ae->rr[T_AAAA-T_MIN] && rc6) {
 					rr=ae->rr[T_AAAA-T_MIN]->rrs;
 					add_rr(&ans, rlen, rr, T_AAAA, S_ADDITIONAL, &cb,udp,queryts,ar->buf,
 					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags);
+					/* mark it as added */
+					svan++;
+					if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
+						free_cent(*cached);
+						free(cached);
+						if (cb)
+							free(cb);
+							return NULL;
+					}
+					sva[svan-1].tp=T_AAAA;
+					strcpy((char *)sva[svan-1].nm,(char *)buf);
+					memcpy(sva[svan-1].data,rr+1,rr->rdlen);
 				}
 #endif
 				/* mark it as added */
