@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.26 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.27 2001/05/09 18:47:50 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -430,7 +430,7 @@ rr_bucket_t *create_rr(int dlen, void *data, int dbg)
 
 /*
  * Adds an empty. rrset_t with the requested data to a cent. This is exactly what you need to
- * to do to create a negatively cached cent.
+ * do to create a negatively cached cent.
  */
 int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
 {
@@ -1081,6 +1081,81 @@ void write_disk_cache()
 }
 
 /*
+ * Conflict Resolution.
+ * The first function is the actual checker; the latter two are wrappers for the respective
+ * function for convenience only.
+ *
+ * We check for conflicts by checking the new data rrset by rrset against the cent.
+ * This is not bad when considering that new records are hopefully consistent; if they are not,
+ * we might end up deleteing too much of the old data, which is probably added back through the
+ * new query, though.
+ * Having checked additions rrset by rrset, we are at least sure that the resulting record is OK.
+ * cr_check_add returns 1 if the addition is OK, 0 otherwise.
+ * This is for records that are already in the cache!
+ */
+static int cr_check_add(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags)
+{
+	int i, ncf = 0;
+	time_t nttl = 0, rttl;
+	struct rr_infos *rri = &rr_info[tp-T_MIN];
+	
+	if (flags & CF_NEGATIVE)
+		return 1;		/* no constraints here. */
+
+	for (i = 0; i < T_NUM; i++) {
+		/* Should be symmetric; check both ways anyway. */
+		if ((rri->class & rr_info[i].excludes) ||
+		    (rri->excludes & rr_info[i].class)) {
+			ncf++;
+			rttl = cent->rr[i]->ttl + cent->rr[i]->ts - time(NULL);
+			nttl += rttl > 0 ? rttl : 0;
+		}
+	}
+	/* Medium ttl of conflicting records */
+	nttl /= ncf;
+	if (nttl > ttl) {
+		/* old records precede */
+		return 0;
+	} else {
+		/* remove the old records, so that the new one can be added */
+		for (i = 0; i < T_NUM; i++) {
+			/* Should be symmetric; check both ways anyway. */
+			if ((rri->class & rr_info[i].excludes) ||
+			    (rri->excludes & rr_info[i].class)) {
+				remove_rrl(cent->rr[i]->lent);
+				del_cent_rrset(cent,i+T_MIN,0);
+			}
+		}
+		return 1;
+	}
+	return 0;
+}
+
+static int cr_add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
+{
+	if (!cr_check_add(cent, tp, ttl, ts, flags))
+		return 0;
+	if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial, dbg))
+		return -1;
+	return 1;
+}
+
+static int cr_add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
+{
+	if (!cr_check_add(cent, tp, ttl, ts, flags)) {
+		/* If it was there, delete. */
+		if (cent->rr[tp-T_MIN]) {
+			remove_rrl(cent->rr[tp-T_MIN]->lent);
+			del_cent_rrset(cent,tp,0);
+		}
+		return 0;
+	}
+	if (!add_cent_rr_int(cent, rr, tp, ttl, ts, flags, serial, dbg))
+		return -1;
+	return 1;
+}
+
+/*
  * Add a ready build dns_cent_t to the hashes, purge if necessary to not exceed cache size
  * limits, and add the entries to the hashes.
  * As memory is already reserved for the rrs, we only need to wrap up the dns_cent_t and
@@ -1097,7 +1172,7 @@ void write_disk_cache()
 void add_cache(dns_cent_t cent)
 {
 	dns_cent_t *ce;
-	int i, local=0;
+	int i, rv, local=0;
 	rr_bucket_t *rr,*rrb;
 
 	lock_cache_rw();
@@ -1163,7 +1238,11 @@ void add_cache(dns_cent_t cent)
 				rr=cent.rr[i]->rrs;
 				/* pre-initialize a rrset_t for the case we have a negative cached
 				 * rrset, in which case no further rrs will be added. */
-				if (!add_cent_rrset(ce,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0,0)) {
+				rv = cr_add_cent_rrset(ce,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0,0);
+				/* In the following case, the new record has been deleted as a conflict resolution measure. */
+				if (rv == 0)
+					continue;
+				if (rv < 0) {
 					log_warn("Out of cache memory.");
 					unlock_cache_rw();
 					return;
@@ -1305,7 +1384,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 {
 	dns_cent_t *ret;
 	rr_bucket_t *rrb;
-	int rv=0;
+	int add, rv=0;
 	int had=0;
 	lock_cache_rw();
 	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
@@ -1323,11 +1402,12 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 			if (ret->rr[tp-T_MIN])
 				had=1;
 			if ((rrb=create_rr(dlen,data,0))) {
-				if (!add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0)) {
+				cr_add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0);
+				if (add < 0) {
 					free_rr(*rrb,0);
 					free(rrb);
 					cache_size+=ret->cs;
-				} else {
+				} else if (add > 0) {
 					cache_size+=ret->cs;
 					if (!had) {
 						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp,ret->rr[tp-T_MIN]->ts)) {
