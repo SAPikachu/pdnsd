@@ -1,9 +1,11 @@
 #!/bin/sh
 
-# $Id: pdnsd,v 1.1 2000/07/20 20:03:15 thomas Exp $
+# $Id: pdnsd,v 1.2 2000/07/22 10:10:16 thomas Exp $
 #
 # This script was written and contributed by Markus Mohr, and
-# slightly modified by me for version 1.0.6.
+# slightly modified by me for version 1.0.6 (which obviously
+# broke it some way). I then applied a set of corrections
+# by Markus Mohr.
 #
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -12,25 +14,21 @@ test -x /usr/sbin/pdnsd || exit 0
 
 case "$1" in
     start)
+    	# Check if cache dir exists and recreate if neccessary
+	test -d /var/cache/pdnsd || mkdir /var/cache/pdnsd
+	chown nobody /var/cache/pdnsd
 	echo -n "Starting domain name service: pdnsd"
-	if start-stop-daemon --test --quiet  --pidfile /var/run/pdnsd.pid
-        then
-		echo " already running."
-		exit
-	fi
-	start-stop-daemon --start --quiet --exec /usr/sbin/pdnsd -- --daemon -p /var/run/pdnsd.pid 
-	echo "."	
+	start-stop-daemon --start --quiet --pidfile /var/run/pdnsd.pid --name pdnsd \
+	--exec /usr/sbin/pdnsd -- --daemon -p /var/run/pdnsd.pid \
+	|| echo -n " already running"
+	echo "."
     ;;
 
     stop)
 	echo -n "Stopping domain name service: pdnsd"
-        if start-stop-daemon --stop --quiet  --pidfile /var/run/pdnsd.pid
-        then
-                echo " not running."
-                exit
-        fi
-#	start-stop-daemon --stop --quiet  --exec /usr/sbin/pdnsd
-	echo "."	
+	start-stop-daemon --stop --quiet  --pidfile /var/run/pdnsd.pid --name pdnsd --exec /usr/sbin/pdnsd \
+	|| echo -n " not running"
+	echo "."
     ;;
 
     restart)
@@ -39,7 +37,7 @@ case "$1" in
     ;;
     
     *)
-	echo "Usage: /etc/init.d/pdns {start|stop|restart}" >&2
+	echo "Usage: /etc/init.d/pdnsd {start|stop|restart}" >&2
 	exit 1
     ;;
 esac
