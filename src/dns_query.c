@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.39 2001/04/12 18:48:22 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.40 2001/04/30 17:02:00 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1571,7 +1571,7 @@ int p_dns_cached_resolve(darray q, unsigned char *name, unsigned char *rrn , dns
 			return RC_SERVFAIL;
 		}
 	}
-	if (!(*cached) || (!neg && (need_req || (timed && !(flags&CF_LOCAL))))) {
+	if (!(*cached) || (!((*cached)->flags&DF_LOCAL) && !neg && (need_req || (timed && !(flags&CF_LOCAL))))) {
 		bcached=*cached;
 		DEBUG_MSG1("Trying name servers.\n");
 		if (q) 

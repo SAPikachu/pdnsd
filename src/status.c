@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.21 2001/04/12 18:48:23 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.22 2001/04/30 17:02:00 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -196,11 +196,19 @@ void *status_thread (void *p)
 				break;
 			case CTL_SERVER:
 				DEBUG_MSG1("Received SERVER command.\n");
-				if ((cmd=read_short(rs))<-1)
+				if (!fsgets(rs,buf,sizeof(buf))) {
+					print_serr(rs,"Bad server label.");
 					break;
+				}
+                                if(sscanf(buf,"%hd%c",&cmd,&dbuf[0])!=1) {
+					if (!strcmp(buf, "all"))
+						cmd=-2; /* all servers */
+					else
+						cmd=-1; /* compare names */
+				}
 				if ((cmd2=read_short(rs))<-1)
 					break;
-				if (cmd<-1 || cmd>=da_nel(servers)) {
+				if (cmd<-2 || cmd>=da_nel(servers)) {
 					print_serr(rs,"Server index out of range.");
 					break;
 				}
@@ -210,19 +218,21 @@ void *status_thread (void *p)
 					updown=1;
 					/* fall though */
 				case CTL_S_DOWN:
-					if (cmd==-1) 
+					if (cmd<0) {
 						for (i=0;i<da_nel(servers);i++)
-							mark_server(i,updown);
-					else
+							if (cmd==-2 || !strcmp(DA_INDEX(servers,i,servparm_t)->label,buf))
+								mark_server(i,updown);
+					} else
 						mark_server(cmd,updown);
 					print_succ(rs);
 					break;
 				case CTL_S_RETEST:
-					if (cmd==-1) 
+					if (cmd<0) {
 						for (i=0;i<da_nel(servers);i++) {
-							perform_uptest(i);
+							if (cmd==-2 || !strcmp(DA_INDEX(servers,i,servparm_t)->label,buf))
+								perform_uptest(i);
 						}
-					else
+					} else
 						perform_uptest(cmd);
 					print_succ(rs);
 					break;
@@ -263,9 +273,11 @@ void *status_thread (void *p)
 				}
 				if ((ttl=read_long(rs))<-1)
 					break;
-				if ((cmd=read_short(rs))<-1)
+				if ((cmd=read_short(rs))<-1)	/* serve aliases */
 					break;
-				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd,errbuf,256))
+				if ((cmd2=read_short(rs))<-1)	/* caching flags */
+					break;
+				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd2, cmd,errbuf,256))
 					print_succ(rs);
 				else
 					print_serr(rs,errbuf);
@@ -330,7 +342,7 @@ void *status_thread (void *p)
 				if (sz<0)
 					break;
 			
-				if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0, 1)) {
+				if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL, time(NULL), 0, 1)) {
 					print_serr(rs,"Out of memory");
 					break;
 				}
@@ -363,7 +375,7 @@ void *status_thread (void *p)
 						break;
 					}
 				} else {
-					if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0, 1)) {
+					if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL, time(NULL), 0, 1)) {
 						print_serr(rs,"Out of memory");
 						break;
 					}

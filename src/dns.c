@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.20 2001/04/12 19:51:39 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.21 2001/04/30 17:02:00 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -251,7 +251,7 @@ typedef	struct {
 /*
  * Add records for a host as read from a hosts-style file
  */
-static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int tp, int reverse)
+static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
 {
 	dns_cent_t ce;
 	unsigned char b2[256],rhn[256];
@@ -260,7 +260,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 	int i;
 #endif
 
-	if (!init_cent(&ce, pn, 0, time(NULL), 0, 0))
+	if (!init_cent(&ce, pn, flags, time(NULL), 0, 0))
 		return 0;
 #ifdef ENABLE_IPV4
 	if (tp==T_A) {
@@ -307,7 +307,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 #endif
 		if (!str2rhn(b2,rhn))
 			return 0;
-		if (!init_cent(&ce, b2, 0, time(NULL), 0, 0))
+		if (!init_cent(&ce, b2, flags, time(NULL), 0, 0))
 			return 0;
 		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR,0)) {
  			free_cent(ce,0);
@@ -326,7 +326,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 /*
  * Read a file in /etc/hosts-format and add generate rrs for it.
  */
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize)
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char *errbuf, int errsize)
 {
 	FILE *f;
 	unsigned char buf[1025];
@@ -399,7 +399,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errb
 			continue;
 #endif
 		}
-		if (!add_host(b2, rns, b3, &a, sz, ttl, tp,1))
+		if (!add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1))
 			continue;
 		while (aliases) {
 			pn=p+1;
@@ -416,7 +416,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errb
 			}
 			if (!str2rhn(b2,b3))
 				break;
-			add_host(b2, rns, b3, &a, sz, ttl, tp,0);
+			add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0);
 		}
 	}
 	fclose(f);

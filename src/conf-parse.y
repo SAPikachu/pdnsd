@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.31 2001/04/12 18:48:22 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.32 2001/04/30 17:02:00 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -48,7 +48,7 @@ unsigned char c_ptr[256];
 unsigned char c_owner[256];
 unsigned char c_name[256];
 time_t c_ttl;
-int c_aliases;
+int c_aliases, c_flags;
 unsigned char buf[532];
 char errbuf[256];
 int sz,tp,err;
@@ -139,6 +139,7 @@ unsigned char *nm;
 %token <num> INCLUDE
 %token <num> EXCLUDE
 %token <num> POLICY
+%token <num> LABEL
 
 %token <num> A
 %token <num> PTR
@@ -151,6 +152,7 @@ unsigned char *nm;
 %token <num> TYPES
 %token <num> FILET
 %token <num> SERVE_ALIASES
+%token <num> AUTHREC
 
 %token <num> NDOMAIN
 
@@ -204,6 +206,7 @@ spec:		GLOBAL '{'
 					c_owner[0]='\0';
 					c_name[0]='\0';
 					c_ttl=86400;
+					c_flags=DF_LOCAL;
 					
 				} 
 			rr_s '}'
@@ -224,6 +227,7 @@ spec:		GLOBAL '{'
 					hdtp=0;
 					c_name[0]='\0';
 					c_ttl=86400;
+					c_flags=DF_LOCAL;
 				} 
 			rrneg_s '}'
 			{
@@ -232,6 +236,7 @@ spec:		GLOBAL '{'
 				{
 					c_owner[0]='\0';
 					c_ttl=86400;
+					c_flags=DF_LOCAL;
 					c_aliases=0;
 					
 				} 
@@ -585,6 +590,10 @@ serv_el:	IP '=' STRING ';'
 					YYERROR;
 				}
 			}
+		| LABEL '=' STRING ';'
+			{
+				YSTRNCP(server.label, (char *)$3, "label");
+			}
 		;
 
 rr_s:		/* empty */		{}
@@ -599,7 +608,7 @@ rr_el:		NAME '=' STRING ';'
 				}
 				YSTRNCP(c_name, (char *)$3, "name");
 				if (c_owner[0]!='\0') {
-					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -616,7 +625,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				if (c_name[0]!='\0') {
-					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0, 0)) {
+					if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0, 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -625,6 +634,15 @@ rr_el:		NAME '=' STRING ';'
 		| TTL '=' NUMBER ';'
 			{
 				c_ttl=$3;
+			}
+		| AUTHREC '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					c_flags=($3==C_ON)?DF_LOCAL:0;
+				} else {
+					yyerror("Bad qualifier in authrec= option.");
+					YYERROR;
+				}
 			}
 		| A '=' STRING ';'
 			{
@@ -775,7 +793,7 @@ source_el:	OWNER '=' STRING ';'
 					yyerror("you must specify owner before file= in source records.");
 					YYERROR;
 				}
-				if (!read_hosts((char *)$3, c_owner, c_ttl, c_aliases,errbuf,sizeof(errbuf)))
+				if (!read_hosts((char *)$3, c_owner, c_ttl, c_flags, c_aliases,errbuf,sizeof(errbuf)))
 					fprintf(stderr,errbuf);
 			}
 		| SERVE_ALIASES '=' CONST ';'
@@ -784,6 +802,15 @@ source_el:	OWNER '=' STRING ';'
 					c_aliases=($3==C_ON);
 				} else {
 					yyerror("Bad qualifier in serve_aliases= option.");
+					YYERROR;
+				}
+			}
+		| AUTHREC '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					c_flags=($3==C_ON)?DF_LOCAL:0;
+				} else {
+					yyerror("Bad qualifier in authrec= option.");
 					YYERROR;
 				}
 			}
@@ -806,6 +833,15 @@ rrneg_el:	NAME '=' STRING ';'
 		| TTL '=' NUMBER ';'
 			{
 				c_ttl=$3;
+			}
+		| AUTHREC '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_OFF) {
+					c_flags=($3==C_ON)?DF_LOCAL:0;
+				} else {
+					yyerror("Bad qualifier in authrec= option.");
+					YYERROR;
+				}
 			}
                 | TYPES '=' NDOMAIN ';'
 			{
@@ -830,7 +866,11 @@ rrneg_el:	NAME '=' STRING ';'
 			}
 		;
 
-rr_type_list:   RRTYPE
+rr_type_list:	rr_type 			{}
+		| rr_type ',' rr_type_list 	{}
+		;
+
+rr_type:   RRTYPE
                         {
 				if (hdtp) {
 					yyerror("You may not specify types=domain together with other types!.");
@@ -841,7 +881,7 @@ rr_type_list:   RRTYPE
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0, 0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, c_flags, time(NULL), 0, 0)) {
 					fprintf(stderr,"Out of memory");
 					YYERROR;
 				}
@@ -854,8 +894,6 @@ rr_type_list:   RRTYPE
 				free_cent(c_cent, 0);
 				
 			}
-                | rr_type_list ',' rr_type_list 
-                        {}
                 ; 
 
 errnt:		ERROR		 	{YYERROR;}

@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.21 2001/04/30 15:45:00 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.22 2001/04/30 17:02:00 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -44,9 +44,9 @@ globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,120,900,C_AUTH,C
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{{INADDR_ANY}},{{INADDR_ANY}}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{{INADDR_ANY}},{{INADDR_ANY}}};
 #else
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
 #endif
 
 darray servers=NULL;
@@ -175,6 +175,7 @@ void report_conf_stat(int f)
 	for(i=0;i<da_nel(servers);i++) {
 		st=DA_INDEX(servers,i,servparm_t);
 		fsprintf(f,"Server %i:\n------\n",i);
+		fsprintf(f,"\tlabel: %s\n",st->label);
 		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&st->a,buf,ADDRSTR_MAXLEN));
 		fsprintf(f,"\tport: %hu\n",st->port);
 		fsprintf(f,"\tuptest: %i\n",st->uptest);

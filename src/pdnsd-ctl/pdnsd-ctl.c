@@ -33,9 +33,10 @@ Boston, MA 02111-1307, USA.  */
 #include "../list.h"
 #include "../dns.h"
 #include "../rr_types.h"
+#include "../cacheing/cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.12 2001/04/11 17:55:05 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.13 2001/04/30 17:02:01 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -82,6 +83,9 @@ void print_help(void)
 	fprintf(stderr,"\tSet the status of the server with the given index to up or down, or\n");
 	fprintf(stderr,"\tforce a retest. The index is assigned in the order of definition in\n");
 	fprintf(stderr,"\tpdnsd.cache starting with 0. Use the status command to view the indexes.\n");
+	fprintf(stderr,"\tYou can specify the label of a server (matches the label= option) instead\n");
+	fprintf(stderr,"\tof an index to make this easier.\n");
+	
 	fprintf(stderr,"\tYou can specify all instead of an index to perform the action for all\n");
 	fprintf(stderr,"\tservers registered with pdnsd.\n");
 
@@ -89,7 +93,7 @@ void print_help(void)
 	fprintf(stderr,"\tDelete or invalidate the record of the given domain if it is in the\n");
 	fprintf(stderr,"\tcache.\n");
 
-	fprintf(stderr,"source\tfn\towner\t[ttl]\t[(on|off)]\n");
+	fprintf(stderr,"source\tfn\towner\t[ttl]\t[(on|off)]\t[auth]\n");
 	fprintf(stderr,"\tLoad a hosts-style file. Works like using the pdnsd source option.\n");
 	fprintf(stderr,"\tOwner and ttl are used as in the source section. ttl has a default\n");
 	fprintf(stderr,"\tof 900 (it does not need to be specified). The last option corresponds\n");
@@ -190,7 +194,7 @@ int main(int argc, char *argv[])
 {
 	int pf,cmd,acnt;
 	int i,rv=0;
-	short cmd2,tp;
+	short cmd2,tp,flags;
 	char errmsg[256]="";
 	long ttl;
 	struct in_addr ina4;
@@ -252,15 +256,7 @@ int main(int argc, char *argv[])
 				print_help();
 				exit(2);
 			}
-			if (strcmp(argv[1],"all")==0)
-				cmd2=-1;
-			else {
-				if (sscanf(argv[1],"%hi",&cmd2)!=1) {
-					fprintf(stderr,"Bad argument for server\n");
-					exit(2);
-				}
-			}
-			send_short(cmd2,pf);
+			send_string(pf,argv[2]);
 			send_short(match_cmd(argv[2],server_cmds),pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
@@ -280,7 +276,7 @@ int main(int argc, char *argv[])
 				read(pf,errmsg,255);
 			break;
 		case CTL_SOURCE:
-			if (argc<3 || argc>5) {
+			if (argc<3 || argc>6) {
 				print_help();
 				exit(2);
 			}
@@ -288,7 +284,8 @@ int main(int argc, char *argv[])
 			send_string(pf,argv[2]);
 			ttl=900;
 			acnt=3;
-			if (argc==5 || (argc==4 && isdigit(argv[3][0]))) {
+			flags=DF_LOCAL;
+			if (argc==6 || (argc>=4 && isdigit(argv[3][0]))) {
 				if (sscanf(argv[3],"%li",&ttl)!=1) {
 					fprintf(stderr,"Bad argument for source\n");
 					exit(2);
@@ -297,8 +294,17 @@ int main(int argc, char *argv[])
 			}
 			send_long(ttl,pf);
 			cmd2=0;
-			if (argc==5 || (argc==4 && !isdigit(argv[3][0]))) {
+			if (acnt<argc && (strcmp(argv[acnt], "noauth") || argc==6)) {
 				cmd2=match_cmd(argv[acnt],onoff_cmds);
+				acnt++;
+			}
+			if (acnt<argc) {
+				if (!strcmp(argv[acnt], "noauth"))
+					flags=0;
+				else {
+					fprintf(stderr,"Bad argument for source\n");
+					exit(2);
+				}
 			}
 			send_short(cmd2,pf);
 			read(pf,&cmd2,sizeof(cmd2));

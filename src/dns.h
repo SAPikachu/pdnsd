@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.11 2001/04/06 21:30:35 tmm Exp $ */
+/* $Id: dns.h,v 1.12 2001/04/30 17:02:00 tmm Exp $ */
 
 #ifndef DNS_H
 #define DNS_H
@@ -170,7 +170,7 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest);
 int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb);
 
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize);
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char *errbuf, int errsize);
 
 #if DEBUG>0 
 char *get_cname(int id);

@@ -1,11 +1,13 @@
-$Id: THANKS,v 1.29 2001/03/25 19:27:35 tmm Exp $
+$Id: THANKS,v 1.30 2001/04/30 17:01:55 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
 
+Andrew M. Bishop
 Carsten Block
 Stephan Boettcher
 P.J. Bostley
+Kevin A. Burton
 Joachim Dorner
 Christian Engstler
 Bjoern Fischer
@@ -30,6 +32,7 @@ Brian Schroeder
 Roman Shterenzon
 Daniel Smolik
 Milan P. Stanic
+Michael Steiner
 Norbert Steinl
 Marko Stolle
 Markus Storm
