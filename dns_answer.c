@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.11 2000/06/06 13:42:18 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.12 2000/06/06 14:31:16 thomas Exp $";
 #endif
 
 /*
@@ -114,7 +114,6 @@ typedef struct {
 #define S_AUTHORITY  2
 #define S_ADDITIONAL 3
 
-/* T_AAAA is translated to T_A (always added in combination) */
 typedef struct {
 	unsigned short tp;
 	unsigned char nm[256];
@@ -733,14 +732,14 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			rc=1;
 			/* We do NOT look at the data field here, because I feel one address is enough. */
 			for (i=0;i<svan;i++) {
-				if (sva[j].tp==T_A && strcmp((char *)sva[i].nm,(char *)buf)==0) {
+				if (sva[i].tp==T_A && strcmp((char *)sva[i].nm,(char *)buf)==0) {
 					rc=0;
 					break;
 				}
 			}
 			rc6=1;
 			for (i=0;i<svan;i++) {
-				if (sva[j].tp==T_AAAA && strcmp((char *)sva[i].nm,(char *)buf)==0) {
+				if (sva[i].tp==T_AAAA && strcmp((char *)sva[i].nm,(char *)buf)==0) {
 					rc6=0;
 					break;
 				}
@@ -783,17 +782,6 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 					memcpy(sva[svan-1].data,rr+1,rr->rdlen);
 				}
 #endif
-				/* mark it as added */
-				svan++;
-				if (!(sva=realloc(sva,sizeof(sva_t)*svan))) {
-					free_cent(*cached);
-					free(cached);
-					if (cb)
-						free(cb);
-					return NULL;
-				}
-				sva[svan-1].tp=T_A;
-				strcpy((char *)sva[svan-1].nm,(char *)buf);
 			}
 			free_cent(*ae);
 			free(ae);
@@ -1020,8 +1008,13 @@ void *udp_answer_thread(void *data)
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
+#if TARGET==TARGET_LINUX
 	msg.msg_control=ctrl;
 	msg.msg_controllen=512;
+#else
+	msg.msg_control=NULL;
+	msg.msg_controllen=0;
+#endif
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
