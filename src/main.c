@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.5 2000/08/07 19:00:57 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.6 2000/08/08 17:53:16 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -65,6 +65,13 @@ sigset_t sigs_msk;
 char pidfile[MAXPATH]="\0";
 int stat_pipe=0;
 int notcp=0;
+int sigr=0;
+
+#if TARGET==TARGET_BSD
+void bsd_sighnd (int sig) {
+	sigr=sig;
+}
+#endif
 
 /* Print version and licensing information */
 void print_info (void)
@@ -400,11 +407,23 @@ int main(int argc,char *argv[])
 
 #if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
-#else
-	sigsuspend(&sigs_msk);
-#endif
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
+#else
+	/* The whole BSD signal handling stuff is DIRTY, I know. But somehow, the FreeBSD thread
+	   implementation does not like sigwait and the like. If someone can explain me, I will be glad to fix it. */
+	signal(SIGILL,bsd_sighnd);
+	signal(SIGABRT,bsd_sighnd);
+	signal(SIGFPE,bsd_sighnd);
+	signal(SIGSEGV,bsd_sighnd);
+	signal(SIGTERM,bsd_sighnd);
+	if (!daemon_p) {
+		signal(SIGINT,bsd_sighnd);
+		signal(SIGQUIT,bsd_sighnd);
+	}
+	while (!sigr) usleep(500000);
+	sig=sigr;
+#endif
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
 	write_disk_cache();
 	destroy_cache();

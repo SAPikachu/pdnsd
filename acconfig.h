@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.3 2000/07/29 21:29:33 thomas Exp $ */
+/* $Id: acconfig.h,v 1.4 2000/08/08 17:53:15 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -175,6 +175,7 @@
  
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT
+#define _THREAD_SAFE
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */
