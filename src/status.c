@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.8 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.9 2000/11/04 23:14:57 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -312,7 +312,7 @@ void *status_thread (void *p)
 				if (sz<0)
 					break;
 			
-				if (!init_cent(&cent, (unsigned char *)buf)) {
+				if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0)) {
 					print_serr(rs,"Out of memory");
 					break;
 				}

@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.23 2000/11/03 16:08:09 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.24 2000/11/04 23:14:57 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -83,7 +83,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 			if (have_cached(buf)) {
 				return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
 			} else {
-				if (init_cent(&ce, buf)) {
+				if (init_cent(&ce, buf, 0, time(NULL), 0)) {
 					if (add_cent_rr(&ce, ttl, queryts,flags, dlen, data, tp)) {
 						add_cache(ce);
 						free_cent(ce);
@@ -916,7 +916,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		free(st->recvbuf);
 		return RC_SERVFAIL; /* mock error code */
 	}
-	if (!init_cent(*ent,name)) {
+	if (!init_cent(*ent,name, 0, time(NULL), 0)) {
 		free(st->recvbuf);
 		return RC_SERVFAIL; /* mock error code */
 	}

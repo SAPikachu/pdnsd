@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.4 2000/11/04 15:09:20 thomas Exp $ */
+/* $Id: cache.h,v 1.5 2000/11/04 23:15:00 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -69,6 +69,7 @@ typedef struct {
 	short            flags;                   /* Flags for the whole cent */
 	time_t           ts;                      /* Timestamp (only for negative cached records) */
 	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */ 
+	struct rr_lent_s *lent;                   /* lent for the whole cent, only for neg. cached recs */
 	rr_set_t         *(rr[T_NUM]);            /* The records. Use the type id-T_MIN as index, */
 } dns_cent_t;
 
@@ -80,6 +81,10 @@ typedef struct {
 /*      qname (with length qlen) follows here */
 } dns_file_t;
 
+/*
+ * This has two modes: Normally, we have rrest, cent and tp filled in;
+ * for negatively cached cents, we have rrset set to NULL and tp set to -1
+ */
 typedef struct rr_lent_s {
 	rr_set_t         *rrset;
 	dns_cent_t       *cent;
@@ -134,7 +139,8 @@ dns_cent_t *lookup_cache(unsigned char *name);
 int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
 
 int mk_flag_val(servparm_t *server);
-int init_cent(dns_cent_t *cent, unsigned char *qname);
+int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl);
+int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial);
 int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp);
 void free_cent(dns_cent_t cent);
 

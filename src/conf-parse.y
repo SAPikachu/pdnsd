@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.15 2000/10/21 11:28:37 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.16 2000/11/04 23:14:57 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -568,7 +568,7 @@ rr_el:		NAME '=' STRING ';'
 				}
 				strcpy((char *)c_name,(char *)$3);
 				if (c_owner[0]!='\0') {
-					if (!init_cent(&c_cent, c_name)) {
+					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -585,7 +585,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				if (c_name[0]!='\0') {
-					if (!init_cent(&c_cent, c_name)) {
+					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}

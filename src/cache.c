@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.7 2000/11/04 15:09:25 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.8 2000/11/04 23:15:01 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -80,6 +80,13 @@ static char rcsid[]="$Id: cache.c,v 1.7 2000/11/04 15:09:25 thomas Exp $";
  * In 1.0.0p5, the cache granularity was changed from rr level to rr set level. This was done because rfc2181 demands
  * rr set consistency constraints on rr set level and if we are doing so we can as well save space (and eliminate some
  * error-prone algorithms).
+ *
+ * CHANGES FOR 1.1.0p1
+ * In this version, negative cacheing support was introduced. Following things were changed for that:
+ * - new members ts, ttl and flags in dns_cent_t and dns_file_t
+ * - new cacheing flag CF_NEGATIVE
+ * - all functions must accept and deal correctly with empty cents with DF_NEGATIVE set.
+ * - all functions must accept and deal correctly with empty rrsets with CF_NEGATIVE set.
  */
 
 /*
@@ -113,7 +120,9 @@ int use_cache_lock=0;
 /*
  * Prototypes for internal use
  */
-void del_cache_int(dns_cent_t *cent);
+static void purge_cache(unsigned long sz);
+static void del_cache_int(dns_cent_t *cent);
+static void remove_rrl(rr_lent_t *le);
 
 /*
  * Locking functions.
@@ -301,6 +310,7 @@ void destroy_cache()
 {
 	/* lock the cache, in case that any thread is still accssing. */
 	softlock_cache_rw();
+	purge_cache(0);
 	free_dns_hash(&dns_hash);
 #if TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
@@ -320,9 +330,14 @@ int mk_flag_val(servparm_t *server)
 }
 
 /* Initialize a dns cache record (dns_cent_t) with the query name (in
- * dotted notation, use rhn2str), a flag value (use mk_flag_val) and a
- * timestamp indicating the time the query was done. */
-int init_cent(dns_cent_t *cent, unsigned char *qname)
+ * dotted notation, use rhn2str), a flag value, a timestamp indicating 
+ * the time the query was done, and a TTL. The timestamp and TTL
+ * are only used if DF_NEGATIVE is set in the flags. Otherwise,
+ * the timestamps of the individual records are used. DF_NEGATIVE
+ * is used for whole-domain negative cacheing. 
+ * By convention, the ttl should be set to 0, and the ttl should
+ * be set correctly when DF_NEGATIVE is not set. */
+int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl)
 {
 	int i;
 	if (!(cent->qname=calloc(sizeof(unsigned char),strlen((char *)qname)+1)))
@@ -330,6 +345,10 @@ int init_cent(dns_cent_t *cent, unsigned char *qname)
 	strcpy((char *)cent->qname,(char *)qname);
 	cent->cs=sizeof(dns_cent_t)+strlen((char *)qname)+1;
 	cent->num_rr=0;
+	cent->flags=flags;
+	cent->ts=ts;
+	cent->ttl=ttl;
+	cent->lent=NULL;
 	for(i=0;i<T_NUM;i++) {
 		cent->rr[i]=NULL;
 	}
@@ -352,27 +371,53 @@ static rr_bucket_t *create_rr(int dlen, void *data)
 }
 
 /*
+ * Adds an empty. rrset_t with the requested data to a cent. This is exactly what you need to
+ * to do to create a negatively cached cent.
+ */
+int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
+{
+	if (!(cent->rr[tp-T_MIN]=calloc(sizeof(rr_set_t),1)))
+		return 0;
+	if (flags&CF_NOCACHE) {
+		flags&=~CF_NOCACHE;
+		ttl=0;
+	}
+	cent->rr[tp-T_MIN]->ttl=ttl>global.max_ttl?global.max_ttl:ttl;
+	cent->rr[tp-T_MIN]->ts=ts;
+	cent->rr[tp-T_MIN]->flags=flags;
+	cent->rr[tp-T_MIN]->serial=serial;
+	cent->cs+=sizeof(rr_set_t);
+	return 1;
+}
+
+/*
  * Adds a rr record (usually prepared by create_rr) to a cent. For cache.c internal use. 
  */
 static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
 {
 	if (!cent->rr[tp-T_MIN]) {
-		if (!(cent->rr[tp-T_MIN]=calloc(sizeof(rr_set_t),1)))
+		if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial))
 			return 0;
-		if (flags&CF_NOCACHE) {
-			flags&=~CF_NOCACHE;
-			ttl=0;
-		}
-		cent->rr[tp-T_MIN]->ttl=ttl>global.max_ttl?global.max_ttl:ttl;
-		cent->rr[tp-T_MIN]->ts=ts;
-		cent->rr[tp-T_MIN]->flags=flags;
-		cent->rr[tp-T_MIN]->serial=serial;
-		cent->cs+=sizeof(rr_set_t);
 	}
+	/* If we add a record, this is not negative any more. */
+	if (cent->flags&DF_NEGATIVE) {
+		cent->flags&=~DF_NEGATIVE;
+		/* need to remove the cent from the lent list. */
+		if (cent->lent)
+			remove_rrl(cent->lent);
+		cent->ttl=0;
+		cent->lent=NULL;
+	}
+
 	cent->cs+=rr->rdlen+sizeof(rr_bucket_t);
 	/* do the linking work */
 	rr->next=cent->rr[tp-T_MIN]->rrs;
 	cent->rr[tp-T_MIN]->rrs=rr;
+#if DEBUG>0
+	if (cent->rr[tp-T_MIN]->flags&DF_NEGATIVE) {
+		DEBUG_MSG2("Tried to add rr to a rrset with DF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
+	}
+#endif
 	cent->num_rr++;
 	return 1;
 }
@@ -445,9 +490,10 @@ void free_cent(dns_cent_t cent)
 	free (cent.qname);
 }
 
-/* insert a rrset into the rr_l list. This modifies the rr_set_t! The rrset address needs to be constant afterwards 
+/* insert a rrset into the rr_l list. This modifies the rr_set_t if rrs is not NULL! 
+ * The rrset address needs to be constant afterwards 
  * call with locks applied*/
-static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
+static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 {
 	rr_lent_t *le,*ne;
 	int fnd=0;
@@ -457,13 +503,14 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
 	ne->rrset=rrs;
 	ne->cent=cent;
 	ne->tp=tp;
-	rrs->lent=ne;
+	if (rrs)
+		rrs->lent=ne;
 	/* Since the append at the and is a very common case (and we want this case to be fast), we search back-to-forth.
 	 * Since rr_l is a list and we don't really have fast access to all elements, we do no perform an advanced algorihtm
 	 * like binary search.*/
 	le=rrset_l_tail;
 	while (le) {
-		if (rrs->ts>=le->rrset->ts && (le->next==NULL || rrs->ts<le->next->rrset->ts)) {
+		if (ts>=le->rrset->ts && (le->next==NULL || ts<le->next->rrset->ts)) {
 			if (le->next)
 				le->next->prev=ne;
 			ne->next=le->next;
@@ -487,7 +534,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp)
 	return ne;
 }
 
-/* Remove a rr from the rr_l list.Call with locks applied*/
+/* Remove a rr from the rr_l list. Call with locks applied*/
 static void remove_rrl(rr_lent_t *le)
 {
 	if (le->next)
@@ -529,6 +576,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 		return NULL;
 	}
 	strcpy((char *)ic->qname,(char *)cent->qname);
+	ic->lent=NULL;
 	
 	for (i=0;i<T_NUM;i++) 
 		ic->rr[i]=NULL;
@@ -571,7 +619,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 static int purge_rrset(dns_cent_t *cent, int tp)
 {
 	if (cent->rr[tp-T_MIN] && !(cent->rr[tp-T_MIN]->flags&CF_NOPURGE || cent->rr[tp-T_MIN]->flags&CF_LOCAL) &&
-	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl<time(NULL)) {
+	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl<time(NULL)+CACHE_LAT) {
 		/* well, it must go. */
 		remove_rrl(cent->rr[tp-T_MIN]->lent);
 		return del_cent_rrset(cent,tp);
@@ -584,6 +632,7 @@ static int purge_rrset(dns_cent_t *cent, int tp)
  * Since the cent may actually become empty and be deleted, you may not use it after this call until
  * you refetch its address from the hash (if it is still there).
  * returns the size of the freed memory.
+ * force means to delete the cent even when it's not timed out.
  */
 static int purge_cent(dns_cent_t *cent, int delete)
 {
@@ -593,8 +642,8 @@ static int purge_cent(dns_cent_t *cent, int delete)
 		rv+=purge_rrset(cent,i);
 	}
 	/* if the record was purged empty, delete it from the cache. */
-	if (cent->num_rr==0 && delete) {
-		del_cache_int(cent); /* this will subtract the cent's left size off cache_size */
+	if (cent->num_rr==0 && delete && (!cent->flags&DF_NEGATIVE || time(NULL)-cent->ts>cent->ttl+CACHE_LAT)) {
+		del_cache_int(cent); /* this will subtract the cent's left size from cache_size */
 	}
 	return rv;
 }
@@ -623,7 +672,9 @@ static void purge_cache(unsigned long sz)
 	while (*le && cache_size>sz) {
 		if (!((*le)->rrset->flags&CF_LOCAL)) {
 			/*next=(*le)->next;*/
-			cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
+			if ((*le)->rrset)
+				cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
+			/* this will also delete negative cache entries */
 			if ((*le)->cent->num_rr==0) {
 				del_cache_int((*le)->cent);
 			}
@@ -725,7 +776,7 @@ void read_disk_cache()
 				return;
 			}
 		}
-		if (!init_cent(&ce, nb)) {
+		if (!init_cent(&ce, nb, fe.flags, fe.ts, fe.ttl)) {
 			free(data);
 			fclose(f);
 			log_error("Out of memory in reading cache file. Exiting.");
@@ -863,6 +914,9 @@ void write_disk_cache()
 		if (!aloc) {
 			en++;
 			df.qlen=strlen((char *)le->qname);
+			df.flags=le->flags;
+			df.ts=le->ts;
+			df.ttl=le->ttl;
 			fwrite(&df,sizeof(dns_file_t),1,f);
 			fwrite(le->qname,df.qlen,1,f);
 
@@ -911,7 +965,7 @@ void add_cache(dns_cent_t cent)
 		/* Add the rrs to the rr list */
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i]) {
-				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+				if (!insert_rrl(ce->rr[i],ce,i+T_MIN,ce->rr[i]->ts)) {
 					log_warn("Out of cache memory.");
 					free_cent(*ce);
 					unlock_cache_rw();
@@ -919,9 +973,26 @@ void add_cache(dns_cent_t cent)
 				}
 			}
 		}
+		/* If this record is negative cached, add the cent to the rr list. */
+		if (cent.flags&DF_NEGATIVE) {
+			if (!insert_rrl(NULL,ce,-1,cent.ts)) {
+				log_warn("Out of cache memory.");
+				free_cent(*ce);
+				unlock_cache_rw();
+				return;
+			}
+		}
 		ent_num++;
 		cache_size+=ce->cs;
 	} else {
+		if (cent.flags&DF_NEGATIVE) {
+			/* the new entry is negative. So, we need to delete the whole cent,
+			 * and then generate a new one. */
+			del_cache_int(ce);
+			unlock_cache_rw();
+			add_cache(cent);
+			return;
+		}
 		/* We have a record; add the rrsets replacing old ones */
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
@@ -931,6 +1002,13 @@ void add_cache(dns_cent_t cent)
 					del_cent_rrset(ce,i+T_MIN);
 				}
 				rr=cent.rr[i]->rrs;
+				/* pre-initialize a rrset_t for the case we have a negative cached
+				 * rrset, in which case no further rrs will be added. */
+				if (!add_cent_rrset(ce,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0)) {
+					log_warn("Out of cache memory.");
+					unlock_cache_rw();
+					return;
+				}
 				while (rr) {
 					if (!(rrb=create_rr(rr->rdlen, rr+1))) {
 						if (ce->rr[i]) /* cleanup this entry */
@@ -942,7 +1020,7 @@ void add_cache(dns_cent_t cent)
 					add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0);
 					rr=rr->next;
 				}
-				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+				if (!insert_rrl(ce->rr[i],ce,i+T_MIN,ce->rr[i]->ts)) {
 					del_cent_rrset(ce,i+T_MIN);
 					log_warn("Out of cache memory.");
 					unlock_cache_rw();
@@ -974,6 +1052,9 @@ void del_cache_int(dns_cent_t *cent)
 			del_cent_rrset(cent,i+T_MIN);
 		}
 	}
+	/* Free the lent for negative cached records */
+	if (cent->flags&DF_NEGATIVE && cent->lent) 
+		remove_rrl(cent->lent);
 	/* free the cent ptrs and rrs */
 	free_cent(*cent);
 	free(cent);
@@ -1009,13 +1090,15 @@ void invalidate_record(unsigned char *name)
 				ce->rr[i+T_MIN]->ts=0;
 			}
 		}
+		/* set the cent time to 0 (for the case that this was negative) */
+		ce->ts=0;
 	}
 	unlock_cache_rw();
 }
 
 
 /*
- * See if we have an entry in the cache.
+ * See if we have an entry in the cache, whether it is negative or not.
  * Saves a copy operation compared to lookup_cache.
  */
 int have_cached(unsigned char *name)
@@ -1043,8 +1126,9 @@ dns_cent_t *lookup_cache(unsigned char *name)
 }
 
 /* Add an rr to an existing cache entry.
- * The rr is treaded with the precedence of an additional or off-topic record, ie. regularly retrieved
- * have precedence */
+ * The rr is treated with the precedence of an additional or off-topic record, ie. regularly retrieved
+ * have precedence. 
+ * You cannot add a negative additional record. Makes no sense anyway. */
 int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int dlen, void *data, int tp, unsigned long serial)
 {
 	dns_cent_t *ret;
@@ -1058,7 +1142,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 		cache_size-=ret->cs;
 		if (ret->rr[tp-T_MIN] &&  
 		    ((ret->rr[tp-T_MIN]->flags&CF_NOPURGE && ret->rr[tp-T_MIN]->ts+ret->rr[tp-T_MIN]->ttl<time(NULL)) || 
-		     (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && !ret->rr[tp-T_MIN]->serial==serial) || 
+		     (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && ret->rr[tp-T_MIN]->serial!=serial) || 
 		     (ret->rr[tp-T_MIN]->serial==serial && ret->rr[tp-T_MIN]->ttl!=ttl))) {
 			remove_rrl(ret->rr[tp-T_MIN]->lent);
 			del_cent_rrset(ret,tp);
@@ -1074,7 +1158,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 				} else {
 					cache_size+=ret->cs;
 					if (!had) {
-						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp)) {
+						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp,ret->rr[tp-T_MIN]->ts)) {
 							unlock_cache_rw();
 							return 0;
 						}
