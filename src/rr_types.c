@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.5 2001/05/09 22:52:17 tmm Exp $";
+static char rcsid[]="$Id: rr_types.c,v 1.6 2001/05/12 22:39:58 tmm Exp $";
 #endif
 
 /* Macro for standard records. No need to use it. Use with care (can produce
@@ -43,12 +43,12 @@ struct rr_infos rr_info[]= {
 	RR_ENT("MG", 		IDEM),
 	RR_ENT("MR", 		IDEM),
 	RR_ENT("NULL",		IDEM),
-	RR_ENT("WKS", 		IDEM),
+	RR_ENT("WKS", 		RECORD),
 	RR_ENT("PTR", 		PTR),
 	RR_ENT("HINFO", 	RECORD),
-	RR_ENT("MINFO", 	RECORD),
+	RR_ENT("MINFO", 	IDEM),
 	RR_ENT("MX", 		IDEM),
-	RR_ENT("TXT", 		RECORD),
+	RR_ENT("TXT", 		IDEM),
 #ifdef DNS_NEW_RRS
 	RR_ENT("RP",		RECORD),
 	RR_ENT("AFSDB",		RECORD),
@@ -59,11 +59,11 @@ struct rr_infos rr_info[]= {
 	RR_ENT("NSAP_PTR",	PTR),		/* broken */
 	RR_ENT("SIG",		IDEM),
 	RR_ENT("KEY",		IDEM),
-	RR_ENT("PX",		RECORD),
+	RR_ENT("PX",		IDEM),
 	RR_ENT("GPOS",		RECORD),
 	RR_ENT("AAAA",		RECORD),
 	RR_ENT("LOC",		RECORD),
-	RR_ENT("NXT",		RECORD),
+	RR_ENT("NXT",		IDEM),
 	RR_ENT("EID",		RECORD),
 	RR_ENT("NIMLOC",	RECORD),
 	RR_ENT("SRV",		RECORD),
