@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.17 2000/07/03 14:13:28 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.18 2000/07/03 15:56:36 thomas Exp $";
 #endif
 
 /*
@@ -58,7 +58,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 		 * however, make sure there are no double records. This is done by
 		 * add_to_cent */
 #ifdef RFC2181_ME_HARDER
-		if (cent->rr[tp-T_MIN]->ttl!=(ttl>global.max_ttl?global.max_ttl:ttl))
+		if (cent->rr[tp-T_MIN] && cent->rr[tp-T_MIN]->ttl!=(ttl>global.max_ttl?global.max_ttl:ttl))
 			return 0;
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp);
@@ -110,7 +110,7 @@ typedef struct {
 static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial, char trusted, unsigned char *nsdomain)
 {
 	unsigned char oname[256];
-	unsigned char db[530];
+	unsigned char db[530],tbuf[256];
 	rr_hdr_t *rhdr;
 	int rc;
 	int i;
@@ -160,20 +160,25 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						 nsdomain))
 					return RC_SERVFAIL;
 				if (ntohs(rhdr->type)==T_NS) {
-					/* add to the nameserver list. */
-					if (!*ns) {
-						if (!(*ns=calloc(sizeof(ns_t),1))) {
-							return RC_SERVFAIL;
+					/* Don't accept possibliy poisoning nameserver entries in paranoid mode */
+					if (!trusted)
+						domain_match(&rc,nsdomain, oname, tbuf);
+					if (trusted ||  tbuf[0]=='\0') {
+						/* add to the nameserver list. */
+						if (!*ns) {
+							if (!(*ns=calloc(sizeof(ns_t),1))) {
+								return RC_SERVFAIL;
+							}
+							(*ns)->num=1;
+						} else {
+							(*ns)->num++;
+							if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
+								return RC_SERVFAIL;
+							}
 						}
-						(*ns)->num=1;
-					} else {
-						(*ns)->num++;
-						if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
-							return RC_SERVFAIL;
-						}
+						rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
+						memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
 					}
-					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
-					memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
 				} 
 				break;
 			case T_MINFO:
