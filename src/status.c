@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.32 2001/06/03 21:11:43 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.33 2002/01/02 14:47:57 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -134,7 +134,7 @@ void *status_thread (void *p)
 	short cmd,cmd2;
 	struct sockaddr_un ra;
 	char fn[1025];
-	char buf[257],dbuf[256];
+	char buf[257],dbuf[260];
 	char errbuf[256];
 	char owner[256];
 	long ttl;
@@ -160,7 +160,11 @@ void *status_thread (void *p)
 		res=sizeof(ra);
 		if ((rs=accept(stat_sock,(struct sockaddr *)&ra,&res))!=-1) {
 			DEBUG_MSG("Status socket query pending.\n");
-			read(rs,&cmd,sizeof(cmd));
+			if (read(rs,&cmd,sizeof(cmd)) != sizeof(cmd)) {
+				DEBUG_MSG("short status socket query");
+				close(rs);
+				continue;
+			}
 			switch(ntohs(cmd)) {
 			case CTL_STATS:
 				DEBUG_MSG("Received STATUS query.\n");
@@ -318,7 +322,7 @@ void *status_thread (void *p)
 						print_serr(rs,"Bad domain name.");
 						break;
 					}
-					sz=rhnlen((unsigned char *)(dbuf+2))+2;;
+					sz=rhnlen((unsigned char *)(dbuf+2))+2;
 					break;
 				default:
 					print_serr(rs,"Bad arg.");
