@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.6 2000/10/14 23:29:08 thomas Exp $ */
+/* $Id: conff.h,v 1.7 2000/10/15 19:50:13 thomas Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -41,6 +41,11 @@ extern int notcp;
 /* ----------- */
 
 typedef struct {
+	int              rule;
+	char             domain[256];
+} slist_t;
+
+typedef struct {
 	unsigned short   port;
 	int              uptest;
 	long             timeout;
@@ -56,6 +61,9 @@ typedef struct {
 	char             lean_query;
 	char             is_up;
 	char             is_proxy;
+	int              policy;
+	int              nalist;
+	slist_t          *alist;
         time_t           i_ts;
 	pdnsd_a          ping_a;
 	pdnsd_a          a;

@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.2 2000/07/21 20:04:37 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.3 2000/10/15 19:50:13 thomas Exp $";
 #endif
 
 /*
@@ -295,7 +295,6 @@ unsigned short get_rand16()
 #endif
 }
 
-
 void fsprintf(int fd, char *format, ...)
 {
 	char buf[1024];
@@ -306,4 +305,20 @@ void fsprintf(int fd, char *format, ...)
 	write(fd,buf,strlen(buf));
 
 	va_end(va);
+}
+
+/*
+ * This is not like strcmp, but will return 1 on match or 0 if the
+ * strings are different.
+ */
+int stricomp(char *a, char *b)
+{
+	int i;
+	if (strlen(a) != strlen(b)) 
+		return 0;
+	for (i=0;i<strlen(a);i++) {
+		if (tolower(a[i])!=tolower(b[i]))
+			return 0;
+	}
+	return 1;
 }

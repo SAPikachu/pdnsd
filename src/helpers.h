@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.2 2000/07/21 20:04:37 thomas Exp $ */
+/* $Id: helpers.h,v 1.3 2000/10/15 19:50:13 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
@@ -55,5 +55,7 @@ void free_rng(void);
 unsigned short get_rand16(void);
 
 void fsprintf(int fd, char *format, ...);
+
+int stricomp(char *a, char *b);
 
 #endif

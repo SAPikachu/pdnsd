@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.10 2000/10/14 23:29:06 thomas Exp $
+$Id: NEWS,v 1.11 2000/10/15 19:50:10 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -62,6 +62,8 @@ Version 1.0.11 fixes two bugs that might be used for denial-of-service
 attacks, upgrading is recommended.
 
 Version 1.0.12 is a bugfix release and contains some security
-enhancements. 
+enhancements. There are also inclusion/exclusion lists for servers
+(new options include=, exclude=, policy= in the server
+section).
 
 

@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.7 2000/10/14 23:29:08 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.8 2000/10/15 19:50:13 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -93,6 +93,9 @@ C_CLOSE \*\/
 <INITIAL>"lean_query"			{return LEAN_QUERY;}
 <INITIAL>"preset"			{return PRESET;}
 <INITIAL>"proxy_only"			{return PROXY_ONLY;}
+<INITIAL>"include"			{return INCLUDE;}
+<INITIAL>"exclude"			{return EXCLUDE;}
+<INITIAL>"policy"			{return POLICY;}
 
 <INITIAL>"a"				{return A;}
 <INITIAL>"ptr"				{return PTR;}
@@ -115,6 +118,8 @@ C_CLOSE \*\/
 <INITIAL>"udp_only"			{yylval.num=UDP_ONLY;return CONST;}
 <INITIAL>"tcp_only"			{yylval.num=TCP_ONLY;return CONST;}
 <INITIAL>"tcp_udp"			{yylval.num=TCP_UDP;return CONST;}
+<INITIAL>"included"			{yylval.num=C_INCLUDED;return CONST;}
+<INITIAL>"excluded"			{yylval.num=C_EXCLUDED;return CONST;}
 
 <INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.5 2000/10/08 12:16:08 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.6 2000/10/15 19:50:13 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1335,6 +1335,34 @@ static int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned cha
 	return RC_NAMEERR;          /* Could not find a record on any server */
 } 
 
+/*
+ * This checks the given name to resolve against the access list given for the server using the
+ * include=, exclude= and policy= parameters.
+ */
+static int use_server(servparm_t *s, unsigned char *name)
+{
+	int i;
+	if (s->alist && s->nalist) {
+		for (i=0;i<s->nalist;i++) {
+			if (s->alist[i].domain[0]=='.') {
+				/* match this domain and all subdomains */
+				if ((strlen((char *)name)==strlen((char *)s->alist[i].domain)-1 && 
+				     stricomp((char *)name,&s->alist[i].domain[1])) ||
+				    (strlen((char *)name)>=strlen((char *)s->alist[i].domain) && 
+				     stricomp((char *)(name+(strlen(name)-strlen((char *)s->alist[i].domain))),s->alist[i].domain)))
+					return s->alist[i].rule==C_INCLUDED;
+			} else {
+				/* match this domain exactly */
+				if (stricomp((char *)name,s->alist[i].domain))
+					return s->alist[i].rule==C_INCLUDED;
+			}
+
+		}
+	}
+	return s->policy==C_INCLUDED;
+}
+
+
 static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
 	int i,rc;
@@ -1343,13 +1371,13 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	/* try the servers in the order of their definition */
 	init_qserv(&serv);
 	for (i=0;i<serv_num;i++) {
-		if (servers[i].is_up) {
+		if (servers[i].is_up && use_server(&servers[i],name)) {
 			add_qserv(&serv, &servers[i].a, servers[i].port, servers[i].timeout, i, mk_flag_val(&servers[i]),servers[i].nocache,thint,servers[i].lean_query,1,(unsigned char *)"");
 			one_up=1;
 		}
 	}
 	if (!one_up) {
-		DEBUG_MSG1("No server is marked up.\n");
+		DEBUG_MSG1("No server is marked up and allowed for this domain.\n");
 		del_qserv(&serv);
 		return RC_SERVFAIL; /* No server up */
 	}

@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
 #include "conff.h"
 #include "consts.h"
 #include "cacheing/cache.h"
@@ -34,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.11 2000/10/14 23:29:08 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.12 2000/10/15 19:50:13 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -99,6 +100,9 @@ unsigned char *nm;
 %token <num> C_CTL_PERMS
 %token <num> C_PROC_LIMIT
 %token <num> C_PROCQ_LIMIT
+%token <num> INCLUDE
+%token <num> EXCLUDE
+%token <num> POLICY
 
 %token <num> IP
 %token <num> PORT
@@ -480,6 +484,53 @@ serv_el:	IP '=' STRING ';'
 					server.is_proxy=($3==C_ON);
 				} else {
 					yyerror("bad qualifier in proxy_only= option.");
+					YYERROR;
+				}
+			}
+		| POLICY '=' CONST ';'
+			{
+				if ($3==C_INCLUDED || $3==C_EXCLUDED) {
+					server.policy=$3;
+				} else {
+					yyerror("bad qualifier in policy= option.");
+					YYERROR;
+				}
+			}
+		| INCLUDE '=' STRING ';'
+			{
+				server.nalist++;
+				if (!(server.alist=realloc(server.alist,sizeof(*server.alist)*server.nalist))) {
+					yyerror("out of memory!.");
+					YYERROR;
+				}
+				server.alist[server.nalist-1].rule=C_INCLUDED;
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
+				strncpy(server.alist[server.nalist-1].domain,$3,256);
+				server.alist[server.nalist-1].domain[255]='\0';
+				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
+					yyerror("domain name must end in dot for include=/exclude=.");
+					YYERROR;
+				}
+			}
+		| EXCLUDE '=' STRING ';'
+			{
+				server.nalist++;
+				if (!(server.alist=realloc(server.alist,sizeof(*server.alist)*server.nalist))) {
+					yyerror("out of memory!.");
+					YYERROR;
+				}
+				server.alist[server.nalist-1].rule=C_EXCLUDED;
+				if (strlen((char *)$3)>255) {
+					yyerror("name too long.");
+					YYERROR;
+				}
+				strncpy(server.alist[server.nalist-1].domain,$3,256);
+				server.alist[server.nalist-1].domain[255]='\0';
+				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
+					yyerror("domain name must end in dot for include=/exclude=.");
 					YYERROR;
 				}
 			}
