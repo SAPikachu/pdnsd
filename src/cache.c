@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.13 2000/11/11 20:33:05 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.14 2000/11/15 17:27:05 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -95,20 +95,23 @@ static char rcsid[]="$Id: cache.c,v 1.13 2000/11/11 20:33:05 thomas Exp $";
  */
 #define MCSZ 10240
 
-dns_hash_t dns_hash;
+/* Some volatiles. Most are actually locked, but being paranoid I don't want
+ * some optimization to get in the way. If they are used in locked context,
+ * they are casted. */
+volatile dns_hash_t dns_hash;
 
-rr_lent_t *rrset_l=NULL;
-rr_lent_t *rrset_l_tail=NULL;
+volatile rr_lent_t *rrset_l=NULL;
+volatile rr_lent_t *rrset_l_tail=NULL;
 
 /*
  * We do not count the hash table sizes here. Those are very small compared
  * to the cache entries.
  */
-unsigned long cache_size=0;
-unsigned long ent_num=0;
+volatile unsigned long cache_size=0;
+volatile unsigned long ent_num=0;
 
-int cache_w_lock=0;
-int cache_r_lock=0;
+volatile int cache_w_lock=0;
+volatile int cache_r_lock=0;
 
 pthread_mutex_t lock_mutex;
 
@@ -116,7 +119,7 @@ pthread_mutex_t lock_mutex;
  * This is set to 1 once the lock is intialized. This must happen before we get
  * multiple threads.
  */
-int use_cache_lock=0;
+volatile int use_cache_lock=0;
 
 /*
  * Prototypes for internal use
@@ -297,7 +300,7 @@ unsigned long get_serial ()
 void init_cache()
 {
 	mk_hash_ctable();
-	mk_dns_hash(&dns_hash);
+	mk_dns_hash((dns_hash_t *)&dns_hash);
 }
 
 /* Initialize the cache. Call only once. */
@@ -315,12 +318,12 @@ void destroy_cache()
 
 	/* lock the cache, in case that any thread is still accssing. */
 	softlock_cache_rw();
-	ce=fetch_first(&dns_hash, &pos);
+	ce=fetch_first((dns_hash_t *)&dns_hash, &pos);
 	while (ce) {
 		del_cache_int_rrl(ce);
-		ce=fetch_next(&dns_hash,&pos);
+		ce=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
-	free_dns_hash(&dns_hash);
+	free_dns_hash((dns_hash_t *)&dns_hash);
 #if 0
 TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
@@ -529,7 +532,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 	/* Since the append at the and is a very common case (and we want this case to be fast), we search back-to-forth.
 	 * Since rr_l is a list and we don't really have fast access to all elements, we do no perform an advanced algorihtm
 	 * like binary search.*/
-	le=rrset_l_tail;
+	le=(rr_lent_t *)rrset_l_tail;
 	while (le) {
 		if (ts>=get_rrlent_ts(le) && (le->next==NULL || ts<get_rrlent_ts(le->next))) {
 			if (le->next)
@@ -544,7 +547,7 @@ static rr_lent_t *insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int tp, time_t ts)
 	}
 	if (!fnd) {
 		/* not found, so it needs to be inserted at the start of the list. */
-		ne->next=rrset_l;
+		ne->next=(rr_lent_t *)rrset_l;
 		if (rrset_l)
 			rrset_l->prev=ne;
 		rrset_l=ne;
@@ -682,15 +685,15 @@ static void purge_cache(unsigned long sz)
 	rr_lent_t **le/*,*next*/;
 
 	/* first, purge all rrs row-wise. This only affects timed-out records. */
-	ce=fetch_first(&dns_hash, &pos);
+	ce=fetch_first((dns_hash_t *)&dns_hash, &pos);
 	while (ce) {
 		cache_size-=purge_cent(ce,1);
-		ce=fetch_next(&dns_hash,&pos);
+		ce=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
 	/* we are still above the desired cache size. Well, delete records from the oldest to
 	 * the newest. This is the case where nopurge records are deleted anyway. Only local
 	 * records are kept in any case.*/
-	le=&rrset_l;
+	le=(rr_lent_t **)&rrset_l;
 	while (*le && cache_size>sz) {
 		if (!(((*le)->rrset && ((*le)->rrset->flags&CF_LOCAL)) || 
 		      (*le)->cent->flags&CF_LOCAL)) {
@@ -925,9 +928,9 @@ void write_disk_cache()
 		crash_msg("Lock failed; could not write disk cache.");
 		return;
 	}
-	fwrite(&ent_num,sizeof(en),1,f); /*we don't know the real size by now, so write a dummy*/
+	fwrite((char *)&ent_num,sizeof(en),1,f); /*we don't know the real size by now, so write a dummy*/
 
-	le=fetch_first(&dns_hash,&pos);
+	le=fetch_first((dns_hash_t *)&dns_hash,&pos);
 	while (le) {
 		/* now, write the rr's */
 		aloc=1;
@@ -950,7 +953,7 @@ void write_disk_cache()
 				write_rrset(le->rr[i],f);
 			}
 		}
-		le=fetch_next(&dns_hash,&pos);
+		le=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
 	fseek(f,0,SEEK_SET);
 	fwrite(&en,sizeof(en),1,f); /*write the real size.*/
@@ -980,14 +983,14 @@ void add_cache(dns_cent_t cent)
 
 	lock_cache_rw();
 
-	if (!(ce=dns_lookup(&dns_hash,cent.qname))) {
+	if (!(ce=dns_lookup((dns_hash_t *)&dns_hash,cent.qname))) {
 		if(!(ce=(dns_cent_t *)copy_cent(&cent))) {
 			log_warn("Out of cache memory.");
 			free_cent(*ce);
 			unlock_cache_rw();
 			return;
 		}
-		add_dns_hash(&dns_hash,cent.qname,ce);
+		add_dns_hash((dns_hash_t *)&dns_hash,cent.qname,ce);
 		/* Add the rrs to the rr list */
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i]) {
@@ -1078,7 +1081,7 @@ static void del_cache_int(dns_cent_t *cent)
 	int i;
 
 	/* Delete from the hash */
-	del_dns_hash(&dns_hash,cent->qname);
+	del_dns_hash((dns_hash_t *)&dns_hash,cent->qname);
 	/* delete rrs from the rrl */
 	cache_size-=cent->cs;
 	for (i=0;i<T_NUM;i++) {
@@ -1109,7 +1112,7 @@ void del_cache(unsigned char *name)
 	dns_cent_t *ce;
 	
 	lock_cache_rw();
-	if ((ce=dns_lookup(&dns_hash,name))) {
+	if ((ce=dns_lookup((dns_hash_t *)&dns_hash,name))) {
 		del_cache_int_rrl(ce);
 	}
 	unlock_cache_rw();
@@ -1124,7 +1127,7 @@ void invalidate_record(unsigned char *name)
 	int i;
 	
 	lock_cache_rw();
-	if ((ce=dns_lookup(&dns_hash,name))) {
+	if ((ce=dns_lookup((dns_hash_t *)&dns_hash,name))) {
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i]) {
 				ce->rr[i]->ts=0;
@@ -1147,7 +1150,7 @@ int have_cached(unsigned char *name)
 {
 	dns_cent_t *ret;
 	lock_cache_r();
-	ret=dns_lookup(&dns_hash,name);
+	ret=dns_lookup((dns_hash_t *)&dns_hash,name);
 	unlock_cache_r();
 	return ret!=NULL;
 }
@@ -1160,7 +1163,7 @@ dns_cent_t *lookup_cache(unsigned char *name)
 {
 	dns_cent_t *ret;
 	lock_cache_r();
-	if ((ret=dns_lookup(&dns_hash,name))) {
+	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
 		ret=copy_cent(ret);  /* this may return NULL, check for it! */
 	}
 	unlock_cache_r();
@@ -1178,7 +1181,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 	int rv=0;
 	int had=0;
 	lock_cache_rw();
-	if ((ret=dns_lookup(&dns_hash,name))) {
+	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
 		/* purge the record. */
 		purge_cent(ret,0);
 		cache_size-=ret->cs;

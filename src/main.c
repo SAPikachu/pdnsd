@@ -17,14 +17,18 @@ You should have received a copy of the GNU General Public License
 along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
+
+/* in order to use O_NOFOLLOW on Linux: */
+#define _GNU_SOURCE
+
 #include "config.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <pwd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
@@ -40,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.22 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.23 2000/11/15 17:27:02 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -173,7 +177,7 @@ void print_help (void)
  */
 int main(int argc,char *argv[])
 {
-	int i,sig,pfd;
+	int i,sig,pfd,np=0;
 	struct passwd *pws;
 	char *conf_file=CONFDIR"/pdnsd.conf";
 #if DEBUG>0
@@ -336,7 +340,12 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-	init_ping_socket();
+	for (i=0;i<serv_num;i++) {
+		if (servers[i].uptest==C_PING)
+			np=1;
+	}
+	if (np)
+		init_ping_socket();
 	init_rng();
 #if TARGET==TARGET_LINUX
 	if (!final_init())

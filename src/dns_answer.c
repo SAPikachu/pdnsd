@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.28 2000/11/11 20:11:00 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.29 2000/11/15 17:27:02 thomas Exp $";
 #endif
 
 /*
@@ -66,22 +66,22 @@ static char rcsid[]="$Id: dns_answer.c,v 1.28 2000/11/11 20:11:00 thomas Exp $";
 #define UDP_MAX_ERRS 5
 #define MEM_MAX_ERRS 5
 #define MISC_MAX_ERRS 5
-int da_tcp_errs=0;
-int da_udp_errs=0;
-int da_mem_errs=0;
-int da_misc_errs=0;
+volatile int da_tcp_errs=0;
+volatile int da_udp_errs=0;
+volatile int da_mem_errs=0;
+volatile int da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
-int procs=0;   /* active query processes */
-int qprocs=0;  /* queued query processes */
+volatile int procs=0;   /* active query processes */
+volatile int qprocs=0;  /* queued query processes */
 pthread_mutex_t proc_lock;
 
 #ifdef SOCKET_LOCKING
 pthread_mutex_t s_lock;
 #endif
 
-int tcp_up=1;
-int udp_up=1;
+volatile int tcp_up=1;
+volatile int udp_up=1;
 
 typedef struct {
 	union {

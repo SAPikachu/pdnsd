@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.5 2000/11/01 21:24:33 thomas Exp $ */
+/* $Id: error.h,v 1.6 2000/11/15 17:27:02 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -28,7 +28,7 @@ Boston, MA 02111-1307, USA.  */
 #include <signal.h>
 
 /* --- from error.c */
-extern int waiting;
+volatile extern int waiting;
 /* --- */
 
 void crash_msg(char *msg);

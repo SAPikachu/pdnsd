@@ -1,6 +1,7 @@
-# $Id: Makefile.am,v 1.12 2000/10/30 18:22:14 thomas Exp $
+# $Id: Makefile.am,v 1.13 2000/11/15 17:26:58 thomas Exp $
 
 SUBDIRS = src
+GZIP_ENV=
 
 EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
 file-list.base.in ChangeLog.old \

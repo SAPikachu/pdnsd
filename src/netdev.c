@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.4 2000/08/27 12:27:51 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.5 2000/11/15 17:27:02 thomas Exp $";
 #endif
 
 /*
@@ -44,7 +44,7 @@ static char rcsid[]="$Id: netdev.c,v 1.4 2000/08/27 12:27:51 thomas Exp $";
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 # if TARGET==TARGET_LINUX
 
-int isdn_errs=0;
+volatile int isdn_errs=0;
 
 #  ifdef ISDN_SUPPORT
 

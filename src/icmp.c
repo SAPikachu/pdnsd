@@ -53,17 +53,17 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.11 2000/11/07 12:49:53 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.12 2000/11/15 17:27:02 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
-int icmp_errs=0; /* This is only here to minimize log output. Since the 
-		    consequences of a race is only one log message more/less
-		    (out of ICMP_MAX_ERRS), no lock is required. */
+volatile int icmp_errs=0; /* This is only here to minimize log output. Since the 
+			     consequences of a race is only one log message more/less
+			     (out of ICMP_MAX_ERRS), no lock is required. */
 
-int ping_isocket;
+volatile int ping_isocket;
 #ifdef ENABLE_IPV6
-int ping6_isocket=-1;
+volatile int ping6_isocket=-1;
 #endif
 
 /* different names, same thing... be careful, as these are macros... */
