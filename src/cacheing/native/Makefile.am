@@ -1,6 +1,6 @@
-# $Id: Makefile.am,v 1.1 2000/07/21 20:04:41 thomas Exp $
+# $Id: Makefile.am,v 1.2 2000/07/21 20:15:09 thomas Exp $
 
-EXTRA_DIST = cache.h cache.c hash.h hash.c
+EXTRA_DIST = cache.c hash.h hash.c
 
 all: cache.o hash.o
 

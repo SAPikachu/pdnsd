@@ -1,3 +1,5 @@
-# $Id: Makefile.am,v 1.1 2000/07/21 20:04:38 thomas Exp $
+# $Id: Makefile.am,v 1.2 2000/07/21 20:15:04 thomas Exp $
+
+EXTRA_DIST = cache.h
 
 SUBDIRS = native gdbm
