@@ -1,4 +1,4 @@
-$Id: THANKS,v 1.28 2001/03/25 18:09:56 tmm Exp $
+$Id: THANKS,v 1.29 2001/03/25 19:27:35 tmm Exp $
 
 This is a (hopefully complete) list of people I have to thank for helping me
 develop and improve pdnsd:
@@ -8,6 +8,7 @@ Stephan Boettcher
 P.J. Bostley
 Joachim Dorner
 Christian Engstler
+Bjoern Fischer
 Bert Frederiks
 Mike Hammer
 Jonathan Hudson

@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.33 2001/03/14 22:07:49 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.34 2001/03/25 19:27:37 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -66,7 +66,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 	unsigned char buf[256],cbuf[256];
 	int dummy;
 	rhn2str(oname,buf);
-	if (strcmp((char *)buf,(char *)cent->qname)==0) {
+	if (stricomp((char *)buf,(char *)cent->qname)) {
 		/* it is for the record we are editing. add_to_cent is sufficient. 
 		 * however, make sure there are no double records. This is done by
 		 * add_to_cent */
@@ -871,9 +871,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	i=0;
 	while(1) {
-		/* nbuf is tolower */
 		j=nbuf[i];
-		if (nbuf[i]!=rrn[i]) {
+		if (tolower(nbuf[i])!=tolower(rrn[i])) {
 			free(st->recvbuf);
 			DEBUG_MSG1("Answer does not match query.\n");
 			return RC_SERVFAIL;
@@ -882,7 +881,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			break;
 		i++;
 		for (;j>0;j--) {
-			if (nbuf[i]!=tolower(rrn[i])) {
+			if (tolower(nbuf[i])!=tolower(rrn[i])) {
 				free(st->recvbuf);
 				DEBUG_MSG1("Answer does not match query.\n");
 				return RC_SERVFAIL;
@@ -1450,9 +1449,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
  */
 static int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
-	int dummy,rc;
-	rc=p_recursive_query(q, rrn, name,cached, &dummy, hops, thint);
-	return rc;
+	int dummy;
+	return p_recursive_query(q, rrn, name,cached, &dummy, hops, thint);
 } 
 
 /*

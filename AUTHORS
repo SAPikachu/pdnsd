@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.24 2001/03/25 18:09:56 tmm Exp $
+$Id: AUTHORS,v 1.25 2001/03/25 19:27:35 tmm Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -15,6 +15,8 @@ Stephan Boettcher	contributed the SCHEME= option.
 P.J. Bostley		contributed patches to get pdnsd working on
 			alpha
 Christian Engstler	contributed patches for SuSE compatability
+Bjoern Fischer		contributed code to make pdnsd leave the case of names
+			in the cache unchanged
 Torben Janssen		contributed RedHat rc scripts
 Olaf Kirch		contributed a security fix for the run_as()
 			function
