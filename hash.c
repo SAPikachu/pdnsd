@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.4 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: hash.c,v 1.5 2000/06/26 21:21:58 thomas Exp $";
 #endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
@@ -57,7 +57,7 @@ void mk_hash_ctable ()
 	unsigned int i;
 	memset(values,strlen((char *)posval),sizeof((char *)values));
 	for (i=0;i<strlen((char *)posval);i++) {
-		values[posval[i]]=i;
+		values[tolower(posval[i])]=i;
 		values[toupper(posval[i])]=i;
 	}
 }
