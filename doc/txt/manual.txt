@@ -2,7 +2,7 @@
                                                                                
 This is the "official" pdnsd documentation and reference written by Thomas
 Moestl with revisions by Paul Rombouts.
-It is up-to-date for version 1.1.9-par. For older documentation, please refer
+It is up-to-date for version 1.1.10-par. For older documentation, please refer
 to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
@@ -158,7 +158,7 @@ distro                    RedHat, SuSE, Debian)
                           Specify the query method (default=udponly, others:   
                           tcpudp, tcponly) If you have enabled both udp and tcp
 --with-query-method=qm    queries, this lets you control which query method    
-                          pdnsd will use ny default. tcpudp will try tcp first 
+                          pdnsd will use by default. tcpudp will try tcp first 
                           and back out to udp if tcp is not supported by the   
                           server; udponly and tcponly should be clear.         
                                                                                
@@ -471,7 +471,12 @@ The configuration file is divided into sections. Each section is prefixed with
 the section name and opening curlies ({) and closed with closing curlies (}).
 In each section, configuration options can be given in the form
 option_name=option_value;
-Option value may be a string literal (enclosed in "), a number or a constant.
+Option value may be a string literal, a number or a constant.
+Note by Paul Rombouts: In previous versions of pdnsd strings had to be enclosed
+in quotes ("), but since version 1.1.10 this is no longer necessary, unless a
+string contains a special character such as whitespace, a token that normally
+starts a comment, or one of ",;{}". (Note that these special characters are
+illegal in domain names anyway.)
 Constants are noted in the section description in <> signs, but are written in
 the file without these signs. Some options take more than one value; in this
 case, the values are separated with commas.
@@ -1039,16 +1044,16 @@ dotted notation (see name). The ptr record is for resolving adresses into
 names. For example, if you want to have the adress 127.0.0.1 into localhost,   
 and localhost into 127.0.0.1, you need something like the following sections:  
     rr {                                                                       
-        owner="localhost.";                                                    
-        name="localhost.";                                                     
-        a="127.0.0.1";                                                         
-        soa="localhost.","root.localhost.",42,86400,900,86400,86400;           
+        owner = localhost;                                                     
+        name = localhost;                                                      
+        a = 127.0.0.1;                                                         
+        soa = localhost, root.localhost, 42, 86400, 900, 86400, 86400;         
     }                                                                          
     rr {                                                                       
-        owner="localhost.";                                                    
-        name="1.0.0.127.in-addr.arpa.";                                        
-        ptr="localhost.";                                                      
-        soa="localhost.","root.localhost.",42,86400,900,86400,86400;           
+        owner = localhost;                                                     
+        name = 1.0.0.127.in-addr.arpa;                                         
+        ptr = localhost;                                                       
+        soa = localhost, root.localhost, 42, 86400, 900, 86400, 86400;         
     }                                                                          
 The second section is for reverse resolving and uses the ptr option. There is  
 something special about the name in the second section: when a resolver wants  
@@ -1074,9 +1079,9 @@ changed, you there is no need to update the record for "news".
 To implement this with pdnsd, you could add the following section to your      
 configuration file:                                                            
     rr {                                                                       
-        owner="localhost";                                                     
-        name="news";                                                           
-        cname="nntp2.myisp.com";                                               
+        owner = localhost;                                                     
+        name = news;                                                           
+        cname = nntp2.myisp.com;                                               
     }                                                                          
                                                                                
 mx=string,number;                                                              
@@ -1129,12 +1134,12 @@ has timed out. Example: Netscape Communicator will ask for the servers news and
 mail on startup if unconfigured. If you do not have a dns search list for your
 network, you can inhibit outgoing queries for these by specifying
     neg {
-        name="news.";
-        types=domain;
+        name = news;
+        types = domain;
     }
     neg {
-        name="mail.";
-        types=domain;
+        name = mail;
+        types = domain;
     }
 in your config file. If you have a search list, you have to repeat that for any
 entry in your search list in addition to the entries given above!
@@ -1465,5 +1470,5 @@ src/status.h     pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 08 Jan 2004 by Paul Rombouts
+Last revised: 06 Feb 2004 by Paul Rombouts
 

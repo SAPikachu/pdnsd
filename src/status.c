@@ -364,7 +364,7 @@ static void *status_thread (void *p)
 					    print_serr(rs,"Malformed or incomplete command.");
 					    goto free_fn;
 				    }
-				    if ((errmsg=parsestr2rhn(buf,owner))!=NULL) {
+				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),owner))!=NULL) {
 					    print_serr(rs,errmsg);
 					    goto free_fn;
 				    }
@@ -397,7 +397,7 @@ static void *status_thread (void *p)
 					    goto incomplete_command;
 				    if (!read_short(rs,&flags))	/* caching flags */
 					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(name,buf))!=NULL)
+				    if ((errmsg=parsestr2rhn(name,sizeof(name),buf))!=NULL)
 					    goto bad_domain_name;
 				    if (ttl < 0)
 					    goto bad_ttl;
@@ -419,7 +419,7 @@ static void *status_thread (void *p)
 				    case T_PTR:
 					    if (!read_domain(rs, buf, sizeof(buf)))
 						    goto incomplete_command;
-					    if ((errmsg=parsestr2rhn(buf,dbuf))!=NULL)
+					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
 						    goto bad_domain_name;
 					    sz=rhnlen(dbuf);
 					    break;
@@ -428,7 +428,7 @@ static void *status_thread (void *p)
 						    goto bad_arg;
 					    if (!read_domain(rs, buf, sizeof(buf)))
 						    goto incomplete_command;
-					    if ((errmsg=parsestr2rhn(buf,dbuf+2))!=NULL)
+					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf+2))!=NULL)
 						    goto bad_domain_name;
 					    sz=rhnlen(dbuf+2)+2;
 					    break;
@@ -460,7 +460,7 @@ static void *status_thread (void *p)
 					    goto incomplete_command;
 				    if (!read_long(rs,&ttl))
 					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(name,buf))!=NULL) {
+				    if ((errmsg=parsestr2rhn(name,sizeof(name),buf))!=NULL) {
 					    DEBUG_MSG("NEG: received bad domain name.\n");
 					    goto bad_domain_name;
 				    }

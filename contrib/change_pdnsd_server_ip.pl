@@ -5,7 +5,7 @@
 #
 # Written by Paul A. Rombouts
 #
-# This file Copyright 2002 Paul A. Rombouts
+# This file Copyright 2002, 2004 Paul A. Rombouts
 # It may be distributed under the GNU Public License, version 2, or
 # any higher version.  See section COPYING of the GNU Public license
 # for conditions under which this file may be redistributed.
@@ -23,14 +23,14 @@ if(@ARGV) {
     if(@ARGV) {warn "Warning: spurious arguments ignored: @ARGV\n"}
 }
 
-unless($label =~ /^\".*\"$/) {$label="\"$label\""}
-unless($dns_str =~ /^\".*\"$/) {$dns_str =~ s/^[\s,]*/\"/; $dns_str =~ s/[\s,]*$/\"/}
-unless($dns_str =~ /\"\s*\,\s*\"/) {$dns_str =~ s/[\s,]+/","/g}
+#unless($label =~ /^\".*\"$/) {$label="\"$label\""}
+#unless($dns_str =~ /^\".*\"$/) {$dns_str =~ s/^[\s,]*/\"/; $dns_str =~ s/[\s,]*$/\"/}
+#unless($dns_str =~ /\"\s*\,\s*\"/) {$dns_str =~ s/[\s,]+/","/g}
 
 my @lines=();
 my $found_section=0;
 my $changed=0;
-my $ip_patt = qr/^((?:[^#]*?(?:\{|\;))*?)(\s*ip\s*=\s*)(\"[^"]*\"(?:\s*\,\s*\"[^"]*\")*)\s*\;/;
+my $ip_patt = qr/^((?:[^#]*?(?:\{|;))*?)(\s*ip\s*=\s*)("?[\w.:]+"?(?:\s*,\s*"?[\w.:]+"?)*)\s*;/;
 
 open(CONFFILE,$pdnsd_conf) or die "Can't open $pdnsd_conf: $!\n";
 
@@ -42,7 +42,7 @@ while(<CONFFILE>) {
 	LOOP: {
 	    do {
 		push @lines,$_;
-		if(/^(?:.*(?:\{|\;))?\s*label\s*=\s*\Q$label\E\s*\;/) {
+		if(/^(?:.*(?:\{|;))?\s*label\s*=\s*"?\Q$label\E"?\s*;/) {
 		    if($found_label++) {
 			warn "Server section with multiple labels found.\n";
 			close(CONFFILE);

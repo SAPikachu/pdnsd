@@ -207,19 +207,6 @@ static short read_short(int fd)
 	return ntohs(nc);
 }
 
-static int match_cmd(const char *cmd, const cmd_s cmds[])
-{
-	int i=0;
-	while (cmds[i].name) {
-		if (strcmp(cmd,cmds[i].name)==0)
-			return cmds[i].val;
-		i++;
-	}
-	fprintf(stderr,"Command/option not recognized: %s\n",cmd);
-	fprintf(stderr,"Try 'pdnsd-ctl help' for available commands and options.\n");
-	exit(2);
-}
-
 /* copy data from file descriptor fd to file stream out until EOF
    or error is encountered.
 */
@@ -235,6 +222,19 @@ static int copymsgtofile(int fd, FILE* out)
 		return n;
 
 	return ntot;
+}
+
+static int match_cmd(const char *cmd, const cmd_s cmds[])
+{
+	int i=0;
+	while (cmds[i].name) {
+		if (strcmp(cmd,cmds[i].name)==0)
+			return cmds[i].val;
+		i++;
+	}
+	fprintf(stderr,"Command/option not recognized: %s\n",cmd);
+	fprintf(stderr,"Try 'pdnsd-ctl help' for available commands and options.\n");
+	exit(2);
 }
 
 int main(int argc, char *argv[])

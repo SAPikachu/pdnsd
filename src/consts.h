@@ -27,28 +27,37 @@ Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 
-#define C_ERR      -1
 #define C_RRTOFFS  64
 
-#define C_ON           0
-#define C_OFF          1
-#define C_PING         2
-#define C_NONE         3
-#define C_IF           4
-#define C_EXEC         5
-#define C_ONQUERY      6
-#define UDP_ONLY       7
-#define TCP_ONLY       8
-#define TCP_UDP        9
-#define C_DEV         10
-#define C_DIALD       11
-#define C_INCLUDED    12
-#define C_EXCLUDED    13
-#define C_SIMPLE_ONLY 14
-#define C_FQDN_ONLY   15
-#define C_AUTH        16
+enum {
+	C_ERR,
+	C_ON,
+	C_OFF,
+	C_PING,
+	C_NONE,
+	C_IF,
+	C_EXEC,
+	C_ONQUERY,
+	UDP_ONLY,
+	TCP_ONLY,
+	TCP_UDP,
+	C_DEV,
+	C_DIALD,
+	C_INCLUDED,
+	C_EXCLUDED,
+	C_SIMPLE_ONLY,
+	C_FQDN_ONLY,
+	C_AUTH,
+	C_DOMAIN
+};
 
-int lookup_const(char *name);
+typedef struct {
+	const char *name;
+	int         val;
+} namevalue_t;
+
+int binsearch_keyword(const char *name, int len, const namevalue_t dic[], int range);
+int lookup_const(const char *name, int len);
 const char *const_name(int c);  /* Added by Paul Rombouts */
 
 #endif

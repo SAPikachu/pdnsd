@@ -21,9 +21,6 @@ Vendor: Thomas Moestl
 Packager:  Paul A. Rombouts <p.a.rombouts@home.nl>
 Prefix: %{_prefix} 
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
-BuildRequires: flex
-BuildRequires: bison
-BuildRequires: perl
 
 %description
 pdnsd is a proxy DNS daemon with permanent (disk-)cache and the ability
@@ -133,13 +130,13 @@ id -u %{run_as_user} > /dev/null 2>&1 ||
 
 if [ -f "%{conffile}" ] &&
     grep -v -e '^[[:blank:]]*\(#\|\/\/\)'  "%{conffile}" |
-    grep -q -e '\<run_as[[:blank:]]*=[[:blank:]]*"nobody"'
+    grep -q -e '\<run_as[[:blank:]]*=[[:blank:]]*"\?nobody"\?[[:blank:]]*;'
 then
     echo "An existing pdnsd configuration file %{conffile} has been detected, containing the run_as user ID \"nobody\""
     echo "For security reasons it is recommended that pdnsd run as a seperate user \"%{run_as_user}\""
     mv -f "%{conffile}" "%{conffile}.rpmsave" &&
     echo "Your original %{conffile} has been saved as %{conffile}.rpmsave" &&
-    sed -e '/^[[:blank:]]*\(#\|\/\/\)/!s/\(\<run_as[[:blank:]]*=[[:blank:]]*\)"nobody"/\1"%{run_as_user}"/g' \
+    sed -e '/^[[:blank:]]*\(#\|\/\/\)/!s/\(\<run_as[[:blank:]]*=[[:blank:]]*\)"\?nobody"\?[[:blank:]]*;/\1"%{run_as_user}";/g' \
          "%{conffile}.rpmsave" > "%{conffile}" &&
     echo "In %{conffile} runs_as=\"nobody\" has been replaced by run_as=\"%{run_as_user}\""
 fi

@@ -61,30 +61,24 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 CC = @CC@
 CFLAGS = @CFLAGS@
-LEX = @LEX@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 VERSION = @VERSION@
-YACC = @YACC@
 cachedir = @cachedir@
 def_id = @def_id@
 distribution = @distribution@
 specbuild = @specbuild@
-yflags = @yflags@
-yylineno_option = @yylineno_option@
-
-YFLAGS = $(yflags)
 
 sbin_PROGRAMS = pdnsd
 
-pdnsd_SOURCES = conf-parse.y conf-lex.l conff.c consts.c debug.c dns.c dns_answer.c dns_query.c error.c helpers.c 	icmp.c list.c main.c netdev.c rr_types.c status.c servers.c thread.c cache.c hash.c 	conff.h conf-parse.h consts.h debug.h dns.h dns_answer.h dns_query.h error.h helpers.h icmp.h ipvers.h list.h 	netdev.h rr_types.h servers.h status.h thread.h cache.h hash.h
+pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c dns_query.c error.c helpers.c 	icmp.c list.c main.c netdev.c rr_types.c status.c servers.c thread.c cache.c hash.c make_hashconvtable.c 	conf-parser.h conf-keywords.h conff.h consts.h debug.h dns.h dns_answer.h dns_query.h error.h helpers.h icmp.h ipvers.h list.h 	netdev.h rr_types.h servers.h status.h thread.h cache.h hash.h pdnsd_assert.h
 
 
 SUBDIRS = . pdnsd-ctl rc test
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
-CONFIG_CLEAN_FILES =  conf-lex.l
+CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(sbin_PROGRAMS)
 
 
@@ -92,19 +86,16 @@ DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-pdnsd_OBJECTS =  conf-parse.o conf-lex.o conff.o consts.o debug.o dns.o \
+pdnsd_OBJECTS =  conf-parser.o conff.o consts.o debug.o dns.o \
 dns_answer.o dns_query.o error.o helpers.o icmp.o list.o main.o \
 netdev.o rr_types.o status.o servers.o thread.o cache.o hash.o
 pdnsd_LDADD = $(LDADD)
 pdnsd_DEPENDENCIES = 
 pdnsd_LDFLAGS = 
-LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
-LEXLIB = @LEXLIB@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
-DIST_COMMON =  Makefile.am Makefile.in conf-lex.c conf-lex.l.in \
-conf-parse.c
+DIST_COMMON =  Makefile.am Makefile.in
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
@@ -123,9 +114,6 @@ $(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4)
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
-
-conf-lex.l: $(top_builddir)/config.status conf-lex.l.in
-	cd $(top_builddir) && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 mostlyclean-sbinPROGRAMS:
 
@@ -177,11 +165,10 @@ pdnsd: $(pdnsd_OBJECTS) $(pdnsd_DEPENDENCIES)
 .l.c:
 	$(LEX) $(AM_LFLAGS) $(LFLAGS) $< && mv $(LEX_OUTPUT_ROOT).c $@
 .y.c:
-	$(YACC) $(AM_YFLAGS) $(YFLAGS) $< && perl yyparse_local_decl.pl y.tab.c > $*.c
+	$(YACC) $(AM_YFLAGS) $(YFLAGS) $< && mv y.tab.c $*.c
 	if test -f y.tab.h; then \
 	if cmp -s y.tab.h $*.h; then rm -f y.tab.h; else mv y.tab.h $*.h; fi; \
 	else :; fi
-conf-parse.h: conf-parse.c
 
 
 # This directory's subdirectories are mostly independent; you can cd
@@ -300,12 +287,11 @@ distdir: $(DISTFILES)
 	done
 cache.o: cache.c ../config.h cache.h ipvers.h list.h dns.h rr_types.h \
 	conff.h hash.h helpers.h error.h thread.h debug.h pdnsd_assert.h
-conf-lex.o: conf-lex.c ../config.h helpers.h cache.h ipvers.h list.h \
-	pdnsd_assert.h dns.h rr_types.h conff.h conf-parse.h consts.h
-conf-parse.o: conf-parse.c ../config.h ipvers.h conff.h list.h consts.h \
-	cache.h dns.h rr_types.h dns_query.h helpers.h pdnsd_assert.h
+conf-parser.o: conf-parser.c ../config.h conf-parser.h ipvers.h conff.h list.h \
+	consts.h cache.h dns.h rr_types.h dns_query.h helpers.h conf-keywords.h \
+	pdnsd_assert.h
 conff.o: conff.c ../config.h ipvers.h conff.h list.h consts.h helpers.h \
-	cache.h dns.h rr_types.h conf-parse.h servers.h pdnsd_assert.h
+	cache.h dns.h rr_types.h conf-parser.h servers.h pdnsd_assert.h
 consts.o: consts.c ../config.h consts.h rr_types.h
 debug.o: debug.c ../config.h helpers.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h pdnsd_assert.h

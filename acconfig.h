@@ -120,9 +120,6 @@
 
 #define TEMPDIR "/tmp";
 
-/* yylineno not provided by flex */
-#undef NO_YYLINENO
-
 /* This is for various debugging facilities that produce debug output and
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG

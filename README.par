@@ -1,37 +1,38 @@
-	  pdnsd maintenance version 1.1.9-par by Paul Rombouts
+	  pdnsd maintenance version 1.1.10-par by Paul Rombouts
 	  =======================================================
 
 This file describes the version of pdnsd that I maintain personally and am
 making available so other people can enjoy the latest features and fixes. Thomas
 Moestl no longer maintains pdnsd himself, so I am effectively the new
-maintainer. The current version is 1.1.9-par. There is no great significance in
-the change of version number; the difference between 1.1.9-par and the previous
-1.1.8b1-par8 is marginal. However, I felt the need to simplify the numbering,
-because it was becoming rather baroque.
+maintainer. The current version is 1.1.10-par. This version has a completely
+rewritten parser for configuration files. The new parser is written purely in C,
+so (f)lex and yacc/bison are no longer needed to build pdnsd. It is no longer
+necessary to quote strings in the configuration file (unless the string contains
+special characters, but these are illegal in domain names anyway).
 
-I've added some missing pieces to the documentation (the manual
+Furthermore a bug has been fixed that caused incorrect IPV6-type PTR records to
+be generated when sourcing /etc/hosts like files. There have been some other
+minor changes, consult the ChangeLog for details.
+
+Since version 1.1.9 I've added some missing pieces to the documentation (the manual
 doc/html/doc.html,doc/txt/manual.txt and the man page doc/pdnsd-ctl.8). BTW, did
 you know that it's possible to define aliases for domain names with pdnsd? I had
 plans to implement such a feature when I discovered that pdnsd already supports
 it. It was just poorly documented. (If want to try this for your self, look
 for the new information about CNAME records under the rr Section in the manual.)
-The changes to the code consist mostly of optimizations, removal of some size
-limits due to fixed-size buffers, and some cleaning up. I've also tried to
-make the error responses of pdnsd-ctl more helpful.
-More details about other changes can be found in the ChangeLog. For a short
-history about recent releases have a look at doc/html/index.html.
+For a short history about recent releases have a look at doc/html/index.html.
 
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.9-par.tar.gz you
-must first apply my patch file pdnsd-1.1.9-par.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.10-par.tar.gz you
+must first apply my patch file pdnsd-1.1.10-par.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the the
 documentation. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.9-par.diff.gz | patch -p2 -N -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.10-par.diff.gz | patch -p2 -N -Z
 
 Note: I have used GNU extensions so there may be some portability issues. I have
 supplied alternatives for some of the less portable functions. There should be no
@@ -153,6 +154,12 @@ don't have to read it if you simply want to run pdnsd as you're used to.
 
 - New in 1.1.8b1-par8: It is no longer mandatory that domain names in the
   configuration file end in a dot.
+
+- New in 1.1.10-par: It is no longer necessary to place strings between quotes
+  in the configuration file, unless a string contains a special character such
+  as whitespace, a token that normally starts a comment, or one of the
+  characters ",;{}". Note that these special characters are illegal in domain
+  names anyway.
 
 I've also included a number of bug-fixes contained in a patch file supplied to
 me by Thomas Moestl. In addition to the things I had already fixed, the

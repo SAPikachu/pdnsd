@@ -30,66 +30,85 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: consts.c,v 1.3 2001/05/09 17:51:52 tmm Exp $";
 #endif
 
-typedef struct {
-	int      c;
-	char     *name;
-} const_t;
-
 /* Order alphabetically!! */
-static const_t consts[]={
-	{C_AUTH,       "auth"},
-	{C_DEV,        "dev"},
-	{C_DIALD,      "diald"},
-	{C_EXCLUDED,   "excluded"},
-	{C_EXEC,       "exec"},
-	{C_FQDN_ONLY,  "fqdn_only"},
-	{C_IF,         "if"},
-	{C_INCLUDED,   "included"},
-	{C_NONE,       "none"},
-	{C_OFF,        "off"},
-	{C_ON,         "on"},
-	{C_ONQUERY,    "onquery"},
-	{C_PING,       "ping"},
-	{C_SIMPLE_ONLY,"simple_only"},
-	{TCP_ONLY,     "tcp_only"},
-	{TCP_UDP,      "tcp_udp"},
-	{UDP_ONLY,     "udp_only"}
+static const namevalue_t const_dic[]={
+	{"auth",        C_AUTH},
+	{"dev",         C_DEV},
+	{"diald",       C_DIALD},
+	{"domain",      C_DOMAIN},
+	{"excluded",    C_EXCLUDED},
+	{"exec",        C_EXEC},
+	{"fqdn_only",   C_FQDN_ONLY},
+	{"if",          C_IF},
+	{"included",    C_INCLUDED},
+	{"none",        C_NONE},
+	{"off",         C_OFF},
+	{"on",          C_ON},
+	{"onquery",     C_ONQUERY},
+	{"ping",        C_PING},
+	{"simple_only", C_SIMPLE_ONLY},
+	{"tcp_only",    TCP_ONLY},
+	{"tcp_udp",     TCP_UDP},
+	{"udp_only",    UDP_ONLY}
 };
 
 /* Added by Paul Rombouts */
 static const char *const_names[]={
-  "on",         /* 0 */
-  "off",        /* 1 */
-  "ping",       /* 2 */
-  "none",       /* 3 */
-  "if",         /* 4 */
-  "exec",       /* 5 */
-  "onquery",    /* 6 */
-  "udp_only",   /* 7 */
-  "tcp_only",   /* 8 */
-  "tcp_udp",    /* 9 */
-  "dev",        /* 10 */
-  "diald",      /* 11 */
-  "included",   /* 12 */
-  "excluded",   /* 13 */
-  "simple_only",/* 14 */
-  "fqdn_only",  /* 15 */
-  "auth"        /* 16 */
+	"error",
+	"on",
+	"off",
+	"ping",
+	"none",
+	"if",
+	"exec",
+	"onquery",
+	"udp_only",
+	"tcp_only",
+	"tcp_udp",
+	"dev",
+	"diald",
+	"included",
+	"excluded",
+	"simple_only",
+	"fqdn_only",
+	"auth",
+	"domain"
 };
-	 
-static int cmp_const(const void *key, const void *el)
+
+/* compare two strings.
+   The first one is given as pointer to a char array of length len,
+   the second one as a pointer to a null terminated char array.
+*/
+inline static int keyncmp(const char *key1, int len, const char *key2)
 {
-	return strcmp((char *)key, ((const_t *)el)->name);
+	int cmp=strncmp(key1,key2,len);
+	if(cmp) return cmp;
+	return len-strlen(key2);
 }
 
-int lookup_const(char *name)
+int binsearch_keyword(const char *name, int len, const namevalue_t dic[], int range)
 {
-	const_t *c=(const_t *)bsearch(name, consts, sizeof(consts)/sizeof(const_t), sizeof(const_t),cmp_const);
-	if (c)
-		return c->c;
-	return C_ERR;
+	int i=0,j=range;
+
+	while(i<j) {
+		int k=(i+j)/2;
+		int cmp=keyncmp(name,len,dic[k].name);
+		if(cmp<0)
+			j=k;
+		else if(cmp>0)
+			i=k+1;
+		else
+			return dic[k].val;
+	}
+
+	return 0;
 }
 
+
+int lookup_const(const char *name, int len)
+{
+	return binsearch_keyword(name,len,const_dic,sizeof(const_dic)/sizeof(namevalue_t));
+}
 
 /* Added by Paul Rombouts */
 const char *const_name(int c)

@@ -34,7 +34,7 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
     with revisions by Paul Rombouts.<br>
-    It is up-to-date for version 1.1.9-par. For older documentation, please refer to the doc
+    It is up-to-date for version 1.1.10-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -311,7 +311,7 @@
 	<td>
 	  Specify the query method (default=udponly, others: tcpudp, tcponly)
 	  If you have enabled both udp and tcp queries, this lets you control
-	  which query method pdnsd will use ny default. tcpudp will try tcp
+	  which query method pdnsd will use by default. tcpudp will try tcp
 	  first and back out to udp if tcp is not supported by the server;
 	  udponly and tcponly should be clear.
 	</td>
@@ -720,7 +720,12 @@
     <code>
       option_name=option_value;
     </code><br>
-    Option value may be a string literal (enclosed in &quot;), a number or a constant.
+    Option value may be a string literal, a number or a constant.<br>
+    <em>Note by Paul Rombouts</em>: In previous  versions of pdnsd strings had to be enclosed
+    in quotes (&quot;), but since version 1.1.10 this is no longer necessary, unless
+    a string contains a special character such as whitespace, a token that normally starts
+    a comment, or one of &quot<code>,;{}</code>&quot.
+    (Note that these special characters are illegal in domain names anyway.)<br>
     Constants are noted in the section description in &lt;&gt; signs, but are written
     in the file without these signs. Some options take more than one value; in this
     case, the values are separated with commas. <br>
@@ -1451,16 +1456,16 @@
 	  like the following sections:<br>
 	  <pre>
     rr {
-	owner="localhost.";
-	name="localhost.";
-	a="127.0.0.1";
-	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+	owner = localhost;
+	name = localhost;
+	a = 127.0.0.1;
+	soa = localhost, root.localhost, 42, 86400, 900, 86400, 86400;
     }
     rr {
-	owner="localhost.";
-	name="1.0.0.127.in-addr.arpa.";
-	ptr="localhost.";
-	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+	owner = localhost;
+	name = 1.0.0.127.in-addr.arpa;
+	ptr = localhost;
+	soa = localhost, root.localhost, 42, 86400, 900, 86400, 86400;
     }</pre>
 	  The second section is for reverse resolving and uses the ptr option. There is something special
 	  about the name in the second section: when a resolver wants to get a hostname from an internet
@@ -1487,9 +1492,9 @@
 	  To implement this with pdnsd, you could add the following section to your configuration file:<br>
 	  <pre>
     rr {
-	owner="localhost";
-	name="news";
-	cname="nntp2.myisp.com";
+	owner = localhost;
+	name = news;
+	cname = nntp2.myisp.com;
     }</pre>
 	</td>
       </tr>
@@ -1546,12 +1551,12 @@
     you can inhibit outgoing queries for these by specifying<br>
     <pre>
     neg {
-	name="news.";
-	types=domain;
+	name = news;
+	types = domain;
     }
     neg {
-	name="mail.";
-	types=domain;
+	name = mail;
+	types = domain;
     }</pre>
     in your config file. If you have a search list, you have to repeat that for any
     entry in your search list in addition to the entries given above!
@@ -1589,8 +1594,8 @@
 	  e.g. <code>A</code>, <code>CNAME</code>, <code>NS</code>, <code>PTR</code>, <code>MX</code>, 
 	  <code>AAAA</code>, ...<br>
 	  The command <code>pdnsd-ctl list-rrtypes</code> will give you a complete list
-	  of those types. <code>pdnsd-ctl</code> is built along with pdnsd and will be installed
-	  in the same directory as the pdnsd binary during <code>make install</code>.
+	  of those types. <a href="#pdnsdctl"><code>pdnsd-ctl</code></a> is built along with pdnsd
+	  and will be installed in the same directory as the pdnsd binary during <code>make install</code>.
 	</td>
       </tr>
     </table>
@@ -2041,7 +2046,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 08 Jan 2004 by Paul Rombouts</i>
+      <i>Last revised: 06 Feb 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

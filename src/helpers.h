@@ -50,7 +50,7 @@ inline static int isdchar (unsigned char c)
 
 void rhn2str(unsigned char *rhn, unsigned char *str);
 int  str2rhn(unsigned char *str, unsigned char *rhn);
-char *parsestr2rhn(unsigned char *str, unsigned char *rhn);
+char *parsestr2rhn(unsigned char *str, int len, unsigned char *rhn);
 
 /* Note added by Paul Rombouts:
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen

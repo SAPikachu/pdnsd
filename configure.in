@@ -262,10 +262,6 @@ dnl Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_STDC
 AC_PROG_INSTALL
-AC_PROG_YACC
-yflags="-d $YFLAGS"
-AC_SUBST(yflags)
-AM_PROG_LEX
 
 dnl For dbm subsystem libraries
 AC_PROG_RANLIB
@@ -313,18 +309,6 @@ fi
 #  fi
 #fi	
 
-AC_MSG_CHECKING([whether lexer supports line numbers in debugging])
-yylineno_option=""
-AC_TRY_COMPILE([#include "src/lex.yy.c"], [YYSTYPE yylval; return yylineno;], 
-   yylineno_option="",
-   yylineno_option="%option yylineno")
-AC_SUBST(yylineno_option)
-if test -z "$yylineno_option"; then
-   AC_MSG_RESULT(no)
-   AC_DEFINE(NO_YYLINENO)
-else
-   AC_MSG_RESULT(yes)
-fi
 
 dnl Checks for libraries.
 if test $target = "Linux"; then
@@ -383,7 +367,6 @@ contrib/Makefile
 doc/Makefile
 doc/pdnsd.conf
 src/Makefile
-src/conf-lex.l
 src/pdnsd-ctl/Makefile
 src/rc/Makefile
 src/rc/RedHat/Makefile

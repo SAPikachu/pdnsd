@@ -1,10 +1,16 @@
-2003-01-16  Paul Rombouts <p.a.rombouts@home.nl>
+2004-02-06  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c,src/conf-parser.h,src/conf-keywords.h
+	I've rewritten the parser for the configuration file in C from scratch.
+	(f)lex and yacc/bison are no longer needed to build pdnsd.
+
+2004-01-16  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/main.c
 	Load the cache from disk without locking cache access because pdnsd
 	is still single-threaded at that point.
 
-2003-01-15  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-15  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/cache.c,src/hash.c
 	Moved the responsibility for freeing the cache entries referred by
@@ -13,43 +19,43 @@
 	completely destroyed by the time free_dns_hash() was called, and there was
 	nothing left for free_dns_hash() to free.
 
-2003-01-14  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-14  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/hash.c,src/make_hashconvtable.c
 	The hash conversion table is now generated at build time instead
 	of at run time when pdnsd is started up.
 
-2003-01-13  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-13  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns.c
 	In add_host() fixed incorrect generation of IPV6 type of name for PTR record
 	due to use of && instead of & as masking operator.
 
-2003-01-13  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-13  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/icmp.c, src/dns_answer.c
 	Use unsigned long instead of int error counters to reduce the danger
 	of wraparound.
 
-2003-01-06  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-06  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/main.c,src/thread.c,src/thread.h,src/server.c,src/status.c,src/dns_answer.c
 	Initialize a global thread attribute object in main.c and use it to create all the detached
 	threads, instead of initializing a separate attribute object for each new thread.
 
-2003-01-06  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-06  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c
 	Check the return value of pthread_create() in udp_server_thread()
 	and tcp_server_thread() to ensure that a new answer thread has actually
 	been created and free resources if not.
 
-2003-01-04  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-04  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/helpers.c,src/cache.c,src/conff.c,src/status.c
 	Stop writing to control socket after an error has been detected.
 
-2003-01-03  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-03  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/pdnsd-ctl/pdnsd-ctl.c
 	Tried to make the error messages of pdnsd-ctl more helpful.
@@ -57,23 +63,23 @@
 	is used. For problems with other commands a much shorter message is generated
 	specific for that command.
 
-2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-02  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/helpers.h
 	Changed the definition of rhnlen(). For valid data this will make no difference,
 	but it may change the behaviour of pdnsd in certain error situations.
 
-2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-02  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns.c
 	Optimized compress_name() some more.
 
-2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-02  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c
 	Additional code cleanup in compose_answer().
 
-2003-01-01  Paul Rombouts <p.a.rombouts@home.nl>
+2004-01-01  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* doc/pdnsd-ctl.8
 	Updated the pdnsd-ctl man page.

@@ -31,7 +31,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 #include "consts.h"
 #include "helpers.h"
-#include "conf-parse.h"
+#include "conf-parser.h"
 #include "servers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
@@ -130,8 +130,8 @@ void read_config_file(char *nm)
 		fprintf(stderr,"Error: Could not open conf file %s: %s\n",nm,strerror(errno));
 		exit(3);
 	}
-	lex_set_io(in,stdout);
-	if (yyparse())
+
+	if (!confparse(in))
 		exit(3);
 	fclose(in);
 }

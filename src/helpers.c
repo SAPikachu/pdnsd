@@ -146,10 +146,11 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 }
 
 /*
-  parsestr2rhn is essentially the same as str2rhn, except that it tolerates strings
+  parsestr2rhn is essentially the same as str2rhn, except that it doesn't look beyond
+  the first len chars in the input string. It also tolerates strings
   not ending in a dot and returns a message in case of an error.
  */
-char *parsestr2rhn(unsigned char *str, unsigned char *rhn)
+char *parsestr2rhn(unsigned char *str, int len, unsigned char *rhn)
 {
 	int n=0,i=0,j;
 
@@ -157,21 +158,25 @@ char *parsestr2rhn(unsigned char *str, unsigned char *rhn)
 		int jlim,lb;
 		jlim=i+63;
 		if(jlim>254) jlim=254;
-		for(j=i; isdchar(str[j]); ++j) {
-			if(j>=jlim) return "Domain name element too long";
+		for(j=i; j<len && str[j] && str[j]!='.'; ++j) {
+			if(!isdchar(str[j]))
+				return "Illegal character in domain name";
+			if(j>=jlim)
+				return "Domain name element too long";
 			rhn[j+1]=str[j];
 		}
 
-		if(str[j] && str[j]!='.') return "Illegal character in domain name";
 		lb=j-i;
 		if (lb>0) {
 			rhn[i]=(unsigned char)lb;
 			++n;
 			i = j+1;
 		}
-		else if(str[j])
+		else if(j<len && str[j])
 			return "Empty name element in domain name";
-	} while(str[j]);
+		else
+			break;
+	} while(j<len && str[j]);
 
 	rhn[i]=0;
 	if(n==0)

@@ -42,9 +42,27 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2004-02-10</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.10-par has been released.</b>
+	Latest "maintenance" release by Paul Rombouts.<br>
+
+	The main new feature of this release is a new parser for configuration
+	files, completely rewritten from scratch in C. The main advantages are:
+	(f)lex and yacc/bison are no longer needed to build pdnsd, more
+	informative error messages instead of merely "<code>parse error</code>",
+	and string literals no longer need to be enclosed in quotes in most
+	cases.<br> Furthermore, a bug has been fixed that caused incorrect
+	IPV6-type PTR records to be generated when sourcing
+	<code>/etc/hosts</code> like files.<br>
+
+	There have been other small changes, more details can be found in the <a
+	href="ChangeLog"><code>ChangeLog</code></a>.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-01-08</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.9-par has been released.</b>
-	Latest "maintenance" release by Paul Rombouts.<br>
+	"maintenance" release by Paul Rombouts.<br>
 
 	The change of version number is not very significant; the
 	difference between 1.1.9-par and the previous 1.1.8b1-par8 is marginal.
@@ -440,7 +458,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 08 Jan 2004 by Paul Rombouts</i>
+      <i>Last revised: 09 Feb 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>
