@@ -18,13 +18,19 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.5 2000/06/21 20:36:17 thomas Exp $ */
+/* $Id: error.h,v 1.6 2000/06/21 21:47:18 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
 
 #include "config.h"
 #include <stdio.h>
+#include <signal.h>
+
+/* --- From main.c */
+extern sigset_t sigs_msk;
+extern int waiting;
+/* --- */
 
 void fatal_sig(int sig);
 void crash_msg(char *msg);

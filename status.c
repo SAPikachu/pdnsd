@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.4 2000/06/21 20:36:17 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.5 2000/06/21 21:47:18 thomas Exp $";
 #endif
 
 char fifo_path[1024];
@@ -49,10 +49,13 @@ void *status_thread (void *p)
 {
 	FILE *f;
 	struct utsname nm;
-	sigset_t sgs;
 
-	sigfillset(&sgs);
-	pthread_sigmask(SIG_BLOCK,&sgs,NULL);
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
+	signal(SIGILL,fatal_sig);
+	signal(SIGABRT,fatal_sig);
+	signal(SIGFPE,fatal_sig);
+	signal(SIGSEGV,fatal_sig);
+	signal(SIGPIPE,fatal_sig);
 
 	uname(&nm);
 	(void)p; /* To inhibit "unused variable" warning */

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.15 2000/06/21 20:36:17 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.16 2000/06/21 21:47:18 thomas Exp $";
 #endif
 
 /*
@@ -978,10 +978,13 @@ void *udp_answer_thread(void *data)
 	char ctrl[512];
 	unsigned long rlen=((udp_buf_t *)data)->len;
 	unsigned char *resp;
-	sigset_t sgs;
-	
-	sigfillset(&sgs);
-	pthread_sigmask(SIG_BLOCK,&sgs,NULL);
+
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
+	signal(SIGILL,fatal_sig);
+	signal(SIGABRT,fatal_sig);
+	signal(SIGFPE,fatal_sig);
+	signal(SIGSEGV,fatal_sig);
+	signal(SIGPIPE,fatal_sig);
 
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
@@ -1093,11 +1096,13 @@ void *udp_server_thread(void *dummy)
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 	struct in_pktinfo *sip;
 #endif
-	sigset_t sgs;
-
 	(void)dummy; /* To inhibit "unused variable" warning */
-	sigfillset(&sgs);
-	pthread_sigmask(SIG_BLOCK,&sgs,NULL);
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
+	signal(SIGILL,fatal_sig);
+	signal(SIGABRT,fatal_sig);
+	signal(SIGFPE,fatal_sig);
+	signal(SIGSEGV,fatal_sig);
+	signal(SIGPIPE,fatal_sig);
 
 	if (!pe) {
 		if (da_udp_errs<UDP_MAX_ERRS) {
@@ -1313,10 +1318,14 @@ void *tcp_answer_thread(void *csock)
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
-	sigset_t sgs;
 
-	sigfillset(&sgs);
-	pthread_sigmask(SIG_BLOCK,&sgs,NULL);
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
+	signal(SIGILL,fatal_sig);
+	signal(SIGABRT,fatal_sig);
+	signal(SIGFPE,fatal_sig);
+	signal(SIGSEGV,fatal_sig);
+	signal(SIGPIPE,fatal_sig);
+
 	free(csock);
 	rlen=htons(rlen);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
@@ -1410,11 +1419,14 @@ void *tcp_server_thread(void *p)
 	pthread_attr_t attr;
 	int *csock;
 	int first=1;
-	sigset_t sgs;
 
 	(void)p; /* To inhibit "unused variable" warning */
-	sigfillset(&sgs);
-	pthread_sigmask(SIG_BLOCK,&sgs,NULL);
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);
+	signal(SIGILL,fatal_sig);
+	signal(SIGABRT,fatal_sig);
+	signal(SIGFPE,fatal_sig);
+	signal(SIGSEGV,fatal_sig);
+	signal(SIGPIPE,fatal_sig);
 	if (!pe) {
 		if (da_tcp_errs<TCP_MAX_ERRS) {
 			da_tcp_errs++;

@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.5 2000/06/21 20:36:17 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.6 2000/06/21 21:47:18 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -61,6 +61,9 @@ pthread_t main_thread;
 #ifdef ENABLE_IPV6
  int run_ipv6=DEFAULT_IPV6;
 #endif
+
+sigset_t sigs_msk;
+int waiting=0;
 
 /* Print version and licensing information */
 void print_info (void)
@@ -127,7 +130,6 @@ int main(int argc,char *argv[])
 /*	pdnsd_a a;*/
 
 	int i,sig;
-	sigset_t sigs;
 	char *conf_file="/etc/pdnsd.conf";
 	int stat_pipe=0;
 #if DEBUG>0
@@ -242,24 +244,6 @@ int main(int argc,char *argv[])
 	}
 #endif
 
-/*	inet_pton(AF_INET6,"::1",&a.ipv6);
-	printf("Pinging ::1 -> %i\n", ping(&a,1000,4));
-	inet_pton(AF_INET6,"::42",&a.ipv6);
-	printf("Pinging ::42 -> %i\n", ping(&a,1000,4));
-	inet_pton(AF_INET6,"fe80::02a0:0cff:fe13:5110",&a);
-	printf("Pinging fe80::02a0:0cff:fe13:5110 -> %i\n", ping(&a,1000,4));
-	inet_pton(AF_INET6,"fe80::02a0:0cff:fe13:5111",&a);
-	printf("Pinging fe80::02a0:0cff:fe13:5111 -> %i\n", ping(&a,1000,4));
-
-	inet_pton(AF_INET6,"fe80::200:86ff:fe39:cb0",&a);
-	printf("Pinging fe80::02a0:0cff:fe13:5110 -> %i\n", ping(&a,1000,4));
-
-	inet_pton(AF_INET6,"::ffff:127.0.0.1",&a);
-	printf("Pinging ::ffff:127.0.0.1 -> %i\n", ping(&a,1000,4));
-	inet_pton(AF_INET6,"::ffff:192.168.0.3",&a);
-	printf("Pinging ::ffff:192.168.0.3 -> %i\n", ping(&a,1000,4));
-	exit(0);*/
-
 	init_cache();
 
 	read_config_file(conf_file);
@@ -328,6 +312,19 @@ int main(int argc,char *argv[])
 		DEBUG_MSG1("Using IPv6.\n");
 #endif
 	read_disk_cache();
+
+	sigemptyset(&sigs_msk);
+	sigaddset(&sigs_msk,SIGILL);
+	sigaddset(&sigs_msk,SIGABRT);
+	sigaddset(&sigs_msk,SIGFPE);
+	sigaddset(&sigs_msk,SIGSEGV);
+	sigaddset(&sigs_msk,SIGPIPE);
+	sigaddset(&sigs_msk,SIGTERM);
+	if (!daemon_p) {
+		sigaddset(&sigs_msk,SIGINT);
+		sigaddset(&sigs_msk,SIGQUIT);
+	}
+
 	if (stat_pipe)
 		init_stat_fifo();
 	start_servstat_thread();
@@ -336,19 +333,9 @@ int main(int argc,char *argv[])
 
 	DEBUG_MSG1("All threads successfully started.\n");
 
-	sigemptyset(&sigs);
-	sigaddset(&sigs,SIGILL);
-	sigaddset(&sigs,SIGABRT);
-	sigaddset(&sigs,SIGFPE);
-	sigaddset(&sigs,SIGSEGV);
-	sigaddset(&sigs,SIGPIPE);
-	sigaddset(&sigs,SIGALRM);
-	sigaddset(&sigs,SIGTERM);
-	if (!daemon_p) {
-		sigaddset(&sigs,SIGINT);
-		sigaddset(&sigs,SIGQUIT);
-	}
-	sigwait(&sigs,&sig);
+	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
+	waiting=1;
+	sigwait(&sigs_msk,&sig);
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
 	write_disk_cache();
 	destroy_cache();
