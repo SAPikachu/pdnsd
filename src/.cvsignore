@@ -1,7 +1,0 @@
-conf-lex.l
-conf-lex.c
-conf-parse.c
-conf-parse.h
-Makefile.in
-Makefile
-pdnsd

@@ -180,8 +180,8 @@
 #undef UNDERSCORE
  
 /* The following is needed for using LinuxThreads. Better don't touch. */
-#define _REENTRANT
-#define _THREAD_SAFE
+#define _REENTRANT 1
+#define _THREAD_SAFE 1
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */

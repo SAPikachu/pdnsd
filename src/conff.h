@@ -23,13 +23,14 @@ Boston, MA 02111-1307, USA.  */
 #ifndef CONFF_H
 #define CONFF_H
 
-/* XXX: should use the system defined ones. */
-#define MAXPATH		1024
-#define	MAXIFNAME	31
+/* XXX should use the system defined ones. */
+/* #define MAXPATH 1024 */
+/* #define MAXIFNAME 31 */
 
 #include <config.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <net/if.h>
 #include "ipvers.h"
 #include "list.h"
 
@@ -38,75 +39,81 @@ extern int daemon_p;
 extern int debug_p;
 extern int verbosity;
 extern pthread_t main_thread;
-extern char pidfile[MAXPATH];
+extern char *pidfile;
 extern int stat_pipe;
 extern int notcp;
 /* ----------- */
 
+typedef DYNAMIC_ARRAY(pdnsd_a) *addr_array;
+
+typedef struct {
+  time_t     i_ts;
+  char       is_up;
+  pdnsd_a    a;
+} atup_t;
+typedef DYNAMIC_ARRAY(atup_t) *atup_array;
+
 typedef struct {
 	int              rule;
-	char             domain[256];
+	char            *domain;
 } slist_t;
+typedef DYNAMIC_ARRAY(slist_t) *slist_array;
 
 typedef struct {
 	unsigned short   port;
-	int              uptest;
+	short            uptest;
 	time_t           timeout;
 	time_t           interval;
 	time_t           ping_timeout;
         char             scheme[32];
-	char             interface[MAXIFNAME];
- 	char             device[MAXIFNAME];
-	char             uptest_cmd[513];
+	char            *uptest_cmd;
 	char             uptest_usr[21];
+	char             interface[IFNAMSIZ];
+ 	char             device[IFNAMSIZ];
 	char             label[32];
 	char             purge_cache;
 	char             nocache;
 	char             lean_query;
-	char             is_up;
 	char             is_proxy;
-	int              policy;
-	darray           alist;
-        time_t           i_ts;
+	char             preset;
+	short            policy;
+	slist_array      alist;
+	atup_array       atup_a;
 	pdnsd_a          ping_a;
-	pdnsd_a          a;
 } servparm_t;
+typedef DYNAMIC_ARRAY(servparm_t) *servparm_array;
 
 typedef struct {
 	long          perm_cache;
-	char          cache_dir[MAXPATH];
+	char         *cache_dir;
 	int           port;
 	pdnsd_a       a;
-	char          lndown_kluge;
 	time_t        max_ttl;
 	time_t        min_ttl;
 	time_t        neg_ttl;
-	int           neg_rrs_pol;
-	int           neg_domain_pol;
+	short         neg_rrs_pol;
+	short         neg_domain_pol;
 	char          run_as[21];
 	char          strict_suid;
 	char          paranoid;
+	char          lndown_kluge;
+	char	      onquery;
+	char          rnd_recs;
 	int           ctl_perms;
-        char          scheme_file[MAXPATH];
+        char         *scheme_file;
 	int           proc_limit;
 	int           procq_limit;
 	int           tcp_qtimeout;
 	int           par_queries;
-	char          rnd_recs;
 	int           query_port_start;
 	int           query_port_end;
 } globparm_t;
 
 extern globparm_t global;
-extern servparm_t server;        /* This is only used temporarily */
 extern servparm_t serv_presets;
 
-extern darray servers;
+extern servparm_array servers;
 
-void set_serv_presets(servparm_t *server);
-
-void add_server(servparm_t serv);
-char *slist_add(servparm_t *sp, char *nm, int tp);
 void read_config_file(char *nm); /*nm may be NULL*/
 
 void report_conf_stat(int f);

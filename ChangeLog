@@ -1,0 +1,1510 @@
+2003-05-19  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/conf-lex.l.in,src/conf-parse.y,src/conff.h,src/dns_answer.c,src/dns_query.c,src/servers.c:
+	Merged fixes contained in patch file sent to me by Thomas Moestl with my own version.
+	Changing the version to 1.1.8b1 as suggested by the patch file.
+
+2003-02-26  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* pdnsd-1.1.7a-par.diff:
+	Made one big patch file from all the changes I made up till now.
+	Wrote a description of the changes in a file README.par
+	Posted patch file on the web so others can use it.
+
+2003-02-24  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Changed the code that writes the cache to disk.
+	Data is now written strictly sequentially, eliminating the need for fseek().
+	This seems to have successfully solved the problem I had with corrupt cache files.
+
+2002-05-27  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* ChangeLog:
+	Started experimenting with the source code.
+	Made many changes between 2002-05-27 and 2002-07-13.
+	Too lazy to maintain the ChangeLog.
+
+2002-01-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: Call it 1.1.7.
+
+2002-01-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/dns_query.c:
+	Comment and debug message fixes, more assertions.
+
+2002-01-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.c, src/dns_answer.c, src/dns_query.c:
+	More harmless fixes, correct some comments and debug messages, add more
+	assertions.
+
+	* NEWS, version: 1.1.7p2, correct NEWS entry.
+
+	* src/helpers.c:
+	Make sure the calling thread of pdnsd_exit() terminates immediately.
+
+2002-01-02  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/helpers.c, src/icmp.c:
+	Fix a few more harmless bugs, more paranoia.
+
+	* src/status.c: Fix yet more, probably harmless, problems.
+
+2002-01-01  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.h, src/dns_answer.c, src/dns_query.c:
+	Fix a few more possible buffer size problems, and add a bunch of
+	assertions as last lines of defence.
+
+2001-12-30  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.c: Build fix (include error.h).
+
+	* NEWS, version: Call it 1.1.7p1, and add a NEWS entry.
+
+	* TODO: Reduce TODO to what actually is still needed.
+
+	* src/dns.c, src/error.h, src/helpers.c:
+	Add a bunch of robustness PDNSD_ASSERT()'s.
+
+	* src/dns_query.c:
+	Fix a bug which may possibly be remotely exploitable to gain access as
+	the user pdnsd runs as.
+	This was caused by a dumb single-character mistake :(
+
+	* doc/Makefile.am, configure.in:
+	Avoid confusing automake 1.5 by not putting a comment into a make rule.
+	Fix CONFDIR passing.
+
+	Submitted by:	GoTaR <gotar@poczta.onet.pl>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c:
+	Avoid crashing when the buffer contents received using the status command
+	are not terminated.
+
+2001-10-14  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/pdnsd.in, THANKS:
+	Fix the stop case for the SuSE rc script: killproc requires the full
+	path of the binary as argument (reported by Bernhard Pelz).
+
+2001-09-23  Thomas Moestl  <tmoestl@gmx.net>
+
+	* configure.in:
+	Revamp the OS autodetect test. OpenBSD and (hopefully) NetBSD are no longer
+	unsupported.
+
+	* src/helpers.c, THANKS:
+	Do not try to use arc4random when compiling for NetBSD (submitted by
+	Thomas Stromberg).
+
+2001-09-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* COPYING.BSD: s/REGENTS/AUTHOR/ in one place.
+
+	* src/cache.c:
+	It is possible no record of the requested type is present after calling
+	cr_add_cent_rr_int() (when the record was marked as being local), so
+	check before dereferencing the pointer to the respective rrset.
+	Leave the record unmodified when cr_check_add() returns 0.x
+
+2001-07-26  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/RedHat/pdnsd.in:
+	Add a workaround for @sysconfdir@ substitutions containing ${prefix}.
+	Spotted by Robert Linden.
+
+2001-07-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/RedHat/pdnsd.in:
+	Add a condrestart handler to the Red Hat rc script, and do some general
+	cleanup. Contributed by Christian Engstler.
+
+2001-07-02  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/error.h:
+	Attempt to detect a gcc that cannot yet handle ANSI variadic macros,
+	and work around this by using the old GCC-style variant.
+
+	* src/conff.c:
+	Remove a + at the start of a line that got in when merging a diff by
+	hand.
+
+	* src/servers.c: waitpid() returns a pid_t.
+
+	* src/dns.c:
+	It's sizeof, not sizof. This should unbreak the IPv6 build. Also silence
+	some warnings with appropriate casts.
+
+	* NEWS, version: Call it 1.1.6, and add a NEWS entry.
+
+2001-07-01  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns_query.c, THANKS, version, AUTHORS:
+	Added a modified version of Andreas Steinmetz's code for
+	query_port_start and query_port_range, and added him to AUTHORS and
+	THANKS.
+
+2001-06-23  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c:
+	Fix a bogon: deleted would not be reset correctly in the first
+	purge_cache loop, which could cause pdnsd to loop forever when a
+	negative record was after a deleted rr.
+
+2001-06-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/list.h:
+	Add (currently unused) list macros that are going to be used in future
+	code.
+
+	* src/cache.c:
+	Fix a bogon in the rw lock code: we need to wake up a writer if there
+	are no readers. The old code was a leftover from a time when
+	SUSP_THRESH was just r_pend * x.
+	Fix a typo.
+
+2001-06-13  Thomas Moestl  <tmoestl@gmx.net>
+
+	* AUTHORS: Add mention of FreeBSD code to AUTHORS.
+
+	* src/netdev.c:
+	Add SIZEOF_ADDR_IFREQ (taken from FreeBSD: _SIZEOF_ADDR_IFREQ, net/if.h
+	rev. 1.58.2.1) and add an appropriate copyright notice.
+	The reason for this is that other BSDs don't have it, and we are not
+	supposed to use underscored macros in portable software.
+
+2001-06-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/icmp.c: Fix double #inclusion of <netinet/ip.h>.
+	Noticed by Sebastian Stark.
+
+2001-06-08  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_query.c, THANKS:
+	Allow underscores in the query names reported back, as the comment next
+	to the decompress_name call already indicated (but the call gave NULL
+	as the uscore parameter, which disables underscores normally).
+	Add Michael Ströder, who spotted this, to THANKS.
+
+2001-06-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/servers.c, THANKS:
+	Fix a bug discovered by Stefan Erhardt (and add him to THANKS): the
+	return value of waitpid was misinterpreted.
+
+2001-06-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* Makefile.am, file-list.base.in, version:
+	Bump version to 1.1.6p1; wire up COPYING.BSD so that it gets included
+	in RPM's and tarballs.
+
+	* COPYING.BSD:
+	Add the BSD-Style copyright notice so that it can be included in binary
+	distributions.
+
+2001-06-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.c, src/dns_answer.c, src/dns_query.c, src/helpers.c, src/status.c, NEWS, version:
+	Bump version to 1.1.5, and add a NEWS entry for this release.
+
+	Miscellaneous cleanups, mainly in the status.c code; fix a bug that
+	could cause heap corruption (rhncpy always clobbered the whole buffer,
+	but only the needed space was reserved in add_rr). This should solve
+	the crashes some people were seeing (this bug is not an exploitable
+	security hole as far as I know; the respective buffer is on the heap,
+	as mentioned).
+
+	* src/error.c:
+	Paranoia: do not use the argument to crash_msg as a format string
+	(crash_msg  is only used with constant strings, though).
+
+2001-06-02  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.c, src/dns.h, src/dns_answer.c, src/dns_query.c, src/error.h, src/hash.c, src/helpers.c:
+	Correct underscore handling for SRV records, and a few comment fixes.
+
+	* src/cache.c, src/conff.c, src/dns_query.c, src/error.h, src/helpers.h, src/status.c:
+	Numerous non-critical argument fixes for printf-like functions.
+
+	* src/dns.c: Remove superfluous \n's.
+
+	* src/conf-parse.y, src/dns_answer.c, src/status.c:
+	Correct some DEBUG_MSG nits, and fix two format string bugs. One of
+	them could allow users that are allowed to use pdnsd-ctl with the
+	server (when the status socket is enabled) to gain the privileges of
+	the user that runs (the run_as user or the user that started pdnsd on
+	Linux when strict_setuid is set to off) pdnsd. The status socket is
+	disabled by default, and if it is enabled, it's default permissions
+	are quite restrictive, so this isn't a problem for most.
+
+2001-05-30  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/status.c:
+	Make the status permissions actually work (missed last time).
+
+	* src/dns_answer.c, src/main.c, src/status.c, src/status.h:
+	Move the status socket initialization to a place where it gets executed
+	before any threads are started; this way, we can use umask to set the
+	permissions, and avoid a (in this case harmless, but anyway) race
+	condition.
+	While being there, remove obsoleted comments and places referring to
+	the now-socket as fifo.
+
+2001-05-29  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c:
+	Replace a misuse of CF_LOCAL with DF_LOCAL. This had no effect, because
+	the values are the same.
+
+2001-05-22  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/hash.c, src/helpers.c, THANKS, acconfig.h, configure.in:
+	Add an option for allowing underscores (_) in domain names. This
+	violates the RFC's if enabled (which it isn't by default).
+	Thanks to Eelco Vriezekolk for an initial patch.
+
+	While being there, clean up configure.in and acconfig.c a bit.
+
+	* src/helpers.c, src/status.c:
+	Add a few comments about security implications.
+
+	* src/cache.c, src/dns_answer.c, src/dns_query.c, src/helpers.c:
+	Change some occurences of strcpy to strncpy. Again, no risk here, the
+	buffer lentgh was carefully chosen, and while the data was partially of
+	remote origin, it was carefully validated before entering the cache (and
+	thus having a chance of being used by us).
+	3 occurences remain: 2 in cache.c, where we allocate a sufficient amount
+	of memory before (mimicking the non-portable strdup) and one where
+	we copy a constant and which is obviously correct.
+
+	* src/dns.c:
+	Change two occurences of strcat to strncat. Again, no risk here, the
+	buffer lentgh was carefully chosen, the data was validated and supplied
+	by the starting user.
+
+	* src/dns.c:
+	Change a sprintf to a snprintf and enlarge a buffer a bit. This is pure
+	paranoia (alrhough makes code review easier for others), because a.) the
+	lengths were carefully chosen so that no overrun could occur and
+	b.) this was locally supplied data.
+
+2001-05-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/RedHat/Makefile.am:
+	Add a missing semicolon in  the RedHat rc Makefile.am (discovered by
+	Christian Engstler).
+
+2001-05-19  Thomas Moestl  <tmoestl@gmx.net>
+
+	* HACKING: Remove the mostly outdated HACKING file.
+
+	* src/debug.c:
+	Catch a corner case in the allocation debug helpers: realloc() with a
+	size of 0 is effectively a free operation. To my knowledge, this is
+	not done in the pdnsd sources, however.
+
+	* src/test/test.sh:
+	Use the correct error function, forgotten in last commit.
+
+	* src/test/clnt-test.sh, src/test/srv-test.sh, src/test/test.sh:
+	Misc small improvements in the regression test scripts, mostly
+	adding configuration variables and common error handlers.
+	Comment a little on the tests that are done in clnt-test.sh
+
+	* src/rr_types.c: Fix a typo in a comment.
+
+	* src/cache.c, src/debug.c, src/dns_answer.c, src/dns_query.c, src/error.h, src/hash.c, src/list.c, src/main.c, src/status.c, src/thread.c, src/thread.h:
+	New ANSI variadic debug macros (finally), which print a timestamp and
+	a thread ID now for easier debugging with many parallel queries.
+	It should be considered to make those inline functions instead. However,
+	we have the advantage that we use printf in place here and benefit
+	from parameter checking without specifying obscure function attributes.
+
+	* src/rc/SuSE/.cvsignore, src/test/.cvsignore, src/rc/.cvsignore, src/rc/Debian/.cvsignore, src/rc/RedHat/.cvsignore, contrib/.cvsignore, doc/.cvsignore, src/.cvsignore, src/pdnsd-ctl/.cvsignore, .cvsignore:
+	Brush up the rotten (pre-autoconf!) .cvsignore files and add some where
+	necessary.
+
+2001-05-17  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/RedHat/Makefile.am, src/rc/RedHat/pdnsd.in, configure.in, pdnsd.spec.in:
+	Red Hat rc script and RPM improvements by Christian Engstler.
+
+2001-05-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c:
+	Fix a place missed when converting rr_info.
+
+	* version: It's 1.1.4, finally.
+
+	* src/rr_types.c, version:
+	Change some class values in the rr type structure to better values.
+	Bump beta version.
+
+2001-05-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/dns_answer.c, src/dns_query.c:
+	Fix a signedness bug that could cause erraneous 0 ttls to be returned.
+	Add some debug messages, and do some minor fixups.
+
+2001-05-09  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/rr_types.c:
+	Fix some bugs in the new conflict resolution code and make it more
+	complete.
+
+	* src/cache.c, version:
+	Add conflict resolution code. This needs a bit more checking, and
+	the tables might still need to be tweaked.
+	Bump version.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/Makefile.am, src/cache.c, src/cache.h, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/consts.c, src/consts.h, src/debug.c, src/dns.c, src/dns_answer.c, src/dns_answer.h, src/dns_query.c, src/dns_query.h, src/error.c, src/error.h, src/hash.c, src/hash.h, src/helpers.c, src/helpers.h, src/icmp.c, src/icmp.h, src/list.c, src/main.c, src/netdev.c, src/netdev.h, src/rr_types.c, src/rr_types.h, src/servers.c, src/servers.h, src/status.c, src/status.h, src/thread.c, src/thread.h, configure.in, version:
+	Remove the old infrastructure that theoretically could have allowed for
+	multiple cache subsystems. This ability was never used, and if it should,
+	the caching should probably be split into two layers, a higher level
+	common one and the actual caching backends.
+	src/cacheing/cache.c and src/cacheing/native/*.[ch] were repo-copied to
+	src/.
+	Substitute "conf.h" with <conf.h> for includes.
+	Purge records a little more often (when adding records, and when
+	retrieving from the cache). Handle cache_size properly when using
+	purge_cent.
+	Introduce some infrastructure in rr_types.[ch] for a record conflict
+	checker which is to be introduced shortly to enforce cache consistency
+	even in the purge_cache=off case.
+
+2001-05-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/RedHat/pdnsd.in, src/rc/SuSE/pdnsd.in, src/rc/Debian/pdnsd.in:
+	Revert the last commit. It breaks the rc scripts by spamming them with
+	make style variable expansions.
+
+	* src/rc/SuSE/pdnsd.in, src/rc/RedHat/pdnsd.in, src/rc/Debian/pdnsd.in, AUTHORS, THANKS:
+	Fix a rc script bug spotted by Frank Elsner, and add him to AUTHORS and
+	THANKS.
+
+2001-05-01  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: Bump version to 1.1.4p2.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/status.c:
+	Fix some bogons and remove some unneeded code in the pdnsd-ctl
+	interface.
+	Fix spelling and line length bugs.
+
+2001-04-30  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/conf-parse.y, src/status.c:
+	Some corrections for the authrec config file and the pdnsd-ctl noauth
+	support.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c:
+	Fix wrong argv index (using getopt changed the indices).
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns.c, src/dns.h, src/dns_query.c, src/status.c, THANKS, version, AUTHORS:
+	Accumulated changes that should go in before 1.1.4:
+	- merge Andrew M. Bishop's patch that adds a server label option
+	- make local records authoritative for the domain by default, and add
+	  the authrec option to change this
+	- add the auth keyword to the pdnsd-ctl source option to support that
+	- fix a bug in the conf-parse.y grammar causing a shift/reduce conflict
+	- sync up AUTHORS and THANKS: add Andrew M. Bishop, Kevin A. Burton and
+	  Michael Steinl
+	- bump version to 1.1.4p1
+
+	* src/conff.c, src/main.c:
+	Fix two small bugs: the wrong element of argv was used for the pidfile
+	option, which could cause pdnsd to segfault, and C_INCLUDED was always
+	used in slist_add, regardless of the tp parameter.
+
+	* src/helpers.c:
+	Fix a bogon discovered by Michael Steiner:  the fread() return value
+	was tested against bytes, not the number of items.
+
+	* src/hash.c, src/hash.h, src/cache.c:
+	purge_cache used to walk over the cache quite inefficiently when it was
+	called from add_cache. Add a lazy mode for purge_cache which uses the
+	rrset_l to be efficient in this special case.
+	Add some #ifdef'ed-out-by-default code to debug the hash function.
+
+2001-04-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* NEWS: Add NEWS entry for 1.1.3.
+
+	* src/dns.c, src/helpers.c, src/icmp.c, contrib/Makefile.am, contrib/README, version:
+	IPv6, ICMP and build fixes. It's 1.1.3 now!
+
+	* src/debug.c, src/debug.h: Add the new debug support files.
+
+	* src/test/clnt-test.sh, src/cache.c, src/cache.h, src/error.h, src/list.c, src/list.h, src/main.c, src/status.c, src/status.h, src/Makefile.am, src/conf-parse.y, src/conff.h, src/dns.c, src/dns_answer.c, src/dns_query.c:
+	Add allocation debug support. Some small cleanups before the upcoming
+	1.1.3 release.
+
+	* src/dns_query.h, src/helpers.c, src/list.c, src/conff.c, src/dns.c, src/dns_answer.c, src/dns_query.c:
+	Lots of small bugfixes, cleanups, style and spelling fixes.
+
+	* src/test/clnt-test.sh: Fix nc arguments.
+
+	* src/test/clnt-test.sh, src/test/srv-test.sh, src/test/test.sh:
+	Add regression test scripts.
+
+2001-04-11  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/cache.c, src/servers.c, src/dns_answer.c, src/helpers.c, src/helpers.h, src/icmp.c, src/main.c:
+	Further cleanups and bug, style and spelling fixes.
+
+	* configure.in: Use -g again in the CFLAGS for a while.
+
+	* version: Beta version bump.
+
+	* src/rc/SuSE/pdnsd.in:
+	killproc does not seem to take the full path, but only the process name
+	(which is what one would expect).
+
+	* src/hash.c, src/netdev.c, src/rr_types.c, src/status.c, src/conf-parse.y, src/conff.c, src/helpers.c:
+	Misc. smaller fixes, and fixes on the new features. Also clean up style
+	and spelling in some places.
+
+	* src/dns_answer.c:
+	Bring the glibc pthread_cleanup_push/pthread_cleanup_pop return bug
+	workaround into the main tree.
+	Without this, a return between those two macros would cause pdnsd
+	to crash on system using a glibc between 2.1.2 and 2.2.2 (and possibly
+	others). This could e.g. be cause by a TCP connect() port scan.
+
+2001-04-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c:
+	Minor fixes, direct error messages to stderr.
+
+	* src/list.c, src/list.h: Add the new list implementations.
+
+	* src/cache.c, src/cache.h, src/conf-parse.y, src/dns.c, src/dns_answer.c, src/dns_query.c, src/helpers.c, src/helpers.h, src/conf-lex.l.in:
+	Introduce rhnlen and rhncpy and make use of it instead of kluged-up
+	strcpy/strlen in the appropriate places.
+	Check that incoming names contain only legal characters in
+	decompress_name, return RC_FORMAT otherwise (this would result in
+	wrong handling only, but not in a security hole).
+	Reorganzie compose_answer and make it more correct for multiple
+	questions. Get rid of the algorithm that tries to add a higher
+	level name server; this might be readded in another place somewhen.
+	Use some more da_* instead of hand-built lists.
+	Some style cleanups.
+
+	* src/rc/RedHat/Makefile.am:
+	Add K45pdnsd links for rc6.d (reboot) and rc0.d (halt) following a
+	suggestion by Stas Sergeev.
+
+2001-04-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/cache.h, src/error.h, src/helpers.c, src/helpers.h, src/main.c, src/servers.c, src/status.c, src/conf-parse.y, src/conff.c, src/conff.h, src/dns.c, src/dns.h, src/dns_answer.c, src/dns_query.c, src/Makefile.am, version:
+	Bump alpha version; introduce a generic dynamic array type and make use
+	of it to ged rid of some ugly casts and redundant code.
+	Minor fixes.
+
+	* src/icmp.h, src/ipvers.h, src/conff.h, src/consts.h, src/dns.h, src/dns_answer.h, src/dns_query.h, src/helpers.h:
+	Use macros without an underscore as first character to protect the
+	headers. Underscores are reserved and should not be used in the
+	application name space.
+
+	* src/error.h: Add PDNSD_ASSERT, change style a little.
+
+2001-04-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/hash.c, src/netdev.c, src/servers.c, src/helpers.c, src/icmp.c, src/main.c:
+	Another slew of small bugfixes, minor updates and small fixes.
+
+	* src/rr_types.c, src/consts.c:
+	Update rr_types.c copyright date, consts.c should have a rcsid string.
+
+	* src/rr_types.c: cvs add rr_types.c.
+
+	* src/dns.h, src/helpers.h, src/ipvers.h, src/rr_types.h, src/status.h, src/conf-parse.y, src/conff.h:
+	cvs add rr_types.h that got missed before, update copyright dates,
+	remove some old config cruft, some minor fixups.
+
+	* src/conff.c, src/consts.c, src/dns_answer.c, src/error.c, src/conf-lex.l.in, src/conf-parse.y:
+	Update copyright dates, fix some minor bugs. Update copyright dates.
+	cvs add missed consts.c.
+
+2001-03-28  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/hash.c, src/error.c, src/servers.c, src/dns_answer.c, version:
+	Bump version to 1.1.3p4
+	Fix some non-critical locking issues (none of them could be fatal).
+	Adjust copyright dates.
+
+	* src/hash.c: Make the hash compare case insensitive.
+
+2001-03-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* contrib/Makefile.am: Add Id tag to Makefile.am
+
+	* src/cache.c, src/dns_answer.c, src/icmp.c:
+	Some more type fixes overlooked in last commit.
+
+	* src/conf-parse.y, src/conff.h, src/dns.h, src/dns_answer.c, src/dns_query.c, src/icmp.c:
+	More type cleanups. Use time_t for time specifications throughout, and
+	make lengths singed longs. Cast cleanup in icmp.c to fix alpha
+	unalinged access faults.
+
+	* contrib/dhcp2pdnsd, contrib/pdnsd_dhcp.pl, contrib/save_ram.pl, contrib/Makefile.am, contrib/README, configure.in, version, Makefile.am:
+	It's 1.1.3p3 now.
+	Change the contrib infrastructure: there is a Makfile.am in contrib/
+	now. Rename Marko Stolle's pdnsd_update.pl to pdnsd_dhcp.pl and bring
+	it up to date (adding the rc script and save_ram.pl).
+
+	* src/helpers.c, src/dns.c, src/dns_query.c, AUTHORS, THANKS:
+	Bring in Bjoern Fischer's changes to make pdnsd conserve the case of
+	cached names, and add him to AUTHORS and THANKS.
+
+	* configure.in: The gdbm backend is discontinued.
+
+	* src/cache.c, src/hash.c:
+	Cleanup and small bugfixes of the cache code (esp. locking).
+
+	* AUTHORS, THANKS, file-list.base.in, pdnsd.spec.in:
+	SuSE fixes by Christian Engstler.
+	Add him to AUTHORS, THANKS.
+
+2001-03-14  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_query.c:
+	Fix a bug that could cause servers that were not used in the first
+	parallel query not to be used at all (failure would be returned
+	instead).
+
+2001-03-13  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/icmp.c: Add define for ip_p equivalent on Linux.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/cache.c, src/dns_query.c, src/icmp.c, src/status.c, src/conf-parse.y, src/dns_answer.c, version:
+	Bump alpha version, more alignment fixes. All casts should be correct
+	now.
+
+2001-03-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/dns_query.c, AUTHORS, THANKS:
+	Add the alpha fixes by P.J. Bostley, and add him to THANKS and AUTHORS.
+
+2001-03-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns.h, src/helpers.h:
+	Remove prototype for removed function strtolower.
+	Use unit16_t and uint32_t instead of unsinged short/long for dns
+	protocol structures.
+
+2001-02-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/status.c, src/conf-lex.l.in, src/conf-parse.y, AUTHORS, Makefile.am, version:
+	Add MX and CNAME for rr sections in the config file and MX setting
+	for pdnsd-ctl.
+	Typo fixes.
+
+	* src/netdev.c: Two more fixes.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/cache.c, src/dns.c, src/main.c:
+	More small robustness fixes.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/netdev.c, src/status.c, src/status.h, src/conf-parse.y, src/helpers.c, src/main.c, configure.in, version, Makefile.am, NEWS:
+	A batch of robustness fixes. Move the status socket to the cache
+	directory. Various cleanups.
+	It's 1.3 now (hopefully to be released soon).
+
+2001-02-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/main.c, src/conf-lex.l.in:
+	Fix breakage of the -mtu option and the query_method option (the parser
+	would not recognize constants that contained underscores).
+
+2001-02-20  Thomas Moestl  <tmoestl@gmx.net>
+
+	* contrib/README, contrib/pdnsd_dhcp.pl, AUTHORS, Makefile.am, THANKS, file-list.base.in:
+	Add Marko Stolle's pdnsd_update.pl DHCP update script, add him to THANKS,
+	and bring a contrib/ directory in place.
+
+2001-02-15  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, configure.in, version:
+	Some minor build & misc fixes. Bump version to 1.1.2a and release a
+	version with the spec file fixes to get proper Red Hat RPM's.
+
+2001-02-09  Thomas Moestl  <tmoestl@gmx.net>
+
+	* NEWS: Bring NEWS up to date.
+
+	* src/icmp.c: Do not close the socket on error.
+
+	* pdnsd.spec.in: Add spec file fixes for man pages by Sourav K. Mandal
+
+2001-02-07  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: It is now 1.1.2.
+
+	* src/dns_query.c, src/main.c, Makefile.am, THANKS:
+	Fix a too strict length checking that could cause SERVFAIL to be returned
+	when the server returned NXDOMAIN. Add Markus Storm to THANKS (he has
+	reported this bug and supplied helpful information).
+	Minor tweaking in main.c.
+	Remove emptying of GZIP_ENV in Makefile.am (this normally contains --best).
+
+2001-01-27  Thomas Moestl  <tmoestl@gmx.net>
+
+	* AUTHORS, THANKS:
+	Add Michael Wiedmann to AUTHORS and THANKS for his pdnsd-ctl.8 man page.
+
+	* doc/Makefile.am, doc/pdnsd-ctl.8, configure.in, Makefile.am:
+	Add the pdnsd-ctl man page contributed by Michael Wiedmann. For this to
+	build in a correct way, add doc/Makefile.am and move all doc and
+	pdnsd.conf.sample related stuff in there.
+
+2001-01-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/main.c: Removed unneeded for the non-O_NOFOLLOW case.
+
+2001-01-24  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/main.c:
+	Add a fchown and a fchmod to the new non-O_NOFOLLOW case (not yet used).
+
+	* src/conf-parse.y, src/main.c, src/status.c: Misc small fixups.
+
+	* version: It's called 1.1.1 now.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/status.c, src/main.c:
+	Fix command line parsing. Add code to securely create pid files under
+	OSs that do not support the O_NOFOLLOW flag (those OSs are not supported
+	yet, though).
+	Fix a possible race condition in socket creation/chmod. We now create
+	a directory in /tmp (or whatever TEMPDIR was set) to hold the socket.
+
+	* src/dns.c, src/dns_answer.c, src/icmp.c, src/main.c, src/status.c:
+	Another slew of copyright notice upgrades.
+
+	* version, configure.in:
+	Bump beta revision, fix typo (missing $) in configure.in
+
+	* src/dns.c, src/dns_answer.c, src/status.c:
+	Silence BSD compile time warnings.
+
+	* configure.in:
+	Cleanup, add autoconf code for building pdnsd on FreeBSD-CURRENT with the
+	new additionally-linked libc_r.
+
+2001-01-16  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/icmp.c, version:
+	Bump beta revision, fix a comment. Also, generate ping id's using pdnsd's
+	random wrappers instead of using rand() for paranoia.
+
+2001-01-15  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/helpers.c, configure.in: Improve wording.
+
+	* src/helpers.c: Update copyright year (forgotten in last commit).
+
+	* src/dns_answer.c, src/helpers.c, src/main.c, acconfig.h, configure.in, version:
+	Bump versions. Small fixes (move socket intitializations from
+	udp_server_thread to init_udp_sockets to prevent warning when startup
+	takes long.
+	Make arc4random an option for a query id RNG and make it the default
+	on FreeBSD.
+
+2000-12-07  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/conf-parse.y, src/main.c, version:
+	We are at 1.1.1p1. Removed the exec-uptest security warning printef if no
+	explicit user is given in the strict_setuid case (it is not needed there,
+	and confuses users).
+
+2000-11-28  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/helpers.c:
+	Converted cache locks to use condition vars and have lock contention
+	prevention. Added comments where not converted.
+
+2000-11-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* AUTHORS, THANKS, pdnsd.spec.in:
+	Added spec file patches by Bernd Leibing and added him to AUTHORS and
+	THANKS.
+
+2000-11-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/Makefile.am: Fixed a hopefully last SuSE rpm build bug.
+
+	* src/rc/SuSE/Makefile.am:
+	Another one: allow rc.conf manipulation to fail for a clean
+	rpm build (SuSE only).
+
+	* file-list.base.in:
+	Last-minute fix: correct filelist for rpm build to reflect the new name
+	for the sample configuration.
+
+	* version: It's 1.1.0 now.
+
+2000-11-18  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/cache.c, src/dns_query.c, version:
+	Fixed a condition where the cache code did not give up a lock.
+	Made the udp code use connect().
+	Some small changes.
+
+2000-11-16  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: Calling it 1.1.0b3.
+
+2000-11-15  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/test/Makefile.am, src/pdnsd-ctl/Makefile.am, src/cache.c, src/Makefile.am, src/dns_answer.c, src/error.h, src/icmp.c, src/icmp.h, src/main.c, src/netdev.c, src/servers.c, src/thread.c, Makefile.am, configure.in, version:
+	Enabled new rr support by default (some resolvers don't seem to like not
+	supported answers - not our bug, but well).
+	Made some globals volatile to avoid being bitten by optimisations.
+
+2000-11-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* TODO, version: Called it the first beta.
+
+2000-11-11  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/conf-lex.l.in, src/conf-parse.y, doc/pdnsd.conf.in:
+	renanmed rrneg to neg in the config file.
+	Misc small fixes.
+	pdnsd-ctl record xxx inval will now also invalidate local records.
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/dns_answer.c, src/status.c, pdnsd.spec.in:
+	Added --sysconfdir=/etc as argument to configure in the spec file.
+	Implemented the new rrneg config file section.
+
+	* src/test/Makefile.am, src/pdnsd-ctl/Makefile.am, src/pdnsd-ctl/pdnsd-ctl.c, src/cache.c, src/cache.h, src/status.c, src/status.h, TODO:
+	Added the neg option to pdnsd-ctl.
+
+	* src/cache.c, src/Makefile.am, src/conf-lex.l.in, src/consts.h, src/dns.c, src/dns.h, src/dns_answer.c, src/dns_query.c, src/helpers.c, src/main.c, configure.in:
+	Assorted fixes. The new features should be stabilized by now, will
+	integrate the missing few features now.
+	Also actived the tcp server by default.
+
+2000-11-07  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/dns_query.c, src/icmp.c, src/ipvers.h, THANKS, TODO:
+	Fixed a possible memory and socket leak reported by Erich Reitz.
+	Implemented udp source address discovery for FreeBSD.
+
+	* src/dns_query.c: Part 2 of yesterdays fix.
+
+2000-11-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_query.c, version:
+	Fixed a bug reported by Erich Reitz: pdnsd could leak fd's and memory if
+	queries timed out.
+
+	* src/cache.c, src/cache.h, src/Makefile.am, src/dns_answer.c, src/dns_query.c, TODO, configure.in:
+	Sorted out some bugs for the new neg cacheing.
+
+2000-11-05  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/dns_query.c, TODO:
+	Negative cacheing support is now present, but largely untested.
+
+	* src/conff.c, TODO:
+	The output of pdnsd-ctl status is now complete with all currently
+	supported options.
+
+	* src/conf-parse.y, src/conff.c, src/conff.h, src/consts.h, src/conf-lex.l.in:
+	Added the config file options for the nefative cacheing support.
+
+2000-11-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/cache.h, src/conf-parse.y, src/dns.c, src/dns_query.c, src/status.c, version:
+	The new cache infrastructure for negative cacheing is in place.
+	Using and testing it remains.
+
+	* src/cache.c, src/cache.h:
+	First changes to support negative cacheing. This should not break
+	anything, but the cache file format will be incompatible.
+
+	* src/main.c, src/dns_answer.c:
+	init_udp_socket() and init_tcp_socket() are now called after
+	daemonizing on FreeBSD, as bind wants to lock the fd which
+	can cause later calls to fail after an exit.
+
+2000-11-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_query.c, src/icmp.c, src/servers.c:
+	Minor bugfixes and repository cleanup.
+
+2000-11-02  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/icmp.c, TODO, version:
+	Called it 1.0.16p4. Fixed some compatability problems with the new code;
+	the ipv4 implementation seems to be fairly stable, the ipv6 one needs
+	some testing with dest unreach messages.
+
+	* src/icmp.c, src/main.c:
+	Rewrote large parts of the ping implementation to be more portable.
+
+2000-11-01  Thomas Moestl  <tmoestl@gmx.net>
+
+	* acconfig.h, configure.in, version:
+	Some config fixes, version to 1.0.16p3. SOCKET_LOCKING should be
+	off by default, as sendmsg can block.
+
+	* src/pdnsd-ctl/pdnsd-ctl.c, src/error.h, configure.in:
+	Removed -W* arguments from CFLAGS that were implied by -Wall.
+
+	* src/thread.c, configure.in:
+	Added some more safety tests to configure.in, and made it give
+	an error on some conditions. Also made configure do poll and usleep
+	detectione.
+
+	* src/cache.h, src/test/Makefile.am, src/dns_answer.c, src/error.c, src/error.h, src/helpers.c, src/main.c, src/servers.c, src/status.c, src/thread.c, src/thread.h, src/Makefile.am:
+	Code cleanup. Beautified some macros, and moved the thread
+	specific things from error.[ch] over to the new thread.[ch].
+	Also introduced usleep_r which tries to be thread safe for
+	different Unices.
+
+2000-10-31  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl, src/pdnsd-ctl/pdnsd-ctl.c:
+	The pdnsd-ctl binary got into cvs. Fixed that.
+
+	* src/pdnsd-ctl/pdnsd-ctl, src/cache.c, src/cache.h, src/error.c, src/helpers.c, src/main.c, version:
+	Another set of FreeBSD compatability patches. This seems to catch
+	most of the problems, and pdnsd should be useable with libc_r now.
+
+2000-10-30  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/pdnsd-ctl, src/conff.c, src/dns_answer.c, src/dns_query.c, src/helpers.c, src/icmp.c, src/main.c, AUTHORS, Makefile.am, THANKS, configure.in, version:
+	FreeBSD fixes, mostly contributed by Roman Shterenzon.
+
+2000-10-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/pdnsd-ctl/Makefile.am, src/pdnsd-ctl/pdnsd-ctl:
+	pdnsd-ctl was not in cvs.
+
+	* src/dns_query.c, src/error.h, configure.in: Some fixups for 1.0.15.
+
+2000-10-23  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/dns_query.c, configure.in:
+	Several fixes for pdnsd to work better when it receives error replys.
+
+	* src/dns.c, src/dns_answer.c:
+	Fixed another memory leak on an error path in dns_answer.c and did
+	a pointer signedness fixup in dns.c
+
+2000-10-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, AUTHORS:
+	Applied a patch by Paul Wagland that fixes some spelling mistakes
+	and some memory leaks on error paths.
+
+	* src/dns_query.c, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns_answer.c, NEWS, version:
+	Bug fixes. Added the randomize_recs option and turned it on
+	by default.
+
+2000-10-20  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/helpers.c, src/dns.c, src/dns_query.c:
+	Fixes for the paranoid option to work with root servers
+	properly.
+
+	* src/dns_query.c, src/dns.h, src/dns_answer.c, AUTHORS, THANKS:
+	Applied a patch by Paul Wagland for bind9-compatability and added
+	him to AUTHORS and THANKS.
+
+2000-10-19  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, NEWS, version:
+	Another POLL_* fix. It is now called 1.0.14.
+
+	* src/dns_answer.c, src/dns_query.c, src/icmp.c: BSD build fixes.
+
+	* src/dns_query.c:
+	Made p_recurdive_query return immediately if a query returns
+	NXDOMAIN.
+
+	* src/dns_query.c, Makefile.am:
+	Some bugifixes. It is now called 1.0.13. Releasing.
+
+	* src/cache.c, src/dns_query.c, AUTHORS, NEWS:
+	Updated AUTHORS and NEWS. Made destroy_cache() lock the cache so
+	that no thread can access the cache afterwards (could lead to
+	crashes).
+
+	* src/helpers.c, NEWS, THANKS:
+	Integrated a security fix contributed by Olaf Kirch: when
+	changing user IDs, pdnsd did not reinitialize the supplementary
+	group list, meaning that the process still had the privileges
+	of the supplementary groups the original user was member of.
+
+	* src/conf-lex.l.in, src/conf-parse.y, Makefile.am, TODO, version:
+	Introduced the par_queries option.
+
+	* src/dns_answer.c, src/dns_query.c, TODO:
+	Updated TODO, did some fixups for string handling.
+
+	* HACKING: Added HACKING with some comments about coding style.
+
+2000-10-18  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, src/dns_query.c, src/error.h, src/main.c, TODO:
+	Revieved and fixed the new dns_query.c-poll/select loops.
+
+	* src/test/tping.c, src/dns_query.c, src/icmp.c:
+	Fixed the new poll/select ping support.
+
+2000-10-17  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_query.c, src/icmp.c, TODO:
+	Got rid of the O_NONBLOCK loop in the icmp.c ping implementation.
+	Beta tesing pending.
+
+	* src/rc/Debian/Makefile.am, src/conff.c, src/conff.h, src/dns_query.c, src/dns_query.h, THANKS, TODO, acconfig.h, configure.in:
+	Corrected the Debian rc script (bug reported by Michael Müller).
+	Got rid of the nonblocking socket things in dns_query.c, and
+	using poll/select now.
+	Testing (esp. --no-poll) remains.
+
+	* src/dns_answer.c:
+	Got rid of O_NONBLOCK read loops in dns_answer.c, using poll/select
+	now instead (after one issue about boundaries was cleared up).
+
+2000-10-16  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/Makefile.am, src/rc/RedHat/Makefile.am, src/rc/Debian/Makefile.am:
+	The generated rc scripts do not need to be in the distribution.
+
+	* src/conff.c, src/main.c:
+	Fixed a server structure members in conff.c. Only delete the socket
+	if we are in status pipe mode now.
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns_answer.c, src/dns_query.c, acconfig.h, configure.in:
+	Added the --enable-tcp-subseq and --with-tcp-qtimeout configure
+	options, added the tcp_qtimeout conf file option, tested things.
+	1.0.12 is ready for release.
+
+2000-10-15  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c, TODO, acconfig.h:
+	Added TCP timeouts to the answer code. Still need an option in the
+	conf file and documentation for that (besides beta testing).
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/consts.h, src/dns_query.c, src/helpers.c, src/helpers.h, NEWS, TODO:
+	Introduced domain inclusion/exclusion lists in the server section
+	(new options include=, exclude=, policy=).
+
+2000-10-14  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns_answer.c, src/main.c, NEWS, TODO, version:
+	Upped version, updated NEWS and TODO and implemented a process
+	count limit.
+
+2000-10-13  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/Debian/pdnsd.in, src/main.c:
+	Added the --pdnsd-user option, and made the Debian rc script
+	use it rather than trying to parse the config file itself.
+
+2000-10-11  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/pdnsd, src/rc/SuSE/pdnsd.in, src/rc/RedHat/pdnsd, src/rc/RedHat/pdnsd.in, src/rc/Debian/pdnsd, src/rc/Debian/pdnsd.in, AUTHORS, THANKS, configure.in:
+	Added the 'configure'-able rc scripts contributed by Carsten Block
+	and added him to THANKS and AUTHORS.
+
+	* src/main.c:
+	Added O_NOFOLLOW to the pidfile open() call (if it is defined)
+	to prevent users creating files as the pdnsd user (using links)
+	if the admin put the pidfile in a world-writeable directory
+	against all good advice.
+	This is not a bug fix! Admins were not, and are still not supposed
+	to put the pidfile in a directory that is writeable for untrusted
+	users!
+
+2000-10-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* THANKS: Added Milan P. Stanic to THANKS.
+
+	* src/main.c:
+	Fixed a missing O_WRONLY in the open() call for pidfile operation.
+
+2000-10-08  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/Makefile.am, src/dns.c, src/dns_answer.c, configure.in, version, acconfig.h:
+	Released 1.0.11.
+	Two security fixes in dns.c and dns_answer.c, and misc. smaller issues.
+
+	* src/Makefile.am, src/conf-parse.y, src/dns_answer.c, src/dns_query.c, src/icmp.c, src/servers.c, AUTHORS, THANKS, TODO, acconfig.h, configure.in, version:
+	1.0.10 was released some time ago ;-)
+	This had some IPv6 fixes.
+	Also fixed minor bug when using SOCKET_LOCKING.
+
+2000-08-28  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/dns_answer.c: Fixed a parameter mismatch in getsockopt()
+
+	* Makefile.am:
+	Applied Sourav K. Mandal's rpm build patch to the toplevel
+	Makefile.am
+
+2000-08-27  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/conf-lex.l.in, src/conf-parse.y, src/consts.h, src/servers.c, version:
+	Added diald support. It's now called 1.0.9.
+
+	* src/conf-parse.y, src/conff.c, src/netdev.c, pdnsd.spec.in:
+	Fixed some ugly typos in conf-parse.y and netdev.c.
+	Since I have no further bug reports and these bugs make some
+	things inconvenient, I will release 1.0.9 immediately.
+
+2000-08-26  Thomas Moestl  <tmoestl@gmx.net>
+
+	* pdnsd.spec.in: small spec fix.
+
+	* NEWS, configure.in: Last fixups for 1.0.8. Released it.
+
+	* Makefile.am: Set mode and owner for cache file.
+
+	* src/conf-parse.y, src/dns_answer.c, src/netdev.c, acconfig.h, configure.in, version:
+	Misc fixes. Hopefully fixed the UDP socket problems under Linux SMP.
+
+2000-08-20  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/dns_answer.c, AUTHORS, THANKS, configure.in, pdnsd.spec.in, version:
+	Build fixes by Alexandre Nunes, spec fixes (does now set distro for
+	configure), first attempt at an "error in udp send"-fix, and fix
+	for a problem with having records for the root domain in the disk
+	cache file.
+
+2000-08-13  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/netdev.h, src/servers.c, src/status.c, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/consts.h, src/dns.c, src/dns.h, src/main.c, src/netdev.c, AUTHORS, THANKS:
+	Some minor fixes. Integrated the ppp device patch by Ron Yorston.
+
+2000-08-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* configure.in:
+	configure.in was missing in repository. Also removed debugging
+	flag for build.
+
+	* src/main.c: Made the pid file handling safe for directories.
+
+	* src/dns.c: Part II of the last fix.
+
+	* src/dns.c:
+	Fixed a nasty bug in decompress_name which would produce errors very
+	rarely. That was a off-by-one bug, but on the safe side (no overflow,
+	stopping one by too early).
+
+	* src/main.c:
+	Fixed several possible problems with strncat(). None of these was
+	critical or involved remote data.
+
+2000-08-08  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/main.c: Changed FreeBSD signal latency to 250 ms.
+
+	* src/main.c, acconfig.h:
+	A set of last-minute FreeBSD fixes. pdnsd does now NEED linuxthreads on
+	BSD.
+
+2000-08-07  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: It's now called 1.0.7.
+
+	* src/main.c, doc/pdnsd.conf.in, Makefile.am: Misc build&BSD fixes.
+
+	* src/conff.c, src/conf-parse.y, version:
+	Version set to the hopefully last beta. Fixed the proxy_only option.
+
+2000-08-05  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/Makefile.am, src/rc/RedHat/Makefile.am, src/rc/Debian/Makefile.am, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns_query.c, src/status.c, doc/pdnsd.conf.in, Makefile.am, TODO:
+	Added the proxy_only options. Some build fixups.
+
+2000-07-30  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/Makefile.am, src/rc/RedHat/Makefile.am, src/rc/Debian/Makefile.am, src/rc/Makefile.am, src/main.c, src/status.h, AUTHORS, INSTALL, Makefile.am, TODO, version:
+	Many small fixups for 1.0.7.
+
+2000-07-29  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/SuSE/Makefile.am, src/rc/RedHat/Makefile.am, src/rc/Debian/Makefile.am, src/rc/README, src/status.c, src/servers.c, Makefile.am, TODO, acconfig.h:
+	Assorted fixes.
+
+	* src/cache.c, src/hash.c, src/dns.h, src/dns_answer.c, src/dns_query.c, src/icmp.c, src/ipvers.h, src/servers.c, src/servers.h, src/status.c, src/status.h, src/Makefile.am, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns.c, AUTHORS, Makefile.am, THANKS:
+	Big heap of updates and fixes. Incorporated build changes from Sourav
+	K. Mandal and pcmcia SCHEME support by Stephan Boettcher.
+
+2000-07-22  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/rc/Debian/pdnsd:
+	Applied a patch by Markus Mohr to his debian rc script, which I had
+	broken in some way.
+
+2000-07-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* src/cache.c, src/main.c, src/status.c, src/status.h:
+	Worked on the new status socket (pdnsd-ctl) option.
+
+	* src/Makefile.am, version: Upped version, fixed Makefile.am
+
+	* src/cache.c, src/hash.c, src/hash.h, src/cache.h, src/Makefile.am, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/dns.c, src/dns.h, src/dns_answer.c, src/dns_query.c, src/dns_query.h, src/helpers.c, src/helpers.h, src/ipvers.h, src/main.c, src/status.c, src/status.h, AUTHORS, Makefile.am, THANKS, acconfig.h:
+	Updated AUTHORS and THANKS. Merged in patches by Sourav K. Mandal
+	and Lyonel Vincent.
+
+2000-07-20  Thomas Moestl  <tmoestl@gmx.net>
+
+	* doc/pdnsd.conf: Added pdnsd.conf. Well...
+
+	* src/dns_query.c, src/dns_query.h, doc/pdnsd.conf:
+	Added some ommited files.
+
+	* src/test/Makefile.am, src/test/if_up.c, src/test/is_local_addr.c, src/test/random.c, src/test/tping.c, src/rc/SuSE/Makefile.am, src/rc/SuSE/pdnsd, src/rc/RedHat/Makefile.am, src/rc/RedHat/pdnsd, src/rc/Debian/pdnsd, src/rc/Makefile.am, src/rc/README, src/Makefile.am, src/conf-lex.l.in, src/conf-parse.y, src/conff.c, src/conff.h, src/consts.h, src/dns.c, src/dns.h, src/dns_answer.c, src/dns_answer.h, src/error.c, src/error.h, src/helpers.c, src/helpers.h, src/icmp.c, src/icmp.h, src/ipvers.h, src/main.c, src/netdev.c, src/netdev.h, src/servers.c, src/servers.h, src/status.c, src/status.h, doc/pdnsd.conf.in, Makefile.am, acconfig.h, file-list.base.in, pdnsd.spec.in:
+	Checked in the pdnsd files at their new locations.
+
+	* doc/pdnsd.conf, Makefile, a-conf.sh, cache.c, cache.h, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, consts.h, dns.c, dns.h, dns_answer.c, dns_answer.h, dns_query.c, dns_query.h, error.c, error.h, exec-flex.sh, hash.c, hash.h, helpers.c, helpers.h, icmp.c, icmp.h, ipvers.h, main.c, netdev.c, netdev.h, pdnsd-redhat.spec.templ, pdnsd-suse.spec.templ, servers.c, servers.h, status.c, status.h, version:
+	Removed the moved files. Will add the new ones soon.
+
+2000-07-16  Thomas Moestl  <tmoestl@gmx.net>
+
+	* TODO: New tasks in TODO.
+
+2000-07-15  Thomas Moestl  <tmoestl@gmx.net>
+
+	* TODO:
+	Updated TODO: Autoconf support was contributed by Sourav K. Mandal
+
+	* conff.h, dns_query.c, ipvers.h, cache.c:
+	Fixed some minor bugs and a showstopper in cache.c that caused
+	crashes in some situations.
+
+2000-07-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* dns_query.c, error.c, error.h, main.c:
+	Made pdnsd ignore SIGPIPE, which seemed to be responsible for some
+	crashes.
+	Accept (grudgingly) SOA rr's where NS ones would be The Right Thing.
+
+2000-07-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* AUTHORS, THANKS, conff.c:
+	Updated AUTHORS, THANKS, and the fprintfs for the status pipe in
+	conff.c
+
+	* TODO, config.h.templ, dns.h, dns_answer.c, dns_query.c, dns_query.h, main.c, version:
+	Added UDP queries and gave the user the choice between TCP and UDP
+	queries (UDP is the default now). Made the TCP server optional.
+	Fixed a authoritative record handling bug. Added pidfile support.
+
+2000-07-07  Thomas Moestl  <tmoestl@gmx.net>
+
+	* doc/pdnsd.conf:
+	Inserted run_as="nobody"; again, it is The Right Thing and people
+	should use it.
+
+	* Makefile:
+	The pdnsd cache directory is now created as nobody, since the
+	default run_as in the example pdnsd.conf is also nobody.
+
+	* doc/pdnsd.conf:
+	Commented the run_as option out (people may run into permission
+	problems).
+
+	* version: Upped version to 1.0.5
+
+	* AUTHORS, THANKS, conf.l.templ, conf.y, conff.c, conff.h, dns_answer.c, icmp.c, icmp.h, main.c, version:
+	Folded in the server_ip option code as contributed by Wolfgang Ocker
+	and extended it to IPv6. Fixed a bug in IPv4 ping in IPv6 mode.
+
+2000-07-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* cache.c, dns_query.c:
+	Killed a bug which could cause crashes with more than 2 servers.
+
+	* cache.c: Fixed a bug reported by Bert Frederiks that would break the
+	serve_aliases option when only one character was between official
+	name and alias in the /etc/hosts-style file.
+
+2000-07-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* pdnsd-suse.spec.templ: The SuSE spec now uses the new makefile rule.
+
+	* Makefile, THANKS, dns_query.c, helpers.c, version:
+	Added people to THANKS, fixed a bug that caused uppercase hosts/
+	rr-section entries to be ignored in the cache, fixed the SuSE
+	makefile for pdnsd to run_as nobody, and other small fixups.
+
+2000-07-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* dns_answer.c:
+	First change after release of 1.0.4: The questions received
+	are now properly written into the debug file when starting
+	with -g -d.
+
+	* config.h.templ, dns_query.c:
+	Fixed a possible way to get around paranoid restrictions.
+
+	* version: Set version to 1.0.4
+
+	* doc/pdnsd.conf: Added an entry for the paranoid option.
+
+	* cache.c, config.h.templ, dns_answer.c, dns_query.c, ipvers.h:
+	Revisions and fixups. The complete code revision is now complete.
+
+2000-06-29  Thomas Moestl  <tmoestl@gmx.net>
+
+	* dns_query.c: Overhaul.
+
+	* dns_answer.c, dns_query.c, config.h.templ:
+	Code overhault continued. dns_answer.c is finished.
+
+2000-06-27  Thomas Moestl  <tmoestl@gmx.net>
+
+	* conff.c, dns_answer.c, icmp.c, netdev.c, servers.c, status.c:
+	Continued code overhaul. Fixed several bugs, and simplified some
+	code.
+
+	* conf.l.templ, conf.y, conff.c, ipvers.h, version: Fixups.
+
+2000-06-26  Thomas Moestl  <tmoestl@gmx.net>
+
+	* hash.c: Revised; fixed a minor bug.
+
+	* cache.c: Overhauled.
+
+	* dns_query.c, error.c, helpers.c, helpers.h, ipvers.h, main.c, version, dns.c:
+	Manual code overhaul. Numerous small patches, greatly simplified
+	decompress_name().
+
+2000-06-25  Thomas Moestl  <tmoestl@gmx.net>
+
+	* config.h.templ:
+	Made the C random() RNG the default (using /dev/urandom, we suck up
+	too much randomness on high load).
+
+	* error.c, error.h, icmp.c, icmp.h, main.c:
+	Small cleanups. Makes the testsuite compilation easier.
+
+	* Makefile, config.h.templ: Preparing for release of 1.0.4.
+
+2000-06-24  Thomas Moestl  <tmoestl@gmx.net>
+
+	* Makefile, THANKS, a-conf.sh, dns_answer.c, dns_query.c, error.c, version:
+	Fixed bugs with the paranoid option, connect() timeout handling, and
+	a incompatability in response handling that caused the glibc
+	resolver to misunderstand error messages pdnsd generated on unknown
+	query types. This bug, that was reported by James MacLean, could
+	for example cause ssh to hang some time.
+
+	* Makefile, NEWS, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, dns.c, dns_query.c, dns_query.h, helpers.c, helpers.h, icmp.c, icmp.h, main.c:
+	Added the paranoid option, and modified the ping uptest so that it
+	works with strict_setuid. Also made strict_setuid=on the default.
+	1.0.4 should be out soon.
+
+2000-06-23  Thomas Moestl  <tmoestl@gmx.net>
+
+	* doc/pdnsd.conf: Added a run_as= line, which is sensible normally.
+
+	* Makefile, conf.l.templ, conf.y, conff.c, conff.h, dns_answer.c, dns_answer.h, helpers.c, helpers.h, main.c, servers.c, status.c, version:
+	Some fixups, added the run_as and strict_setuid security options.
+
+	* THANKS: Updated.
+
+	* AUTHORS, ipvers.h, main.c, netdev.c, version:
+	Fixed some definitions for glibc2.0-users. Repaced the return at the
+	end of main() with _exit(). Should not build and run OK on glibc 2.0
+	boxen.
+	Fixed a typo in netdev.c
+
+	* ipvers.h:
+	Fixed a typo in ipvers.h to fix compile problems on systems without
+	an IPv6-supporting C library, and possible IPv6 problems using the
+	status pipe.
+
+	* error.c, version:
+	Fixed a bug that could cause signals to be delivered to the wrong
+	process.
+
+2000-06-22  Thomas Moestl  <tmoestl@gmx.net>
+
+	* version: Set version to 1.0.1.
+
+	* cache.c, dns_answer.c, error.c, error.h, main.c, pdnsd-suse.spec.templ:
+	Fixed misc issues reported by Jonathan Hudson and Joachim Dorner, one
+	of them a real showstopper in cache.c.
+
+	* Makefile, NEWS, README, cache.h, config.h.templ, version:
+	Updated things for 1.0.0 and released it finally.
+
+	* AUTHORS, THANKS: Updated THANKS and AUTHORS
+
+	* NEWS, a-conf.sh, cache.c, conf.l.templ, conf.y, conff.c, conff.h, dns_answer.c, dns_query.c, error.c, error.h, main.c, servers.c, status.c:
+	Fixed a-conf.sh and cleaned up signal handling as far as it can be
+	done ;-). Added the max_ttl option.
+
+2000-06-21  Thomas Moestl  <tmoestl@gmx.net>
+
+	* dns_answer.c, error.c, error.h, main.c, servers.c, status.c:
+	More signal fixes. This is a real pain with LinuxThreads.
+
+	* NEWS, cache.c, dns_answer.c, error.c, error.h, helpers.c, helpers.h, main.c, servers.c, status.c, version:
+	Fixups for signal handling. This is more than only a little tricky
+	using the linuxthreads library. This hopefully fixes the deadlocks
+	we had on signals.
+
+2000-06-13  Thomas Moestl  <tmoestl@gmx.net>
+
+	* AUTHORS, THANKS: Updated credits.
+
+	* a-conf.sh:
+	A primitive configure-like script intended as drop-in replacement
+	until autoconf support finally comes.
+
+	* .cvsignore, Makefile, cache.c, dns_query.c, ipvers.h, servers.c, version:
+	Added a primitive configuration script as drop-in. Killed some bugs
+	and changed the recently added linkdown_kluge option following
+	suggestions from Daniel Smolik.
+
+2000-06-12  Thomas Moestl  <tmoestl@gmx.net>
+
+	* dns_query.h, exec-flex.sh, Makefile, cache.c, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, dns_query.c:
+	Numerous cleanups and fixes. Implemented the linkdown_kluge option
+	as proposed by Daniel Smolik. Hope to get ready for 1.0.0 know.
+
+2000-06-10  Thomas Moestl  <tmoestl@gmx.net>
+
+	* Makefile, NEWS, TODO, dns_answer.c:
+	Modified some stuff in dns_answer.c (if no nameserver for a knot in
+	the dns namespace is found now, its predecessors are tried now in
+	order to return accurate authority results). This will be paid with a
+	little more beta time, so the Makefile has developer switches again.
+	Corrected NEWS and TODO.
+
+	* Makefile, config.h.templ, dns_answer.c, dns_query.c, dns_query.h, hash.h, helpers.c, version:
+	Removed some dead code, fixed some really minor bugs. Version is up
+	to 1.0.0p7, which is hopefully the last beta.
+
+	* Makefile, config.h.templ:
+	Fixed things up for the 1.0.0 distribution version
+
+2000-06-06  Thomas Moestl  <tmoestl@gmx.net>
+
+	* Makefile, config.h.templ, icmp.c, netdev.c:
+	Some minor comment fixes.
+
+	* Makefile, TODO, main.c, version:
+	BSD fix in Makefile and help update. It is now called 1.0.0p6. TODO
+	was updated to reflect the project status.
+
+	* dns_answer.c:
+	BSD & misc fixes. pdnsd runs now nicely on my FreeBSD 4.0 box.
+
+	* dns_answer.c, ipvers.h:
+	Fixed IPv6 UDP dest address recovery. Also fixed a real stupid bug in
+	ipvers.h.
+
+	* cache.h, dns_query.c, error.h:
+	Added DEBUG_MSG6 macros. Cleaned up requery handling.
+
+	* dns.c, dns_answer.c, dns_query.c, dns_query.h:
+	Fixed another heap of bugs, introduced some sanity checks, no requery
+	on answers that have ra not set now.
+
+2000-06-05  Thomas Moestl  <tmoestl@gmx.net>
+
+	* cache.c:
+	Fixed write_disk_cache.
+
+	* cache.c, cache.h:
+	Fixes for rr handling.
+
+2000-06-04  Thomas Moestl  <tmoestl@gmx.net>
+
+	* cache.c, dns_answer.c, dns_query.c:
+	Fixes again: some missing checks for rrset existence added.
+
+	* cache.c, dns_answer.c, helpers.c, icmp.c:
+	Fixes for the new/modified code and its side effects on old code ;-)
+
+	* ChangeLog.old, NEWS, cache.c, conf.l.templ, conf.y, conff.c, config.h.templ, dns.c, dns_answer.c, dns_query.c, error.c, hash.c, helpers.c, icmp.c, main.c, netdev.c, servers.c, status.c:
+	Folded the ChangeLog and NEWS of the 0.9.x tree back in and added NEWS for the
+	upcoming 1.0.0 release. Some compile fixes. Reorganized config.h.templ. Made
+	the inclusion of the rcsid strings into the executable optional.
+
+	* cache.c, dns_answer.c:
+	Pile of fixes on recently added/modified code.
+
+2000-06-03  Thomas Moestl  <tmoestl@gmx.net>
+
+	* .cvsignore, Makefile, lex.inc.h:
+	lex.inc.h should not be in CVS (it is automatically generated by
+	exec-flex.sh). It should also be deleted by 'make mclean'.
+
+	* TODO, cache.c, dns_answer.c, dns_query.c, lex.inc.h:
+	rfc2181 conformance should be reached by now. Updated TODO. Bugfixing
+	remains.
+
+	* doc/html/.cvsignore, doc/html/dl.html, doc/html/doc.html, doc/html/faq.html, doc/html/index.html:
+	Removed the html documentation from CVS. It is maintained separately.
+
+	* doc/pdnsd.conf:
+	Added CVS/RCS $Id$ tag.
+
+	* cache.h, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, consts.h, dns.c, dns.h, dns_answer.c, dns_answer.h, dns_query.c, dns_query.h, error.c, error.h, exec-flex.sh, hash.c, hash.h, helpers.c, helpers.h, icmp.c, icmp.h, ipvers.h, main.c, netdev.c, netdev.h, pdnsd-redhat.spec.templ, pdnsd-suse.spec.templ, servers.c, servers.h, status.c, status.h, version, AUTHORS, INSTALL, Makefile, NEWS, README, THANKS, TODO, cache.c:
+	Added CVS/RCS $Id$ tags to most files, did some cleanups, introduced
+	the new rrset granularity caching. The new code is still much of beta,
+	use with care.
+
+2000-06-01  Thomas Moestl  <tmoestl@gmx.net>
+
+	* Makefile, cache.c, hash.c, helpers.c, icmp.c, netdev.c:
+	Yet another set of BSD fixes (test programs do now work for me
+	under FreeBSD). Some other minor fixes.
+
+	* Makefile, error.c, error.h, helpers.c, helpers.h:
+	Transplanted kill_pdnsd from error.c to helpers.c in order to get the
+	tests compiled without the thread library.
+
+2000-05-31  Thomas Moestl  <tmoestl@gmx.net>
+
+	* pdnsd:
+	Ooops, executable got in.
+
+	* Makefile, pdnsd:
+	Added test suite programs.
+
+	* icmp.c, netdev.c:
+	All basic BSD patches have been folded in. pdnsd will now compile on
+	FreeBSD with (hopefully) all features.
+
+	* dns_answer.c, Makefile:
+	Disabled udp targed address discovery for BSD builds (this sadly ist
+	OS specific at least for IPv4. Must be rewritten under BSD as it is
+	an RFC compatability issue under some circumstances)
+
+	* cache.c, cache.h, conf.y, conff.c, conff.h, config.h.templ, dns_answer.c, helpers.c, icmp.c, ipvers.h, netdev.c, Makefile:
+	BSD include & misc build fixes. More to follow...
+
+	* Makefile, cache.h:
+	BSD Fixes: Makefile should work with BSD make, sed command line,
+	sorted out naming clash in cache.h
+
+	* .cvsignore:
+	Added ChangeLog to .cvsignore
+
+	* THANKS, conff.c:
+	Fixed a bug reported by Jonathan Hudson and added him to THANKS
+
+	* ChangeLog.old:
+	Added the pre-CVS ChangeLog.
+
+	* .cvsignore, AUTHORS, COPYING, INSTALL, Makefile, NEWS, README, THANKS, TODO, cache.c, cache.h, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, consts.h, dns.c, dns.h, dns_answer.c, dns_answer.h, dns_query.c, dns_query.h, doc/.cvsignore, doc/html/dl.html, doc/html/doc.html, doc/html/faq.html, doc/html/index.html, doc/pdnsd.conf, doc/txt/.cvsignore, error.c, error.h, exec-flex.sh, hash.c, hash.h, helpers.c, helpers.h, icmp.c, icmp.h, ipvers.h, lex.inc.h, main.c, netdev.c, netdev.h, pdnsd-redhat.spec.templ, pdnsd-suse.spec.templ, servers.c, servers.h, status.c, status.h, version:
+	Initial import of pdnsd-1.0.0p3 source tree into CVS.
+
+
+	* .cvsignore, AUTHORS, COPYING, INSTALL, Makefile, NEWS, README, THANKS, TODO, cache.c, cache.h, conf.l.templ, conf.y, conff.c, conff.h, config.h.templ, consts.h, dns.c, dns.h, dns_answer.c, dns_answer.h, dns_query.c, dns_query.h, doc/.cvsignore, doc/html/dl.html, doc/html/doc.html, doc/html/faq.html, doc/html/index.html, doc/pdnsd.conf, doc/txt/.cvsignore, error.c, error.h, exec-flex.sh, hash.c, hash.h, helpers.c, helpers.h, icmp.c, icmp.h, ipvers.h, lex.inc.h, main.c, netdev.c, netdev.h, pdnsd-redhat.spec.templ, pdnsd-suse.spec.templ, servers.c, servers.h, status.c, status.h, version:
+	New file.
+

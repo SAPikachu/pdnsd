@@ -20,6 +20,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
+#include <string.h>
 #include "conf-parse.h"
 #include "consts.h"
 #include "rr_types.h"
@@ -31,6 +32,9 @@ static char rcsid[]="$Id: conf-lex.l.in,v 1.23 2003/04/06 23:02:46 tmm Exp $";
 extern YYSTYPE yylval;
 
 int br_level=0;
+
+/* We do not require yyunput so do not define it to avoid C compiler warning */
+#define YY_NO_UNPUT 1
 %}
 
 /* In the location below, %option yylineno is inserted by configure in some 
@@ -131,12 +135,12 @@ C_CLOSE \*\/
 						 return ERROR;					     
 					 }}
 
-<INITIAL>\"[^\"]*\"			{if ((yylval.nm=(unsigned char *)strdup(yytext+1)) == NULL) {
+<INITIAL>\"[^\"]*\"			{char *yytxt1=yytext+1;
+					 if ((yylval.nm=strndup(yytxt1,strlen(yytxt1)-1)) == NULL) {
 						fprintf(stderr,"Out of memory.\n");
 						return ERROR;
-					}
-					yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';
-					return STRING;}
+					 }
+					 return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}
 <INITIAL>{C_COMM}[^\n]*			/*munch munch*/
 

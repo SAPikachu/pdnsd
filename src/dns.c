@@ -179,7 +179,7 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
  * It is guaranteed (and insured by assertions) that the output is smaller or equal in
  * size to the input.
  */
-int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
+int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb)
 {
 	int i;
 	int add=1;
@@ -193,8 +193,8 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 	ilen = rhnlen(in);
 	/* part 1: compression */
 	if (*cb) {
-		for (i=0;i<da_nel(*cb);i++) {
-			if ((rv=domain_match(&to, in, DA_INDEX(*cb,i,compel_t)->s,rest))>longest) {
+		for (i=0;i<DA_NEL(*cb);i++) {
+			if ((rv=domain_match(&to, in, DA_INDEX(*cb,i).s,rest))>longest) {
 				/*
 				 * This has some not obvious implications that should be noted: If a 
 				 * domain name as saved in the list has been compressed, we only can
@@ -204,7 +204,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 				 */
 				rhncpy(brest,rest);
 				longest=rv;
-				coffs=DA_INDEX(*cb,i, compel_t)->index+to;
+				coffs=DA_INDEX(*cb,i).index+to;
 			} 
 		}
 		if (coffs>-1) {
@@ -226,10 +226,10 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 			if (!(*cb=DA_CREATE(compel_t)))
 			    return 0;
 		}
-		if (!(*cb=da_grow(*cb, 1)))
+		if (!(*cb=DA_GROW1(*cb, compel_t)))
 			return 0;
-		DA_LAST(*cb, compel_t)->index=offs;
-		rhncpy(DA_LAST(*cb, compel_t)->s,in);
+		DA_LAST(*cb).index=offs;
+		rhncpy(DA_LAST(*cb).s,in);
 	}
 	return rl;
 }
@@ -324,7 +324,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
  * Errors are largely ignored so that we can skip entries we do not understand
  * (but others possibly do).
  */
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char *errbuf, int errsize)
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr)
 {
 	FILE *f;
 	unsigned char buf[1025];
@@ -337,14 +337,14 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 
 	buf[1023]='\0';
 	if (!(f=fopen(fn,"r"))) {
-		snprintf(errbuf, errsize, "Failed to source %s: %s", fn, strerror(errno));
+		if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;
 		return 0;
 	}
 	while (!feof(f)) {
 		if (fgets((char *)buf,sizeof(buf),f)==NULL) {
 			if (feof(f))
 				break;
-			snprintf(errbuf, errsize, "Failed to source %s: %s", fn, strerror(errno));
+			if(asprintf(errstr, "Failed to source %s: %s", fn, strerror(errno))<0) *errstr=NULL;
 			fclose(f);
 			return 0;
 		}
@@ -398,8 +398,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 		}
 		switch (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1)) {
 		case 0:
-			strncpy(errbuf, "Out of memory", errsize);
-			errbuf[errsize-1]='\0';
+			*errstr= NULL;
 			return 0;
 		case -1:
 			continue;
@@ -423,8 +422,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 			if (!str2rhn(b2,b3))
 				break;
 			if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {
-				strncpy(errbuf, "Out of memory", errsize);
-				errbuf[errsize-1]='\0';
+				*errstr= NULL;
 				return 0;
 			}
 		}

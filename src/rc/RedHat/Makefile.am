@@ -11,7 +11,7 @@ install-exec-local:
 	if [ "$(DISTRO)" = "RedHat" ] ; then \
 	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/init.d; \
 	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd $(DESTDIR)/etc/rc.d/init.d/pdnsd; \
-	    if [ "$(SPECBUILD)" = "yes" ] ; then \
+	    if [ "$(SPECBUILD)" = "no" ] ; then \
 	      /sbin/chkconfig --add pdnsd; \
 	    fi \
 	fi

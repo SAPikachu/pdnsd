@@ -43,6 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 #include "netdev.h"
 #include "helpers.h"
+#include "status.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
@@ -54,19 +55,102 @@ static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
  */
 
 pthread_t stt;
-pthread_mutex_t servers_lock;
+pthread_mutex_t servers_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t server_data_cond = PTHREAD_COND_INITIALIZER;
+int server_data_users = 0;
 static char schm[32];
 
 /*
- * Execute an uptest.
+ * Execute an individual uptest.Call with locks applied 
  */
-int uptest (servparm_t serv)
+static int uptest (servparm_t *serv, int j)
 {
-	int ret, i;
-	pid_t rv, pid;
-	struct rlimit rl;
+	int ret=0;
 
-	if (serv.scheme[0]) {
+	/* Unlock the mutex because some of the tests may take a while. */
+	++server_data_users;
+	pthread_mutex_unlock(&servers_lock);
+
+	switch (serv->uptest) {
+	case C_NONE:
+		/* Don't change */
+		ret=DA_INDEX(serv->atup_a,j).is_up;
+		break;
+	case C_PING:
+		ret=ping(is_inaddr_any(&serv->ping_a) ? &DA_INDEX(serv->atup_a,j).a : &serv->ping_a, serv->ping_timeout,2)!=-1;
+		break;
+	case C_IF:
+ 	case C_DEV:
+	case C_DIALD:
+ 		ret=if_up(serv->interface);
+#if TARGET==TARGET_LINUX
+ 		if (ret!=0 && serv->uptest==C_DEV) {
+ 			ret=dev_up(serv->interface,serv->device);
+ 		}
+ 		if (ret!=0 && serv->uptest==C_DIALD) {
+ 			ret=dev_up("diald",serv->device);
+ 		}
+#endif
+		break;
+	case C_EXEC:
+	  {
+	  	pid_t pid;
+
+		if ((pid=fork())==-1) {
+			break;
+		} else if (pid==0) {
+			/*
+			 * If we ran as setuid or setgid, do not inherit this to the
+			 * command. This is just a last guard. Running pdnsd as setuid()
+			 * or setgid() is a no-no.
+			 */
+			if (setgid(getgid()) == -1 || setuid(getuid()) == -1) {
+				log_error("Could not reset uid or gid: %s",strerror(errno));
+				_exit(1);
+			}
+			/* Try to setuid() to a different user as specified. Good when you
+			   don't want the test command to run as root */
+			if (!run_as(serv->uptest_usr)) {
+				log_error("Unable to get uid for %s: %s",serv->uptest_usr,strerror(errno));
+				_exit(1);
+			}
+			{
+			    struct rlimit rl; int i;
+			    /*
+			     * Mark all open fd's FD_CLOEXEC for paranoia reasons.
+			     */
+			    if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+				    log_error("getrlimit() failed: %s",strerror(errno));
+				    _exit(1);
+			    }
+			    for (i = 0; i <= rl.rlim_max; i++) {
+				    if (fcntl(i, F_SETFD, FD_CLOEXEC) == -1 && errno != EBADF) {
+					    log_error("fcntl(F_SETFD) failed: %s",strerror(errno));
+					    _exit(1);
+				    }
+			    }
+			}
+			execl("/bin/sh", "uptest_sh","-c",serv->uptest_cmd,NULL);
+			_exit(1); /* failed execl */
+		} else {
+			int status;
+			if (waitpid(pid,&status,0)==pid && WIFEXITED(status)) {
+				ret=(WEXITSTATUS(status)==0);
+			}
+		}
+	  }
+	}
+
+	pthread_mutex_lock(&servers_lock);
+	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
+	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
+
+	return ret;
+}
+
+inline static int scheme_ok(servparm_t *serv)
+{
+	if (serv->scheme[0]) {
 		if (!schm[0]) {
 		  	int nschm;
 			int sc = open(global.scheme_file, O_RDONLY);
@@ -82,96 +166,60 @@ int uptest (servparm_t serv)
 			if (s) 
 				*s='\0';
 		}
-		if (fnmatch(serv.scheme, schm, 0))
+		if (fnmatch(serv->scheme, schm, 0))
 		  	return 0;
 	}
-	switch (serv.uptest) {
-	case C_NONE:
-		/* Don't change */
-		ret=serv.is_up;
-		break;
-	case C_PING:
-		ret=ping(&serv.ping_a,serv.ping_timeout,2)!=-1;
-		break;
-	case C_IF:
- 	case C_DEV:
-	case C_DIALD:
- 		ret=if_up(serv.interface);
-#if TARGET==TARGET_LINUX
- 		if (ret!=0 && serv.uptest==C_DEV) {
- 			ret=dev_up(serv.interface,serv.device);
- 		}
- 		if (ret!=0 && serv.uptest==C_DIALD) {
- 			ret=dev_up("diald",serv.device);
- 		}
-#endif
-		break;
-	case C_EXEC:
-		if ((pid=fork())==-1) {
-			ret=0;
-			break;
-		} else if (pid==0) {
-			/*
-			 * If we ran as setuid or setgid, do not inherit this to the
-			 * command. This is just a last guard. Running pdnsd as setuid()
-			 * or setgid() is a no-no.
-			 */
-			if (setgid(getgid()) == -1 || setuid(getuid()) == -1) {
-				log_error("Could not reset uid or gid: %s",strerror(errno));
-				_exit(1);
-			}
-			/* Try to setuid() to a different user as specified. Good when you
-			   don't want the test command to run as root */
-			if (!run_as(serv.uptest_usr)) {
-				log_error("Unable to get uid for %s: %s",serv.uptest_usr,strerror(errno));
-				_exit(1);
-			}
-			/*
-			 * Mark all open fd's FD_CLOEXEC for paranoia reasons.
-			 */
-			if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
-				log_error("getrlimit() failed: %s",strerror(errno));
-				_exit(1);
-			}
-			for (i = 0; i <= rl.rlim_max; i++) {
-				if (fcntl(i, F_SETFD, FD_CLOEXEC) == -1 && errno != EBADF) {
-					log_error("fcntl(F_SETFD) failed: %s",strerror(errno));
-					_exit(1);
-				}
-			}
-			execl("/bin/sh", "uptest_sh","-c",serv.uptest_cmd,NULL);
-			_exit(1); /* failed execl */
-		} else {
-			while (1) {
-				if ((rv = waitpid(pid,&ret,0))==-1) {
-					ret=0;
-					break;
-				}
-				if (rv == pid && WIFEXITED(ret)) {
-					ret=(WEXITSTATUS(ret)==0);
-					break;
-				}
-			}
-		}
-	}
-	return ret;
+	return 1;
 }
 
-/* Internal server test. Call with locks applied */
-static void retest(int i)
+/* Internal server test. Call with locks applied.
+   May test a single server ip or several collectively.
+ */
+static void retest(int i, int j)
 {
-	int j;
-	time_t s_ts;
-	servparm_t srv;
+  time_t s_ts;
+  servparm_t *srv=&DA_INDEX(servers,i);
+  int nsrvs;
 
-        /* Unlock the mutex because some of the tests may take a while. */
-	srv=*DA_INDEX(servers,i,servparm_t);
-	pthread_mutex_unlock(&servers_lock);
+  if(j>=0)
+    nsrvs=j+1;  /* test just one */
+  else {
+    j=0;        /* test a range of servers */
+    nsrvs=DA_NEL(srv->atup_a);
+  }
+
+  if(!scheme_ok(srv)) {
+    s_ts=time(NULL);
+
+    for(;j<nsrvs;++j) {
+      DA_INDEX(srv->atup_a,j).is_up=0;
+      DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+    }
+  }
+  else if(srv->uptest==C_NONE) {
+    s_ts=time(NULL);
+
+    for(;j<nsrvs;++j) {
+	DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+    }
+  }
+  else if(srv->uptest==C_PING && is_inaddr_any(&srv->ping_a)) {  /* test each ip address seperately */
+    for(;j<nsrvs;++j) {
 	s_ts=time(NULL);
-	j=uptest(srv);
-	pthread_mutex_lock(&servers_lock);
-	DA_INDEX(servers,i,servparm_t)->is_up=j;
-	DA_INDEX(servers,i,servparm_t)->i_ts=s_ts;
+	DA_INDEX(srv->atup_a,j).is_up=uptest(srv,j);
+	DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+    }
+  }
+  else {  /* test ip addresses collectively */
+    int res;
+
+    s_ts=time(NULL);
+    res=uptest(srv,j);
+    for(;j<nsrvs;++j) {
+      DA_INDEX(srv->atup_a,j).is_up=res;
+      DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+    }
+  }
 }
 
 /*
@@ -192,28 +240,54 @@ void *servstat_thread(void *p)
 	THREAD_SIGINIT;
 
 	pthread_mutex_lock(&servers_lock);
-	for (i=0;i<da_nel(servers);i++) {
-		sp=DA_INDEX(servers,i,servparm_t);
-		if (sp->uptest!=C_NONE || sp->scheme[0]) {
+	for (i=0;i<DA_NEL(servers);++i) {
+		sp=&DA_INDEX(servers,i);
+		if (sp->interval>0 && (sp->uptest!=C_NONE || sp->scheme[0])) {
 			all_none=0;
 		}
-		retest(i);
+		retest(i,-1);
 	}
-	pthread_mutex_unlock(&servers_lock);
-	if (all_none)
-		return NULL; /* we need no server status thread. */
-	while (1) {
-		schm[0] = '\0';
+	if (all_none) {
+	  pthread_mutex_unlock(&servers_lock);
+	  return NULL; /* we need no server status thread. */
+	}
+	for(;;) {
+		{
+		  int minwait=3600;
+		  time_t now=time(NULL);
+
+		  for (i=0;i<DA_NEL(servers);++i) {
+		    sp=&DA_INDEX(servers,i);
+		    if(sp->interval>0) {
+		      int j;
+
+		      for(j=0;j<DA_NEL(sp->atup_a);++j) {
+			int wait= DA_INDEX(sp->atup_a,j).i_ts + sp->interval - now;
+			if(wait < minwait) minwait=wait;
+		      }
+		    }
+		  }
+		  pthread_mutex_unlock(&servers_lock);
+		  if(minwait>0) sleep_r(minwait);
+		  else usleep_r(500000);
+		}
 		pthread_mutex_lock(&servers_lock);
-		for (i=0;i<da_nel(servers);i++) {
-			sp=DA_INDEX(servers,i,servparm_t);
-			if (sp->interval>0 && (time(NULL)-sp->i_ts>sp->interval ||
-			    sp->i_ts>time(NULL))) { /* kluge for clock skew */
-				retest(i);
+		schm[0] = '\0';
+		for (i=0;i<DA_NEL(servers);++i) {
+			sp=&DA_INDEX(servers,i);
+			if(sp->interval>0) {
+			  int j;
+
+			  for(j=0;j<DA_NEL(sp->atup_a);++j) {
+			    time_t tj=DA_INDEX(sp->atup_a,j).i_ts;
+			    time_t now=time(NULL);
+			    if (now-tj>sp->interval ||
+				tj>now) { /* kluge for clock skew */
+			      retest(i,j);
+			    }
+			  }
 			}
 		}
-		pthread_mutex_unlock(&servers_lock);
-		usleep_r(500000);
 	}
 	return NULL;
 }
@@ -224,53 +298,71 @@ void *servstat_thread(void *p)
 void start_servstat_thread()
 {
 	pthread_attr_t attr;
-	pthread_mutex_init(&servers_lock,NULL);
+
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 	if (pthread_create(&stt,&attr,servstat_thread,NULL))
 		log_warn("Failed to start server status thread. Assuming all servers to be up all time.");
 	else
 		log_info(2,"Server status thread started.");
+	pthread_attr_destroy(&attr);
 }
 
 /*
  * If a connect() to a server failed, try to mark it as down (only for uptest=ping servers)
  */ 
-void mark_server_down(int idx)
+void mark_server_down(pdnsd_a *sa, int retst)
 {
-	servparm_t *sp;
+	int i,j;
 	
-	if (idx>=da_nel(servers)) {
-#if DEBUG>0
-		log_warn("Internal: server index out of range.");
-#endif
-		return;
-	}
-	sp=DA_INDEX(servers,idx,servparm_t);
 	pthread_mutex_lock(&servers_lock);
-	if (sp->uptest==C_PING) {
-		sp->is_up=0;
-		sp->i_ts=time(NULL);
-	} else if (sp->uptest!=C_NONE) {
-		retest(idx);
+	for(i=0;i<DA_NEL(servers);++i) {
+	  servparm_t *sp=&DA_INDEX(servers,i);
+	  for(j=0;j<DA_NEL(sp->atup_a);++j) {
+	    atup_t *at=&DA_INDEX(sp->atup_a,j);
+	    if(same_inaddr(&at->a,sa)) {
+	      if(retst?(sp->uptest==C_PING):(sp->interval>0)) {
+		at->is_up=0;
+		at->i_ts=time(NULL);
+	      } 
+	      else if(retst && at->is_up && sp->uptest!=C_NONE) {
+		  retest(i,j);
+	      }
+	    }
+	  }
 	}
+
 	pthread_mutex_unlock(&servers_lock);
 }
 
 /* Put a server up or down */
-void mark_server(int idx, int up)
+void mark_server(int i, int j, int up)
 {
+	servparm_t *sp;
+	time_t now;
+	int n;
+
 	pthread_mutex_lock(&servers_lock);
-	DA_INDEX(servers,idx,servparm_t)->is_up=up;
-	DA_INDEX(servers,idx,servparm_t)->i_ts=time(NULL);
+	sp=&DA_INDEX(servers,i);
+	now=time(NULL);
+	if(j>=0)
+	  n=j+1;
+	else {
+	  j=0; n=DA_NEL(sp->atup_a);
+	}
+	for(;j<n;++j) {
+	  DA_INDEX(sp->atup_a,j).is_up=up;
+	  DA_INDEX(sp->atup_a,j).i_ts=now;
+	}
+
 	pthread_mutex_unlock(&servers_lock);
 }
 
-void perform_uptest(int idx)
+void perform_uptest(int i, int j)
 {
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
-	retest(idx);
+	retest(i,j);
 	pthread_mutex_unlock(&servers_lock);
 }
 
@@ -283,11 +375,85 @@ void test_onquery()
 	
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
-	for (i=0;i<da_nel(servers);i++) {
-		if (DA_INDEX(servers,i,servparm_t)->interval<0) {
-			retest(i);
+	for (i=0;i<DA_NEL(servers);i++) {
+		if (DA_INDEX(servers,i).interval<0) {
+			retest(i,-1);
 		}
 	}
 	pthread_mutex_unlock(&servers_lock);
 }
 
+
+void lock_server_data()
+{
+     pthread_mutex_lock(&servers_lock);
+     ++server_data_users;
+     pthread_mutex_unlock(&servers_lock);
+}
+
+void unlock_server_data()
+{
+     pthread_mutex_lock(&servers_lock);
+     PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
+     if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
+     pthread_mutex_unlock(&servers_lock);
+}
+
+
+/*
+  Change addresses of servers during runtime.
+*/
+int change_servers(int i, addr_array ar, int c)
+{
+     int change=0,result=0;
+     int n=DA_NEL(ar);
+     servparm_t *sp;
+
+     pthread_mutex_lock(&servers_lock);
+     sp=&DA_INDEX(servers,i);
+     if(n != DA_NEL(sp->atup_a))
+       change=1;
+     else {
+       int j;
+       for(j=0;j<n;++j)
+	 if(!same_inaddr(&DA_INDEX(ar,j),&DA_INDEX(sp->atup_a,j).a)) {
+	   change=1;
+	   break;
+	 }
+     }
+     if(change) {
+       /* we need exclusive access to the server data to make the changes */
+       struct timeval now;
+       struct timespec timeout;
+
+       DEBUG_MSG("Changing IPs of server section #%d\n",i);
+       gettimeofday(&now,NULL);
+       timeout.tv_sec = now.tv_sec + 60;     /* time out after 60 seconds */
+       timeout.tv_nsec = now.tv_usec * 1000;
+       while (server_data_users>0) {
+	 if(pthread_cond_timedwait(&server_data_cond, &servers_lock, &timeout) == ETIMEDOUT)
+	   goto unlock_mutex;
+       }
+
+       sp->atup_a = DA_RESIZE(sp->atup_a, atup_t, n);
+     }
+
+     {
+       time_t now = time(NULL);
+       int upordown = (c==CTL_S_UP)?1:(c==CTL_S_DOWN)?0:sp->preset;
+       int j;
+       for(j=0; j<n; ++j) {
+	 atup_t *at = &DA_INDEX(sp->atup_a,j);
+	 if(change) at->a = DA_INDEX(ar,j);
+	 at->is_up=upordown;
+	 at->i_ts=now;
+       }
+     }
+
+     if(c==CTL_S_RETEST) retest(i,-1);
+     result=1;
+
+ unlock_mutex:
+     pthread_mutex_unlock(&servers_lock);
+     return result;
+}

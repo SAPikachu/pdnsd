@@ -122,8 +122,16 @@ typedef struct rr_lent_s {
  */
 #define CACHE_LAT 120
 
+extern volatile int use_cache_lock;
+
 void init_cache(void);
-void init_cache_lock(void);
+
+/* Initialize the cache. Call only once. */
+inline static void init_cache_lock()
+{
+	use_cache_lock=1;
+}
+
 void destroy_cache(void);
 void read_disk_cache(void);
 void write_disk_cache(void);

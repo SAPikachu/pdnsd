@@ -2,9 +2,9 @@ dnl $Id: configure.in,v 1.33 2001/12/30 15:32:51 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -g"
+test -z "$CFLAGS" && CFLAGS="-O2 -g -Wall -Winline"
 
-CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
+CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
 
 PACKAGE="pdnsd"
 VERSION=`cat version`
@@ -239,7 +239,7 @@ AC_ARG_WITH(par-queries,
 
 AC_ARG_ENABLE(specbuild,
 [  --enable-specbuild          Only used when build pdnsd from spec files],
-  specbuild = $enableval)
+  specbuild=$enableval)
 
 AC_SUBST(specbuild)
 

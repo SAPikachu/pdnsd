@@ -45,7 +45,11 @@ Boston, MA 02111-1307, USA.  */
 
 /* From main.c */
 #ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
 extern int run_ipv4;
+# else
+#define run_ipv4 1
+# endif
 #endif
 #ifdef ENABLE_IPV6
 extern int run_ipv6;

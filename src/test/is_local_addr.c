@@ -1,5 +1,6 @@
 #include <config.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include "../netdev.h"
 #include "../ipvers.h"
@@ -13,7 +14,9 @@ int debug_p=0;
 int verbosity=VERBOSITY;
 pthread_t main_thread;
 
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 int run_ipv4=DEFAULT_IPV4;
+#endif
 int run_ipv6=DEFAULT_IPV6;
 
 int main(int argc, char *argv[]) 
@@ -26,7 +29,9 @@ int main(int argc, char *argv[])
 	}
 #ifdef ENABLE_IPV4
 	if (inet_aton(argv[1],&a.ipv4)) {
+# ifdef ENABLE_IPV6
 		run_ipv4=1;
+# endif
 		run_ipv6=0;
 		printf("is %s a local addr: %s\n",argv[1],is_local_addr(&a)?"yes":"no");
 		return 0;

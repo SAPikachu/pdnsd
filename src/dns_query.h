@@ -45,12 +45,9 @@ typedef struct {
 #ifdef ENABLE_IPV6
 		struct sockaddr_in6 sin6;
 #endif
-	} a;
-	int                 s_offs;
+	}                   a;
 	struct sockaddr     *sin;
-	int                 sinl;
 	long                timeout;
-	int                 si;
 	int                 flags;
 	int                 nocache;
 	int                 state;
@@ -58,6 +55,7 @@ typedef struct {
 	int                 nstate;
 	int                 qm;
 	char                trusted;
+        char                auth_serv;
 	unsigned char       nsdomain[256];
 	/* internal state for p_exec_query */
 	int                 sock;
@@ -70,7 +68,9 @@ typedef struct {
 	dns_hdr_t           *recvbuf;
 	int                 qt;
 	char                lean_query;
+	int                 s_errno;
 } query_stat_t;
+typedef DYNAMIC_ARRAY(query_stat_t) *query_stat_array;
 
 #define QS_INITIAL       0  /* This is the initial state. Set this before starting. */
 #define QS_QUERY         1
@@ -95,6 +95,6 @@ typedef struct {
 #define QEV_READ         2
 
 /* --- parallel query */
-int p_dns_cached_resolve(darray q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);
+int p_dns_cached_resolve(query_stat_array q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);
 
 #endif

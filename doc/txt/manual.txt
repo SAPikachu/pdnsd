@@ -1,0 +1,1343 @@
+                              pdnsd Documentation                              
+                                                                               
+This is the "official" pdnsd documentation and reference.
+It is up-to-date for version 1.1.0b1. For older documentation, please refer to
+the doc directory of the respective pdnsd package.
+A pdnsd HOWTO ("unofficial" step-by-step installation and setup instructions)
+is available at http://www.geocities.com/sunil_tt/.
+
+0. Installation
+
+0.1 Installing binary RPM's
+
+To install a binary RPM, just do
+rpm -i pdnsd-<version>.rpm
+This should install pretty much everything automatically. The only thing left
+for you to do is adatpt your configuration file (stored in /etc/pdnsd.conf)
+according to your needs (see below). In the SuSE RPMs, a start script is also
+installed; read the section 0.4, Start at Boot Time about that.
+
+0.2 Installing source RPM's
+
+To install a source RPM, just do
+rpm --recompile pdnsd-<version>.rpm
+This should install pretty much everything automatically. The only thing left
+for you to do is adapt your configuration file (stored in /etc/pdnsd.conf)
+according to your needs. In the SuSE RPMs, a start script is also installed;
+read the section Start at Boot Time about that.
+
+0.3 Installing from the pure sources (tar archives)
+
+0.3.1 Decompressing
+
+pdsnsd comes in two different packed archives: the standard gzip'ed version
+pdnsd-<version>.tar.gz, and the bzip2-packed version (about 10% smaller) pdnsd-
+<version>.tar.bz2. If you have bunzip2 installed on your computer, I recommed
+you save bandwidth and get the .bz2-version. To decompress it (using a modern
+tar) do
+tar -xzf pdnsd-<version>.tar.gz
+--or--
+tar -xIf pdnsd-<version>.tar.bz2
+
+If your tar doesn't do this, use:
+gunzip pdnsd-<version>.tar.gz
+tar -xf pdnsd-<version>.tar
+--or--
+bunzip2 pdnsd-<version>.tar.bz2
+tar -xf pdnsd-<version>.tar
+
+0.3.2 Setup
+
+Change into the pdnsd source directory and run configure. It takes the
+following command line options (if you do not specify an option, defaults will
+be used):
+
+                         Specify the prefix directory. The pdnsd files are     
+                         installed in subdirectories of the prefix, the pdnsd  
+--prefix=dir             and pdnsd-ctl executables are for example installed in
+                         the sbin subdirectory of the prefix. The default for  
+                         this is /usr/local; you might want to set this to /usr
+                         (using --prefix=/usr).                                
+                                                                               
+                         Specify the config directory. pdnsd expects its       
+                         pdnsd.conf file to reside there if the -c option is   
+--sysconfdir=dir         not given at startup. The default for this is the etc 
+                         subdirectory of your prefix, e.g. /usr/local/etc if   
+                         you did not specify a prefix. To set this e.g. to /   
+                         etc, use --sysconfdir=/etc.                           
+                                                                               
+--with-distribution=     Specify target distribution (default=Generic; others: 
+distro                   RedHat, SuSE, Debian)                                 
+                         See below for the effect of these settings.           
+                                                                               
+                         Change compilation target platform (default:          
+                         autodetect; others: Linux, BSD)                       
+--with-target=platform   autodetect will attempt to detect whether you are     
+                         using *BSD or Linux and should normally be sufficient.
+                         If this does not work, try specifyning you system     
+                         manually.                                             
+                                                                               
+                         Default directory for pdnsd cache (default=/var/cache/
+--with-cachedir=dir      pdnsd)                                                
+                         This setting can be changed via config file settings  
+                         when pdnsd was built.                                 
+                                                                               
+                         Specifiy database manager to use for cacheing (default
+--with-dbm=dbm           =native; others: gdbm)                                
+                         Currently, only native will work.                     
+                                                                               
+                         Enable ISDN support                                   
+                         This option will work only on Linux and may cause     
+--enable-isdn            problems with 2.0.x or old 2.2.x kernels. You will    
+                         need it for a proper if uptest under Linux for ISDN   
+                         ppp devices.                                          
+                                                                               
+--disable-ipv4           Disable IPv4 networking support (default=enabled)     
+                                                                               
+                         Enable IPv6 networking support.                       
+--enable-ipv6            If your OS does support IPv6 properly, you should be  
+                         able to serve also IPv4 queries using this. Normally, 
+                         this is disabled and you won't need it.               
+                                                                               
+--disable-ipv4-startup   Disable IPv4 on pdnsd startup by default (default=    
+                         enabled)                                              
+                                                                               
+                         Enable IPV6 on pdnsd startup by default (default=     
+                         IPv4). These options are only defaults, you can       
+--enable-ipv6-startup    specify on the command line or in the config files    
+                         which IP version will really be used. Normally, you   
+                         won't need to change these.                           
+                                                                               
+--disable-udp-queries    Disable udp as query method. You shouldn't need to    
+                         change this.                                          
+                                                                               
+--enable-tcp-queries     Enable the TCP as query method. This is seldom needed 
+                         in normal usage.                                      
+                                                                               
+                         Specify the query method (default=udponly, others:    
+                         tcpudp, tcponly) If you have enabled both udp and tcp 
+--with-query-method=qm   queries, this lets you control which query method     
+                         pdnsd will use ny default. tcpudp will try tcp first  
+                         and back out to udp if tcp is not supported by the    
+                         server; udponly and tcponly should be clear.          
+                                                                               
+--disable-tcp-server     Disable tcp server. This may cause problems with very 
+                         large answers.                                        
+                                                                               
+                         Disable the UDP source address discovery.             
+--disable-src-addr-disc  You need this only if you have trouble with messages  
+                         saying "could not discover udp source address".       
+                                                                               
+--disable-poll           Disable poll(2) and use select(2) (default=enabled)   
+                         You will normally not need this.                      
+                                                                               
+                         Disable new DNS RR types. This may cause problems with
+                         some resolvers. The new types are RP, AFSDB, X25,     
+--disable-new-rrs        ISDN, RT, NSAP, PX, GPOS, AAAA, LOC, EID, NIMLOC, SRV,
+                         ATMA, NAPTR and KX. Most of these are seldomly needed,
+                         but AAAA is essential when using IPv6.                
+                                                                               
+                         Enforce strict RFC 2181 compliance.                   
+                         This will cause pdnsd to reject DNS answers with      
+--enable-strict-rfc2181  incorrect timestamp settings (multiple RRs of the same
+                         type and for the same domain with different TTLs).    
+                         Normally not needed.                                  
+                                                                               
+                         Allow underscores (_) in domain names. This breaks RFC
+--enable-underscores     compliance, but some sites use it for historical      
+                         reasons because BIND used to support it.              
+                                                                               
+                         Specify random device; default: C Library random()    
+                         PRNG                                                  
+                         pdnsd uses (pseudo-) random numbers as query IDs for  
+                         security reasons (this makes forging DNS answers more 
+                         difficult). This option controls where pdnsd gets     
+                         these from. The default is the C library random()     
+                         function, which is relatively weak. You can specify a 
+--with-random-device=    device like /dev/urandom here if you like; pdnsd will 
+device                   read random numbers from it 16-bit-wise. /dev/urandom 
+                         is present under Linux and most BSD derivates. You    
+                         should not use /dev/random - it is more secure, but   
+                         may block and delay pdnsd's answers for a long time.  
+                         You can specify arc4random to use the BSD arc4random()
+                         library function (default for FreeBSD target), which  
+                         is considered safe.                                   
+                         You can also specify random as device to use the C    
+                         Library random() function (described above).          
+                                                                               
+                         Specify default user for pdnsd (default=nobody). This 
+                         is the user that will be entered for the run_as option
+--with-default-id=user   in the config file (see below) that will be installed 
+                         during make install. You can change this any time in  
+                         your config file.                                     
+                                                                               
+                         Specify debugging level. Debug output will only be    
+--with-debug=level       generated if you turn on special switches; it might be
+                         useful for debugginh your config files, so I recommend
+                         using the default (9).                                
+                                                                               
+--with-verbosity=level   Specify default message verbosity. The default should 
+                         be ok.                                                
+                                                                               
+                         Enable RCS IDs in executables (default=disabled).     
+--enable-rcsids          For personal use, there is no need to do this. If you 
+                         build rpm's, it might have advantages.                
+                                                                               
+                         Enable subsequent tcp queries. The DNS protocol       
+                         standard requires that servers must be capable of     
+                         answering multiple subsequent queries that are sent   
+                         over the same tcp connection, and that the server may 
+                         only close the connection by himself after a certain  
+--enable-tcp-subseq      timeout. This feature is rarely used, but may make    
+                         denial-of-service attacks easier, as it allows for an 
+                         attacker to hold a connection open a long time        
+                         (although the attacker's IP is most likely revealed   
+                         then). For full standard compliance, you should use   
+                         this option. If you do not use --enable-tcp-server, is
+                         option is not honored.                                
+                                                                               
+                         Specify default tcp query timeout after which the     
+                         connection is closed if no full query has been        
+--with-tcp-qtimeout      received. The default is 30s. You can also change this
+                         option at run time using th tcp_qtimeout config file  
+                         option. If you do not use --enable-tcp-server, is     
+                         option is not honored.                                
+                                                                               
+                         Specify the default number of queries that can be     
+                         executed in parallel. You can also change this option 
+--with-par-queries       at run time using th par_queries config file option.  
+                         See the description of that option for an explanation 
+                         of what it really does.                               
+                         The default for this option is 2.                     
+
+Normally, you will need only --prefix, --sysconfdir and --with-distribution. If
+you specify your distribution using --with-distribution, this has the following
+effects:
+
+  * An rc script is copied in the appropriate localtion, which enables pdnsd to
+    start at machine boot time (see 0.4)
+  * Distribution-specific portions might be included in the generated
+    pdnsd.spec file (only important if you want to build rpm archives
+    yourself).
+
+If you choose Generic, no rc script is installled, and a generic spec file is
+generated.
+Further instructions are in the INSTALL document in the pdsd source directory.
+./configure --help will give you a list of all supported command line options.
+
+0.3.3 Building & installing
+
+Type make in the source directory. Should work by now.
+To install, type make install or do the installation by hand (see 0.3.4).
+make install will do the following ($prefix is the prefix directory; see
+above):
+
+ 1. copies pdnsd to $(prefix)/sbin/
+ 2. copies pdnsd-ctl to $(prefix)/sbin/
+ 3. copies docs/pdnsd.conf.sample (a sample configuration) to the pdnsd config
+    directory.
+ 4. creates your cache directory if it is not there. After installation, you
+    should check the file permissions and create or edit /etc/pdnsd.conf to fit
+    your needs (see below). If you use the run_as option, please make sure that
+    your cache directory is owned by the user you specified with this option!
+
+You must be root for this installation!
+Security notes: never make the pdnsd cache directory writeable for untrusted
+users, or you will get several security holes: the users might modify the cache
+contents, or plant dangerous links.
+If you use a pidfile, you should be aware that you introduce security problems
+if you place the pidfile in a directory in a NFS filesystem that is writeable
+for untrusted users. Generally, the pidfile directory (typically /var/run)
+should not be writeable for untrusted users.
+
+0.3.4 Manual installation
+
+For a manual installation, you need to do the following steps:
+
+ 1. Copy pdnsd and pdnsd-ctl from your build directory to an appropriate
+    location (e.g. /usr/sbin).
+ 2. Copy docs/pdnsd.conf into the directory you want it to reside (/etc by
+    default, and change it according to your needs (see below).
+ 3. Create your caching directory; default is /var/cache/pdnsd (you may change
+    this in your pdnsd.conf); Permisions should be at max rwxr-xr-x (if you
+    want to protect your cache and status socket, make it rwx------).
+
+Thats it!
+
+0.4 Start at boot time
+
+In the rc folder of the pdnsd distribution are start scripts for pdnsd designed
+for different Linux distros. There are scripts for SuSE and Redhat Linux now.
+The start scripts are automatically installed during RPM install, and also
+during make install if you specified your distro.
+
+0.4.1 SuSE Linux startup
+
+rc/SuSE/pdnsd is a start script for SuSE Linux. It was tested for 6.? but
+should run on some versions below. You can do make install as root in the rc/
+SuSE directory to install it, or you can install manually:
+
+manual installation                                                            
+                                                                               
+For manual installation, copy rc/SuSE/pdnsd into /sbin/init.d/, go to /sbin/   
+init.d/rc2.d/ and create there the following two symlinks:                     
+S11pdnsd to ../pdnsd (do ln -s ../pdnsd S11pdnsd in that dir)                  
+K34pdnsd to ../pdnsd (do ln -s ../pdnsd K34pdnsd in that dir)                  
+The numbers dictate the order different services are started and might need to 
+be modified. Then edit your /etc/rc.config file and add the line START_PDNSD=  
+yes to start pdnsd at boot time.                                               
+
+If you used the make install command, START_PDNSD=yes has been appended to your
+/etc/rc.config file, causing pdnsd to be started at boot time. If you don't
+want that, change the yes into no.
+
+This start script was created from /sbin/init.d/skeleton by me, so the most is
+copyrighted by SuSE. They put it under the GPL, however, so the license stated
+in COPYING also applies to this script. There is NO WARRANTY OF ANY KIND on
+these scripts. This is no official SuSE script, and SuSE naturally does NO
+support for it.
+
+0.4.2 Red Hat Linux startup
+
+rc/Redhat/pdnsd is a start script for Red Hat Linux. It was contibuted by
+Torben Janssen.
+This was tested for 6.1 but should run on 5.0+. You can do make install as root
+in the rc/Redhat directory to install it, or you can install manually:
+
+manual installation                                                            
+                                                                               
+For manual installation, copy rc/Redhat/pdnsd into /etc/rc.d/init.d/           
+Then go to /etc/rc.d/rc3.d and create there the following symlink:             
+S78pdnsd -> ../init.d/pdnsd (do ln -f -s ../init.d/pdnsd S78pdnsd in that dir) 
+Then go to /etc/rc.d/rc0.d and create there the following symlink:             
+K78pdnsd -> ../init.d/pdnsd (do ln -f -s ../init.d/pdnsd K78pdnsd in that dir) 
+Then go to /etc/rc.d/rc6.d and create there the following symlink:             
+K78pdnsd -> ../init.d/pdnsd (do ln -f -s ../init.d/pdnsd K78pdnsd in that dir) 
+
+This script is also covered by license stated in COPYING. Again, there is NO
+WARRANTY OF ANY KIND on these scripts. This is no offical Redhat script, and
+Redhat naturally does NO support for it
+
+0.5 Notes for FreeBSD users
+
+The special handling of ISDN ppp devices is only supported on Linux. It is not
+needed in FreeBSD, the normal device handling also works fine with isdn4bsd
+devices.
+When compiled for FreeBSD, pdnsd as a small RFC compatability issue: RFC2181
+demands answers on dns querys to be sent with the same source address the query
+packet went to. In seldom cases, this will not be the case, because the kernel
+selects the source address dependig on the interface that was used for sending
+the answer.
+Setting the source address currently does not work for IPv4. I have written a
+kernel patch that will provide an easy way to program this. We'll see if or
+when it gets commited.
+
+
+
+1 Invocation
+
+When invoking pdnsd, you can specify various options at the command line.
+Command line options always override config file options. The various --noX
+options are present to override config file options.
+
+pdnsd --help (or -h) gives you an overview of the pdnsd command line options.
+
+pdnsd --version (or -V for short) prints licence and version information.
+
+To start pdnsd as background daemon, specifiy --daemon (or -d for short) on the
+command line. Diagnostic and error messages after the actual daemon start will
+be printed to the syslog instead of the console. --nodaemon will disable this.
+
+When starting pdnsd as a daemon, the -p option may be helpful: It writes the
+pid of the server process to the file of the name given as argument to this
+option.
+Example: pdnsd -d -p /var/run/pdnsd.pid
+
+If you want to specify a configuration file other that /etc/pdnsd.conf, specify
+-c or --config-file on the command line, followed by a filename.
+
+If pdnsd was compiled with debugging options enabled, you may specify -g or 
+--debug on the command line. This will cause extra diagnostic messages to be
+printed. When pdnsd runs in deamon mode, the messages will be written to the
+pdnsd.debug file in your cache directory. --nodebug disables debugging.
+
+pdnsd -vn sets the verbosity level of pdnsd. n may be a digit from 0 to 3,
+where 0 means normal operation, while 3 will most verbose. Example is -v2
+
+The option -s or --status enables the status pipe. This is a named pipe in the
+server directory called status. You can read the server status by doing
+cat <your cache directory>/status. --nostatus disables the status pipe.
+
+The option -t or --notcp disables the seldom needed TCP server thread, which
+may save you some resources. --tcp will enable it.
+
+Using the -m option, you can select the method pdnsd uses to query other name
+servers. Following methods are supported:
+-muo: pdnsd will use UDP only. This is the fastest method, and should be
+supported by all name servers on the internt.
+-mto: pdnsd will use TCP only. TCP queries usually take longer time than UDP
+queries, but are more secure against certain attacks, where an attacker tries
+to guess your query id and to send forged answers. TCP queries are not
+supported by some name servers.
+-mtu: pdnsd will try to use TCP, and will fall back to UDP if its connection is
+refused.
+
+2 The configuration file
+
+This section describes the layout of the configuration file and the available
+configuration options. The default location of the file is /etc/pdnsd.conf.
+This may be changed with the -c command line option. An example pdnsd.conf
+comes with the pdnsd distribution in the docs directory and will be installed
+to /etc/ by make install.
+
+2.1 Layout
+
+The configuration file is divided into sections. Each section is prefixed with
+the section name and opening curlies ({) and closed with closing curlies (}).
+In each section, configuration options can be given in the form
+option_name=option_value;
+Option value may be a string literal (enclosed in "), a number or a constant.
+Constants are noted in the section description in <> signs, but are written in
+the file without these signs. Some options take more than one value; in this
+case, the values are separated with commas.
+If you may supply one of a set of possible values to an option, this is noted
+in the documentation as
+(option1|option2|option3|...)
+Comments may be onclosed in /* and */, nested comments are possible. If the #
+sign or two slashes (//) appear in the configuration file, everything from
+these signs to the end of the current line is regarded as a comment and
+ignored.
+There are examples for nearly all options in the sample config file.
+
+2.1.1 global Section
+
+The global section specifies parameters that affect the overall behaviour of
+the server. If you specify multiple global sections, the settings of those
+later in the file will overwrite the earlier given values.
+These are the possible options:
+
+
+perm_cache=(number|<off>);                                                     
+Switch the disk cache off or supply a maximum cache size in kB. If the disk    
+cache is switched off, 4 bytes will still be written to disk. The memory cache 
+is always 10kB larger than the file cache. This value is 2048 (2 MB) by        
+default.                                                                       
+                                                                               
+cache_dir=string;                                                              
+Set the directory you want to keep the cache in. The default is "/var/cache/   
+pdnsd".                                                                        
+                                                                               
+server_port=number;                                                            
+Set the server port. This is especially useful when you want to start the      
+server and are not root. Note that you may also not specify uptest=ping in the 
+server section as non-root.                                                    
+The default port is 53, the RFC-standard one. Note that you should only use    
+non-standard ports when you only need clients on your machine to communicate   
+with the server; others will probably fail if the try to contact the server on 
+the basis of an NS record, since the A record that supplies the address for    
+(among others) name servers does not have a port number specification.         
+                                                                               
+server_ip=string;                                                              
+Set the ip address pdnsd listens on for requests. This can be useful when the  
+host has several interfaces and you want pdnsd not to listen on all interfaces.
+Addtionally, it is possibly to bind pdnsd to listen on 127.0.0.2 to allow pdnsd
+to be a forwarder for BIND. pdnsd will listen on all of your local interfaces  
+by default. The ip is treated as string and therefore needs to have quotation  
+marks around it.                                                               
+                                                                               
+linkdown_kluge=(<on>|<off>);                                                   
+This option enables a kluge that some people might need: when all servers are  
+marked down, with this option set the cache is not even used when a query is   
+received, and a DNS error is returned in any case. The only exception from this
+is that local records (as specified in rr and source sections are still served 
+normally. In general, you probably want to get cached entries even when the    
+network is down, so this defaults to off.                                      
+                                                                               
+max_ttl=number;                                                                
+This options sets the maximum time a record is hold in cache in seconds. All   
+dns resource records have a time to live field that says for what period of    
+time the record may be cached before it needs to be requeried. If this is more 
+than the value given with max_ttl, this time to live value is set to max_ttl.  
+This is done to prevent records from being cached an inappropriate long period 
+of time, because that is almost never a good thing to do. Default is 604800s   
+(one week).                                                                    
+                                                                               
+min_ttl=number;                                                                
+This options sets the minimum time a record is hold in cache in seconds. All   
+dns resource records have a time to live field that says for what period of    
+time the record may be cached before it needs to be requeried. If this is less 
+than the value given with min_ttl, this time to live value is set to min_ttl.  
+Default is 120 seconds.                                                        
+                                                                               
+neg_ttl=number;                                                                
+This option sets the time that negative cached records will remain valid in the
+cache if no time to live can be determined. This is always the case when whole 
+domains are being cached negative, and additionally when record types are      
+cached negative for a domain for which no SOA record is known to pdnsd. If a   
+SOA is present, the ttl of the SOA is taken.                                   
+                                                                               
+neg_rrs_pol=(<on>|<off>|<auth>);                                               
+This sets the RR set policy for negative cacheing; this tells pdnsd under which
+circumstances it should cache a record type negative for a certain domain. off 
+will turn the negative cacheing of record types off, on will always add a      
+negative cache entry when a name server did not return a record type we asked  
+it for, and auth will only add such entries if the answer came from an         
+authoritative name server for that domain. The preset is auth. This is normally
+the right thing, as some cacheing servers behave strange.                      
+                                                                               
+neg_domain_pol=(<on>|<off>|<auth>);                                            
+This is analogue to neg_rrs_pol for whole domain negative cacheing. The preset 
+is on here, because I have not seen a cacheing server that will falsely claim  
+that a domain does not exist. If you experience problems with false negatives, 
+try setting this to auth.                                                      
+                                                                               
+run_as=string;                                                                 
+This option allows you to let pdnsd change its user and group id after         
+operations that needed privileges have been done. This helps minimize security 
+risks and is therefore recommended. The supplied string gives a user name whose
+user id and primary group id are taken.                                        
+A little more details: after reading the config file, becoming a daemon (if    
+specified) and starting the server status thread, the main thread changes its  
+gid and uid, as do all newly created threads thereafter. By taking another uid 
+and gid, those threads run with the privileges of the specified user. Under    
+Linux and FreeBSD, the server status thread runs with the original privileges  
+only when the strict_setuid option is set to off (see below, on by default),   
+because these may be needed for exec uptests. The manager thread also retains  
+its original privileges in this case. You should take care that the user you   
+specify has write permissions on your cache file and status pipe (if you need a
+status pipe). You should look out for error messages like "permission denied"  
+and "operation not permitted" to discover permission problems.                 
+                                                                               
+strict_setuid=(<on>|<off>);                                                    
+When used together with the run_as option, this option lets you specify that   
+all threads of the program will run with the privileges of the run_as user.    
+This provides higher security than the normal run_as option, but is not always 
+possible. See the run_as option for further discussion.                        
+This option is on by default.                                                  
+Note that this option has no effect on Non-Linux systems.                      
+                                                                               
+paranoid=(<on>|<off>);                                                         
+Normally, pdnsd queries all servers in recursive mode (i.e. instructs servers  
+to query other servers themselves if possible, and to give back answers for    
+domains that may not be in its authority), and accepts additional records with 
+information for servers that are not in the authority of the queried server.   
+This opens the possibility of so-called cache poisoning: a malicious attacker  
+might set up a dns server that, when queried, returns forged additional        
+records. This way, he might replace trusted servers with his own ones by making
+your dns server return bad IP addresses. This option protects you from cache   
+poisoning by rejecting additional records that do not describe domains in the  
+queried servers authority space and not doing recursive queries any more. An   
+exception to this rule are the servers you specify in your config file, which  
+are trusted.                                                                   
+The penalty is a possible performance decrease, in particular, more queries    
+might be necessary for the same operation.                                     
+You should also notice that there may be other similar security problems, which
+are essentially problems of the DNS, i.e. any "traditional" server has them    
+(the DNS security extensions solve these problems, but are not widely          
+supported). One of this vulnerabilities is that an attacker may bombard you    
+with forged answers in hopes that one may match a query you have done. If you  
+have done such a query, one in 65536 forged packets will be succesful (i.e. an 
+average packet count of 32768 is needed for that attack). pdnsd can use TCP for
+queries, which has a slightly higher overhead, but is much less vulnerable to  
+such attacks on sane operating systems. Also, pdnsd chooses random query ids,  
+so that an attacker cannot take a shortcut. If the attacker is able to listen  
+to your network traffic, this attack is relatively easy, though.               
+This vulnerability is not pdnsd's fault, and is possible using any conventional
+name server (pdnsd is perhaps a little more secured against this type of       
+attacks if you make it use TCP).                                               
+The paranoid option is off by default.                                         
+                                                                               
+scheme_file=string;                                                            
+In addition to normal uptests, you may specify that some servers shall only be 
+queried when a certain pcmcia-cs scheme is active (only under linux). For that,
+pdnsd needs to know where the file resides that holds the pcmcia scheme        
+information. Normally, this is either /var/lib/pcmcia/scheme or /var/state/    
+pcmcia/scheme.                                                                 
+                                                                               
+status_ctl=(<on>|<off>);                                                       
+This has the same effect as the -s command line option: the status control is  
+enabled when on is specified.                                                  
+                                                                               
+daemon=(<on>|<off>);                                                           
+This has the same effect as the -d command line option: the daemon mode enabled
+when on is specified.                                                          
+                                                                               
+tcp_server=(<on>|<off>);                                                       
+This has the same effect as the -t command line option: the tcp serving ability
+is enabled when on is specified.                                               
+                                                                               
+pid_file=string;                                                               
+This has the same effect as the -p command line option: you can specify a file 
+that pdnsd will write its pid into when it starts in daemon mode.              
+                                                                               
+verbosity=number;                                                              
+This has the same effect as the -v command line option: you can set the        
+verbosity of pdnsd's messages with it. The argument is a number between 0 (few 
+messages) to 3 (most messages).                                                
+                                                                               
+query_method=(<tcp_only>|<udp_only>|<tcp_udp>);                                
+This has the same effect as the -m command line option. Read the documentation 
+for the command line option on this. tcp_only corresponds to the to, udp_only  
+to the uo and tcp_udp to the tu argument of the command line option.           
+                                                                               
+run_ipv4=(<on>|<off>);                                                         
+This has the same effect as the -4 command line option: if on is specified,    
+IPv4 support is enabled, and IPv6 support is disabled (if available). ff off is
+specified, IPv4 will be disabled and IPv6 will be enabled. You can only use    
+this option if you have compiled pdnsd with IPv4 as well as with IPv6 support. 
+                                                                               
+debug=(<on>|<off>);                                                            
+This has the same effect as the -g command line option: the debugging messages 
+are enabled when on is specified.                                              
+                                                                               
+ctl_perms=number;                                                              
+This option allows you to set the file permissions that the pdnsd status       
+control socket will have. These are the same as file permissions. The owner of 
+the file will be the run_as user, or, if none is specified, the user who       
+started pdnsd. If you want to specify the permissions in octal (as usual),     
+don't forget the leading zero (0600 instead of 600!). To use the status        
+control, write access is needed. The default is 0600 (only the owner may read  
+or write).                                                                     
+Please note that the socket is kept in the cache directory, and that the cache 
+directory permissions might also need to be adjusted. Please ensure that the   
+cache directory is not writeable for untrusted users.                          
+                                                                               
+proc_limit=number;                                                             
+With this option, you can set a limit on the pdnsd threads that will be active 
+simultaneously. If this number is exceeded, queries are queued and may be      
+delayed some time. See also the procq_limit option.                            
+The default for this option are 20 query threads will be active (plus 3 to 6   
+threads that will always be present depending on your configuration).          
+                                                                               
+procq_limit=number;                                                            
+When the query thread limit is exceeded, connection attempts to pdnsd will be  
+queued. With this option, you can set the maximum queue length. If this length 
+is also exceeded, the incoming queries will be dropped. That means that tcp    
+connections will be closed and udp queries will just be dropped, which will    
+probably cause the querying resolver to wait for an answer until it times out. 
+See also the proc_limit option.                                                
+The default for this option is 30.                                             
+                                                                               
+tcp_qtimeout=number;                                                           
+This option sets a timeout for tcp queries. If no full query has been received 
+on a tcp connection after that time has passed, the connection will be closed. 
+The default is set using the --with-tcp-qtimeout option to configure.          
+                                                                               
+par_queries=number;                                                            
+This option sets the maximum number of queries that will be executed in        
+parallel, i.e. how many servers are simultaneously queried. This may speed up  
+the query process if there are very slow servers to be quered (the first answer
+we get will be taken), but it will also increase network and server load. 1 or 
+2 are good values for this option. The default is set using the                
+--with-par-queries option to configure.                                        
+                                                                               
+randomize_recs=(<on>|<off>);                                                   
+If this option is turned on, pdnsd will randomly reorder the cached records of 
+one type when creating an answer. This supports round-robin DNS schemes and    
+increases fail safety for hosts with multiple IP addresses, so this is usually 
+a good idea,                                                                   
+On by default.                                                                 
+                                                                               
+query_port_start=number;                                                       
+If given, defines the start of the port range used for queries of pdnsd. The   
+value given must be >= 1024. The purpose of this option is to aid certain      
+firewall configurations that are based on the source port. Please keep in mind 
+that another application may bind a port in that range, so a stateful firewall 
+using target port and/or process uid may be more effective. In case a query    
+start port is given pdnsd uses this port as the first port of a specified port 
+range (see query_port_end) used for queries. pdnsd will try to randomly select 
+a free port from this range as local port for the query.                       
+To ensure that there are enough ports for pdnsd to use, the range between      
+query_port_start and query_port_end should be adjusted to at least (par_queries
+* proc_limit). A higher value is highly recommended, because other applications
+may also allocate ports in that range. If possible, this range should be kept  
+out of the space that other applications usually use.                          
+                                                                               
+query_port_end=number;                                                         
+Only used if query_port_start is given. Defines the last port of the range     
+started by query_port_start used for querys by pdnsd. The default is 65535,    
+which is also the maximum legal value for this option. For details see the     
+description of query_port_start.                                               
+
+
+2.1.2 server Section
+
+Each server section specifies a name server that pdnsd should try to get
+resource records or authoritative name server information from. The servers a
+queried in the order of their appearance (or parallel to a limited extend). If
+one fails, the next one is taken and so on.
+You probably want to specify the dns server in your LAN, the caching dns server
+of your internet provider or even one of the root servers using server records.
+The supported options in this section are:
+
+
+ip=string;                                                                     
+Give the ip (the ip, _not_ the hostname) of the server. Must be specified.     
+                                                                               
+port=number;                                                                   
+Give the port the remote name server listens on. Default is 53 (the official   
+dns port)                                                                      
+                                                                               
+uptest=(<ping>|<none>|<if>);                                                   
+Determine the method to check whether the server is available. Currently       
+defined methods are:                                                           
+                                                                               
+  * ping: Send an ICMP_ECHO request to the server. If it doesn't respond in    
+    timeout, it is regarded to be unavailable until the next probe.            
+  * none: The server is p.d. up                                                
+  * if: Check whether the interface (specified in the interface= option) is    
+    existent, up and running. This currently works for all "ordinary" network  
+    interfaces, interfaces that disappear when down (eg ppp?), and additionally
+    for Linux isdn interfaces (as of kernel 2.2). Note that you need a /dev/   
+    isdninfo device file (major#45, minor#255), or the isdn uptest will always 
+    fail.                                                                      
+  * dev and diald: Perform an if uptest, and, if that was succesful,           
+    additionally check whether a program is running that has locked a given    
+    (modem-) device. The needed parameters are an interface (specified as for  
+    the if uptest, e.g. "ppp0") and a device relative to /dev (e.g. "modem" for
+    /dev/modem specified using the device= option. pdnsd will then look for a  
+    pid file for the given interface in /var/lock (e.g. /var/run/ppp0.pid) and 
+    for a lockfile for the given device (e.g. /var/lock/LCK..modem), and then  
+    test whether the locking process is the process that created the pid file  
+    and this process is still alive. If this is the case, the normal if uptest 
+    is executed for the given interface.                                       
+    The dev option is for pppd dial-on-demand, diald is the same for diald     
+    users.                                                                     
+  * exec: Executes a given command in the /bin/sh shell (as /bin/sh -c         
+    <command>) and evaluates the result (the retur code of the last command) in
+    the shell's way of handling return codes, i.e. 0 indicates success, all    
+    other indicate failure. The shell's process name will be uptest_sh. The    
+    command is given with the uptest_cmd option (see below). For secuity       
+    issues, also see that entry.                                               
+                                                                               
+The default value is none.                                                     
+                                                                               
+NOTE: If you use demand dialling, use none, if or exec, since ping will send   
+packets in the specified interval and the interface will thus frequently dial! 
+                                                                               
+ping_timeout=number;                                                           
+Sets the timeout for the ping test in tenth of seconds. The default is 600.    
+                                                                               
+ping_ip=string;                                                                
+The ip for the ping test. The default is the ip of the name server.            
+                                                                               
+uptest_cmd=string,string;                                                      
+or                                                                             
+uptest_cmd=string;                                                             
+Sets the command for the uptest=exec function to the first string. If the      
+second string is given, it specifies a user with whose user id and primary     
+group id the command is executed.                                              
+This is especially useful if you are executing the server as root, but do not  
+want the uptest to be performed with root privileges. In fact, you should never
+execute the uptest as root if you can help it.                                 
+If the server is running setuid or setgid, the privileges gained such are      
+dropped even before changin identity to the specified user to prevent setuid/  
+gid security holes (otherwise, any user might execute commands as root if you  
+setuid the executable).                                                        
+The command is executed using /bin/sh, so you should be able to use shell      
+builtin commands.                                                              
+                                                                               
+interval=number;                                                               
+Sets the interval for the server-up-test in seconds. The default is 900;       
+however, a test is forced when a query times out. The interval timeout is reset
+then.                                                                          
+If you specify onquery instead of a timeout, the interface will be tested      
+before every query. This is to prevent automatically dialling interfaces (diald
+/pppd or ippp) to dial on dns queries. It is intended to be used in connection 
+with a interface testing uptest ;-)                                            
+Note that using uptest=exec, you might run into performance problems on slow   
+machines when you use that option. DON'T use this option with ping, as it may  
+cause delays if the server does not answer (btw, it doesn't make sense anyway).
+Note also that using that option is no guarantee that the interface will not be
+used. When another (reachable) dns server tells pdnsd to query a third dns     
+server for data, pdnsd will do that and has no means of checking whether this  
+will dial up the interface or not. This however should be a rare configuration.
+                                                                               
+interface=string;                                                              
+The network interface (or network device, eg "eth0") for the uptest=if option. 
+Must be specified if uptest=if is given.                                       
+                                                                               
+device=string;                                                                 
+The (modem-) device that is used for the dev uptest. If you use this for a     
+dial-on-demand ppp uptest (together with uptest=dev), you need to enter the    
+device you are using for your pppd here, e.g. modem for /dev/modem.            
+Must be specified if uptest=dev is given.                                      
+                                                                               
+timeout=number;                                                                
+Set the timeout for the dns query in seconds. The default is 120. You probably 
+want to set this lower.                                                        
+                                                                               
+purge_cache=(<on>|<off>);                                                      
+In every fetched dns record, there is a cache timeout given, which specifies   
+how long the fetched data may be cached until it needs to be reloaded. If      
+purge_cache is set to no, the cached records are not purged (unless the cache  
+size would be exceeded, in this case the oldest records are purged). Instead,  
+they are still served if they cannot succesfully be updated (eg. because all   
+servers are down).                                                             
+                                                                               
+caching=(<on>|<off>);                                                          
+Specifies if caching shall be performed for this server at all. Default is on. 
+                                                                               
+lean_query=(<on>|<off>);                                                       
+Specifies whether to use the "lean" query mode. In this mode, only the         
+information actually queried from pdnsd is resolved and cached. This has the   
+advantage that usually less cache space is used and the query is usually       
+faster. In 90% of the cases, only address (A) records are needed anyway. If    
+switched off, pdnsd will always cache all data about a host it can find and    
+will specifically ask for all available records (well, at least it is a good   
+approximation for what it really does ;-) This will of course increase the     
+answer packet sizes.                                                           
+Negative cacheing is only effective with lean_query activated.                 
+Some buggy name servers may not deliver CNAME records when not asked for all   
+records. I do not know if such servers are around, but if you have trouble     
+resolving certain hostnames, try turning this option off.                      
+A last note: If you use multiple pdnsd's that access each other, turning this  
+option on is probably a big win.                                               
+This on by default.                                                            
+                                                                               
+scheme=string;                                                                 
+You can specify a pcmcia-cs scheme that is used in addition to the uptests. If 
+you specify a scheme here, the server this section is for will only be queries 
+if the given scheme is active. Shell wildcards (* and ?) are allowed in the    
+string under their special meanings. You need to use the scheme_file option on 
+the global section to make this option work.                                   
+                                                                               
+preset=(<on>|<off>);                                                           
+This allows you to specify the initial state of a server before any uptest is  
+performed. on specifies that the server is regarded available. The default is  
+on. This is especially useful when you set uptest=none; and want to control a  
+server only via pdnsd-ctl.                                                     
+                                                                               
+proxy_only=(<on>|<off>);                                                       
+When this option is set to on, answers given by the servers are always         
+accepted, and no other servers (as, for example, specified in the NS records of
+the query domain) are queried. If you do not turn this option on, pdnsd will do
+such queries in some cases (in particular when processing ANY queries).        
+This option is useful when you do not want pdnsd to make connections to outside
+servers for some reasons (e.g. when a firewall is blocking such queries).      
+I recommend that you turn on lean_query when using this option.                
+Default is off.                                                                
+                                                                               
+policy=(<included>|<excluded>);                                                
+pdnsd supports inclusion/exclusion lists for server sections: with include= and
+exclude= (see below) you can specifiy domain names for that this server will be
+used or will not be used. The first match counts (i.e., the first include or   
+exclude rule in a server section that matches a domain name is applied, and the
+search for other rules is terminated). If no rule matched a given domain name, 
+the policy= option determines whether this server is used for the lookup for   
+that domain name; when included is given, the server will be asked, otherwise  
+not.                                                                           
+If no server is available for a queried domain, pdnsd will return an error     
+message to the client that usually will stop the clients attempts to resolve a 
+specific domain from this server (the libc resolver will e.g. return an error  
+to the application that tried to resolve the domain if no other servers are    
+available in the resolv.conf). This may be of use sometimes.                   
+The default for this option is included.                                       
+                                                                               
+include=string;                                                                
+This options adds an entry to the exclusion/inclusion list. If a domain matches
+the name given as string, the server is queried if this was the first matching 
+rule (see also the entry for policy).                                          
+The domain name given must end in a dot. If it starts with a dot, the whole    
+subdomain of the given name including the one of that name is matched, e.g.    
+"foo.bar." will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar. 
+If it does not start in a dot, only exactly the given name (ignoring the case, 
+of course) will be matched (hint: if you want to include all subdomains, but   
+not the domain of the given name itself, place an exact-match exclude rule     
+before the include rule, e.g: exclude="foo.bar."; include=".foo.bar.";         
+                                                                               
+exclude=string;                                                                
+This options adds an entry to the exclusion/inclusion list. If a domain matches
+the name given as string, the server is not queried if this was the first      
+matching rule (see also the entry for policy).                                 
+The domain name given must end in a dot. If it starts with a dot, the whole    
+subdomain of the given name including the one of that name is matched, e.g.    
+"foo.bar." will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar. 
+If it does not start in a dot, only exactly the given name (ignoring the case, 
+of course) will be matched (hint: if you want to exclude all subdomains, but   
+not the domain of the given name itself, place an exact-match include rule     
+before the exclude rule, e.g: include="foo.bar."; exclude=".foo.bar.";         
+
+
+2.1.3 rr Section
+
+Every rr section specifies a dns resource record that is stored locally. It
+allows you to specify own dns records that are served by pdnsd in a limited
+way. Only PTR, A and SOA records are implemented.
+This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
+and localhost. (and perhaps even one or two hosts) without having to start an
+extra named if your cached name servers do not serve those records. It is NOT
+intended and not capable to work as a full-featured name server.
+
+
+name=string;                                                                   
+Specifies the name of the resource records, i.e. the domain name of the        
+resource the record describes. This option must be specified before any a, soa 
+or ptr records. Only absolute domain names (names ending in the root domain, in
+dotted notation ending with a dot) are allowed. For this and all following     
+arguments that take domain names, you need to specify domain names in dotted   
+notation (example venera.isi.edu.). Do not forget the dot at the end!          
+                                                                               
+owner=string;                                                                  
+Specifies the name of the host pdnsd runs on and that is specified in dns      
+answers (specifically, nameserver records). Must be specified before any a, ptr
+and soa entries.                                                               
+                                                                               
+ttl=number;                                                                    
+Specifies the ttl (time to live) for all resource records in this section after
+this entry. This may be redefined. The default is 86400 seconds (=1 day).      
+                                                                               
+authrec=(on|off);                                                              
+If this is turned on, pdnsd will create authoritative local records for this rr
+section. This means that pdnsd flags the domain record so that records of this 
+domain that are not present in the cache are treated as non-existent, i.e. no  
+other servers are queried for that record type, and an response containing none
+of those records is returned. This is most time what people want: if you add an
+A record for a host, and it has no AAAA record (and no IPv6 address), you      
+normally don't want other name servers to be queried for it.                   
+This is on by default.                                                         
+Please note that this only has an effect if it precedes the name and owner     
+options!                                                                       
+                                                                               
+a=string;                                                                      
+Defines an A (host address) record. The argument is an IP in dotted notation.  
+pdnsd will serve this adrress for the hostname given in the name option.       
+                                                                               
+ptr=string;                                                                    
+Defines a PTR (domain name pointer) record. The argument is a host name in     
+dotted notation (see name). The ptr record is for resolving adresses into      
+names. For example, if you want to have the adress 127.0.0.1 into localhost,   
+and localhost into 127.0.0.1, you need something like the following sections:  
+rr {                                                                           
+owner="localhost.";                                                            
+name="localhost.";                                                             
+a="127.0.0.1";                                                                 
+soa="localhost.","root.localhost.",42,86400,900,86400,86400;                   
+}                                                                              
+rr {                                                                           
+owner="localhost.";                                                            
+name="1.0.0.127.in-addr.arpa.";                                                
+ptr="localhost.";                                                              
+soa="localhost.","root.localhost.",42,86400,900,86400,86400;                   
+}                                                                              
+The second section is for reverse resolving and uses the ptr option. There is  
+something special about the name in the second section: when a resolver wants  
+to get a hostname from an internet address, it composes an adress that is build
+of the IP address in reverse byte order (1.0.0.127 instead of 127.0.0.1) where 
+each byte of the adress written as number constitutes a sub-domain under the   
+domain in-addr.arpa.                                                           
+So, if you want to compose an adress for reverse resolving, take your ip in    
+dotted notation (eg 1.2.3.4), reverse the byte order (4.3.2.1) and append      
+in-addr.arpa. (4.3.2.1.in-addr.arpa.) Then, define an rr section giving this   
+address as name and the domain name corresponding to that ip in the ptr option.
+                                                                               
+soa=string,string,number,number,number,number,number;                          
+This defines a soa (record source information) record. The first string is the 
+domain name of the server and should be equal to the name you specified as     
+owner.                                                                         
+The second string specifies the email address of the maintainer of the name    
+server. It is also specified as a domain name, so you will have to replace the 
+@ sign in the name with a dot (.) to get the name you have to specify here. The
+next parameter (the first number) is the serial number of the record. You      
+should increment this number if you change the record.                         
+The 4th parameter (the 2nd number) is the refresh timeout. It specifies after  
+what amount of time a caching server should attempt to refresh the cached      
+record.                                                                        
+The 5th parameter specifies a time after which a caching server should attempt 
+to refresh the record after a refresh failure.                                 
+The 6th parameter defines the timeout after which a cached record expires if it
+has not been refreshed.                                                        
+The 7th parameter is the ttl that is specified in every rr and should be the   
+same as given with the ttl option (if you do not specify a ttl, use the default
+86400)                                                                         
+All time parameters must be specified in seconds.                              
+
+
+2.1.4 neg Section
+
+Every neg section specifies a dns resource record or a dns domainthat should be
+cached negative locally. Queries for negatively cached records are always
+answered immediatley with an error or an empty answer without querying other
+hosts as long as the record is valid. The record remains valid until it is
+explicitely invalidated or deleted by the user using pdnsd-ctl.
+This is useful if a certian application asks periodically for nonexisting hosts
+or RR types and you do not want a query to go out every time the cached record
+has timed out. Example: Netscape Communicator will ask for the servers news and
+mail on startup if unconfigured. If you do not have a dns search list for your
+network, you can inhibit outgoing queries for these by specifying
+neg {
+name="news.";
+types=domain;
+}
+neg {
+name="mail.";
+types=domain;
+}
+in your config file. If you have a search list, you have to repeat that for any
+entry in your search list in addition to the entries given above!
+
+
+name=string;                                                                   
+Specifies the name of the domain for which negative cache entries are created. 
+This option must be specified before the types option. Only absolute domain    
+names (names ending in the root domain, in dotted notation ending with a dot)  
+are allowed. You need to specify domain names in dotted notation (example      
+venera.isi.edu.). Do not forget the dot at the end!                            
+                                                                               
+ttl=number;                                                                    
+Specifies the ttl (time to live) for all resource records in this section after
+this entry. This may be redefined. The default is 86400 seconds (=1 day).      
+                                                                               
+types=(<domain>|rr_type[,rr_type[,rr_type[,...]]]);                            
+Specifies what is to be cached negative: domain will cache the whole domain    
+negatively; alternatively, you can specify a comma-separated list of RR types  
+which are to be cached negatively. You may specify multiple types options, but 
+domain and the RR types are mutually exclusive.                                
+The RR types are specified using their official names from the RFC's in        
+capitals, e.g. A, CNAME, NS, PTR, MX, AAAA, ...                                
+The command pdnsd-ctl list-rrtypes will give you a complete list of those      
+types. pdnsd-ctl is build along with pdnsd and will be installed in the same   
+directory as the pdnsd binary during make install.                             
+
+
+2.1.5 source Section
+
+Every source section allows you to let pdnsd read the records from a file in an
+/etc/hosts-like format. pdnsd will generate records to resolve the entries
+address from its host name and vice versa for every entry in the file. This is
+normally easier than defining an rr for every of your addresses, since
+localhost and your other FQDNs are normally given in /etc/hosts.
+The accepted format is as follows: The #-sign initiates a comment, the rest of
+the line from the first occurence of this character on is ignored. Empty lines
+are tolerated.
+The first entry on a line (predeceded by an arbitrary number of tabs and
+spaces) is the IP in dotted notation, the second entry on one line (separated
+by the first by an arbitrary number of tabs and spaces) is the FQDN (fully
+qualified domain name) for that ip. The rest of the line is ignored (in the
+original /etc/hosts, it may contain information not needed by pdnsd).
+
+
+owner=string;                                                                  
+Specifies the name of the host pdnsd runs on and that are specified in dns     
+answers (specifically, nameserver records). Must be specified before any file  
+entries.                                                                       
+Only absolute domain names (names ending in the root domain, in dotted notation
+ending with a dot) are allowed. Example: venera.isi.edu.                       
+                                                                               
+ttl=number;                                                                    
+Specifies the ttl (time to live) for all resource records in this section after
+this entry. This may be redefined. The default is 86400 seconds (=1 day).      
+                                                                               
+file=string;                                                                   
+The string specifies a file name. For every file entry in a source section,    
+pdnsd will try to load the given file as described above. Failure is indicated 
+only when the file cannot be opened, malformed entries will be ignored.        
+                                                                               
+serve_aliases=(on|off);                                                        
+If this is turned on pdnsd will serve the aliases given in a hosts-style file. 
+These are the third entry in a line of a hosts-style file, which usually give a
+"short name" for the host. This may be used to support broken clients without a
+proper domain-search option. If no aliases are given in a line of the file,    
+pdnsd behaves as without this option for this line.                            
+This feature was suggested by Bert Frederiks.                                  
+It is off by default.                                                          
+                                                                               
+authrec=(on|off);                                                              
+If this is turned on, pdnsd will create authoritative local records with the   
+data from the hosts file. Please see the description of the option of the same 
+name in the rr section for a closer description of what this means. Please note
+that this only has an effect for files sourced with file options subsequent to 
+this option.                                                                   
+
+
+3 pdnsd-ctl
+
+pdnsd-ctl allows you to run-time configure pdnsd. To make this work, you have
+to start pdnsd with the -s option (or use the status_ctl option in the config
+file). You also should make sure that you have appropriate permissions on the
+control socket (use the ctl_perms option to make this sure) and of your pdnsd
+cache directory (pdnsd keeps it's socket there). Please make sure the pdnsd
+cache directory is not writeable for untrusted users!
+pdnsd-ctl takes one optional command line argument, -c. It is used to specify
+the cache directory (and takes this as argument). The default for this settings
+is the pdnsd default cache directory (specified at compile time). The cache
+directory for pdnsd-ctl must be the same pdnsd uses!
+The following table lists the command line options that pdnsd-ctl supports. The
+command must always be the first option, the options to the command must follow
+in the given order.
+In the following table, keywords are in a normal font, while placeholders are
+in italics.
+Alternatives are specified like (alt1|alt2|alt3).
+
+Command  Options                            Description                        
+                                                                               
+help                                                     print a command       
+                                                         summary.              
+                                                                               
+version                                                  print version info    
+                                                                               
+                                                         Set the status of the 
+                                                         server with the given 
+                                                         index or label (where 
+                                                         the given label       
+                                                         matches the one given 
+                                                         with the label option 
+                                                         in the respective     
+                                                         server section in the 
+                                                         config file) to up or 
+                                                         down, or force a      
+                                                         retest. The index is  
+         (index  (up|down|                               assigned in the order 
+server   |       retest)                                 of definition in      
+         label)                                          pdnsd.cache starting  
+                                                         with 0. Use the status
+                                                         command to view the   
+                                                         indices and labels.   
+                                                         You can specify all   
+                                                         instead of an index or
+                                                         label to perform th   
+                                                         action for all servers
+                                                         registered with pdnsd.
+                                                         Example:              
+                                                         pdnsd-ctl server 0    
+                                                         retest                
+                                                                               
+                                                         Delete or invalidate  
+                                                         the record of the     
+                                                         given domain name if  
+                                                         it is in the cache.   
+                                                         Invalidation means    
+                                                         that the record is    
+                                                         marked as timed out,  
+                                                         and such is reloaded  
+                                                         if possible (if       
+                                                         purge_cache is set to 
+                                                         on, it will be deleted
+                 (delete|                                in any case).         
+record   name    invalidate)                             For local records     
+                                                         (i.e., records that   
+                                                         were given in the     
+                                                         config file using a rr
+                                                         section, records read 
+                                                         from a hosts-style    
+                                                         file and records added
+                                                         using pdnsd-ctl),     
+                                                         invalidation has no   
+                                                         effect. Deletion will 
+                                                         work, though. Example:
+                                                         pdnsd-ctl record      
+                                                         localhost. delete     
+                                                                               
+                                                         Load a hosts-style    
+                                                         file. Works like using
+                                                         the pdnsd source      
+                                                         option. owner and ttl 
+                                                         are used as in the    
+                                                         source section. ttl   
+                                                         has a default of 900  
+                                                         (it does not need to  
+                                                         be specified). The    
+                                                         next to last option   
+                                                         corresponds to the    
+                                                         serve_aliases option, 
+                                                         and is off by default 
+                                                         (i.e. if it is not    
+source   fn      owner        [ttl]  [(on|  [noauth]     specified). noauth is 
+                                     off)]               used to make the      
+                                                         domains               
+                                                         non-authoritative -   
+                                                         please see the        
+                                                         description of the    
+                                                         authrec config file   
+                                                         options for a         
+                                                         description of what   
+                                                         that means. fn is the 
+                                                         filename. The file    
+                                                         must be readable by   
+                                                         pdnsd! Example:       
+                                                         pdnsd-ctl source /etc/
+                                                         hosts localhost. 900  
+                                                         off                   
+                                                                               
+                                                                               
+                                                         Add a record of the   
+                                                         given type to the     
+                                                         pdnsd cache, replacing
+                                                         existing records for  
+add      a       addr         name   [ttl]  [noauth]     the same name and     
+                                                         type. The 2nd argument
+                                                         corresponds to the    
+                                                         argument of the option
+                                                         in the rr section that
+                                                         is named like the     
+                                                         first option: a is a  
+                                                         record for            
+                                                         hostname-to-address   
+                                                         mapping, aaaa is the  
+                                                         same thing for IPv6   
+                                                         addresses, and ptr is 
+add      aaaa    addr         name   [ttl]  [noauth]     for                   
+                                                         address-to-hostname   
+                                                         mapping. See the      
+                                                         documentation for the 
+                                                         rr section for more   
+                                                         details. The ttl is   
+                                                         optional, the default 
+                                                         is 900 seconds. noauth
+                                                         is used to make the   
+                                                         domains               
+                                                         non-authoritative -   
+                                                         please see the        
+add      ptr     host         name   [ttl]  [noauth]     description of the    
+                                                         authrec config file   
+                                                         options for a         
+                                                         description of what   
+                                                         that means. If you    
+                                                         want no other record  
+                                                         than the newly added  
+                                                         in the cache, do      
+                                                         pdnsdctl record name  
+                                                         delete before adding  
+                                                         records. This is also 
+                                                         better when           
+add      cname   host         name   [ttl]  [noauth]     overwriting local     
+                                                         records. Example:     
+                                                         pdnsd-ctl add a       
+                                                         127.0.0.1 localhost.  
+                                                         900                   
+                                                                               
+                                                                               
+                                                         Add a negative cached 
+                                                         record to pdnsd's     
+                                                         cache, replacing      
+neg      name    [type]       [ttl]                      existing records for  
+                                                         the same name and     
+                                                         type. If no type is   
+                                                         given, the whole      
+                                                         domain is cached      
+                                                         negative. For negative
+                                                         cached records, errors
+                                                         are immediately       
+                                                         returned on a query,  
+                                                         without querying other
+                                                         servers first. The ttl
+                                                         is optional, the      
+                                                         default is 900        
+                                                         seconds.              
+                                                         You can get a list of 
+                                                         all types you can pass
+                                                         to this command using 
+                                                         pdnsd-ctl             
+                                                         list-rrtypes. The type
+                                                         is treated            
+                                                         case-sensitive!       
+                                                         Example:              
+                                                         pdnsd-ctl neg foo.bar 
+                                                         A 900                 
+                                                         pdnsd-ctl neg foo.baz 
+                                                         900                   
+                                                                               
+
+
+
+4 contrib/
+
+The contrib directory in the pdnsd distribution contains useful
+user-contributed scripts.
+So far, there is a script contributed by Marko Stolle that makes pdnsd usable
+in a DHCP setup. Please take a look into the README file in the contrib
+directory for further information.
+
+
+5 Problems...
+
+If you have problems with configuring or tunning pdnsd, be sure to read th FAQ.
+If this does not help you, pdnsd crashes or you find bugs, please mail me at 
+tmoestl@gmx.net.
+
+
+5 Hacking
+
+Here comes some information you might find useful for hacking on pdnsd.
+
+6.1 Source files
+
+Makefile.am,     autoconf/automake/autoheader scripts. Makefile.am's are in    
+configure.in,    most subdirectories.                                          
+acconfig.h                                                                     
+                                                                               
+pdnsd.spec.in    A template from which configure generates a spec file for     
+                 building rpm's for various distributions.                     
+                                                                               
+version          Contains only the program version string. Needed for several  
+                 templates.                                                    
+                                                                               
+src/rc/*         rc scripts for various linux distributions.                   
+                                                                               
+                 The pdnsd cache subsystem(s) as defined in src/cacheing/      
+                 cache.h. There is the "traditional" pdnsd system in the       
+src/cacheing/*   subdirectory native. This system keeps the cache in memory and
+                 uses hash tables for accesses. Sourav K. Mandal is working on 
+                 a system using gdbm.                                          
+                                                                               
+src/pdnsd-ctl/*  Contains the code for pdnsd-ctl, a program that allows to     
+                 control pdnsd at run time.                                    
+                                                                               
+src/             The lex/flex source file for the config file lexer. This is a 
+conf-lex.l.in    template because there might be inserted "%option yylineno"   
+                 for proper flex support.                                      
+                                                                               
+                 This is automatically generated by configure from             
+src/conf-lex.l.  conf.l.templ. It may be overwritten in any make, so never     
+                 modify this, but conf.l.templ instead!                        
+                                                                               
+src/             The yacc/bison source of the config file parser.              
+conf-parse.y                                                                   
+                                                                               
+src/conff.c,     The configuration handler functions and their prototypes. The 
+src/conff.h      parser is called from here.                                   
+                                                                               
+src/consts.h     Some constants used by lexer, parser, config file handler     
+                 functions and in the server status thread, among others.      
+                                                                               
+src/dns.c, src/  Define dns message structures, constants, and some common dns 
+dns.h            data handlers. dns.h contains gcc-specific code (in           
+                 praticular, "__attribute__((packed))").                       
+                                                                               
+src/                                                                           
+dns_answer.c,    Define functions that answer incoming dns queries.            
+src/                                                                           
+dns_answer.h                                                                   
+                                                                               
+src/                                                                           
+dns_query.c,     Define functions to manage outgoing dns queries.              
+src/dns_query.h                                                                
+                                                                               
+src/error.c,     Functions for error output to stderr or the syslog.           
+src/error.h                                                                    
+                                                                               
+src/helpers.c,   Define miscellaneous helper functions.                        
+src/helpers.h                                                                  
+                                                                               
+src/icmp.c, src  Define a function for performing a ping test. This contains   
+/icmp.h          OS-specific code.                                             
+                                                                               
+src/main.c       Contains main(), which holds the command line parser, performs
+                 initialisations and signal handling.                          
+                                                                               
+src/netdev.c,    Define functions for network device handling. OS-specific.    
+src/netdev.h                                                                   
+                                                                               
+src/servers.c,   Define functions for the server status thread that performs   
+src/servers.h    the periodical uptests.                                       
+                                                                               
+src/status.c,    Define functions for the status control thread. This is       
+src/status.h     pdnsd's interface to pdnsd-ctl.                               
+
+
+-------------------------------------------------------------------------------
+
+Thomas Moestl
+
+$Id: doc.html,v 1.42 2001/07/02 18:44:30 tmm Exp $
+

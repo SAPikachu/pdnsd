@@ -26,9 +26,12 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 
 void start_servstat_thread(void);
-void mark_server_down(int idx);
-void mark_server(int idx, int up);
+void mark_server_down(pdnsd_a *sa, int retst);
+void mark_server(int i, int j, int up);
 void test_onquery(void);
-void perform_uptest(int idx);
+void perform_uptest(int i, int j);
+void lock_server_data();
+void unlock_server_data();
+int change_servers(int i, addr_array ar, int c);
 
 #endif

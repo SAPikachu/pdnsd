@@ -45,5 +45,6 @@ Boston, MA 02111-1307, USA.  */
 #define C_AUTH     14
 
 int lookup_const(char *name);
+const char *const_name(int c);  /* Added by Paul Rombouts */
 
 #endif

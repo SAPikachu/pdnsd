@@ -1,20 +1,16 @@
 #!/bin/bash
 #
-# $Id: pdnsd.in,v 1.6 2001/07/26 12:26:55 tmm Exp $
-#
 #	/etc/rc.d/init.d/pdnsd
 #
-# Starts the Proxy DNS Daemon
+# Script for starting the Proxy DNS Daemon
+# Modified by Paul Rombouts, 2003
 #
-# chkconfig: 2345 80 30
+# chkconfig: 2345 11 89
 # description: Proxy DNS Daemon
 # processname: pdnsd
 # config: /etc/pdnsd.conf
 
-prefix=@prefix@
-
-test -x @prefix@/sbin/pdnsd || exit 0
-[ -f @sysconfdir@/pdnsd.conf ] || exit 1
+PATH=/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -23,36 +19,36 @@ test -x @prefix@/sbin/pdnsd || exit 0
 . /etc/sysconfig/network
 
 # Check that networking is up.
-[ ${NETWORKING} = "no" ] && exit 0
-
-RETVAL=0
+if [[ $NETWORKING == [Nn][Oo] ]]; then exit 0; fi
 
 start() {
 	echo -n 'Starting pdnsd: '
 	daemon @prefix@/sbin/pdnsd -d
-	RETVAL=$?
+	local RETVAL=$?
 	echo
-	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/pdnsd
+	if [ $RETVAL -eq 0 ]; then touch /var/lock/subsys/pdnsd; fi
 	return $RETVAL
 }
 
 stop() {
 	echo -n 'Shutting down pdnsd: '
 	killproc pdnsd
-	RETVAL=$?
+	local RETVAL=$?
+	# Wait until all threads have terminated.
+	local -i count=20
+	while [[ count -gt 0 ]] && pidof pdnsd > /dev/null
+	do
+	  usleep 200000
+	  let --count
+	done
 	echo
-	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/pdnsd
+	if [ $RETVAL -eq 0 ]; then rm -f /var/lock/subsys/pdnsd; fi
 	return $RETVAL
 }
 
 restart() {
 	stop
 	start
-}
-
-condrestart() {
-	[ -e /var/lock/subsys/pdnsd ] && restart
-	return 0
 }
 
 #
@@ -72,11 +68,11 @@ case "$1" in
 	restart
   	;;
   condrestart)
-	condrestart
+	if [ -f /var/lock/subsys/pdnsd ]; then restart; fi
   	;;
   *)
 	echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
-	RETVAL=1
+	exit 1
 esac
 
-exit $RETVAL
+exit

@@ -1,5 +1,6 @@
 #include <config.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include "../netdev.h"
 
@@ -12,7 +13,9 @@ int debug_p=0;
 int verbosity=VERBOSITY;
 pthread_t main_thread;
 
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 int run_ipv4=DEFAULT_IPV4;
+#endif
 int run_ipv6=DEFAULT_IPV6;
 
 int main(int argc, char *argv[]) 

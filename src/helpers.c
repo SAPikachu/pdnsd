@@ -97,7 +97,7 @@ int run_as(char *user)
 /*
  * returns whether c is allowed in IN domain names
  */
-int isdchar (unsigned char c)
+/* int isdchar (unsigned char c)
 {
 	if ((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='-'
 #ifdef UNDERSCORE
@@ -106,7 +106,7 @@ int isdchar (unsigned char c)
 	   )
 		return 1;
 	return 0;
-}
+} */
 
 /*
  * Convert a string given in dotted notation to the transport format (lenght byte prepended
@@ -245,7 +245,7 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
 	return 0;
 }
 
-int is_inaddr_any(pdnsd_a *a)
+/* int is_inaddr_any(pdnsd_a *a)
 {
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -258,7 +258,7 @@ int is_inaddr_any(pdnsd_a *a)
 	}
 #endif
 	return 0;
-}
+} */
 
 /*
  * This is used for user output only, so it does not matter when an error occurs
@@ -378,23 +378,42 @@ unsigned short get_rand16()
 #endif
 }
 
-void fsprintf(int fd, char *format, ...)
+/* the following function has been rewritten by Paul Rombouts */
+int fsprintf(int fd, const char *format, ...)
 {
-	char buf[1024];
+  int n;
+  va_list va;
 
-	va_list va;
-	va_start(va,format);
-	vsnprintf(buf,sizeof(buf),format,va);
-	write(fd,buf,strlen(buf));
+  {
+    char buf[256];
 
-	va_end(va);
+    va_start(va,format);
+    n=vsnprintf(buf,sizeof(buf),format,va);
+    va_end(va);
+
+    if(n<sizeof(buf)) {
+      if(n>0) n=write_all(fd,buf,n);
+      return n;
+    }
+  }
+  /* retry with a right sized buffer, needs glibc 2.1 or higher to work */
+  {
+    char buf[n+1];
+
+    va_start(va,format);
+    n=vsnprintf(buf,sizeof(buf),format,va);
+    va_end(va);
+
+    n=write_all(fd,buf,n);
+  }
+  return n;
 }
 
 /*
  * This is not like strcmp, but will return 1 on match or 0 if the
  * strings are different.
  */
-int stricomp(char *a, char *b)
+/* int stricomp(char *a, char *b)
 {
 	int i;
 	if (strlen(a) != strlen(b)) 
@@ -404,10 +423,10 @@ int stricomp(char *a, char *b)
 			return 0;
 	}
 	return 1;
-}
+} */
 
 /* Bah. I want strlcpy */
-int strncp(char *dst, char *src, int dstsz)
+/*int strncp(char *dst, char *src, int dstsz)
 {
 	char o;
 	
@@ -417,4 +436,4 @@ int strncp(char *dst, char *src, int dstsz)
 	if (strlen(dst) >= dstsz-1 && o!='\0')
 		return 0;
 	return 1;
-}
+} */
