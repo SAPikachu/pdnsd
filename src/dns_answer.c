@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.18 2000/10/21 11:28:37 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.19 2000/10/21 13:02:23 thomas Exp $";
 #endif
 
 /*
@@ -133,7 +133,7 @@ typedef struct {
 } sva_t; 
 
 /*
- * Mark an addtional record as added to avoid double records. Supply either name or rhn (set the other to 0)
+ * Mark an additional record as added to avoid double records. Supply either name or rhn (set the other to 0)
  */
 int sva_add(sva_t **sva, int *svan, unsigned char *name, unsigned char *rhn, int tp, rr_bucket_t *b)
 {
@@ -153,7 +153,7 @@ int sva_add(sva_t **sva, int *svan, unsigned char *name, unsigned char *rhn, int
 }
 
 /*
- * Add an rr from a rr_bucket_t (as in cache) into a dns message in ans. Ans is growed
+ * Add an rr from a rr_bucket_t (as in cache) into a dns message in ans. Ans is grown
  * to fit, sz is the old size of the packet (it is modified so at the end of the procedure
  * it is the new size), type is the rr type and ltime is the time in seconds the record is
  * old.
@@ -398,7 +398,7 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans,unsigned long *
 
 /*
  * Add the fitting elements of the cached record to the message in ans, where ans
- * is growed to fit, sz is the size of the packet and is modified to be the new size.
+ * is grown to fit, sz is the size of the packet and is modified to be the new size.
  * The query is in qe. 
  * cb is the buffer used for message compression. *cb should be NULL if you call add_to_response
  * the first time. It gets filled with a pointer to compression information that can be
@@ -487,23 +487,24 @@ static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t
 {
 	unsigned char  buf[256]; /* this is buffer space for the ns record */
 	dns_cent_t *ae;
+	int retval = 1;
 
 	rhn2str(rhn,buf);
 	if ((ae=lookup_cache(buf))) {
 		if (ae->rr[T_A-T_MIN])
 		    if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_A, ae->rr[T_A-T_MIN]->rrs,
 					   ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
-			    return 0;
+			    retval = 0;
 #ifdef DNS_NEW_RRS
 		if (ae->rr[T_AAAA-T_MIN])
 			if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
 					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
-				return 0;
+			    retval = 0;
 #endif
 		free_cent(*ae);
 		free(ae);
 	}
-	return 1;
+	return retval;
 }
 
 typedef struct rre_s {
