@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.28 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.29 2000/11/18 14:56:30 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -501,18 +501,9 @@ static int p_query_sm(query_stat_t *st)
 {
 	struct protoent *pe;
 	int rv;
-	unsigned int sz;
 #if DEBUG>0
 	char buf[ADDRSTR_MAXLEN];
 #endif
-#ifdef ENABLE_IPV4
-	struct sockaddr_in sender4;
-#endif
-#ifdef ENABLE_IPV6
-	struct sockaddr_in6 sender6;
-#endif
-	struct sockaddr *sender;
-	socklen_t slen,slenc;
 
 	switch (st->nstate){
 		/* TCP query code */
@@ -654,10 +645,18 @@ static int p_query_sm(query_stat_t *st)
 			}
 		}
 # endif
+		/* connect */
+		if (connect(st->sock,st->sin,st->sinl)==-1) {
+			close(st->sock);
+			DEBUG_MSG3("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		}
+		
 		/* transmit query by udp*/
-		/* sendto will hopefully not block on a freshly opened socket (the buffer
+		/* send will hopefully not block on a freshly opened socket (the buffer
 		 * must be empty) */
-		if (sendto(st->sock,st->hdr,ntohs(st->transl),0,st->sin,st->sinl)==-1) {
+		if (send(st->sock,st->hdr,ntohs(st->transl),0)==-1) {
 			close(st->sock);
 			DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
 			st->nstate=QSN_DONE;
@@ -673,36 +672,14 @@ static int p_query_sm(query_stat_t *st)
 		st->event=QEV_READ;
 		return -1;
 	case QSN_UDPRECEIVE:
-# ifdef ENABLE_IPV4
-		if (run_ipv4) {
-			slen=sizeof(sender4);
-			sender=(struct sockaddr *)&sender4;
-		}
-# endif
-# ifdef ENABLE_IPV6
-		if (run_ipv6) {
-			slen=sizeof(sender6);
-			sender=(struct sockaddr *)&sender6;
-		}
-# endif
-		slenc=slen;
-		if ((rv=recvfrom(st->sock,st->recvbuf,512,0, sender, &slen))<0) {
+		if ((rv=recv(st->sock,st->recvbuf,512,0))<0) {
 			close(st->sock);
 			DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
 		st->recvl=rv;
-		if (slen<slenc || st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid 
-# ifdef ENABLE_IPV4
-		    || (run_ipv4 && (sender4.sin_port!=st->a.sin4.sin_port || 
-				     sender4.sin_addr.s_addr!=st->a.sin4.sin_addr.s_addr))
-# endif
-# ifdef ENABLE_IPV6
-		    || (run_ipv6 && (sender6.sin6_port!=st->a.sin6.sin6_port || 
-				     !IN6_ARE_ADDR_EQUAL(&sender6.sin6_addr,&st->a.sin6.sin6_addr)))
-# endif
-			) {
+		if (st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid) {
 			DEBUG_MSG1("Bad answer received. Ignoring it.\n");
 			/* no need to care about timeouts here. That is done at an upper layer. */
 			st->nstate=QSN_UDPRECEIVE;

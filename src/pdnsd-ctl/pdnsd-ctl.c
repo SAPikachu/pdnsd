@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.3 2000/11/11 16:21:36 thomas Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.4 2000/11/18 14:56:33 thomas Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -197,8 +197,10 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1],"help")==0) {
 		print_version();
 		print_help();
+		exit(0);
 	} else if (strcmp(argv[1],"version")==0) {
 		print_version();
+		exit(0);
 	} else if (strcmp(argv[1],"list-rrtypes")==0) {
 		printf("Available RR types for the neg command:\n");
 		for (i=0;i<T_MAX;i++) {
