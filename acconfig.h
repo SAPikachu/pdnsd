@@ -30,18 +30,18 @@
  * properly.
  * For each of the protocols there are two options: ENABLE_IPV4 and ENABLE_IPV6
  * control whether support for the respective protocol is available in the 
- * binary. DEFAULT_IPV4 and DEFAULT_IPV6 select whether is enabled on pdnsd
- * startup by default. 1 means enabled, while 0 means disabled. If support for
+ * binary. DEFAULT_IPV4 selects which protocol is enabled on pdnsd
+ * startup by default. 1 means IPv4, while 0 means IPv6. If support for
  * a protocol was included in the executable, you can specify command line
  * parameters to activate or deactivate that protocol (the options are -4 and 
- * -6).
+ * -6), but it makes more sense to use the run_ipv4=on/off option in the
+ * configuration file.
  * Make your choice. Note that IPv6 support is experimental in pdnsd. 
  * In normal operation, you will currently only need IPv4. 
- * If you activete IPv6, you should also activate DNS_NEW_RRS below. */
+ * If you activate IPv6, you should also activate DNS_NEW_RRS below. */
 #undef ENABLE_IPV4
-#define DEFAULT_IPV4 0
+#define DEFAULT_IPV4 1
 #undef ENABLE_IPV6
-#define DEFAULT_IPV6 0
 
 /* In all pdnsd versions before 1.0.6, DNS queries were always done over
  * TCP. Now, you have the choice. You can control that behaviour using 
@@ -175,7 +175,7 @@
 
 /* Allow _ in domain names? */
 #undef UNDERSCORE
- 
+
 /* Assume the Native POSIX Thread Library instead of LinuxThreads ? */
 #undef THREADLIB_NPTL
 

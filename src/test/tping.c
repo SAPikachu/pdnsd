@@ -9,15 +9,20 @@
 static char rcsid[]="$Id: tping.c,v 1.2 2000/10/18 16:21:37 thomas Exp $";
 #endif
 
-int daemon_p=0;
-int debug_p=0;
-int verbosity=VERBOSITY;
-pthread_t main_thread;
-
+short int daemon_p=0;
+short int debug_p=0;
+short int verbosity=VERBOSITY;
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-int run_ipv4=DEFAULT_IPV4;
+short int run_ipv4=DEFAULT_IPV4;
 #endif
-int run_ipv6=DEFAULT_IPV6;
+#ifdef ENABLE_IPV6
+struct in6_addr ipv4_6_prefix;
+#endif
+pthread_t main_thread;
+#if DEBUG>0
+FILE *dbg_file;
+#endif
+
 
 int main(int argc, char *argv[]) 
 {
@@ -32,16 +37,16 @@ int main(int argc, char *argv[])
 # ifdef ENABLE_IPV6
 		run_ipv4=1;
 # endif
-		run_ipv6=0;
 		init_ping_socket();
 		printf("ping (v4) echo from %s: %i\n",argv[1],ping(&a,100,2));
 		return 0;
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (inet_pton(AF_INET6,argv[1],&a.ipv4)) {
+	if (inet_pton(AF_INET6,argv[1],&a.ipv6)) {
+# ifdef ENABLE_IPV4
 		run_ipv4=0;
-		run_ipv6=1;
+# endif
 		init_ping_socket();
 		printf("ping (v6) echo from %s: %i\n",argv[1],ping(&a,100,2));
 		return 0;

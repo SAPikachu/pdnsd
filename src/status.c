@@ -53,7 +53,7 @@ int stat_sock;
 pthread_t st;
 
 /* Print an error to the socket */
-static void print_serr(int rs, char *msg)
+static void print_serr(int rs, const char *msg)
 {
 	short cmd;
 
@@ -182,7 +182,7 @@ static void *status_thread (void *p)
 			short cmd;
 			DEBUG_MSG("Status socket query pending.\n");
 			if (read_short(rs,&cmd)) {
-			    char *errmsg;
+			    const char *errmsg;
 			    switch(cmd) {
 			    case CTL_STATS: {
 				    struct utsname nm;
@@ -372,11 +372,14 @@ static void *status_thread (void *p)
 					    print_serr(rs, "Bad TTL.");
 					    goto free_fn;
 				    }
-				    if (read_hosts(fn,owner,ttl,flags,servaliases,&errmsg))
-					    print_succ(rs);
-				    else {
-					    print_serr(rs,errmsg?:"Out of memory.");
-					    if(errmsg) free(errmsg);
+				    {
+					    char *errmsg;
+					    if (read_hosts(fn,owner,ttl,flags,servaliases,&errmsg))
+						    print_succ(rs);
+					    else {
+						    print_serr(rs,errmsg?:"Out of memory.");
+						    if(errmsg) free(errmsg);
+					    }
 				    }
 			    free_fn:
 				    free(fn);
@@ -438,9 +441,9 @@ static void *status_thread (void *p)
 				    {
 					    dns_cent_t cent;
 
-					    if (!init_cent(&cent, name, flags, time(NULL), 0  DBG1))
+					    if (!init_cent(&cent, name, 0, time(NULL), flags  DBG1))
 						    goto out_of_memory;
-					    if (!add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,tp  DBG1))
+					    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf,0  DBG1))
 						    goto out_of_memory;
 					    add_cache(&cent);
 					    free_cent(&cent  DBG1);
@@ -475,7 +478,7 @@ static void *status_thread (void *p)
 					    dns_cent_t cent;
 
 					    if (tp==255) {
-						    if (!init_cent(&cent, name, DF_LOCAL|DF_NEGATIVE, time(NULL), ttl  DBG1))
+						    if (!init_cent(&cent, name, ttl, time(NULL), DF_LOCAL|DF_NEGATIVE  DBG1))
 							    goto out_of_memory;
 					    } else {
 						    if (!init_cent(&cent, name, 0, time(NULL), 0  DBG1))

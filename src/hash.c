@@ -108,11 +108,12 @@ static unsigned long dns_rhash(const unsigned char *str)
 } */
 
 /*
- * Add an entry to the hash. key is your key, data will be returned
+ * Add an entry to the hash. data->qname is your key, data will be returned
  * by dns_lookup
  */
-void add_dns_hash(const unsigned char *key, dns_cent_t *data) 
+void add_dns_hash(dns_cent_t *data) 
 {
+	const unsigned char *key=data->qname;
 	int idx=dns_shash(key);
 	dns_hash_ent_t *he;
 	he=malloc(sizeof(dns_hash_ent_t));

@@ -605,13 +605,12 @@ test -z "$CFLAGS" && CFLAGS="-O2 -g -Wall -Winline"
 CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
 
 PACKAGE="pdnsd"
-VERSION=`cat version`
+VERSION=`cat $srcdir/version`
 
 distribution="Generic"
 target="autodetect"
 cachedir="/var/cache/$PACKAGE"
 ipv4_default=1
-ipv6_default=0
 have_ipv4="yes"
 newrr="yes"
 query_m="udponly"
@@ -963,7 +962,6 @@ EOF
 
     if test $have_ipv4 != "yes" ; then
       ipv4_default=0	
-      ipv6_default=1
     fi
   fi
 fi
@@ -984,19 +982,15 @@ fi
 if test "${enable_ipv6_startup+set}" = set; then
   enableval="$enable_ipv6_startup"
    if test $enableval = "yes" ; then
-    ipv6_default=1
+    ipv4_default=0
   else 
-    ipv6_default=0
+    ipv4_default=1
   fi
 fi
 
 
 cat >> confdefs.h <<EOF
 #define DEFAULT_IPV4 $ipv4_default
-EOF
-
-cat >> confdefs.h <<EOF
-#define DEFAULT_IPV6 $ipv6_default
 EOF
 
  
@@ -3040,6 +3034,7 @@ Makefile
 file-list.base
 contrib/Makefile
 doc/Makefile
+doc/pdnsd.8
 doc/pdnsd.conf
 src/Makefile
 src/pdnsd-ctl/Makefile
@@ -3050,6 +3045,7 @@ src/rc/SuSE/Makefile
 src/rc/SuSE/pdnsd
 src/rc/Debian/Makefile
 src/rc/Debian/pdnsd
+src/rc/Slackware/rc.pdnsd
 src/test/Makefile
  config.h" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
 EOF
@@ -3149,6 +3145,7 @@ Makefile
 file-list.base
 contrib/Makefile
 doc/Makefile
+doc/pdnsd.8
 doc/pdnsd.conf
 src/Makefile
 src/pdnsd-ctl/Makefile
@@ -3159,6 +3156,7 @@ src/rc/SuSE/Makefile
 src/rc/SuSE/pdnsd
 src/rc/Debian/Makefile
 src/rc/Debian/pdnsd
+src/rc/Slackware/rc.pdnsd
 src/test/Makefile
 "}
 EOF

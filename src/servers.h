@@ -1,7 +1,7 @@
 /* servers.h - manage a set of dns servers
    Copyright (C) 2000 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2002, 2003.
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
 
 This file is part of the pdnsd package.
 
@@ -26,14 +26,23 @@ Boston, MA 02111-1307, USA.  */
 #define _SERVERS_H_
 
 #include <config.h>
+#include "consts.h"
+
+/* Number of ping timeouts before we take a server offline. */
+#define PINGREPEAT 2
 
 int start_servstat_thread(void);
-void mark_server_down(pdnsd_a *sa, int retst);
+void sched_server_test(pdnsd_a *sa, int nadr, int up);
 void mark_server(int i, int j, int up);
 void test_onquery(void);
 void perform_uptest(int i, int j);
 void lock_server_data();
 void unlock_server_data();
 int change_servers(int i, addr_array ar, int c);
+
+inline static int needs_intermittent_testing(servparm_t *sp)
+{
+  return (sp->interval>0 && (sp->uptest!=C_NONE || sp->scheme[0]));
+}
 
 #endif

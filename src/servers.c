@@ -59,6 +59,7 @@ static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
 pthread_t stt;
 pthread_mutex_t servers_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t server_data_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t server_test_cond = PTHREAD_COND_INITIALIZER;
 int server_data_users = 0;
 static char schm[32];
 
@@ -68,6 +69,8 @@ static char schm[32];
 static int uptest (servparm_t *serv, int j)
 {
 	int ret=0;
+
+	DEBUG_PDNSDA_MSG("performing uptest (type=%s) for %s\n",const_name(serv->uptest),PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a));
 
 	/* Unlock the mutex because some of the tests may take a while. */
 	++server_data_users;
@@ -79,7 +82,7 @@ static int uptest (servparm_t *serv, int j)
 		ret=DA_INDEX(serv->atup_a,j).is_up;
 		break;
 	case C_PING:
-		ret=ping(is_inaddr_any(&serv->ping_a) ? &DA_INDEX(serv->atup_a,j).a : &serv->ping_a, serv->ping_timeout,2)!=-1;
+		ret=ping(is_inaddr_any(&serv->ping_a) ? &DA_INDEX(serv->atup_a,j).a : &serv->ping_a, serv->ping_timeout,PINGREPEAT)!=-1;
 		break;
 	case C_IF:
  	case C_DEV:
@@ -147,6 +150,7 @@ static int uptest (servparm_t *serv, int j)
 	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
 	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
 
+	DEBUG_PDNSDA_MSG("result of uptest for %s is %d\n",PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a),ret);
 	return ret;
 }
 
@@ -181,13 +185,13 @@ static void retest(int i, int j)
 {
   time_t s_ts;
   servparm_t *srv=&DA_INDEX(servers,i);
-  int nsrvs;
+  int nsrvs=DA_NEL(srv->atup_a);
 
-  if(j>=0)
-    nsrvs=j+1;  /* test just one */
+  if(j>=0) {
+    if(j<nsrvs) nsrvs=j+1;  /* test just one */
+  }
   else {
     j=0;        /* test a range of servers */
-    nsrvs=DA_NEL(srv->atup_a);
   }
 
   if(!scheme_ok(srv)) {
@@ -244,7 +248,7 @@ void *servstat_thread(void *p)
 	pthread_mutex_lock(&servers_lock);
 	for (i=0;i<DA_NEL(servers);++i) {
 		sp=&DA_INDEX(servers,i);
-		if (sp->interval>0 && (sp->uptest!=C_NONE || sp->scheme[0])) {
+		if (needs_intermittent_testing(sp)) {
 			test_interval=1;
 		}
 		retest(i,-1);
@@ -252,29 +256,43 @@ void *servstat_thread(void *p)
 	if (test_interval) {
 		for(;;) {
 			{
-				int minwait=3600;
-				time_t now=time(NULL);
+				struct timeval now;
+				struct timespec timeout;
+				int minwait,retval;
 
+				gettimeofday(&now,NULL);
+				minwait=3600;
 				for (i=0;i<DA_NEL(servers);++i) {
 					sp=&DA_INDEX(servers,i);
-					if(sp->interval>0) {
+					if(needs_intermittent_testing(sp)) {
 						int j;
 
 						for(j=0;j<DA_NEL(sp->atup_a);++j) {
-							int wait= DA_INDEX(sp->atup_a,j).i_ts + sp->interval - now;
+							int wait= DA_INDEX(sp->atup_a,j).i_ts + sp->interval - now.tv_sec;
 							if(wait < minwait) minwait=wait;
 						}
 					}
 				}
-				pthread_mutex_unlock(&servers_lock);
-				if(minwait>0) sleep_r(minwait);
-				else usleep_r(500000);
+				timeout.tv_sec = now.tv_sec;
+				if(minwait>0)
+					timeout.tv_sec += minwait;
+				timeout.tv_nsec = now.tv_usec * 1000 + 500000000;  /* wait at least half a second. */
+				if(timeout.tv_nsec>1000000000) {
+					timeout.tv_nsec -= 1000000000;
+					++timeout.tv_sec;
+				}
+				/* While we wait for a server_test_cond condition or a timeout
+				   the servers_lock mutex is unlocked, so other threads can access
+				   server data
+				*/
+				retval=pthread_cond_timedwait(&server_test_cond, &servers_lock, &timeout);
+				DEBUG_MSG("Server status thread woke up (%s signal).\n",
+					  retval==0?"test condition":retval==ETIMEDOUT?"timer":retval==EINTR?"interrupt":"error");
 			}
-			pthread_mutex_lock(&servers_lock);
 			schm[0] = '\0';
 			for (i=0;i<DA_NEL(servers);++i) {
 				sp=&DA_INDEX(servers,i);
-				if(sp->interval>0) {
+				if(needs_intermittent_testing(sp)) {
 					int j;
 
 					for(j=0;j<DA_NEL(sp->atup_a);++j) {
@@ -291,6 +309,7 @@ void *servstat_thread(void *p)
 	}
 
 	pthread_mutex_unlock(&servers_lock);
+	DEBUG_MSG("Server status thread exiting.\n");
 	return NULL; /* server status thread no longer needed. */
 }
 
@@ -308,33 +327,54 @@ int start_servstat_thread()
 }
 
 /*
- * If a connect() to a server failed, try to mark it as down (only for uptest=ping servers)
+ * This can be used to mark a server (or a list of nadr servers) up (up=1) or down (up=0),
+ * or to schedule an immediate retest (up=-1).
+ * We can't always use indices to identify a server, because we allow run-time
+ * configuration of server addresses, so the servers are identified by their IP addresses.
  */ 
-void mark_server_down(pdnsd_a *sa, int retst)
+void sched_server_test(pdnsd_a *sa, int nadr, int up)
 {
-	int i,j;
+	int k,i,j,signal_test;
 	
 	pthread_mutex_lock(&servers_lock);
-	for(i=0;i<DA_NEL(servers);++i) {
-	  servparm_t *sp=&DA_INDEX(servers,i);
-	  for(j=0;j<DA_NEL(sp->atup_a);++j) {
-	    atup_t *at=&DA_INDEX(sp->atup_a,j);
-	    if(same_inaddr(&at->a,sa)) {
-	      if(retst?(sp->uptest==C_PING):(sp->interval>0)) {
-		at->is_up=0;
-		at->i_ts=time(NULL);
-	      } 
-	      else if(retst && at->is_up && sp->uptest!=C_NONE) {
-		  retest(i,j);
-	      }
-	    }
-	  }
+
+	signal_test=0;
+	/* This obviously isn't very efficient, but nadr should be small
+	   and anything else would introduce considerable overhead */
+	for(k=0;k<nadr;++k) {
+		pdnsd_a *sak= &sa[k];
+		for(i=0;i<DA_NEL(servers);++i) {
+			servparm_t *sp=&DA_INDEX(servers,i);
+			for(j=0;j<DA_NEL(sp->atup_a);++j) {
+				atup_t *at=&DA_INDEX(sp->atup_a,j);
+				if(same_inaddr(&at->a,sak)) {
+					if(up>=0) {
+						at->is_up=up;
+						at->i_ts=time(NULL);
+						DEBUG_PDNSDA_MSG("Marked server %s %s.\n",PDNSDA2STR(sak),up?"up":"down");
+					} 
+					else if(at->i_ts) {
+						/* A test may take a while, and we don't want to hold
+						   up the calling thread.
+						   Instead we set the timestamp to zero and signal
+						   a condition which should wake up the server test thread.
+						*/
+						at->i_ts=0;
+						signal_test=1;
+					}
+				}
+			}
+		}
 	}
+	if(signal_test) pthread_cond_signal(&server_test_cond);
 
 	pthread_mutex_unlock(&servers_lock);
 }
 
-/* Put a server up or down */
+/* Mark a server up or down.
+ * The server is identified by indices i,j.
+ * j=-1 means all servers in section i.
+ */
 void mark_server(int i, int j, int up)
 {
 	servparm_t *sp;
@@ -343,15 +383,17 @@ void mark_server(int i, int j, int up)
 
 	pthread_mutex_lock(&servers_lock);
 	sp=&DA_INDEX(servers,i);
-	now=time(NULL);
-	if(j>=0)
-	  n=j+1;
-	else {
-	  j=0; n=DA_NEL(sp->atup_a);
+	n=DA_NEL(sp->atup_a);
+	if(j>=0) {
+		if(j<n) n=j+1; /* just one */
 	}
+	else {
+		j=0; /* mark the whole set */
+	}
+	now=time(NULL);
 	for(;j<n;++j) {
-	  DA_INDEX(sp->atup_a,j).is_up=up;
-	  DA_INDEX(sp->atup_a,j).i_ts=now;
+		DA_INDEX(sp->atup_a,j).is_up=up;
+		DA_INDEX(sp->atup_a,j).i_ts=now;
 	}
 
 	pthread_mutex_unlock(&servers_lock);

@@ -8,15 +8,20 @@
 static char rcsid[]="$Id: if_up.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
 #endif
 
-int daemon_p=0;
-int debug_p=0;
-int verbosity=VERBOSITY;
-pthread_t main_thread;
-
+short int daemon_p=0;
+short int debug_p=0;
+short int verbosity=VERBOSITY;
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-int run_ipv4=DEFAULT_IPV4;
+short int run_ipv4=DEFAULT_IPV4;
 #endif
-int run_ipv6=DEFAULT_IPV6;
+#ifdef ENABLE_IPV6
+struct in6_addr ipv4_6_prefix;
+#endif
+pthread_t main_thread;
+#if DEBUG>0
+FILE *dbg_file;
+#endif
+
 
 int main(int argc, char *argv[]) 
 {

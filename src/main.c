@@ -51,30 +51,29 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
 #endif
 
-#ifdef DEBUG_YY
-extern int yydebug;
+short int daemon_p=0;
+short int debug_p=0;
+short int verbosity=VERBOSITY;
+short int stat_pipe=0;
+short int notcp=0;
+/* int sigr=0; */
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+short int run_ipv4=DEFAULT_IPV4;
+short int cmdlineipv=0;
+#endif
+#ifdef ENABLE_IPV6
+short int cmdlineprefix=0;
+struct in6_addr ipv4_6_prefix;
 #endif
 
-int daemon_p=0;
-int debug_p=0;
-int verbosity=VERBOSITY;
 pthread_t main_thread;
 #if DEBUG>0
 FILE *dbg_file;
-#endif
-#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-int run_ipv4=DEFAULT_IPV4;
-#endif
-#ifdef ENABLE_IPV6
-int run_ipv6=DEFAULT_IPV6;
 #endif
 volatile int tcp_socket=-1;
 volatile int udp_socket=-1;
 sigset_t sigs_msk;
 char *pidfile=NULL;
-int stat_pipe=0;
-int notcp=0;
-int sigr=0;
 
 
 /* version and licensing information */
@@ -98,12 +97,15 @@ static const char info_message[] =
 /* the help page */
 static const char help_message[] =
 
-	"\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-vn] [-mxx] [-c file]"
+	"\n\nUsage: pdnsd [-h] [-V] [-s] [-d] [-g] [-t] [-p file] [-vn] [-mxx] [-c file]"
 #ifdef ENABLE_IPV4
 	" [-4]"
 #endif
 #ifdef ENABLE_IPV6
-	" [-6]"
+	" [-6] [-i prefix]"
+#endif
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	" [-a]"
 #endif
 	"\n\n"
 	"Options:\n"
@@ -113,7 +115,7 @@ static const char help_message[] =
 	"--version\tprint version information and exit.\n"
 	"--pdnsd-user\tprint the user pdnsd will run as and exit.\n"
 	"-s\t\t--or--\n"
-	"--status\tEnable status control socket the temp directory\n"
+	"--status\tEnable status control socket in the cache directory.\n"
 	"-d\t\t--or--\n"
 	"--daemon\tStart pdnsd in daemon mode (as background process.)\n"
 	"-g\t\t--or--\n"
@@ -135,31 +137,39 @@ static const char help_message[] =
 #elif M_PRESET==TCP_ONLY
 	"-mto"
 #else
-	"mtu"
+	"-mtu"
 #endif
 	"\n"
 	"-c\t\t--or--\n"
 	"--config-file\tspecifies the file the configuration is read from.\n"
 	"\t\tDefault is " CONFDIR "/pdnsd.conf\n"
 #ifdef ENABLE_IPV4
-	"-4\t\tenables IPv4 support. IPv6 support is automatically\n"
-	"\t\tdisabled (should it be available). "
+	"-4\t\tswitches to IPv4 mode.\n"
+	"\t\t"
 #  if DEFAULT_IPV4
 	"On"
 #  else
 	"Off"
 #  endif
-#endif
 	" by default.\n"
+#endif
 #ifdef ENABLE_IPV6
-	"-6\t\tenables IPv6 support. IPv4 support is automatically\n"
-	"\t\tdisabled (should it be available). "
-#  if DEFAULT_IPV6
-	"On"
-#  else
+	"-6\t\tswitches to IPv6 mode.\n"
+	"\t\t"
+#  if DEFAULT_IPV4
 	"Off"
+#  else
+	"On"
 #  endif
 	" by default.\n"
+	"-i\t\t--or--\n"
+	"--ipv4_6_prefix\tspecifies the prefix pdnsd uses to map IPv4 to IPv6\n"
+	"\t\taddresses. Must be a valid IPv6 address.\n"
+	"\t\tDefault is " DEFAULT_IPV4_6_PREFIX "\n"
+#endif
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	"-a\t\tWith this option, pdnsd will try to detect automatically if\n"
+	"\t\tthe system supports IPv6, and revert to IPv4 otherwise.\n"
 #endif
 	"\n\n\"no\" can be prepended to the --status, --daemon, --debug and --tcp\n"
 	"options (e.g. --notcp) to reverse their effect.\n";
@@ -188,6 +198,25 @@ int final_init()
 	return 1;
 }
 
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+/* Check if IPv6 is available.
+ * With thanks to Juliusz Chroboczek.
+ */
+static int check_ipv6()
+{
+    int fd;
+    fd = socket(PF_INET6, SOCK_STREAM, 0);
+    if(fd < 0) {
+        if(errno == EPROTONOSUPPORT || errno == EAFNOSUPPORT || errno == EINVAL)
+            return 0;
+        return -1;
+    }
+    close(fd);
+    return 1;
+}
+#endif
+
+
 /*
  * Argument parsing, init, server startup
  */
@@ -197,11 +226,19 @@ int main(int argc,char *argv[])
 	char *conf_file=NULL;
 
 	main_thread=pthread_self();
-	
-#ifdef DEBUG_YY
-	yydebug=1;
+#ifdef ENABLE_IPV6
+	{
+		int err;
+		if((err=inet_pton(AF_INET6,DEFAULT_IPV4_6_PREFIX,&ipv4_6_prefix))<=0) {
+			fprintf(stderr,"Error: inet_pton() wont accept default prefix %s in %s, line %d\n",
+				DEFAULT_IPV4_6_PREFIX,__FILE__,__LINE__);
+			if(err)
+				perror("inet_pton");
+			exit(1);
+		}
+	}
 #endif
-
+	
 	/* We parse the command line two times, because the command-line options shall override the ones
 	 * given in the config file */
 	for (i=1;i<argc;i++) {
@@ -217,17 +254,76 @@ int main(int argc,char *argv[])
 			if (++i<argc) {
 				conf_file=argv[i];
 			} else {
-				fprintf(stderr,"Error: file name expected after -c option.\n");
+				fprintf(stderr,"Error: file name expected after %s option.\n",arg);
+				exit(1);
+			}
+		} else if (strcmp(arg,"-4")==0) {
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+			run_ipv4=1; cmdlineipv=1;
+# endif
+#else
+			fprintf(stderr,"Error: -4: pdnsd was compiled without IPv4 support.\n");
+			exit(1);
+#endif
+		} else if (strcmp(arg,"-6")==0) {
+#ifdef ENABLE_IPV6
+# ifdef ENABLE_IPV4
+			run_ipv4=0; cmdlineipv=1;
+# endif
+#else
+			fprintf(stderr,"Error: -6: pdnsd was compiled without IPv6 support.\n");
+			exit(1);
+#endif
+		} else if (strcmp(arg,"-a")==0) {
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+			int rv=check_ipv6();
+			if(rv<0) {
+				fprintf(stderr,"Error: -a: can't check availability of IPv6: %s\n"
+					"Try using -4 or -6 option instead.\n",strerror(errno));
+				exit(1);
+			}
+			if((run_ipv4=!rv))
+				fprintf(stderr,"Switching to IPv4 mode.\n");
+			cmdlineipv=1;
+#else
+			fprintf(stderr,"Warning: -a option does nothing unless pdnsd is compiled with both IPv4 AND IPv6 support.\n");
+#endif
+		} else if(strcmp(arg,"-i")==0 || strcmp(arg,"--ipv4_6_prefix")==0) {
+			if (++i<argc) {
+#ifdef ENABLE_IPV6
+				if(inet_pton(AF_INET6,argv[i],&ipv4_6_prefix)<=0) {
+					fprintf(stderr,"Error: %s: argument not a valid IPv6 address.\n",arg);
+					exit(1);
+				}
+				cmdlineprefix=1;
+#else
+				fprintf(stderr,"pdnsd was compiled without IPv6 support. %s will be ignored.\n",arg);
+#endif
+			} else {
+				fprintf(stderr,"Error: IPv6 address expected after %s option.\n",arg);
 				exit(1);
 			}
 		} else {
 			char *equ=strchr(arg,'=');
 			if(equ) {
 				int plen=equ-arg;
+				char *valstr=equ+1;
 #       			define arg_isparam(strlit) (!strncmp(arg,strlit,strlitlen(strlit)) && plen==strlitlen(strlit))
 
 				if(arg_isparam("--config-file")) {
-					conf_file=equ+1;
+					conf_file=valstr;
+				}
+				else if(arg_isparam("--ipv4_6_prefix")) {
+#ifdef ENABLE_IPV6
+					if(inet_pton(AF_INET6,valstr,&ipv4_6_prefix)<=0) {
+						fprintf(stderr,"Error: --ipv4_6_prefix: argument not a valid IPv6 address.\n");
+						exit(1);
+					}
+					cmdlineprefix=1;
+#else
+					fprintf(stderr,"pdnsd was compiled without IPv6 support. --ipv4_6_prefix will be ignored.\n");
+#endif
 				}
 			}
 		}
@@ -248,6 +344,9 @@ int main(int argc,char *argv[])
 			daemon_p=0;
 		} else if (strcmp(arg,"-t")==0 || strcmp(arg,"--tcp")==0) {
 			notcp=0;
+#ifdef NO_TCP_SERVER
+			fprintf(stderr,"pdnsd was compiled without tcp server support. -t has no effect.\n");
+#endif
 		} else if (strcmp(arg,"--notcp")==0) {
 			notcp=1;
 		} else if (strcmp(arg,"-p")==0) {
@@ -289,7 +388,7 @@ int main(int argc,char *argv[])
 #endif
 			} else if (strcmp(&arg[2],"tu")==0) {
 #if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
-				fprintf(stderr,"Error: pdnsd was not compiled with UDP  and TCP support.\n");
+				fprintf(stderr,"Error: pdnsd was not compiled with UDP and TCP support.\n");
 				exit(1);
 #else
 				query_method=TCP_UDP;
@@ -298,30 +397,9 @@ int main(int argc,char *argv[])
 				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
 				exit(1);
 			}
-		} else if (strcmp(arg,"-4")==0) {
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-			run_ipv4=1;
-			run_ipv6=0;
-# endif
-#else
-			fprintf(stderr,"Error: -4: pdnsd was compiled without IPv4 support.\n");
-			exit(1);
-#endif
-		} else if (strcmp(arg,"-6")==0) {
-#ifdef ENABLE_IPV6
-			run_ipv6=1;
-# ifdef ENABLE_IPV4
-			run_ipv4=0;
-# endif
-#else
-			fprintf(stderr,"Error: -6: pdnsd was compiled without IPv6 support.\n");
-			exit(1);
-#endif
 		} else if (strcmp(arg,"-g")==0 || strcmp(arg,"--debug")==0) {
-#if DEBUG>0
 			debug_p=1;
-#else
+#if !DEBUG
 			fprintf(stderr,"pdnsd was compiled without debugging support. -g has no effect.\n");
 #endif
 		} else if (strcmp(arg,"--nodebug")==0) {
@@ -338,15 +416,17 @@ int main(int argc,char *argv[])
 					printf("%i\n",uid);
 			}
 			exit(0);
-		} else if (strcmp(arg,"-c")==0 || strcmp(arg,"--config-file")==0) {
-			/* at this point, it is already checked that a file name arg follows. */
+		} else if (strcmp(arg,"-c")==0 || strcmp(arg,"--config-file")==0 || strcmp(arg,"-i")==0 || strcmp(arg,"--ipv4_6_prefix")==0) {
+			/* at this point, it is already checked that a file name or prefix arg follows. */
 			i++;
+		} else if(strcmp(arg,"-4")==0 || strcmp(arg,"-6")==0 || strcmp(arg,"-a")==0) {
+			/* already processed. */
 		} else {
 			char *equ=strchr(arg,'=');
 			if(equ) {
 				int plen=equ-arg;
-				if(arg_isparam("--config-file")) {
-					/* at this point, the file name has already been processed. */
+				if(arg_isparam("--config-file") || arg_isparam("--ipv4_6_prefix")) {
+					/* at this point, these options have already been processed. */
 				}
 				else {
 					fputs("Error: unknown option: ",stderr);
@@ -360,7 +440,7 @@ int main(int argc,char *argv[])
 			}
 		}
 	}
-	
+
 	if(!global.cache_dir)   global.cache_dir = CACHEDIR;
 	if(!global.scheme_file) global.scheme_file = "/var/lib/pcmcia/scheme";
 
@@ -493,12 +573,14 @@ int main(int argc,char *argv[])
 		_exit(1);
 #endif
 #ifdef ENABLE_IPV4
-	if (run_ipv4)
+	if (run_ipv4) {
 		DEBUG_MSGC("Using IPv4.\n");
+	}
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6)
+	ELSE_IPV6 {
 		DEBUG_MSGC("Using IPv6.\n");
+	}
 #endif
 
 	/* initialize attribute for creating detached threads */
@@ -544,7 +626,7 @@ int main(int argc,char *argv[])
 	{
 #if DEBUG>0
 		int thrdsucc=1;
-# define thrdfail (thrdsucc=0);
+# define thrdfail (thrdsucc=0)
 #else
 # define thrdfail
 #endif

@@ -156,6 +156,9 @@ typedef struct {
 /* Recursion depth. */
 #define MAX_HOPS 20
 
+/* maximum number of levels to go up the hierarchy searching for authoritive name servers. */
+#define MAXUPNS 3
+
 /*
  * Types for compression buffers.
  */
@@ -171,7 +174,7 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int *od);
 int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array *cb);
 
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr);
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr);
 
 #if DEBUG>0 
 char *get_cname(int id);

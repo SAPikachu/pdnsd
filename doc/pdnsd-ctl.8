@@ -4,24 +4,26 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD-CTL" "8" "01 Jan 2004" "" ""
+.TH "PDNSD\-CTL" "8" "01 Jan 2004" "" ""
 .SH NAME
-pdnsd-ctl \- controls pdnsd
+\fBpdnsd\-ctl\fR - controls pdnsd
 .SH SYNOPSIS
 .sp
-\fBpdnsd-ctl\fR [\fB-c\fR cachedir] [\fB-q\fR] command [options]
+\fBpdnsd\-ctl\fR [\fB\-c\fR cachedir] [\fB\-q\fR] command [options]
 .SH "DESCRIPTION"
 .PP
-\fBpdnsd-ctl\fR controls pdnsd, a proxy dns server 
-with permanent caching.
+\fBpdnsd\-ctl\fR controls \fBpdnsd\fR, a proxy dns server with permanent caching.
+Note that the status control socket must be enabled (by specifying an option on
+the pdnsd command line or in the configuration file) before you can use
+\fBpdnsd\-ctl\fR.
 .PP
 .TP
-\fB-c\fR cachedir
+\fB\-c\fR cachedir
 set the cache directory to cachedir (must match pdnsd setting).
 This is only necessary if the directory differs from the default specified
 at compile time.
 .TP
-\fB-q\fR
+\fB\-q\fR
 be quiet unless output is specified by command or something goes wrong.
 .SH "COMMANDS"
 .TP
@@ -95,7 +97,7 @@ the first option. The ttl is optional, the default is 900 seconds.
 \fBnoauth\fR is used to make the domains non-authoritative (please
 consult the pdnsd manual for what that means).
 If you want no other record than the newly added in the cache, do
-\fBpdnsd-ctl\fR \fBrecord\fR \fIname\fR \fBdelete\fR
+\fBpdnsd\-ctl\fR \fBrecord\fR \fIname\fR \fBdelete\fR
 before adding records.
 .TP
 \fBneg\fR
@@ -107,7 +109,7 @@ domain is cached negative. For negative cached records, errors are
 immediately returned on a query, without querying other servers first.
 The ttl is optional, the default is 900 seconds.
 .TP
-\fBlist-rrtypes\fR
+\fBlist\-rrtypes\fR
 [no options]
 
 List available rr types for the neg command. Note that those are only
@@ -120,7 +122,7 @@ Mail the authors if you find any.
 .PP
 Thomas Moestl<tmoestl@gmx.net>
 .PP
-Paul Rombouts<p.a.rombouts@home.nl> (for versions 1.1.7a-par and later)
+Paul Rombouts<p.a.rombouts@home.nl> (for versions 1.1.7a\-par and later)
 .SH "SEE ALSO"
 
 \fBpdnsd(8)\fR

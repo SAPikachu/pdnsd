@@ -39,22 +39,33 @@ Boston, MA 02111-1307, USA.  */
 #endif
 
 #if !defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-# ifdef DEFAULT_IPV6
-#  undef DEFAULT_IPV6 
+# ifdef DEFAULT_IPV4
+#  undef DEFAULT_IPV4 
 # endif
-# define DEFAULT_IPV6 1
+# define DEFAULT_IPV4 0
+#endif
+
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+# define ELSE_IPV6 else
+#else
+# define ELSE_IPV6
 #endif
 
 /* From main.c */
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
-extern int run_ipv4;
+extern short int run_ipv4;
+extern short int cmdlineipv;
 # else
-#define run_ipv4 1
+#  define run_ipv4 1
 # endif
+#else
+#  define run_ipv4 0
 #endif
 #ifdef ENABLE_IPV6
-extern int run_ipv6;
+#define DEFAULT_IPV4_6_PREFIX "::ffff:0.0.0.0"
+extern short int cmdlineprefix;
+extern struct in6_addr ipv4_6_prefix;
 #endif
 
 #if TARGET==TARGET_LINUX && defined(NO_IN_PKTINFO)
@@ -151,7 +162,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
-#  define SOCKA_A(a) (run_ipv6?SOCKA_A6(a):SOCKA_A4(a))
+#  define SOCKA_A(a) (run_ipv4?SOCKA_A4(a):SOCKA_A6(a))
 # else
 #  define SOCKA_A(a) SOCKA_A4(a)
 # endif
@@ -168,7 +179,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
-#  define ADDR_EQUIV(a,b) ((run_ipv4 && ADDR_EQUIV4(a,b)) || (run_ipv6 && ADDR_EQUIV6(a,b)))
+#  define ADDR_EQUIV(a,b) ((run_ipv4 && ADDR_EQUIV4(a,b)) || (!run_ipv4 && ADDR_EQUIV6(a,b)))
 # else
 #  define ADDR_EQUIV(a,b) ADDR_EQUIV4(a,b)
 # endif
@@ -209,6 +220,14 @@ typedef union {
 	struct in6_addr  ipv6;
 #endif
 } pdnsd_a;
+
+/* used to enter local records */
+typedef	struct {
+	struct in_addr ipv4;
+#ifdef ENABLE_IPV6
+	struct in6_addr ipv6;
+#endif
+} pdnsd_ca;
 
 
 #endif

@@ -1,6 +1,6 @@
 # $Id: Makefile.am,v 1.2 2001/12/30 15:32:54 tmm Exp $
 
-man_MANS = pdnsd-ctl.8
+man_MANS = pdnsd.8 pdnsd-ctl.8
 
 EXTRA_DIST = pdnsd.conf.in html/dl.html html/doc.html html/faq.html \
 html/index.html txt/faq.txt txt/intro.txt txt/manual.txt $(man_MANS)

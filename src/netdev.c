@@ -250,7 +250,7 @@ int is_local_addr(pdnsd_a *a)
 
 #  endif
 #  ifdef ENABLE_IPV6
-	if (run_ipv6) {
+	ELSE_IPV6 {
 		int res=0;
 		char   buf[40];
 		FILE   *f;
@@ -262,22 +262,20 @@ int is_local_addr(pdnsd_a *a)
 		 * should work and is easy to adapt should the format change. */
 		if (!(f=fopen("/proc/net/if_inet6","r")))
 			return 0;
-		/* The address is at the start of the line. We just read 4 characters and insert a ':' 7 
+		/* The address is at the start of the line. We just read 32 characters and insert a ':' 7 
 		 * times. Such, we can use inet_pton conveniently. More portable, that. */
 		for(;;) {
-			int i,ch;
-			for (i=0;i<8;i++) {
-				int j;
-				for (j=0;j<4;j++) {
-					if ((ch=fgetc(f))==EOF)
-						goto fclose_return; /* we are at the end of the file and haven't found anything.*/
-					if(ch=='\n') goto nextline;
-					buf[i*5+j]=ch;
-				}
-				buf[i*5+4]= (i<7 ? ':' : '\0');
+			int i,ch; char *p=buf;
+			for (i=0;i<32;i++) {
+				if(i && i%4==0) *p++ = ':';
+				if ((ch=fgetc(f))==EOF)
+					goto fclose_return; /* we are at the end of the file and haven't found anything.*/
+				if(ch=='\n') goto nextline;
+				*p++ = ch;
 			}
-			if (inet_pton(AF_INET6,buf,&b) == 1) {
-				if (IN6_ARE_ADDR_EQUAL((&a->ipv6),(&b))) {
+			*p=0;
+			if (inet_pton(AF_INET6,buf,&b) >0) {
+				if (IN6_ARE_ADDR_EQUAL(&b,&a->ipv6)) {
 					res=1;
 					goto fclose_return;
 				}
@@ -331,7 +329,7 @@ int is_local_addr(pdnsd_a *a)
 		}
 #  endif
 #  ifdef ENABLE_IPV6
-		if (run_ipv6) {
+		ELSE_IPV6 {
 			if (ir->ifr_addr.sa_family==AF_INET6 &&
 			    IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ir->ifr_addr)->sin6_addr,&a->ipv6)) {
 				return 1;

@@ -34,6 +34,7 @@ enum {
 	C_VERBOSITY,
 	C_QUERY_METHOD,
 	RUN_IPV4,
+	IPV4_6_PREFIX,
 	C_DEBUG,
 	C_CTL_PERMS,
 	C_PROC_LIMIT,
@@ -100,6 +101,7 @@ static const namevalue_t global_options[]= {
 	{"daemon",           DAEMON},
 	{"debug",            C_DEBUG},
 	{"delegation_only",  DELEGATION_ONLY},
+	{"ipv4_6_prefix",    IPV4_6_PREFIX},
 	{"linkdown_kluge",   LINKDOWN_KLUGE},
 	{"max_ttl",          MAX_TTL},
 	{"min_ttl",          MIN_TTL},
@@ -125,6 +127,7 @@ static const namevalue_t global_options[]= {
 	{"strict_setuid",    STRICT_SETUID},
 	{"tcp_qtimeout",     TCP_QTIMEOUT},
 	{"tcp_server",       C_TCP_SERVER},
+	{"timeout",          TIMEOUT},
 	{"verbosity",        C_VERBOSITY}
 };
 

@@ -103,7 +103,7 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(noinst_PROGRAMS)
 
 
-DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
+DEFS = @DEFS@ -I. -I$(srcdir) -I../..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
@@ -230,6 +230,27 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
+error.o: ../error.c ../../config.h ../error.h ../thread.h ../helpers.h \
+	../cache.h ../ipvers.h ../list.h ../dns.h ../rr_types.h \
+	../conff.h ../pdnsd_assert.h
+helpers.o: ../helpers.c ../../config.h ../ipvers.h ../thread.h \
+	../error.h ../helpers.h ../cache.h ../list.h ../dns.h \
+	../rr_types.h ../conff.h ../pdnsd_assert.h
+icmp.o: ../icmp.c ../../config.h ../ipvers.h ../icmp.h ../error.h \
+	../thread.h ../helpers.h ../cache.h ../list.h ../dns.h \
+	../rr_types.h ../conff.h ../pdnsd_assert.h
+if_up.o: if_up.c ../../config.h ../netdev.h ../ipvers.h
+is_local_addr.o: is_local_addr.c ../../config.h ../netdev.h ../ipvers.h
+netdev.o: ../netdev.c ../../config.h ../ipvers.h ../netdev.h ../error.h \
+	../thread.h ../helpers.h ../cache.h ../list.h ../dns.h \
+	../rr_types.h ../conff.h ../pdnsd_assert.h
+random.o: random.c ../../config.h ../helpers.h ../cache.h ../ipvers.h \
+	../list.h ../dns.h ../rr_types.h ../conff.h
+thread.o: ../thread.c ../../config.h ../thread.h ../error.h ../helpers.h \
+	../cache.h ../ipvers.h ../list.h ../dns.h ../rr_types.h \
+	../conff.h ../pdnsd_assert.h
+tping.o: tping.c ../../config.h ../icmp.h ../ipvers.h
+
 info-am:
 info: info-am
 dvi-am:

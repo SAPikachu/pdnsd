@@ -8,7 +8,7 @@ noinst_PROGRAMS = if_up is_local_addr tping random
 
 TESTADDSRC=
 #TESTADDSRC= netdev.c error.c thread.c helpers.c icmp.c
-TESTDEPS = ../netdev.o ../error.o ../thread.o ../helpers.o ../icmp.o
+TESTDEPS = netdev.o error.o thread.o helpers.o icmp.o
 
 TESTOBJS = netdev.o error.o thread.o helpers.o icmp.o
 
@@ -31,3 +31,5 @@ random_DEPENDENCIES = $(TESTDEPS)
 # These are Symlinks we want to have in the package
 #EXTRA_DIST = conff.h error.h helpers.h icmp.h ipvers.h netdev.h thread.h cacheing
 
+$(TESTOBJS): %.o: ../%.c
+	$(COMPILE) -c $<

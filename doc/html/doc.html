@@ -34,7 +34,12 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
     with revisions by Paul Rombouts.<br>
-    It is up-to-date for version 1.1.10-par. For older documentation, please refer to the doc
+    This manual is a part of the pdnsd package, and may be distributed in
+    original or modified  form  under  terms  of  the  GNU  General  Public
+    License,  as  published by the Free Software Foundation; either version
+    2, or (at your option) any later version.<br>
+    You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
+    This manual is up-to-date for version 1.1.11-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -203,10 +208,9 @@
 	  if you did not specify a prefix. To set this e.g. to <code>/etc<code>, use <code>--sysconfdir=/etc</code>.
 	</td>
       </tr>
-      <a name="withdistro"></a>
       <tr>
 	<td>
-	  <code>--with-distribution=distro</code>
+	  <code><a name="withdistro">--with-distribution=distro</a></code>
 	</td>
 	<td>
 	  Specify target distribution (default=Generic; others: RedHat, SuSE, Debian)<br>
@@ -224,20 +228,18 @@
 	  you system manually.
 	</td>
       </tr>
-      <a name="withcachedir"></a>
       <tr>
 	<td>
-	  <code>--with-cachedir=dir</code>
+	  <code><a name="withcachedir">--with-cachedir=dir</a></code>
 	</td>
 	<td>
 	  Default directory for pdnsd cache (default=/var/cache/pdnsd)<br>
 	  This setting can be changed via config file settings when pdnsd was built.
 	</td>
       </tr>
-      <a name="enableisdn"></a>
       <tr>
 	<td>
-	  <code>--enable-isdn</code>
+	  <code><a name="enableisdn">--enable-isdn</a></code>
 	</td>
 	<td>
 	  Enable ISDN support<br>
@@ -254,10 +256,9 @@
 	  Disable IPv4 networking support (default=enabled)
 	</td>
       </tr>
-      <a name="enableipv6"></a>
       <tr>
 	<td>
-	  <code>--enable-ipv6</code>
+	  <code><a name="enableipv6">--enable-ipv6</a></code>
 	</td>
 	<td>
 	  Enable IPv6 networking support.<br>
@@ -295,10 +296,9 @@
 	  this.
 	</td>
       </tr>
-      <a name="enabletcpqueries"></a>
       <tr>
 	<td>
-	  <code>--enable-tcp-queries </code>
+	  <code><a name="enabletcpqueries">--enable-tcp-queries</a></code>
 	</td>
 	<td>
 	  Enable the TCP as query method. This is seldom needed in normal usage.
@@ -334,10 +334,9 @@
 	  &quot;could not discover udp source address&quot;.
 	</td>
       </tr>
-      <a name="disablepoll"></a>
       <tr>
 	<td>
-	  <code>--disable-poll</code>
+	  <code><a name="disablepoll">--disable-poll</a></code>
 	</td>
 	<td>
 	  Disable poll(2) and use select(2) (default=enabled)<br>
@@ -367,10 +366,9 @@
 	  different TTLs). Normally not needed.
 	</td>
       </tr>
-      <a name="enableunderscores"></a>
       <tr>
 	<td>
-	  <code>--enable-underscores</code>
+	  <code><a name="enableunderscores">--enable-underscores</a></code>
 	</td>
 	<td>
 	  Allow underscores (_) in domain names. This breaks RFC compliance, but some
@@ -398,10 +396,9 @@
 	  
 	</td>
       </tr>
-      <a name="defaultid"></a>
       <tr>
 	<td>
-	  <code>--with-default-id=user </code>
+	  <code><a name="defaultid">--with-default-id=user</a></code>
 	</td>
 	<td>
 	  Specify default user for pdnsd (default=nobody).
@@ -410,10 +407,9 @@
 	  You can change this any time in your config file.
 	</td>
       </tr>
-      <a name="withdebug"></a>
       <tr>
 	<td>
-	  <code>--with-debug=level</code>
+	  <code><a name="withdebug">--with-debug=level</a></code>
 	</td>
 	<td>
           Specify debugging level. Normally you can safely switch debugging off
@@ -483,10 +479,9 @@
 	  The default for this option is 2.
 	</td>
       </tr>
-      <a name="threadlib"></a>
       <tr>
 	<td>
-	  <code>--with-thread-lib=&lt;<i>lib</i>&gt;</code>
+	  <code><a name="threadlib">--with-thread-lib=&lt;<i>lib</i>&gt;</a></code>
 	</td>
 	<td>
 	  <em>Added by Paul Rombouts</em>: Use this option if you experience problems with
@@ -560,18 +555,22 @@
       <li> Copy <code>docs/pdnsd.conf</code> into the directory you want it to reside (<code>/etc</code> by default, 
 	    and change it according to your needs (see below).
       <li> Create your caching directory; default is <code>/var/cache/pdnsd</code> (you may change this
-	in your <code>pdnsd.conf</code>); Permisions should be at max <code>rwxr-xr-x</code> (if you want to
+	in your <code>pdnsd.conf</code>); Permissions should be at max <code>rwxr-xr-x</code> (if you want to
 	protect your cache and status socket, make it <code>rwx------</code>).
     </ol>
     Thats it! 
     <br>
 
     <h3>0.4 Start at boot time</h3>
-    In the <code>rc</code> folder of the pdnsd distribution are start scripts
+    In the <code>src/rc</code> folder of the pdnsd distribution are start scripts
     for pdnsd designed for different Linux distros. There are scripts
-    for SuSE  and Redhat Linux now.<br>
+    for SuSE, Redhat and Debian Linux now.<br>
     The start scripts are automatically installed during RPM install, and also during <code>make install</code>
-    if you specified your distro.
+    if you specified your distro.<br>
+    For Slackware Linux there is a start-up script contributed by Nikola Kotur, but presently
+    it must be installed manually.
+    See <code>src/rc/README</code> and <code>src/rc/Slackware/rc.pdnsd</code> for details.
+
     <h4>0.4.1 SuSE Linux startup</h4>
     <code>rc/SuSE/pdnsd</code> is a start script for SuSE Linux. It was tested for 6.? but should run on some
     versions below. You can do <code>make install</code> as root in the <code>rc/SuSE</code> 
@@ -687,7 +686,7 @@
       the cache directory called <code>pdnsd.status</code>. This socket allows run-time configuration of pdnsd
       using the utility <code>pdnsd-ctl</code>. See <a href="#pdnsdctl">below</a> for more details about <code>pdnsd-ctl</code>.
       <b>--nostatus</b> disables status control.
-      See also the configuration option <code>status_ctl</code> in the <a href="#globalsection">global section</a>.
+      See also the configuration option <code>status_ctl</code> in the <a href="#statusctl">global section</a>.
     </p>
     <p>
       The option <b>-t</b> or <b>--notcp</b> disables the seldom needed TCP server thread, which may
@@ -702,6 +701,19 @@
       against certain attacks, where an attacker tries to guess your query id and to send forged answers. TCP queries
       are not supported by some name servers.<br>
       <b>-mtu</b>: pdnsd will try to use TCP, and will fall back to UDP if its connection is refused.<br>
+    </p>
+    <p>
+      The <b>-4</b> option switches to IPv4 mode, providing pdnsd was compiled with IPv4 support.<br>
+      The <b>-6</b> option switches to IPv6 mode, providing pdnsd was compiled with IPv6 support.<br>
+      The <b>-a</b> option is new in version 1.1.11, and is only available when pdnsd was compiled with both IPv4 and IPv6 support.
+      With this option, pdnsd will try to detect automatically if a system supports IPv6, and fall back to IPv4 otherwise.<br>
+    </p>
+    <p>
+      With <b>-i</b> <em>prefix</em> or <b>--ipv4_6_prefix=</b><em>prefix</em> you can set the prefix pdnsd uses (when running in IPv6
+      mode) to map IPv4 addresses in the configuration file to IPv6 addresses.
+      There is also a corresponding option for the config file, <a href="#ipv46prefix">see below</a>.
+      Must be a valid IPv6 address.
+      The default is <code>::ffff:0.0.0.0</code>
     </p>
 
     <h2>2 The configuration file</h2>
@@ -737,8 +749,7 @@
     these signs to the end of the current line is regarded as a comment and ignored.<br>
     There are examples for nearly all options in the sample config file.
     <br>
-    <a name="globalsection"></a>
-    <h3>2.1.1 <code>global</code> Section</h3>
+    <h3>2.1.1 <a name="globalsection"><code>global</code> Section</a></h3>
     The global section specifies parameters that affect the overall behaviour of the
     server. If you specify multiple global sections, the settings of those later in
     the file will overwrite the earlier given values.<br>
@@ -779,10 +790,18 @@
 	  <b><code>server_ip=string;</code></b><br>
 	  Set the ip address pdnsd listens on for requests. This can be useful
           when the host has several interfaces and you want pdnsd not to listen on
-          all interfaces. Addtionally, it is possibly to bind pdnsd to listen on
+          all interfaces. Addtionally, it is possible to bind pdnsd to listen on
           127.0.0.2 to allow pdnsd to be a forwarder for BIND.
-	  pdnsd will listen on all of your local interfaces by default. The ip
-	  is treated as string and therefore needs to have quotation marks around it.
+	  pdnsd will listen on all of your local interfaces by default.
+	  The ip address used to need quotation marks around it, but since version 1.1.10
+	  this is no longer necessary.<br>
+	  If pdnsd has been compiled with both IPv4 and IPv6 support, and you want to
+	  specify an IPv6 address here, then unless pdnsd was compiled to startup in IPv6 mode
+	  by default, you will need to use the <code>-6</code> command-line option or
+	  set <code>run_ipv4=off</code> first (see <a href="#runipv4">below</a>) in order to ensure that the
+	  IPv6 address is parsed correctly.<br>
+	  If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
+	  it will automatically be mapped to an IPv6 address.
 	</td>
       </tr>
       <tr>
@@ -920,12 +939,12 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>status_ctl=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
+	  <b><code><a name="statusctl">status_ctl=(&lt;on&gt;|&lt;off&gt;);</a></code></b><br>
 	  This has the same effect as the <code>-s</code> command line option: the status control is enabled when
 	  <code>on</code> is specified.<br>
 	  <em>Added by Paul Rombouts</em>: Note that <code>pdnsd-ctl</code> allows run-time configuration of pdnsd,
 	  even the IP addesses of the name servers can be changed. If you're not using <code>pdnsd-ctl</code> and
-	  you want maximum security, you should disable this option.
+	  you want maximum security, you should not enable this option. It is disabled by default.
 	</td>
       </tr>
       <tr>
@@ -966,11 +985,14 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>run_ipv4=(&lt;on&gt;|&lt;off&gt;);</code></b><br>
-	  This has the same effect as the <code>-4</code> command line option: if on is specified, IPv4 support
-	  is enabled, and IPv6 support is disabled (if available). ff off is specified, IPv4 will be disabled
-	  and IPv6 will be enabled. You can only use this option if you have compiled pdnsd with IPv4 as well as
-	  with IPv6 support.
+	  <b><code><a name="runipv4">run_ipv4=(&lt;on&gt;|&lt;off&gt;);</a></code></b><br>
+	  This has the same effect as the <code>-4</code> or <code>-6</code> command line option:
+	  if on is specified, IPv4 support is enabled, and IPv6 support is disabled (if available).
+	  If off is specified, IPv4 will be disabled and IPv6 will be enabled.
+	  For this option to be meaningful, needs to be compiled with support for the protocol you choose.
+	  If pdnsd was compiled with both IPv4 and IPv6 support, and you want to include IPv6 addresses
+	  in the configuration file, you will probably need to specify <code>run_ipv4=off</code> first to
+	  ensure that the IPv6 addresses are parsed correctly.
 	</td>
       </tr>
       <tr>
@@ -1025,11 +1047,42 @@
       <tr>
 	<td>
 	  <b><code>par_queries=number;</code></b><br>
-	  This option sets the maximum number of queries that will be executed in parallel, i.e.
-	  how many servers are simultaneously queried. This may speed up the query process if there
-	  are very slow servers to be quered (the first answer we get will be taken), but it will
-	  also increase network and server load. 1 or 2 are good values for this option.
+	  This option used to set the maximum number of remote servers that would be queried simultaneously,
+	  for every query that pdnsd receives.<br>
+	  In version 1.1.11, the meaning of this option has changed slightly.
+	  It is now the increment with which the number of parallel queries is
+	  increased when the previous set of servers has timed out.
+	  For example, if we have a list <i>server1, server2, server3,</i> etc. of available servers
+	  and <code>par_queries=2</code>, then pdnsd will first send queries to <i>server1</i> and <i>server2</i>,
+	  and listen for responses from these servers.<br>
+	  If these servers do not send a reply within their timeout period, pdnsd will send additional
+	  queries to <i>server3</i> and <i>server4</i>, and listen for responses from
+	  <i>server1, server2, server3</i> and <i>server4</i>, and so on until a useful reply is
+	  received or the list is exhausted.<br>
+	  In the worst case there will be pending queries to all the servers in the list of available servers.
+	  We may be using more system resources this way (but only if the first servers in the list
+	  are slow or unresponsive), but the advantage is that we have a greater chance of catching a reply.
+	  After all, if we wait longer anyway, why not for more servers.<br>
+	  See also the explanation of the global timeout option below.<br>
+	  1 or 2 are good values for this option.
 	  The default is set using the <code>--with-par-queries</code> option to <code>configure</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code><a name="globaltimeout">timeout=number;</a></code></b><br>
+	  <em>New in version 1.1.11</em>: This is the global timeout parameter (in seconds) for dns queries.
+	  This specifies the minimum period of time pdnsd will wait after sending the
+	  first query to a remote server before giving up without having
+	  received a reply. The timeout options in the configuration file are
+	  now only minimum timeout intervals. Setting the global timeout option
+	  makes it possible to specify quite short timeout intervals in the
+	  server sections (see below). This will have the effect that pdnsd will start
+	  querying additional servers fairly quickly if the first servers are
+	  slow to respond (but will still continue to listen for responses from
+	  the first ones). This may allow pdnsd to get an answer more quickly in
+	  certain situations.<br>
+	  Default value is 0.
 	</td>
       </tr>
       <tr>
@@ -1085,6 +1138,18 @@
 	  sections.
 	</td>
       </tr>
+      <tr>
+	<td>
+	  <b><code><a name="ipv46prefix">ipv4_6_prefix=string;</a></code></b><br>
+	  <em>New in version 1.1.11</em>: this option has the same effect as the <code>-i</code> command-line option.
+	  When pdnsd runs in IPv6 mode, this option specifies the prefix pdnsd uses to convert IPv4 addresses in
+	  the configuration file (or addresses specified with <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>)
+	  to IPv6-mapped addresses.
+	  The string must be a valid IPv6 address. Only the first 96 bits are used.
+	  Note that this only effects the parsing of IPv4 addresses listed after this option.<br>
+	  The default is <code>"::ffff.0.0.0.0"</code>.
+	</td>
+      </tr>
     </table>
 
     <br>
@@ -1120,7 +1185,15 @@
 	  IP addresses do not have to be specified in the configuration file.
 	  A server section without IP addresses will remain inactive until it is assigned
 	  one or more addresses with <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>,
-	  the pdnsd control utility.
+	  the pdnsd control utility.<br>
+	  If pdnsd has been compiled with both IPv4 and IPv6 support, any IPv6 addresses you specify
+	  here will be skipped with a warning message, unless pdnsd is running in IPv6 mode.
+	  Thus, unless pdnsd was compiled to startup in IPv6 mode by default, you need to use the
+	  commmand-line option <code>-6</code> or set <code>run_ipv4=off</code>
+	  first (see <a href="#runipv4"><code>global</code></a> section) in order to ensure
+	  that IPv6 addresses are parsed correctly.<br>
+	  If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
+	  it will automatically be mapped to an IPv6 address.
 	</td>
       </tr>
       <tr>
@@ -1245,7 +1318,14 @@
       <tr>
 	<td>
 	  <b><code> timeout=number;</code></b><br>
-	  Set the timeout for the dns query in seconds. The default is 120. You probably want to set this lower.
+	  Set the timeout for the dns query in seconds. The default is 120. You probably want to set this lower.<br>
+	  Timeouts specified in the configuration file are only treated as the
+	  minimum period of time to wait for a reply. A queries to a remote
+	  server are not canceled until a useful reply has been received, or all
+	  the other queries have timed out out or failed.<br>
+	  If you have also set the global timeout option, you may consider setting a fairly small value here.
+	  See the explanation of the timeout option in the <a href="#globaltimeout"><code>global</code></a>
+	  section for what that means.
 	</td>
       </tr>
       <tr>
@@ -1386,8 +1466,7 @@
       </tr>
     </table>
     <br>
-    <a name="rrsection"></a>
-    <h3>2.1.3 <code>rr</code> Section</h3>
+    <h3>2.1.3 <a name="rrsection"><code>rr</code> Section</a></h3>
     Every rr section specifies a dns resource record that is stored locally. It
     allows you to specify own dns records that are served by pdnsd in a limited way.
     Only A, PTR, MX, CNAME and SOA records are implemented.<br>
@@ -1539,11 +1618,11 @@
     </table>
     <br>
     <h3>2.1.4 <code>neg</code> Section</h3>
-    Every neg section specifies a dns resource record or a dns domainthat should be 
+    Every neg section specifies a dns resource record or a dns domain that should be 
     cached negative locally. Queries for negatively cached records are always answered
     immediatley with an error or an empty answer without querying other hosts as long
     as the record is valid. The record remains valid until it is explicitely invalidated
-    or deleted by the user using pdnsd-ctl.<br>
+    or deleted by the user using <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>.<br>
     This is useful if a certian application asks periodically for nonexisting hosts or
     RR types and you do not want a query to go out every time the cached record has
     timed out. Example: Netscape Communicator will ask for the servers  news and mail
@@ -1559,7 +1638,11 @@
 	types = domain;
     }</pre>
     in your config file. If you have a search list, you have to repeat that for any
-    entry in your search list in addition to the entries given above!
+    entry in your search list in addition to the entries given above!<br>
+    <em>New in version 1.1.11:</em> if you negate whole domains this way, all subdomains
+    will be negated as well. Thus if you specify<br>
+    <code>neg {name=example.com; types=domain;}</code> in the
+    config file, this will also negate www.example.com, xxx.adserver.example.com, etc.
     <br><br>
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
       <tr>
@@ -1668,10 +1751,9 @@
       </tr>
     </table>
     <br>
-    <a name="pdnsdctl"></a>
-    <h2>3 pdnsd-ctl</h2>
+    <h2>3 <a name="pdnsdctl">pdnsd-ctl</a></h2>
     pdnsd-ctl allows you to run-time configure pdnsd. To make this work, you have to start pdnsd with the <code>-s</code>
-    option (or use the <code>status_ctl</code> option in the config file). You also should make sure that you
+    option (or use the <code><a href="#statusctl">status_ctl</a></code> option in the config file). You also should make sure that you
     have appropriate permissions on the control socket (use the <code>ctl_perms</code> option to make this sure) and of your pdnsd
     cache directory (pdnsd keeps it's socket there). Please make sure the pdnsd cache directory is not writeable for untrusted users!<br>
     pdnsd-ctl takes one optional command line argument, <code>-c</code>. It is used to specify the cache directory (and takes this as argument).
@@ -1929,7 +2011,7 @@
       <tr>
 	<td bgcolor="#FFCCFF" width="20%">src/rc/*</td>
 	<td bgcolor="#CCFFFF" width="80%">
-	  rc scripts for various linux distributions.
+	  rc (start-up) scripts for various linux distributions.
 	</td>
       </tr>
       <tr>
@@ -1938,6 +2020,7 @@
 	  The pdnsd cache subsystem(s) as defined in src/cacheing/cache.h. There is the "traditional"
 	  pdnsd system in the subdirectory native. This system keeps the cache in memory and uses
 	  hash tables for accesses. Sourav K. Mandal is working on a system using gdbm.
+	  <font color="#990000">(obsolete)</font>
 	</td>
       </tr>
       <tr>
@@ -1951,6 +2034,7 @@
 	<td bgcolor="#CCFFFF" width="80%">
 	  The lex/flex source file for the config file lexer. This is a template because there might be
 	  inserted  &quot;%option yylineno&quot; for proper flex support.
+	  <font color="#990000">(obsolete, superseded by src/conf-parser.c)</font>
 	</td>
       </tr>
       <tr>
@@ -1958,12 +2042,20 @@
 	<td bgcolor="#CCFFFF" width="80%">
 	  This is automatically generated by configure from conf.l.templ. It may be overwritten
 	  in any make, so never modify this, but conf.l.templ instead!
+	  <font color="#990000">(obsolete, superseded by src/conf-parser.c)</font>
 	</td>
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF" width="20%">src/conf-parse.y</td>
 	<td bgcolor="#CCFFFF" width="80%">
 	  The yacc/bison source of the config file parser.
+	  <font color="#990000">(obsolete, superseded by src/conf-parser.c)</font>
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">src/conf-parser.c, src/conf-parser.h, src/conf-keywords.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  The config file parser written purely in C (versions 1.1.10-par and later).
 	</td>
       </tr>
       <tr>
@@ -2001,7 +2093,13 @@
       <tr>
 	<td bgcolor="#FFCCFF" width="20%">src/error.c, src/error.h</td>
 	<td bgcolor="#CCFFFF" width="80%">
-	  Functions for error output to stderr or the syslog.
+	  Functions for error output to stderr or the syslog, and debug output to stderr or <code>pdnsd.debug</code>.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">src/hash.c, src/hash.h</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Contains the code for storing and looking up cache entries in the hash table.
 	</td>
       </tr>
       <tr>
@@ -2020,6 +2118,12 @@
 	<td bgcolor="#FFCCFF" width="20%">src/main.c</td>
 	<td bgcolor="#CCFFFF" width="80%">
 	  Contains main(), which holds the command line parser, performs initialisations and signal handling.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">src/make_hashconvtable.c</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  Contains the code for the executable <code>make_hashconvtable</code>, which  is only run once, during build time, to generate the file <code>hashconvtable.h</code>, used by <code>src/hash.c</code> (versions 1.1.10-par and later).
 	</td>
       </tr>
       <tr>
@@ -2046,7 +2150,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 06 Feb 2004 by Paul Rombouts</i>
+      <i>Last revised: 10 May 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

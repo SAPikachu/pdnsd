@@ -2,8 +2,14 @@
                                                                                
 This is the "official" pdnsd documentation and reference written by Thomas
 Moestl with revisions by Paul Rombouts.
-It is up-to-date for version 1.1.10-par. For older documentation, please refer
-to the doc directory of the respective pdnsd package.
+This manual is a part of the pdnsd package, and may be distributed in original
+or modified form under terms of the GNU General Public License, as published by
+the Free Software Foundation; either version 2, or (at your option) any later
+version.
+You can find a copy of the GNU GPL in the file COPYING in the source or
+documentation directory.
+This manual is up-to-date for version 1.1.11-par. For older documentation,
+please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
 
@@ -332,17 +338,21 @@ For a manual installation, you need to do the following steps:
  2. Copy docs/pdnsd.conf into the directory you want it to reside (/etc by
     default, and change it according to your needs (see below).
  3. Create your caching directory; default is /var/cache/pdnsd (you may change
-    this in your pdnsd.conf); Permisions should be at max rwxr-xr-x (if you
+    this in your pdnsd.conf); Permissions should be at max rwxr-xr-x (if you
     want to protect your cache and status socket, make it rwx------).
 
 Thats it!
 
 0.4 Start at boot time
 
-In the rc folder of the pdnsd distribution are start scripts for pdnsd designed
-for different Linux distros. There are scripts for SuSE and Redhat Linux now.
+In the src/rc folder of the pdnsd distribution are start scripts for pdnsd
+designed for different Linux distros. There are scripts for SuSE, Redhat and
+Debian Linux now.
 The start scripts are automatically installed during RPM install, and also
 during make install if you specified your distro.
+For Slackware Linux there is a start-up script contributed by Nikola Kotur, but
+presently it must be installed manually. See src/rc/README and src/rc/Slackware
+/rc.pdnsd for details.
 
 0.4.1 SuSE Linux startup
 
@@ -457,6 +467,20 @@ supported by some name servers.
 -mtu: pdnsd will try to use TCP, and will fall back to UDP if its connection is
 refused.
 
+The -4 option switches to IPv4 mode, providing pdnsd was compiled with IPv4
+support.
+The -6 option switches to IPv6 mode, providing pdnsd was compiled with IPv6
+support.
+The -a option is new in version 1.1.11, and is only available when pdnsd was
+compiled with both IPv4 and IPv6 support. With this option, pdnsd will try to
+detect automatically if a system supports IPv6, and fall back to IPv4
+otherwise.
+
+With -i prefix or --ipv4_6_prefix=prefix you can set the prefix pdnsd uses
+(when running in IPv6 mode) to map IPv4 addresses in the configuration file to
+IPv6 addresses. There is also a corresponding option for the config file, see
+below. Must be a valid IPv6 address. The default is ::ffff:0.0.0.0
+
 2 The configuration file
 
 This section describes the layout of the configuration file and the available
@@ -520,10 +544,17 @@ the basis of an NS record, since the A record that supplies the address for
 server_ip=string;                                                              
 Set the ip address pdnsd listens on for requests. This can be useful when the  
 host has several interfaces and you want pdnsd not to listen on all interfaces.
-Addtionally, it is possibly to bind pdnsd to listen on 127.0.0.2 to allow pdnsd
+Addtionally, it is possible to bind pdnsd to listen on 127.0.0.2 to allow pdnsd
 to be a forwarder for BIND. pdnsd will listen on all of your local interfaces  
-by default. The ip is treated as string and therefore needs to have quotation  
-marks around it.                                                               
+by default. The ip address used to need quotation marks around it, but since   
+version 1.1.10 this is no longer necessary.                                    
+If pdnsd has been compiled with both IPv4 and IPv6 support, and you want to    
+specify an IPv6 address here, then unless pdnsd was compiled to startup in IPv6
+mode by default, you will need to use the -6 command-line option or set        
+run_ipv4=off first (see below) in order to ensure that the IPv6 address is     
+parsed correctly.                                                              
+If pdnsd is running in IPv6 mode and you specify an IPv4 address here, it will 
+automatically be mapped to an IPv6 address.                                    
                                                                                
 linkdown_kluge=(<on>|<off>);                                                   
 This option enables a kluge that some people might need: when all servers are  
@@ -639,7 +670,8 @@ This has the same effect as the -s command line option: the status control is
 enabled when on is specified.                                                  
 Added by Paul Rombouts: Note that pdnsd-ctl allows run-time configuration of   
 pdnsd, even the IP addesses of the name servers can be changed. If you're not  
-using pdnsd-ctl and you want maximum security, you should disable this option. 
+using pdnsd-ctl and you want maximum security, you should not enable this      
+option. It is disabled by default.                                             
                                                                                
 daemon=(<on>|<off>);                                                           
 This has the same effect as the -d command line option: the daemon mode enabled
@@ -664,10 +696,14 @@ for the command line option on this. tcp_only corresponds to the to, udp_only
 to the uo and tcp_udp to the tu argument of the command line option.           
                                                                                
 run_ipv4=(<on>|<off>);                                                         
-This has the same effect as the -4 command line option: if on is specified,    
-IPv4 support is enabled, and IPv6 support is disabled (if available). ff off is
-specified, IPv4 will be disabled and IPv6 will be enabled. You can only use    
-this option if you have compiled pdnsd with IPv4 as well as with IPv6 support. 
+This has the same effect as the -4 or -6 command line option: if on is         
+specified, IPv4 support is enabled, and IPv6 support is disabled (if           
+available). If off is specified, IPv4 will be disabled and IPv6 will be        
+enabled. For this option to be meaningful, needs to be compiled with support   
+for the protocol you choose. If pdnsd was compiled with both IPv4 and IPv6     
+support, and you want to include IPv6 addresses in the configuration file, you 
+will probably need to specify run_ipv4=off first to ensure that the IPv6       
+addresses are parsed correctly.                                                
                                                                                
 debug=(<on>|<off>);                                                            
 This has the same effect as the -g command line option: the debugging messages 
@@ -707,12 +743,39 @@ on a tcp connection after that time has passed, the connection will be closed.
 The default is set using the --with-tcp-qtimeout option to configure.          
                                                                                
 par_queries=number;                                                            
-This option sets the maximum number of queries that will be executed in        
-parallel, i.e. how many servers are simultaneously queried. This may speed up  
-the query process if there are very slow servers to be quered (the first answer
-we get will be taken), but it will also increase network and server load. 1 or 
-2 are good values for this option. The default is set using the                
+This option used to set the maximum number of remote servers that would be     
+queried simultaneously, for every query that pdnsd receives.                   
+In version 1.1.11, the meaning of this option has changed slightly. It is now  
+the increment with which the number of parallel queries is increased when the  
+previous set of servers has timed out. For example, if we have a list server1, 
+server2, server3, etc. of available servers and par_queries=2, then pdnsd will 
+first send queries to server1 and server2, and listen for responses from these 
+servers.                                                                       
+If these servers do not send a reply within their timeout period, pdnsd will   
+send additional queries to server3 and server4, and listen for responses from  
+server1, server2, server3 and server4, and so on until a useful reply is       
+received or the list is exhausted.                                             
+In the worst case there will be pending queries to all the servers in the list 
+of available servers. We may be using more system resources this way (but only 
+if the first servers in the list are slow or unresponsive), but the advantage  
+is that we have a greater chance of catching a reply. After all, if we wait    
+longer anyway, why not for more servers.                                       
+See also the explanation of the global timeout option below.                   
+1 or 2 are good values for this option. The default is set using the           
 --with-par-queries option to configure.                                        
+                                                                               
+timeout=number;                                                                
+New in version 1.1.11: This is the global timeout parameter (in seconds) for   
+dns queries. This specifies the minimum period of time pdnsd will wait after   
+sending the first query to a remote server before giving up without having     
+received a reply. The timeout options in the configuration file are now only   
+minimum timeout intervals. Setting the global timeout option makes it possible 
+to specify quite short timeout intervals in the server sections (see below).   
+This will have the effect that pdnsd will start querying additional servers    
+fairly quickly if the first servers are slow to respond (but will still        
+continue to listen for responses from the first ones). This may allow pdnsd to 
+get an answer more quickly in certain situations.                              
+Default value is 0.                                                            
                                                                                
 randomize_recs=(<on>|<off>);                                                   
 If this option is turned on, pdnsd will randomly reorder the cached records of 
@@ -757,6 +820,15 @@ This feature is off by default. It is recommended that you only use this
 feature if you actually need it, because there is a risk that some legitimate  
 names will be blocked, especially if the remote name servers queried by pdnsd  
 return answers with empty authority sections.                                  
+                                                                               
+ipv4_6_prefix=string;                                                          
+New in version 1.1.11: this option has the same effect as the -i command-line  
+option. When pdnsd runs in IPv6 mode, this option specifies the prefix pdnsd   
+uses to convert IPv4 addresses in the configuration file (or addresses         
+specified with pdnsd-ctl) to IPv6-mapped addresses. The string must be a valid 
+IPv6 address. Only the first 96 bits are used. Note that this only effects the 
+parsing of IPv4 addresses listed after this option.                            
+The default is "::ffff.0.0.0.0".                                               
 
 
 2.1.2 server Section
@@ -787,6 +859,14 @@ entering multiple lines of the form ip=string; or a single line like this:
 IP addresses do not have to be specified in the configuration file. A server   
 section without IP addresses will remain inactive until it is assigned one or  
 more addresses with pdnsd-ctl, the pdnsd control utility.                      
+If pdnsd has been compiled with both IPv4 and IPv6 support, any IPv6 addresses 
+you specify here will be skipped with a warning message, unless pdnsd is       
+running in IPv6 mode. Thus, unless pdnsd was compiled to startup in IPv6 mode  
+by default, you need to use the commmand-line option -6 or set run_ipv4=off    
+first (see global section) in order to ensure that IPv6 addresses are parsed   
+correctly.                                                                     
+If pdnsd is running in IPv6 mode and you specify an IPv4 address here, it will 
+automatically be mapped to an IPv6 address.                                    
                                                                                
 port=number;                                                                   
 Give the port the remote name server listens on. Default is 53 (the official   
@@ -881,6 +961,13 @@ Must be specified if uptest=dev is given.
 timeout=number;                                                                
 Set the timeout for the dns query in seconds. The default is 120. You probably 
 want to set this lower.                                                        
+Timeouts specified in the configuration file are only treated as the minimum   
+period of time to wait for a reply. A queries to a remote server are not       
+canceled until a useful reply has been received, or all the other queries have 
+timed out out or failed.                                                       
+If you have also set the global timeout option, you may consider setting a     
+fairly small value here. See the explanation of the timeout option in the      
+global section for what that means.                                            
                                                                                
 purge_cache=(<on>|<off>);                                                      
 In every fetched dns record, there is a cache timeout given, which specifies   
@@ -1123,8 +1210,8 @@ All time parameters must be specified in seconds.
 
 2.1.4 neg Section
 
-Every neg section specifies a dns resource record or a dns domainthat should be
-cached negative locally. Queries for negatively cached records are always
+Every neg section specifies a dns resource record or a dns domain that should
+be cached negative locally. Queries for negatively cached records are always
 answered immediatley with an error or an empty answer without querying other
 hosts as long as the record is valid. The record remains valid until it is
 explicitely invalidated or deleted by the user using pdnsd-ctl.
@@ -1143,6 +1230,10 @@ network, you can inhibit outgoing queries for these by specifying
     }
 in your config file. If you have a search list, you have to repeat that for any
 entry in your search list in addition to the entries given above!
+New in version 1.1.11: if you negate whole domains this way, all subdomains
+will be negated as well. Thus if you specify
+neg {name=example.com; types=domain;} in the config file, this will also negate
+www.example.com, xxx.adserver.example.com, etc.
 
 
 name=string;                                                                   
@@ -1393,82 +1484,93 @@ Here comes some information you might find useful for hacking on pdnsd.
 
 6.1 Source files
 
-Makefile.am,     autoconf/automake/autoheader scripts. Makefile.am's are in    
-configure.in,    most subdirectories.                                          
-acconfig.h                                                                     
-                                                                               
-pdnsd.spec.in    A template from which configure generates a spec file for     
-                 building rpm's for various distributions.                     
-                                                                               
-version          Contains only the program version string. Needed for several  
-                 templates.                                                    
-                                                                               
-src/rc/*         rc scripts for various linux distributions.                   
-                                                                               
-                 The pdnsd cache subsystem(s) as defined in src/cacheing/      
-                 cache.h. There is the "traditional" pdnsd system in the       
-src/cacheing/*   subdirectory native. This system keeps the cache in memory and
-                 uses hash tables for accesses. Sourav K. Mandal is working on 
-                 a system using gdbm.                                          
-                                                                               
-src/pdnsd-ctl/*  Contains the code for pdnsd-ctl, a program that allows to     
-                 control pdnsd at run time.                                    
-                                                                               
-src/             The lex/flex source file for the config file lexer. This is a 
-conf-lex.l.in    template because there might be inserted "%option yylineno"   
-                 for proper flex support.                                      
-                                                                               
-                 This is automatically generated by configure from             
-src/conf-lex.l.  conf.l.templ. It may be overwritten in any make, so never     
-                 modify this, but conf.l.templ instead!                        
-                                                                               
-src/             The yacc/bison source of the config file parser.              
-conf-parse.y                                                                   
-                                                                               
-src/conff.c,     The configuration handler functions and their prototypes. The 
-src/conff.h      parser is called from here.                                   
-                                                                               
-src/consts.h     Some constants used by lexer, parser, config file handler     
-                 functions and in the server status thread, among others.      
-                                                                               
-src/dns.c, src/  Define dns message structures, constants, and some common dns 
-dns.h            data handlers. dns.h contains gcc-specific code (in           
-                 praticular, "__attribute__((packed))").                       
-                                                                               
-src/                                                                           
-dns_answer.c,    Define functions that answer incoming dns queries.            
-src/                                                                           
-dns_answer.h                                                                   
-                                                                               
-src/                                                                           
-dns_query.c,     Define functions to manage outgoing dns queries.              
-src/dns_query.h                                                                
-                                                                               
-src/error.c,     Functions for error output to stderr or the syslog.           
-src/error.h                                                                    
-                                                                               
-src/helpers.c,   Define miscellaneous helper functions.                        
-src/helpers.h                                                                  
-                                                                               
-src/icmp.c, src  Define a function for performing a ping test. This contains   
-/icmp.h          OS-specific code.                                             
-                                                                               
-src/main.c       Contains main(), which holds the command line parser, performs
-                 initialisations and signal handling.                          
-                                                                               
-src/netdev.c,    Define functions for network device handling. OS-specific.    
-src/netdev.h                                                                   
-                                                                               
-src/servers.c,   Define functions for the server status thread that performs   
-src/servers.h    the periodical uptests.                                       
-                                                                               
-src/status.c,    Define functions for the status control thread. This is       
-src/status.h     pdnsd's interface to pdnsd-ctl.                               
+Makefile.am,          autoconf/automake/autoheader scripts. Makefile.am's are in 
+configure.in,         most subdirectories.                                       
+acconfig.h                                                                       
+                                                                                 
+pdnsd.spec.in         A template from which configure generates a spec file for  
+                      building rpm's for various distributions.                  
+                                                                                 
+version               Contains only the program version string. Needed for       
+                      several templates.                                         
+                                                                                 
+src/rc/*              rc (start-up) scripts for various linux distributions.     
+                                                                                 
+                      The pdnsd cache subsystem(s) as defined in src/cacheing/   
+                      cache.h. There is the "traditional" pdnsd system in the    
+src/cacheing/*        subdirectory native. This system keeps the cache in memory 
+                      and uses hash tables for accesses. Sourav K. Mandal is     
+                      working on a system using gdbm. (obsolete)                 
+                                                                                 
+src/pdnsd-ctl/*       Contains the code for pdnsd-ctl, a program that allows to  
+                      control pdnsd at run time.                                 
+                                                                                 
+                      The lex/flex source file for the config file lexer. This is
+src/conf-lex.l.in     a template because there might be inserted "%option        
+                      yylineno" for proper flex support. (obsolete, superseded by
+                      src/conf-parser.c)                                         
+                                                                                 
+                      This is automatically generated by configure from          
+src/conf-lex.l.       conf.l.templ. It may be overwritten in any make, so never  
+                      modify this, but conf.l.templ instead! (obsolete,          
+                      superseded by src/conf-parser.c)                           
+                                                                                 
+src/conf-parse.y      The yacc/bison source of the config file parser. (obsolete,
+                      superseded by src/conf-parser.c)                           
+                                                                                 
+src/conf-parser.c,    The config file parser written purely in C (versions       
+src/conf-parser.h,    1.1.10-par and later).                                     
+src/conf-keywords.h                                                              
+                                                                                 
+src/conff.c, src/     The configuration handler functions and their prototypes.  
+conff.h               The parser is called from here.                            
+                                                                                 
+src/consts.h          Some constants used by lexer, parser, config file handler  
+                      functions and in the server status thread, among others.   
+                                                                                 
+                      Define dns message structures, constants, and some common  
+src/dns.c, src/dns.h  dns data handlers. dns.h contains gcc-specific code (in    
+                      praticular, "__attribute__((packed))").                    
+                                                                                 
+src/dns_answer.c,     Define functions that answer incoming dns queries.         
+src/dns_answer.h                                                                 
+                                                                                 
+src/dns_query.c, src  Define functions to manage outgoing dns queries.           
+/dns_query.h                                                                     
+                                                                                 
+src/error.c, src/     Functions for error output to stderr or the syslog, and    
+error.h               debug output to stderr or pdnsd.debug.                     
+                                                                                 
+src/hash.c, src/      Contains the code for storing and looking up cache entries 
+hash.h                in the hash table.                                         
+                                                                                 
+src/helpers.c, src/   Define miscellaneous helper functions.                     
+helpers.h                                                                        
+                                                                                 
+src/icmp.c, src/      Define a function for performing a ping test. This contains
+icmp.h                OS-specific code.                                          
+                                                                                 
+src/main.c            Contains main(), which holds the command line parser,      
+                      performs initialisations and signal handling.              
+                                                                                 
+                      Contains the code for the executable make_hashconvtable,   
+src/                  which is only run once, during build time, to generate the 
+make_hashconvtable.c  file hashconvtable.h, used by src/hash.c (versions         
+                      1.1.10-par and later).                                     
+                                                                                 
+src/netdev.c, src/    Define functions for network device handling. OS-specific. 
+netdev.h                                                                         
+                                                                                 
+src/servers.c, src/   Define functions for the server status thread that performs
+servers.h             the periodical uptests.                                    
+                                                                                 
+src/status.c, src/    Define functions for the status control thread. This is    
+status.h              pdnsd's interface to pdnsd-ctl.                            
 
 
 -------------------------------------------------------------------------------
 
 Thomas Moestl
 
-Last revised: 06 Feb 2004 by Paul Rombouts
+Last revised: 10 May 2004 by Paul Rombouts
 

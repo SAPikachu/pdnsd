@@ -1,7 +1,7 @@
 /* error.c - Error handling
    Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   With modifications by Paul Rombouts, 2003, 2004.
 
 This file is part of the pdnsd package.
 
@@ -37,7 +37,7 @@ static char rcsid[]="$Id: error.c,v 1.7 2001/06/03 11:00:54 tmm Exp $";
 #endif
 
 pthread_mutex_t loglock = PTHREAD_MUTEX_INITIALIZER;
-volatile int use_log_lock=0;
+volatile short int use_log_lock=0;
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on
@@ -57,9 +57,10 @@ void crash_msg(char *msg)
 	log_error("report to p.a.rombouts@home.nl or tmoestl@gmx.net");
 }
 
-/* Log an error. If we are a daemon, use the syslog. s is a format string like
- * in printf, the optional following arguments are the arguments like in printf */
-void log_error(char *s,...)
+/* Log a warning or error message.
+ * If we are a daemon, use the syslog. s is a format string like in printf,
+ * the optional following arguments are the arguments like in printf */
+void log_message(int prior, const char *s, ...)
 {
 	int ul=0;
 	va_list va;
@@ -68,33 +69,14 @@ void log_error(char *s,...)
 	va_start(va,s);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
-		vsyslog(LOG_ERR,s,va);
+		vsyslog(prior,s,va);
 		closelog();
 	} else {
-		fprintf(stderr,"pdnsd: error: ");
-		vfprintf(stderr,s,va);
-		fprintf(stderr,"\n");
-	}
-	va_end(va);
-	if (ul)
-		pthread_mutex_unlock(&loglock);
-}
-
-/* Log a warning. If we are a daemon, use the syslog. s is a format string like
- * in printf, the optional following arguments are the arguments like in printf */
-void log_warn(char *s, ...)
-{
-	int ul=0;
-	va_list va;
-	if (use_log_lock)
-		ul=softlock_mutex(&loglock);
-	va_start(va,s);
-	if (daemon_p) {
-		openlog("pdnsd",LOG_PID,LOG_DAEMON);
-		vsyslog(LOG_ERR,s,va);
-		closelog();
-	} else {
-		fprintf(stderr,"pdnsd: warning: ");
+		fprintf(stderr,"pdnsd: %s: ",
+			prior<=LOG_CRIT?"critical":
+			prior==LOG_ERR?"error":
+			prior==LOG_WARNING?"warning":
+			"info");
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
@@ -106,7 +88,7 @@ void log_warn(char *s, ...)
 /* Log an info if level is <= the current verbosity level.
  * If we are a daemon, use the syslog. s is a format string like
  * in printf, the optional following arguments are the arguments like in printf */
-void log_info(int level, char *s, ...)
+void log_info(int level, const char *s, ...)
 {
 	if (level<=verbosity) {
 		va_list va;
@@ -129,3 +111,29 @@ void log_info(int level, char *s, ...)
 			pthread_mutex_unlock(&loglock);
 	}
 }
+
+#if DEBUG > 0
+/* XXX: The timestamp generation makes this a little heavy-weight */
+void debug_msg(int c, const char *fmt, ...)
+{
+	va_list va;
+
+	if (!c) {
+		char DM_ts[32];
+		time_t DM_tt = time(NULL);
+		struct tm DM_tm;
+		int *DM_id;
+		localtime_r(&DM_tt, &DM_tm);
+		if(strftime(DM_ts, sizeof(DM_ts), "%m/%d %T", &DM_tm) > 0) {
+			if((DM_id = (int *)pthread_getspecific(thrid_key)))
+				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);
+			else
+				fprintf(dbg_file,"- %s| ", DM_ts);
+		}
+	}
+	va_start(va,fmt);
+	vfprintf(dbg_file,fmt,va);
+	va_end(va);
+	fflush(dbg_file);
+}
+#endif /* DEBUG */

@@ -31,6 +31,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 #include "consts.h"
 #include "helpers.h"
+#include "dns_query.h"
 #include "conf-parser.h"
 #include "servers.h"
 
@@ -63,6 +64,7 @@ globparm_t global={
   proc_limit:        20,
   procq_limit:       30,
   tcp_qtimeout:      TCP_TIMEOUT,
+  timeout:           0,
   par_queries:       PAR_QUERIES,
   query_port_start:  0,
   query_port_end:    65535,
@@ -146,8 +148,16 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tServer directory: %s\n",global.cache_dir);
 	fsprintf_or_return(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
 	fsprintf_or_return(f,"\tServer port: %i\n",global.port);
-	{char buf[ADDRSTR_MAXLEN];
-	 fsprintf_or_return(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));}
+	{
+	  char buf[ADDRSTR_MAXLEN];
+	  fsprintf_or_return(f,"\tServer ip (%s=any available one): %s\n",run_ipv4?"0.0.0.0":"::",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	}
+#ifdef ENABLE_IPV6
+	if(!run_ipv4) {
+	  char buf[ADDRSTR_MAXLEN];
+	  fsprintf_or_return(f,"\tIPv4 to IPv6 prefix: %s\n",inet_ntop(AF_INET6,&ipv4_6_prefix,buf,ADDRSTR_MAXLEN)?:"?.?.?.?");
+	}
+#endif
 	fsprintf_or_return(f,"\tIgnore cache when link is down: %s\n",global.lndown_kluge?"on":"off");
 	fsprintf_or_return(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
 	fsprintf_or_return(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
@@ -160,10 +170,17 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf_or_return(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
 	fsprintf_or_return(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
-	fsprintf_or_return(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
+	fsprintf_or_return(f,"\tGlobal timeout setting: %li\n",(long)global.timeout);
+	fsprintf_or_return(f,"\tParallel queries increment: %i\n",global.par_queries);
 	fsprintf_or_return(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
+	fsprintf_or_return(f,"\tQuery method: %s\n",const_name(query_method));
 	fsprintf_or_return(f,"\tQuery port start: %i\n",global.query_port_start);
 	fsprintf_or_return(f,"\tQuery port end: %i\n",global.query_port_end);
+#ifndef NO_TCP_SERVER
+	fsprintf_or_return(f,"\tTCP server thread: %s\n",notcp?"off":"on");
+	if(!notcp)
+	  {fsprintf_or_return(f,"\tTCP query timeout: %li\n",(long)global.tcp_qtimeout);}
+#endif
 	fsprintf_or_return(f,"\tDelegation-only zones: ");
 	if(global.deleg_only_zones==NULL) {
 		fsprintf_or_return(f,"(none)\n");

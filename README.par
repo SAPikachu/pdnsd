@@ -1,38 +1,37 @@
-	  pdnsd maintenance version 1.1.10-par by Paul Rombouts
+	  pdnsd maintenance version 1.1.11-par by Paul Rombouts
 	  =======================================================
 
 This file describes the version of pdnsd that I maintain personally and am
-making available so other people can enjoy the latest features and fixes. Thomas
-Moestl no longer maintains pdnsd himself, so I am effectively the new
-maintainer. The current version is 1.1.10-par. This version has a completely
-rewritten parser for configuration files. The new parser is written purely in C,
-so (f)lex and yacc/bison are no longer needed to build pdnsd. It is no longer
-necessary to quote strings in the configuration file (unless the string contains
-special characters, but these are illegal in domain names anyway).
-
-Furthermore a bug has been fixed that caused incorrect IPV6-type PTR records to
-be generated when sourcing /etc/hosts like files. There have been some other
-minor changes, consult the ChangeLog for details.
-
-Since version 1.1.9 I've added some missing pieces to the documentation (the manual
-doc/html/doc.html,doc/txt/manual.txt and the man page doc/pdnsd-ctl.8). BTW, did
-you know that it's possible to define aliases for domain names with pdnsd? I had
-plans to implement such a feature when I discovered that pdnsd already supports
-it. It was just poorly documented. (If want to try this for your self, look
-for the new information about CNAME records under the rr Section in the manual.)
+making available so other people can enjoy the latest features and fixes.
+Thomas Moestl no longer maintains pdnsd himself, so I am effectively the new
+maintainer. The current version is 1.1.11-par, which has a rather large number
+of small changes. Among the bugs fixed are a race condition in the cache lookup
+code, a flaw in the code that caused a busy spin when a remote server answered
+with "Not Implemented", and problems with the -4 and -6 command-line options.
+Among the improvements are an alternative sorting algorithm which should allow
+pdnsd to start up faster when reading a large cache file from disk, automatic
+mapping of IPv4 to IPv6 addresses when running in IPv6 mode, somewhat more
+efficient memory use, and better compression of the replies. Some of the new
+features are described in the second half of this file (look for "new in version
+1.1.11"). For the rest of the changes I will have to refer you to the ChangeLog.
 For a short history about recent releases have a look at doc/html/index.html.
+
+Since version 1.1.9 I've added some missing pieces to the documentation (the
+manual doc/html/doc.html,doc/txt/manual.txt and the man page doc/pdnsd-ctl.8).
+Version 1.1.11 finally has a man page doc/pdnsd.8, thanks to a contribution by
+Mahesh T. Pai.
 
 The first part of this file describes how to patch, compile, install and run
 pdnsd. The second part describes some of the changes I've made to Thomas
 Moestl's code.
 
-Unless you're using the pre-patched source archive pdnsd-1.1.10-par.tar.gz you
-must first apply my patch file pdnsd-1.1.10-par.diff.gz before compiling and
+Unless you're using the pre-patched source archive pdnsd-1.1.11-par.tar.gz you
+must first apply my patch file pdnsd-1.1.11-par.diff.gz before compiling and
 installing pdnsd according to Thomas Moestl's instructions described in the the
 documentation. Use a freshly untarred copy of Thomas Moestl's original version
 1.1.7a source, cd into the source directory pdnsd-1.1.7a and apply the command:
 
-gzip -cd <path_to_patch>/pdnsd-1.1.10-par.diff.gz | patch -p2 -N -Z
+gzip -cd <path_to_patch>/pdnsd-1.1.11-par.diff.gz | patch -p2 -N -Z
 
 Note: I have used GNU extensions so there may be some portability issues. I have
 supplied alternatives for some of the less portable functions. There should be no
@@ -82,7 +81,7 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   pdnsd-ctl server isp-label up "$DNS1 $DNS2"
 
   For more details how to use pdnsd-ctl read the updated documentation in
-  the doc/html directory.
+  the doc/html directory. There is also a manpage for pdnsd-ctl.
   This was quite tricky to implement because there might be pending queries
   while the addresses are being changed. It certainly was an interesting
   exercise in writing multi-threaded code for me.
@@ -94,10 +93,13 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   because most configuration options are identical for servers belonging to the
   same ISP. It also made the output of "pdnsd-ctl status" more compact. And it
   was necessary to enable a satisfactory implementation of the previous feature.
-  New in 1.1.8b1-par7: At the suggestion of Greg Norris server sections no
-  longer have to specify IP addresses. A server section without IP addresses
-  will remain inactive until it is assigned one more addresses at run-time with
-  pdnsd-ctl.
+  Example of the new syntax:
+
+	ip = 123.456.789.001, 123.456.789.002, 123.456.789.003;
+
+  At the suggestion of Greg Norris server sections no longer have to specify IP
+  addresses. A server section without IP addresses will remain inactive until it
+  is assigned one more addresses at run-time with pdnsd-ctl.
 
 - I've changed the implementation of dynamic arrays to make it slightly more
   efficient, and improve type safety. I also got rid of several arrays of fixed
@@ -106,15 +108,24 @@ don't have to read it if you simply want to run pdnsd as you're used to.
 
 - The output of the "status" command of pdnsd-ctl now gives more meaningful
   constant names "ping|none|if|exec" instead of numbers for the "uptest" option.
+  I've also added some information that was previously missing.
 
 - I've fixed I a problem that caused pdnsd to use up a lot of CPU time and slow
   down my system considerably when it received a query that took a long time to
-  resolve. It turned out that pdnsd can get into a "busy loop" when one of the
+  resolve. It turned out that pdnsd can get into a "busy spin" when one of the
   DNS servers pdnsd is querying refuses the connection. Apart from fixing this
   bug, to speed things up additionally, I thought it would be a good idea to
   mark a server down (without retesting it) after detecting errno==ECONNREFUSED.
   This gives me very satisfactory performance, with the problematic server being
   tried only once during every testing interval.
+
+  New in version 1.1.11: An additional busy spin condition, triggered when a
+  remote server answers with "Not Implemented", has been discovered and fixed.
+  In case there are remaining bugs in the multiplexing code, I've added a test
+  that checks if the number of events reported by poll/select matches the number
+  of events handled by pdnsd. If not, pdnsd will log an error message and give
+  up. Although the bugs still need to be reported and fixed, at least this
+  should prevent pdnsd from wasting CPU cycles.
 
 - Due to a bug in Thomas' code, pdnsd tries, but fails, to remove the control
   socket "pdnsd.status" before exiting. This has also been fixed. In version
@@ -130,36 +141,93 @@ don't have to read it if you simply want to run pdnsd as you're used to.
   sequential order. Anyway, it turned out my hunch paid off: no more error
   messages about "pdnsd.cache" in my logfile.
 
-- New in 1.1.8b1-par4: I've extended the configuration options for policies of
-  inclusion/exclusion lists in server sections. The new policies options are
-  "simple_only" and "fqdn_only". Setting policy=simple_only will cause the
-  server to used only for simple hostnames if no other rule matches. On the
-  other hand, setting policy=fqdn_only will cause the server to be used only for
-  fully qualified domain names (i.e. the name has at least one dot in-between).
-  I find these options useful for controlling which name servers (if any) will
-  be used by pdnsd for simple host names.
+  New in version 1.1.11: I've added some new code for sorting the queue used for
+  purging stale cache entries. This should allow pdnsd to start up faster when
+  reading large cache files from disk.
 
-- New in 1.1.8b1-par8: I've added a new "delegation_only" option that can be
-  used to undo the unwanted effects of DNS "wildcards". It works roughly as the
-  feature by the same name in BIND. It is turned off by default. To block
-  Verisign's Sitefinder, add the following line to the global section of the
-  confuration file:
+- I've extended the configuration options for policies of inclusion/exclusion
+  lists in server sections. The new policies options are "simple_only" and
+  "fqdn_only". Setting policy=simple_only will cause the server to used only for
+  simple hostnames if no other rule matches. On the other hand, setting
+  policy=fqdn_only will cause the server to be used only for fully qualified
+  domain names (i.e. the name has at least one dot in-between). I find these
+  options useful for controlling which name servers (if any) will be used by
+  pdnsd for simple host names.
 
-	delegation_only="com","net";
+- I've added a new "delegation_only" option that can be used to undo the
+  unwanted effects of DNS "wildcards". It works roughly as the feature by the
+  same name in BIND. It is turned off by default. To block Verisign's
+  Sitefinder, add the following line to the global section of the configuration
+  file:
+
+	delegation_only= com, net;
 
   If you find that this feature blocks some legitimate domain names, you will
   probably need to add the address of a nameserver that provides good authority
   information. More information can be found at
   http://www.phys.uu.nl/~rombouts/pdnsd/delegationonly.html
 
-- New in 1.1.8b1-par8: It is no longer mandatory that domain names in the
-  configuration file end in a dot.
+- It is no longer mandatory that domain names in the configuration file end in a
+  dot.
 
-- New in 1.1.10-par: It is no longer necessary to place strings between quotes
-  in the configuration file, unless a string contains a special character such
-  as whitespace, a token that normally starts a comment, or one of the
-  characters ",;{}". Note that these special characters are illegal in domain
-  names anyway.
+- The parser for configuration files has been rewritten purely in C, so (f)lex
+  and yacc/bison are no longer needed to build pdnsd.
+  It is no longer necessary to place strings between quotes in the configuration
+  file, unless a string contains a special character such as whitespace, a token
+  that normally starts a comment, or one of the characters ",;{}". Note that
+  these special characters are illegal in domain names anyway.
+
+- New in version 1.1.11: Negating whole domains with a neg section in the
+  config file will result in all the subdomains being negated as well.
+  For example, adding the lines
+
+	neg {name=doubleclick.com; types=domain;}
+	neg {name=doubleclick.net; types=domain;}
+
+  will also negate ad.doubleclick.com, ad.fr.doubleclick.net, etc.
+
+- New in version 1.1.11: When running in IPv6 mode, pdnsd will now automatically
+  map any IPv4 addresses it reads in the config file to IPv6 addresses.
+  When pdnsd has been compiled with IPv6 support and runs in IPv4 mode, it will
+  skip IPv6 addresses with a warning message. This may result in certain server
+  sections becoming inactive, though.
+
+  The -4 and -6 options should now work as advertised.
+  I've added two new command-line options, "-a" and "-i <prefix>".
+  With the -a flag pdnsd will try to detect automatically if IPv6 support is
+  available on a system, and fall back to IPv4 if not. The -a flag can be used
+  instead of -4 or -6.
+  The -i option can be used to specify a prefix for mapping IPv4 to IPv6
+  address. The default is ::ffff.0.0.0.0. There is also a corresponding
+  ipv4_6_prefix= option for the config file.
+
+- New in version 1.1.11: I've slightly changed the way pdnsd does parallel
+  queries. Active queries or not canceled until we have received a useful
+  response from a remote name server, or all the queries have failed or timed
+  out. Thus the par_queries parameter is no longer the maximum number of
+  parallel queries, but rather the increment with which the number of parallel
+  queries is increased when the previous set has timed out. In the worst case
+  there will be pending queries to all the servers in the list of available
+  servers simultaneously. We may be wasting more system resources this way, but
+  the advantage is that we have a greater chance of catching a reply. After all,
+  if we wait longer anyway, why not for more servers.
+  I've also introduced a global timeout parameter. This is the minimum period of
+  time pdnsd will wait after sending the first query to a remote server before
+  giving up without having received a reply. The timeout options in the
+  configuration file are now only minimum timeout intervals. Setting the global
+  timeout option makes it possible to specify quite short timeout intervals in
+  the server sections. This will have the effect that pdnsd will start querying
+  additional servers fairly quickly if the first servers are slow to respond
+  (but will still continue to listen for responses from the first ones). This
+  may allow pdnsd to get an answer more quickly in certain situations.
+
+  After receiving a reply from a remote server the server is marked up and its
+  time stamp is updated. This will have the effect that pdnsd doesn't bother
+  testing this server for availability for a period of time, and thus the
+  overhead caused by testing is reduced. After server timeouts, uptests are
+  performed by the separate server status thread, not by threads that have to
+  answer queries. Unresponsive servers with uptest=ping will not be marked down
+  immediately any more, but only after the ping test has definitely failed.
 
 I've also included a number of bug-fixes contained in a patch file supplied to
 me by Thomas Moestl. In addition to the things I had already fixed, the

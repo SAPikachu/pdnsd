@@ -47,6 +47,8 @@ Michael Wiedmann	contributed the pdnsd-ctl.8 man page.
 Ron Yorston		contributed the dev-uptest for Linux ppp dial-
 			on-demand devices
 Nikita V. Youshchenko	contributed extensions to the "if" uptest
+Mahesh T. Pai		contributed the pdnsd.8 man page.
+Nikola Kotur		contributed the Slackware start-up script.
 
 
 Please look into the THANKS file for people who helped me in various ways on

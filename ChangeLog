@@ -1,3 +1,319 @@
+2004-05-08  Paul  Rombouts  <p.a.rombouts@home.nl>
+
+	* src/rc/Slackware/rc.pdnsd
+	I've included a Slackware start-up script contributed by Nikola Kotur.
+
+2004-05-05  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* doc/pdnsd.8
+	I'm very grateful to Mahesh T. Pai for contributing a pdnsd man page,
+	which was still missing up till now.
+
+2004-04-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/servers.c,src/dns_query.c
+	After considering some suggestions made by Juliusz Chroboczek I have made the
+	following changes:
+
+	- After receiving a reply from a remote server mark the server up and update the
+	timestamp so that pdnsd doesn't bother testing this server for availability for a
+	while.
+	- After detecting an error with an send/recv call that indicates a server is
+	unavailable, mark a server down so that pdnsd doesn't bother testing this server
+	for a while.
+	- After server timeouts, uptests are never performed by a query/answer thread,
+	because this may delay the sending of an answer to the client. Instead the
+	timestamp of a server that needs to be tested for availability is set to zero and
+	a condition signal is sent to alert the server status thread, which will carry out
+	the test. Unresponsive servers with uptest=ping will not be marked down
+	immediately any more, but only after the ping test has definitely failed.
+
+	* src/error.c,src/error.h
+	I've moved most of the code previously contained in the DEBUG_MSG macro to a new
+	function debug_msg().
+	The DEBUG_MSG macro now simply expands to "if(debug_p) debug_msg();".
+	This should make the executable a little smaller, and be just as fast when
+	debugging is off. The DEBUG_MSG macro still expands to nothing if pdnsd is built
+	without debugging support.
+
+2004-04-28  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.h,src/dns_query.c
+	I've tried to simplify the finite state machine used for processing parallel
+	queries, by merging the "state" and "nstate" variables used by p_exec_query() and
+	p_query_sm() resp. into one "state" variable.
+	By introducing an extra field "iolen" to keep track of the number of bytes read
+	from or written to a socket, I could also reduce the number of states for TCP
+	queries. The new code has the additional advantage that it can handle situations
+	that require multiple read() calls to receive a response.
+
+2004-04-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	I've added an extra check comparing the number if poll/select events actually
+	handled to the return value of poll/select. This should reduce the chance that
+	pdnsd will get caught in a busy spin due to unknown remaining bugs. An error
+	message is logged and an error code is returned when this comparison fails.
+
+2004-04-13  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.h,src/dns_query.c
+	I got rid of the event field in the query_stat_t struct.
+	I think it is redundant, because its value can be quite simply derived from
+	the nstate field.
+
+2004-04-12  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	I appears there was flaw in the code for handling a "Not Implemented" response
+	from a remote server with the RA (recursion available) bit equal to zero. This
+	could cause pdnsd to get into a busy spin. I traced the flaw back to Thomas
+	Moestl's code, so it must be in all the versions of pdnsd I know of. In previous
+	versions of pdnsd the busy spin would eventually time out. Due to some recent
+	changes the loop would no longer time out, making the bug more noticeable.
+	With thanks to Nicolas George for reporting the bug.
+	
+	I also discovered a closely related flaw that would cause pdnsd to poll() closed
+	file descriptors. It usually works out OK in practice, but it is definitively not
+	the correct way to do it.
+
+	Additionally, I discovered some opportunities to save memory, e.g. by replacing
+	the nsname buffer in the query_stat_t struct by a pointer to an already existing
+	copy of a name.
+
+2004-04-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Nicolas George remarked that he thought it was strange that subdomains of domains
+	negated with "neg" sections in the config file were not also negated. I thought that
+	he had a point, and I've implemented a change so that negating example.com will
+	now also negate www.example.com, xxx.adserver.example.com, etc.
+
+2004-04-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/error.c,src/error.h
+	I noticed that the code for the log_warn() and log_error() functions was almost
+	identical, even to the point that log_warn() called syslog() with LOG_ERR
+	priority. I've merged these two functions into one log_message() function.
+
+2004-04-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/main.c,src/conf-parser.c
+	The -4 and -6 command-line options should now work as advertised.
+	This wasn't entirely trivial. The rule is that options on the command line
+	override those in the configuration file. The easiest way to implement this is to
+	process the command-line options after reading the configuration file. But this
+	doesn't work for the -4 and -6 options, because the run_ipv4 flag determines how
+	IP addresses in the config file are parsed. I've inserted some extra tests and
+	warning messages that will hopefully make this setting nearly foolproof.
+
+	I've added two new command-line options, "-a" and "-i <prefix>".
+	With the -a flag pdnsd will try to detect automatically if IPv6 support is
+	available on a system, and fall back to IPv4 if not. The -a flag can be used
+	instead of -4 or -6.
+
+	In IPv6 mode, pdnsd will now automatically convert IPv4 addresses to IPv6-mapped
+	addresses. The -i option can be used to specify a prefix for this mapping. The
+	default is ::ffff.0.0.0.0
+	There is also a corresponding ipv4_6_prefix= option for the config file.
+
+	In IPv4 mode, if IPv6 support is compiled in, pdnsd will now skip IPv6 addresses
+	in the config file (except for the server_ip and ping_ip options) with a warning
+	message. This allows you to have mixed sets of IPv4 and IPv6 address in the same
+	config file, although in IPv4 mode some server sections may become inactive.
+
+	With thanks to Juliusz Chroboczek for suggesting these changes.
+
+2004-04-07  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've changed some of the cache-flag definitions to make debugging a little simpler.
+	Unfortunately, this makes the cache files of previous pdnsd versions incompatible
+	with the new one. I've introduced a cache version identifier to be added at the
+	beginning of each cache file. This enables pdnsd to recognize and discard
+	incompatible cache files.
+
+2004-04-05  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/cache.c
+	I've changed the way CACHE_LAT (cache latency, normally 120 secs) is used to
+	determine whether a cache entry has timed out. Instead of simply adding it to the
+	ttl (time to live), I use CACHE_LAT if the ttl is less then CACHE_LAT, else the
+	ttl itself, making CACHE_LAT the minimum ammount of time a cache entry stays in
+	the cache.
+
+2004-04-02  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	I've introduced a global timeout parameter. This is the minimum period of time
+	pdnsd will wait after sending the first query to a remote server before giving
+	up without having received a reply.
+	The timeout options in the configuration file are now only minimum timeout intervals.
+	Setting the global timeout option makes it possible to specify quite short timeout
+	intervals in the server sections. This will have the effect that pdnsd will start
+	querying additional servers fairly quickly if the first servers are slow to respond
+	(but will still continue to listen for responses from the first ones).
+	This may allow pdnsd to get an answer more quickly in certain situations.
+
+	* src/dns_query.c
+	When receiving a NXDOMAIN (unknown domain) response from a remote name server,
+	I think it is still useful to process the authority and additional sections,
+	so that pdnsd can possibly add a SOA record to its own response.
+
+2004-04-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	In p_recursive_query(), I've slightly changed the way pdnsd does parallel
+	queries. Active queries or not canceled until we have received a useful response
+	from a remote name server, or all the queries have failed or timed out.
+	Thus the par_queries parameter is no longer the maximum number of parallel
+	queries, but rather the increment with which the number of parallel queries is
+	increased when the previous set has timed out.
+	In the worst case all the servers in the list of available servers will be queried
+	simultaneously. We may be wasting more system resources this way, but the advantage
+	is that we have a greater chance of catching a reply.
+	After all, if we wait longer anyway, why not for more servers.
+
+2004-03-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	I've noticed that in compose_answer() that while adding the name in the query
+	section it was not passed through compress_name(). While it is true that the
+	first name occurrence cannot be compressed, it is still sensible to process the
+	query name with compress_name() so that the offset can be stored and provide
+	additional opportunities for future compressions.
+	I've tested this with dig and the responses of pdnsd are now usually a little
+	smaller	in size or can hold more information within the 512 byte limit.
+
+2004-03-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've noticed that pdnsd stored rr records (of the same type) in reverse order
+	in the cache.
+	Although I don't see anything inherently wrong with that, I think it's neater to
+	store them in the order they are processed.
+
+2004-03-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've rearranged the order of the arguments of some of the functions in cache.c
+	to obtain a more consistent calling interface.
+
+	* src/dns_answer.c
+	I've noticed that pdnsd would only add NS records to an authority section if it could
+	find such records matching the queried name (or the last CNAME in the answer) exactly.
+	However, I understand that a server should try to give NS records as close as possible
+	to the target name in the naming hierarchy.
+	I also understand that if a domain name is reported as nonexisting, or no record of
+	the requested type exists, it is customary to provide a SOA record, searching up the
+	name hierarchy if necessary.
+	I've tried to implement this in compose_answer(), although with some limitations.
+	I only look in the cache, I don't search more then three levels up, and stop before
+	the top level.
+
+2004-03-28  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/dns_answer.c
+	There were some issues with add_cache_rr_add().
+
+	First of all, the way it was used in rr_to_cache() (or rather not used) meant
+	that if an "off topic" record was added for a name that lacked an entry in the
+	cache, the rr set would be created with an incorrect serial number (namely zero).
+	I've rewritten add_cache_rr_add so that it can create new cache entries if necessary.
+	This simplifies the code in rr_to_cache() and ensures correct serial numbers.
+
+	Secondly, in add_cache_rr_add() the ttl was compared with that of an existing rrset
+	without adjusting for the min_ttl and max_ttl options. This could lead to all the
+	previous records being deleted, retaining only the last one.
+
+2004-03-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	In compose_answer(), if the rd (recursion desired) bit is set in the query
+	and the response contains a CNAME record (while a different type of record was
+	requested), always do a recursive query on the CNAME, even if we have already
+	added a record of the requested type to the response.
+	Failing to honor the rd bit will cause some resolver libraries to complain,
+	even if the answer contains a record of the requested type.
+
+	I've slightly changed the calling interfaces of add_to_response() and add_rrset()
+	to make them more consistent and efficient.
+
+	In add_rrset() I've fixed a memory leak on one of the error paths.
+
+	In add_additional_rr(), the return value of add_rr() was not checked.
+	If add_rr() fails, it will free *ans, and functions higher up the calling
+	chain could be referencing freed memory.
+
+	I've fixed a potential referencing of freed memory or double freeing in add_additional_a().
+	If a call of add_additional_rr() fails, it will free *ans.
+	Previously, add_additional_rr() could be called a second time, in which case
+	the second call would be referencing freed memory or freeing it a second time..
+
+2004-03-23  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in, src/Makefile.in,src/pdnsd-ctl/Makefile.in,src/test/Makefile.in
+	Frédéric L. W. Meunier has reported that configure --srcdir option (for building
+	in directory separate from the source directory) was broken.
+	Should be fixed now.
+
+2004-03-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c,src/helpers.c,src/icmp.c,src/main.c,src/netdev.c,src/ipvers.h,src/test/if_up.c,src/test/is_local_addr.c,src/test/tping.c,src/test/random.c,src/conf-parser.c
+	I've eliminated the global variable run_ipv6 from the code.
+	Enabling both the IPv4 and IPv6 protocols at the same time is not supported
+	in pdnsd, so the value of run_ipv6 (if it is defined) is simply !run_ipv4.
+
+	* src/dns.c,src/test/is_local_addr.c,src/test/tping.c
+	It appears the option to compile pdnsd without IPv4 support (i.e. only IPv6
+	support) was broken. Should be fixed now.
+	
+2004-03-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've discovered an incorrect use of cache locks in lookup_cache().
+	We only read locks in place, it is possible for purge_cent() to delete a cache
+	entry while another thread is trying to read it at the same time, which could
+	lead to	trouble. I've rewritten purge_cent() so that it can be used to test
+	whether something needs to be purged without actually deleting anything.
+	If something needs to be deleted, purge_cent() will be called again with
+	the proper read/write locks in place, excluding access to the cache for all
+	other threads.
+
+2004-03-18  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	I've added a new function sort_rrl() for sorting the rr_l list using a merge-sort
+	algorithm. Usually the insertion sort used by insert_rrl() is good enough, because
+	new entries belong near the end most of the time. Reading entries from disk forms
+	an exception, though, because the rrsets in the file are completely out of order
+	w.r.t. timestamps, leading to quadratic time complexity of the insertion sort method.
+	In that case it should be faster to simply append items at the end of the rr_l list
+	and sort using a more efficient algorithm afterwords.
+	pdnsd now seems to start up noticeably faster when reading large cache files.
+	I've also considered using a more sophisticated data structure than a doubly linked
+	list, but this will add considerable complexity to the code and use more memory.
+
+2004-03-13  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Changed a declaration in udp_answer_thread() so that the buffer used for passing 
+	control messages on to sendmsg() is exactly the right size, instead of an arbitrary
+	512 bytes.
+	Also initialized the msg_flags of the struct msghdr passed on to sendmsg() to zero,
+	to keep Valgrind from complaining about uninitialized bytes.
+
+2004-03-12  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/icmp.c
+	Fixed an incorrect call to select() in ping4(). A file descriptor set for detecting
+	exceptions was initialized but not passed on to select(). This would lead subsequent
+	code always to behave as if an IO exception had occurred.
+	Valgrind seems to indicate that when a poll() call times out and returns 0,
+	the revents field of the struct pollfd is not necessarily set.
+	I've changed the code to check that the return value is > 0 before examining the
+	revents field.
+
 2004-02-06  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/conf-parser.c,src/conf-parser.h,src/conf-keywords.h

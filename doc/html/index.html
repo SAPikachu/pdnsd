@@ -42,9 +42,27 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2004-05-10</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.11-par has been released.</b>
+	Latest "maintenance" release by Paul Rombouts (although a few new features have crept in).<br>
+	This version has a rather large number of small changes, which are rather difficult to summarize.
+	Among the bugs fixed are a race condition in the cache lookup code, a
+	flaw in the code that caused a busy spin when a remote server answered
+	with "Not Implemented", and problems with the -4 and -6 command-line
+	options. Among the improvements are an alternative sorting algorithm
+	which should allow pdnsd to start up faster when reading a large cache
+	file from disk, automatic mapping of IPv4 to IPv6 addresses when running
+	in IPv6 mode, somewhat more efficient memory use, better compression of
+	the replies and changes in the parallel querying algorithm that should
+	improve the chances of catching a reply from a remote server.<br>
+
+	For a more complete list of the changes I'll have to refer you to <a href="README.par"><code>README.par</code></a> and the <a
+	href="ChangeLog"><code>ChangeLog</code></a>.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-02-10</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.10-par has been released.</b>
-	Latest "maintenance" release by Paul Rombouts.<br>
 
 	The main new feature of this release is a new parser for configuration
 	files, completely rewritten from scratch in C. The main advantages are:
@@ -458,7 +476,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 09 Feb 2004 by Paul Rombouts</i>
+      <i>Last revised: 10 May 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

@@ -33,6 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdarg.h>
 #include "conff.h"
 #include "consts.h"
 #include "cache.h"
@@ -46,12 +47,22 @@ Boston, MA 02111-1307, USA.  */
 static unsigned int linenr=0;
 
 
-static void report_error (char *msg)
+static void report_error (const char *msg)
 {
   fprintf(stderr, "Error in config file (line %u): %s\n",linenr,msg);
 }
 
-static void report_name_error (char *msg,char *name, size_t len)
+static void report_errorf (const char *frm,...)
+{
+  va_list va;
+  fprintf(stderr, "Error in config file (line %u): ",linenr);
+  va_start(va,frm);
+  vfprintf(stderr,frm,va);
+  va_end(va);
+  fputc('\n',stderr);
+}
+
+static void report_name_error (const char *msg,const char *name, size_t len)
 {
   fprintf(stderr, "Error in config file (line %u): ",linenr);
   fputs(msg,stderr);
@@ -147,11 +158,12 @@ static int scan_string(char **startp,char **curp,size_t *lenp)
 
 
 #define lookup_keyword(name,len,dic) binsearch_keyword(name,len,dic,sizeof(dic)/sizeof(namevalue_t))
-static char *addr_add(atup_array *ata, char *ipstr, size_t len);
-static char *slist_add(slist_array *sla, char *nm, size_t len, int tp);
+static const char *parse_ip(const char *ipstr,size_t len, pdnsd_a *a);
+static const char *addr_add(atup_array *ata, const char *ipstr, size_t len);
+static const char *slist_add(slist_array *sla, const char *nm, size_t len, int tp);
 #define include_list_add(sla,nm,len) slist_add(sla,nm,len,C_INCLUDED)
 #define exclude_list_add(sla,nm,len) slist_add(sla,nm,len,C_EXCLUDED)
-static char *zone_add(zone_array *za, char *zone, size_t len);
+static const char *zone_add(zone_array *za, const char *zone, size_t len);
 
 #define CONCAT(a,b) a ## b
 /* a macro for concatenating tokens that expands its arguments */
@@ -206,7 +218,7 @@ static char *zone_add(zone_array *za, char *zone, size_t len);
 #define SCAN_STRING_LIST(dst,cur,addfunc)	\
 {						\
   for(;;) {					\
-    char *_strbeg,*_err;			\
+    char *_strbeg; const char *_err;		\
     unsigned int _len;				\
     SCAN_STRING(_strbeg,cur,_len);		\
     if((_err=addfunc(dst,_strbeg,_len))) {	\
@@ -273,7 +285,7 @@ static char *zone_add(zone_array *za, char *zone, size_t len);
 
 #define PARSESTR2RHN(src,len,dst)		\
 {						\
-  char *_err;					\
+  const char *_err;				\
   if ((_err=parsestr2rhn(src,len,dst))) {	\
     report_error(_err);				\
     PARSERROR;					\
@@ -306,6 +318,8 @@ static char *zone_add(zone_array *za, char *zone, size_t len);
 
 /* Parse configuration file.
    Return 1 on success, 0 on failure.
+   Note: this code still leaks memory in some failure cases.
+   This shouldn't be a problem, because pdnsd will then exit anyway.
 */
 int confparse(FILE* in)
 {
@@ -383,9 +397,9 @@ int confparse(FILE* in)
 	  case SERVER_IP:
 	    SCAN_STRING(ps,p,len);
 	    {
-	      TEMPSTRNCPY(buf,ps,len);
-	      if (!str2pdnsd_a(buf,&global.a)) {
-		report_error("bad ip in server_ip= option.");
+	      const char *err;
+	      if ((err=parse_ip(ps,len,&global.a))) {
+		report_errorf("%s for the server_ip= option.",err);
 		PARSERROR;
 	      }
 	    }
@@ -431,6 +445,10 @@ int confparse(FILE* in)
 
 	  case C_TCP_SERVER:
 	    ASSIGN_ON_OFF(notcp, p,C_OFF,"bad qualifier in tcp_server= option.");
+#ifdef NO_TCP_SERVER
+	    if(!notcp)
+	      fprintf(stderr,"pdnsd was compiled without TCP server support. tcp_server=on has no effect.\n");
+#endif
 	    break;
 
 	  case PID_FILE:
@@ -471,20 +489,55 @@ int confparse(FILE* in)
 	    break;
 
 	  case RUN_IPV4: {
-#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 	    int cnst;
 	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF,"bad qualifier in run_ipv4= option.");
-	    run_ipv4=(cnst==C_ON);
-	    run_ipv6=(cnst!=C_ON);
-#else
-	    report_error("the run_ipv4 option is only available when pdnsd is compiled with IPv4 AND IPv6 support.");
-	    PARSERROR;
+#ifndef ENABLE_IPV4
+	    if(cnst==C_ON) {
+	      report_error("You can only set run_ipv4=on when pdnsd is compiled with IPv4 support.");
+	      PARSERROR;
+	    }
+#endif
+#ifndef ENABLE_IPV6
+	    if(cnst==C_OFF) {
+	      report_error("You can only set run_ipv4=off when pdnsd is compiled with IPv6 support.");
+	      PARSERROR;
+	    }
+#endif
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	    if(!cmdlineipv) {
+	      run_ipv4=(cnst==C_ON); cmdlineipv=-1;
+	    }
+	    else if(cmdlineipv<0 && run_ipv4!=(cnst==C_ON)) {
+	      report_error(cmdlineipv==-1?
+			   "IPv4/IPv6 conflict: you are trying to set run_ipv4 to a value that conflicts with a previous run_ipv4 setting.":
+			   "You must set the run_ipv4 option before specifying IP addresses.");
+	      PARSERROR;
+	    }
 #endif
 	  }
 	    break;
 
+	  case IPV4_6_PREFIX:
+	    SCAN_STRING(ps,p,len);
+#ifdef ENABLE_IPV6
+	    if(!cmdlineprefix) {
+	      TEMPSTRNCPY(buf,ps,len);
+	      if(inet_pton(AF_INET6,buf,&ipv4_6_prefix)<=0) {
+		report_error("ipv4_6_prefix: argument not a valid IPv6 address.");
+		PARSERROR;
+	      }
+	    }
+#else
+	    fprintf(stderr,"pdnsd was compiled without IPv6 support. ipv4_6_prefix option in config file will be ignored.\n");
+#endif
+	    break;
+
 	  case C_DEBUG:
 	    ASSIGN_ON_OFF(debug_p, p,C_ON,"bad qualifier in debug= option.");
+#if !DEBUG
+	    if(debug_p)
+	      fprintf(stderr,"pdnsd was compiled without debugging support. debug=on has no effect.\n");
+#endif
 	    break;
 
 	  case C_CTL_PERMS:
@@ -501,6 +554,10 @@ int confparse(FILE* in)
 
 	  case TCP_QTIMEOUT:
 	    SCAN_UNSIGNED_NUM(global.tcp_qtimeout, p,"tcp_qtimeout option");
+	    break;
+
+	  case TIMEOUT:
+	    SCAN_UNSIGNED_NUM(global.timeout, p,"global timeout option");
 	    break;
 
 	  case C_PAR_QUERIES: {
@@ -633,9 +690,9 @@ int confparse(FILE* in)
 	  case PING_IP:
 	    SCAN_STRING(ps,p,len);
 	    {
-	      TEMPSTRNCPY(buf,ps,len);
-	      if (!str2pdnsd_a(buf,&server.ping_a)) {
-		report_error("bad ip in ping_ip= option.");
+	      const char *err;
+	      if ((err=parse_ip(ps,len,&server.ping_a))) {
+		report_errorf("%s for the ping_ip= option.",err);
 		PARSERROR;
 	      }
 	    }
@@ -761,7 +818,7 @@ int confparse(FILE* in)
 	unsigned char c_owner[256];
 	unsigned char c_name[256];
 	time_t c_ttl;
-	int c_flags;
+	unsigned c_flags;
 
 	c_owner[0]='\0';
 	c_name[0]='\0';
@@ -793,7 +850,7 @@ int confparse(FILE* in)
 	    PARSESTR2RHN(ps,len,c_owner);
 	    if (c_name[0]) {
 	    rr_init_cent:
-	      if (!init_cent(&c_cent, c_name, c_flags, time(NULL), 0  DBG0)) {
+	      if (!init_cent(&c_cent, c_name, 0, time(NULL), c_flags  DBG0)) {
 		goto out_of_memory;
 	      }
 	    }
@@ -812,46 +869,32 @@ int confparse(FILE* in)
 
 	  case A: {
 	    int sz,tp;
-	    pdnsd_a c_a;
+	    pdnsd_ca c_a;
 
 	    if (!c_owner[0] || !c_name[0])
 	      goto no_owner_name_spec;
 	    SCAN_STRING(ps,p,len);
 	    {
-	      struct in_addr ina4;
 	      TEMPSTRNCPY(buf,ps,len);
-	      if (inet_aton(buf,&ina4)) {
-#if defined(ENABLE_IPV4) 
-		c_a.ipv4=ina4;
-		sz=sizeof(struct in_addr);
+	      if (inet_aton(buf,&c_a.ipv4)) {
 		tp=T_A;
-#else
-		report_error("bad ip in a= option.");
-		PARSERROR;
-#endif
-	      } else {
+		sz=sizeof(struct in_addr);
+	      }
+	      else
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
-		int err;
-
-		if ((err=inet_pton(AF_INET6,buf,&c_a.ipv6))!=1) {
-		  if (err==0) {
-		    report_error("bad ip in a= option.");
-		    PARSERROR;
-		  } else {
-		    perror("inet_pton");
+		if (inet_pton(AF_INET6,buf,&c_a.ipv6)>0) {
+		  tp=T_AAAA;
+		  sz=sizeof(struct in6_addr);
+		}
+		else
+#endif
+		  {
+		    report_error("bad IP address in a= option.");
 		    PARSERROR;
 		  }
-		} else {
-		  sz=sizeof(struct in6_addr);
-		  tp=T_AAAA;
-		}
-#else
-		report_error("bad ip in a= option.");
-		PARSERROR;
-#endif
-	      }
 	    }
-	    add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp  DBG0);
+	    if(!add_cent_rr(&c_cent,tp,c_ttl,0,CF_LOCAL,sz,&c_a,0  DBG0))
+	      goto add_cent_failed;
 	  }
 	    break;
 
@@ -862,7 +905,8 @@ int confparse(FILE* in)
 	      goto no_owner_name_spec;
 	    SCAN_STRING(ps,p,len);
 	    PARSESTR2RHN(ps,len,c_ptr);
-	    add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR  DBG0);
+	    if(!add_cent_rr(&c_cent,T_PTR,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,0  DBG0))
+	      goto add_cent_failed;
 	  }
 	    break;
 
@@ -880,7 +924,8 @@ int confparse(FILE* in)
 	      ts=htons(pref);
 	      memcpy(c_mx,&ts,2);
 	    }
-	    add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_mx+2)+2,c_mx,T_MX  DBG0);
+	    if(!add_cent_rr(&c_cent,T_MX,c_ttl,0,CF_LOCAL,rhnlen(c_mx+2)+2,c_mx,0  DBG0))
+	      goto add_cent_failed;
 	  }
 	    break;
 
@@ -891,7 +936,8 @@ int confparse(FILE* in)
 	      goto no_owner_name_spec;
 	    SCAN_STRING(ps,p,len);
 	    PARSESTR2RHN(ps,len,c_cname);
-	    add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_cname),c_cname,T_CNAME  DBG0);
+	    if(!add_cent_rr(&c_cent,T_CNAME,c_ttl,0,CF_LOCAL,rhnlen(c_cname),c_cname,0  DBG0))
+	      goto add_cent_failed;
 	  }
 	    break;
 
@@ -929,7 +975,8 @@ int confparse(FILE* in)
 	    idx+=rhncpy(buf+idx,c_soa_r);
 	    memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 	    idx+=sizeof(soa_r_t);
-	    add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA  DBG0);
+	    if(!add_cent_rr(&c_cent,T_SOA,c_ttl,0,CF_LOCAL,idx,buf,0  DBG0))
+	      goto add_cent_failed;
 	  }
 	    break;
 
@@ -950,7 +997,11 @@ int confparse(FILE* in)
 	}
 
 	/* add the authority */
-	add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, rhnlen(c_owner), c_owner, T_NS  DBG0);
+	if(!add_cent_rr(&c_cent, T_NS, c_ttl,0,CF_LOCAL, rhnlen(c_owner), c_owner,0  DBG0)) {
+	add_cent_failed:
+	  free_cent(&c_cent  DBG0);
+	  goto out_of_memory;
+	}
 	add_cache(&c_cent);
 	free_cent(&c_cent  DBG0);
       }
@@ -959,7 +1010,7 @@ int confparse(FILE* in)
       case SOURCE: {
 	unsigned char c_owner[256];
 	time_t c_ttl;
-	int c_flags;
+	unsigned c_flags;
 	unsigned char c_aliases;
 
 	c_owner[0]='\0';
@@ -1082,11 +1133,8 @@ int confparse(FILE* in)
 		  PARSERROR;
 		}
 		hdtp=1;
-		if (!init_cent(&c_cent, c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl  DBG0)) {
+		if (!init_cent(&c_cent, c_name, c_ttl, time(NULL), DF_LOCAL|DF_NEGATIVE  DBG0))
 		  goto out_of_memory;
-		}
-		add_cache(&c_cent);
-		free_cent(&c_cent  DBG0);
 	      }
 	      else if(cnst==0) {
 		if (hdtp) {
@@ -1094,6 +1142,8 @@ int confparse(FILE* in)
 		  PARSERROR;
 		}
 		htp=1;
+		if (!init_cent(&c_cent, c_name, 0, time(NULL), 0  DBG0))
+		  goto out_of_memory;
 		for(;;) {
 		  {
 		    TEMPSTRNCPY(buf,ps,len);
@@ -1103,15 +1153,10 @@ int confparse(FILE* in)
 		    report_name_error("unrecognized rr type used as argument for types= option: ",ps,len);
 		    PARSERROR;
 		  }
-		  if (!init_cent(&c_cent, c_name, 0, time(NULL), 0  DBG0)) {
-		    goto out_of_memory;
-		  }
-		  if (!add_cent_rrset(&c_cent,cnst,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0  DBG0)) {
+		  if (!c_cent.rr[cnst-T_MIN] && !add_cent_rrset(&c_cent,cnst,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0  DBG0)) {
 		    free_cent(&c_cent  DBG0);
 		    goto out_of_memory;
 		  }
-		  add_cache(&c_cent);
-		  free_cent(&c_cent  DBG0);
 		  SKIP_BLANKS(p);
 		  if(*p!=',') break;
 		  ++p;
@@ -1123,6 +1168,9 @@ int confparse(FILE* in)
 	      }
 	      else
 		goto bad_types_option;
+
+	      add_cache(&c_cent);
+	      free_cent(&c_cent  DBG0);
 	    }
 	    else {
 	    bad_types_option:
@@ -1206,16 +1254,45 @@ int confparse(FILE* in)
 #undef PARSERROR
 }
 
+static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
+{
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	if(!cmdlineipv) cmdlineipv=-2;
+#endif
+	{
+		TEMPSTRNCPY(buf,ipstr,len);
+		if(!str2pdnsd_a(buf,a)) {
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+			if(run_ipv4 && inet_pton(AF_INET6,buf,&a->ipv6)>0) {
+				return "You should set run_ipv4=off or use the command-line option -6"
+					" before specifying an IPv6 address";
+			}
+#endif
+			return "bad IP address";
+		}
+	}
+	return NULL;
+}
 
-static char *addr_add(atup_array *ata, char *ipstr, size_t len)
+static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
 {
 	atup_t *at;
 	pdnsd_a addr;
+
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+	if(!cmdlineipv) cmdlineipv=-2;
+#endif
 	{
-	  TEMPSTRNCPY(buf,ipstr,len);
-	  if(!str2pdnsd_a(buf,&addr)) {
-	    return "bad ip in ip= option.";
-	  }
+		TEMPSTRNCPY(buf,ipstr,len);
+		if(!str2pdnsd_a(buf,&addr)) {
+#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
+			if(run_ipv4 && inet_pton(AF_INET6,buf,&addr.ipv6)>0) {
+				fprintf(stderr,"IPv6 address in line %d of config file ignored while running in IPv4 mode.\n",linenr);
+				return NULL;
+			}
+#endif
+			return "bad IP address in ip= option.";
+		}
 	}
 
 	if (!(*ata=DA_GROW1(*ata))) {
@@ -1228,7 +1305,7 @@ static char *addr_add(atup_array *ata, char *ipstr, size_t len)
 	return NULL;
 }
 
-static char *slist_add(slist_array *sla, char *nm, size_t len, int tp)
+static const char *slist_add(slist_array *sla, const char *nm, size_t len, int tp)
 {
  	slist_t *sl;
 	unsigned int adddot=0;
@@ -1252,11 +1329,11 @@ static char *slist_add(slist_array *sla, char *nm, size_t len, int tp)
 	return NULL;
 }
 
-static char *zone_add(zone_array *za, char *zone, size_t len)
+static const char *zone_add(zone_array *za, const char *zone, size_t len)
 {
 	zone_t z;
 	size_t rlen;
-	char *err;
+	const char *err;
 	unsigned char rhn[256];
 
 	if((err=parsestr2rhn(zone,len,rhn)))

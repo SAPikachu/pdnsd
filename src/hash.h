@@ -57,7 +57,7 @@ inline static void mk_dns_hash()
 		hash_buckets[i]=NULL;
 }
 
-void add_dns_hash(const unsigned char *key, dns_cent_t *data);
+void add_dns_hash(dns_cent_t *data);
 dns_cent_t *del_dns_hash(const unsigned char *key);
 dns_cent_t *dns_lookup(const unsigned char *key);
 void free_dns_hash();

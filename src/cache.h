@@ -1,7 +1,7 @@
 /* cache.h - Definitions for the dns cache
    Copyright (C) 2000 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   With modifications by Paul Rombouts, 2003,2004.
 
 This file is part of the pdnsd package.
 
@@ -46,7 +46,7 @@ typedef struct {
 	struct rr_lent_s *lent;                   /* this points to the list entry */
 	time_t           ttl;
 	time_t           ts;
-	short            flags;
+	unsigned short   flags;
 	unsigned long    serial;                  /* we use the serial to determine whether additional records 
 						   * belonged to one answer */
 	rr_bucket_t      *rrs;
@@ -61,7 +61,7 @@ typedef struct {
 typedef struct {
 	time_t           ttl;
 	time_t           ts;
-	short            flags;
+	unsigned short   flags;
 } rr_fset_t;
 
 
@@ -69,7 +69,7 @@ typedef struct {
 	unsigned char    *qname;                  /* Name of the query in dotted notation*/
 	int              num_rrs;                 /* The number of rrs. When this decreases to 0, the cent is deleted. */
 	unsigned long    cs;                      /* size of the rrs*/
-	short            flags;                   /* Flags for the whole cent */
+	unsigned short   flags;                   /* Flags for the whole cent */
 	time_t           ts;                      /* Timestamp (only for negative cached records) */
 	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */ 
 	struct rr_lent_s *lent;                   /* lent for the whole cent, only for neg. cached recs */
@@ -78,7 +78,7 @@ typedef struct {
 
 typedef struct {
 	unsigned char    qlen;
-	short            flags;                   /* Flags for the whole cent */
+	unsigned short   flags;                   /* Flags for the whole cent */
 	time_t           ts;                      /* Timestamp (only for negative cached records) */
 	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */ 
 /*      qname (with length qlen) follows here */
@@ -99,32 +99,38 @@ typedef struct rr_lent_s {
 /*
  * the flag values for RR sets in the cache
  */
-#define CF_NOPURGE     1       /* Do not purge this record */
+#define CF_NEGATIVE    1       /* this one is for per-RRset negative caching*/
 #define CF_LOCAL       2       /* Local zone entry */
 #define CF_NOAUTH      4       /* Non-authoritative record */
 #define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written 
-				* to cache records, but used by add_cent_rr */
+				* to cache records, but used by add_cent_rrset */
 #define CF_ADDITIONAL 16       /* This was fetched as an additional or "off-topic" record. */
-#define CF_NEGATIVE   32       /* this one is for per-RRset negative cacheing*/
+#define CF_NOPURGE    32       /* Do not purge this record */
 
 #define CFF_NOINHERIT (CF_LOCAL | CF_NOAUTH | CF_ADDITIONAL) /* not to be inherited on requery */
 
 /*
  * the flag values for whole domains in the cache
  */
-#define DF_NEGATIVE    1       /* this one is for whole-domain negative cacheing (created on NXDOMAIN)*/
+#define DF_NEGATIVE    1       /* this one is for whole-domain negative caching (created on NXDOMAIN)*/
 #define DF_LOCAL       2       /* local record (in conj. with DF_NEGATIVE) */
 
 #define DFF_NOINHERIT (DF_NEGATIVE) /* not to be inherited on requery */
 
+#if DEBUG>0
+#define NFLAGS 6
+#define FLAGSTRLEN (NFLAGS*4)
+char *flags2str(unsigned flags,char *buf);
+#endif
 
 /*
  * This is the time in secs any record remains at least in the cache before it is purged.
  * (exception is that the cache is full)
  */
 #define CACHE_LAT 120
+#define CLAT_ADJ(ttl) ((ttl)<CACHE_LAT?CACHE_LAT:(ttl))
 
-extern volatile int use_cache_lock;
+extern volatile short int use_cache_lock;
 
 
 #ifdef ALLOC_DEBUG
@@ -159,15 +165,15 @@ int report_cache_stat(int f);
  *  add_cache expects the dns_cent_t to be filled.
  */
 void add_cache(dns_cent_t *cent);
-void del_cache(unsigned char *name);
-void invalidate_record(unsigned char *name);
-int have_cached(unsigned char *name);
-dns_cent_t *lookup_cache(unsigned char *name);
-int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
+void del_cache(const unsigned char *name);
+void invalidate_record(const unsigned char *name);
+/* int have_cached(unsigned char *name); */
+dns_cent_t *lookup_cache(const unsigned char *name, int subneg);
+int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, unsigned flags, int dlen, void *data, unsigned long serial);
 
-inline static int mk_flag_val(servparm_t *server)
+inline static unsigned int mk_flag_val(servparm_t *server)
 {
-	int fl=0;
+	unsigned int fl=0;
 	if (!server->purge_cache)
 		fl|=CF_NOPURGE;
 	if (server->nocache)
@@ -175,9 +181,9 @@ inline static int mk_flag_val(servparm_t *server)
 	return fl;
 }
 
-int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl  DBGPARAM);
-int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial  DBGPARAM);
-int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp  DBGPARAM);
+int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t ts, unsigned flags  DBGPARAM);
+int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, unsigned flags, unsigned long serial  DBGPARAM);
+int add_cent_rr(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsigned flags,int dlen, void *data,unsigned long serial  DBGPARAM);
 void free_cent(dns_cent_t *cent  DBGPARAM);
 void del_cent(dns_cent_t *cent);
 

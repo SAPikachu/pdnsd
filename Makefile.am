@@ -3,15 +3,14 @@
 SUBDIRS = src doc contrib
 #GZIP_ENV=
 
-EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
+EXTRA_DIST = @PACKAGE@.spec.in config.h.in version \
 file-list.base.in ChangeLog.old COPYING.BSD
 
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
 	[ -f $(DESTDIR)$(cachedir)/pdnsd.cache ] || \
-	  dd if=/dev/zero of=$(DESTDIR)$(cachedir)/pdnsd.cache bs=4 count=1 || \
-	  touch $(DESTDIR)$(cachedir)/pdnsd.cache
+	  echo -n -e "pd11\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	  chown $(def_id) $(DESTDIR)$(cachedir); \

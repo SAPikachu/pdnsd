@@ -78,8 +78,29 @@ pdnsd	- Start script for Redhat Linux. Tested for 6.1 but should run on 5.0+.
 
 Debian
 ------
-The contents of the Debia directory were contributed by Markus Mohr. 
+The contents of the Debian directory were contributed by Markus Mohr. 
 His installation instructions are (translated):
 Install the pdnsd script to /etc/init and run 
 update-rc.d pdnsd defaults 19
 as root.
+
+Slackware
+---------
+A Slackware start-up script rc.pdnsd was contributed by Nikola Kotur <kotnik@ns-linux.org>.
+His comments were:
+
+Slackware uses traditional BSD style init script layout instead of SystemV 
+style startup scripts.  So I adjusted the start-up script for pdnsd, and 
+now it can be used with Slackware 9.1 distribution, and probably with all the 
+others.
+
+Additional info:
+1) put these lines in the /etc/rc.d/rc.M:
+	if [ -x /etc/rc.d/rc.pdnsd ]; then
+		. /etc/rc.d/rc.pdnsd start
+	fi
+
+2) put these lines in the /etc/rc.d/rc.6 and /etc/rc.d/rc.K:
+	if [ -x /etc/rc.d/rc.pdnsd ]; then
+		. /etc/rc.d/rc.pdnsd stop
+	fi

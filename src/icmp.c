@@ -100,7 +100,7 @@ volatile int ping6_isocket=-1;
 
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 /*
- * These are the ping implementations for Linux/FreeBSD in ther IPv4/ICMPv4 and IPv6/ICMPv6 versions.
+ * These are the ping implementations for Linux/FreeBSD in their IPv4/ICMPv4 and IPv6/ICMPv6 versions.
  * I know they share some code, but I'd rather keep them separated in some parts, as some
  * things might go in different directions there.
  */
@@ -117,7 +117,7 @@ void init_ping_socket()
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6) {
+	ELSE_IPV6 {
 		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
 			log_warn("icmp ping: socket() failed: %s",strerror(errno));
 			return;
@@ -135,7 +135,7 @@ void init_ping_socket()
  * an error reply on the sent-out one. packet is only the packet (without IP header).
  * errmsg includes an IP header.
  * to is the destination address of the original packet (the only thing that is actually
- * compared of the IP header). The RFC sais that we get at least 8 bytes of the offending packet.
+ * compared of the IP header). The RFC says that we get at least 8 bytes of the offending packet.
  * We do not compare more, as this is all we need.*/
 static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg, int elen, int errtype)
 {
@@ -163,10 +163,7 @@ static int icmp4_errcmp(char *packet, int plen, struct in_addr *to, char *errmsg
 /* IPv4/ICMPv4 ping. Called from ping (see below) */
 static int ping4(struct in_addr addr, int timeout, int rep)
 {
-	char buf[1024];
 	int i;
-	long tm;
-	int len;
 	int isock;
 #if TARGET==TARGET_LINUX
 	struct icmp_filter f;
@@ -176,18 +173,9 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #endif
 	struct sockaddr_in from,to;
 	struct icmphdr icmpd;
-	struct icmphdr icmpp;
-	struct iphdr iph;
 	unsigned long sum;
 	unsigned short *ptr;
 	unsigned short id=(unsigned short)get_rand16(); /* randomize a ping id */
-	socklen_t sl;
-#ifdef NO_POLL
-	fd_set fds,fdse;
-	struct timeval tv;
-#else
-	struct pollfd pfd;
-#endif
 
 #if TARGET!=TARGET_LINUX	
 	if (!(pe=getprotobyname("ip"))) {
@@ -216,6 +204,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #endif
 
 	for (i=0;i<rep;i++) {
+		long tm,tpassed;
+		int j;
 		icmpd.icmp_type=ICMP_ECHO;
 		icmpd.icmp_code=0;
 		icmpd.icmp_cksum=0;
@@ -227,7 +217,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		ptr=(unsigned short *)&icmpd;
 		sum=0;
 
-		for (len=0;len<4;len++) {
+		for (j=0;j<4;j++) {
 			sum+=*ptr++;
 		}
 		sum = (sum >> 16) + (sum & 0xffff);
@@ -242,51 +232,59 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		if (sendto(isock,&icmpd,ICMP4_ECHO_LEN,0,(struct sockaddr *)&to,sizeof(to))==-1) {
 			if (++icmp_errs<=ICMP_MAX_ERRS) {
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
-
 			}
 			return -1;
 		}
 		/* listen for reply. */
-		tm=time(NULL);
+		tm=time(NULL); tpassed=0;
 		do {
+			int psres;
 #ifdef NO_POLL
+			fd_set fds,fdse;
+			struct timeval tv;
 			FD_ZERO(&fds);
 			FD_SET(isock, &fds);
 			fdse=fds;
 			tv.tv_usec=0;
-			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
-			if (select(isock+1,&fds,NULL,NULL,&tv)<0) {
-				if (++icmp_errs<=ICMP_MAX_ERRS) {
-					log_warn("poll/select failed: %s",strerror(errno));
-				}
-				return -1; 
-			}
+			tv.tv_sec=timeout>tpassed?timeout-tpassed:0;
+			psres=select(isock+1,&fds,NULL,&fdse,&tv);
 #else
+			struct pollfd pfd;
 			pfd.fd=isock;
 			pfd.events=POLLIN;
-			if (poll(&pfd,1,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
+			psres=poll(&pfd,1,timeout>tpassed?(timeout-tpassed)*1000:0);
+#endif
+
+			if (psres<0) {
 				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
 			}
-#endif
+			if (psres==0)  /* timed out */
+				break;
 
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse)) {
 #else
 			if (pfd.revents&POLLIN || pfd.revents&POLLERR) {
 #endif
-				
-				sl=sizeof(from);
+				char buf[1024];
+				socklen_t sl=sizeof(from);
+				int len;
+
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
 					if (len>sizeof(struct iphdr)) {
+						struct iphdr iph;
+
 						memcpy(&iph, buf, sizeof(iph));
 						if (len-iph.ip_hl*4>=ICMP_BASEHDR_LEN) {
+							struct icmphdr icmpp;
+
 							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_hl, sizeof(icmpp));
 							if (iph.ip_saddr==addr.s_addr && icmpp.icmp_type==ICMP_ECHOREPLY &&
 							    ntohs(icmpp.icmp_id)==id && ntohs(icmpp.icmp_seq)<=i) {
-								return (i-ntohs(icmpp.icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
+								return (i-ntohs(icmpp.icmp_seq))*timeout+(time(NULL)-tm); /* return the number of ticks */
 							} else {
 								/* No regular echo reply. Maybe an error? */
 								if (icmp4_errcmp((char *)&icmpd, ICMP4_ECHO_LEN, &to.sin_addr, buf, len, ICMP_DEST_UNREACH) ||
@@ -300,7 +298,8 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 					return -1; /* error */
 				}
 			}
-		} while (time(NULL)-tm<timeout);
+			tpassed=time(NULL)-tm;
+		} while (tpassed<timeout);
 	}
 	return -1; /* no answer */
 }
@@ -358,24 +357,13 @@ static int icmp6_errcmp(char *packet, int plen, struct in6_addr *to, char *errms
 /* IPv6/ICMPv6 ping. Called from ping (see below) */
 static int ping6(struct in6_addr a, int timeout, int rep)
 {
-	char buf[1024];
 	int i;
-	long tm;
 /*	int ck_offs=2;*/
-	int len;
 	int isock;
 	struct icmp6_filter f;
 	struct sockaddr_in6 from;
 	struct icmp6_hdr icmpd;
-	struct icmp6_hdr icmpp;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
-	socklen_t sl;
-#ifdef NO_POLL
-	fd_set fds,fdse;
-	struct timeval tv;
-#else
-	struct pollfd pfd;
-#endif
 
 	isock=ping6_isocket;
 
@@ -392,6 +380,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	}
 	
 	for (i=0;i<rep;i++) {
+		long tm,tpassed;
 		icmpd.icmp6_type=ICMP6_ECHO_REQUEST;
 		icmpd.icmp6_code=0;
 		icmpd.icmp6_cksum=0; /* The friendly kernel does fill that in for us. */
@@ -407,50 +396,55 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		if (sendto(isock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (++icmp_errs<=ICMP_MAX_ERRS) {
 				log_warn("icmpv6 ping: sendto() failed: %s.",strerror(errno));
-
 			}
 			return -1;
 		}
 		/* listen for reply. */
-		tm=time(NULL);
+		tm=time(NULL); tpassed=0;
 		do {
+			int psres;
 #ifdef NO_POLL
+			fd_set fds,fdse;
+			struct timeval tv;
 			FD_ZERO(&fds);
 			FD_SET(isock, &fds);
 			fdse=fds;
 			tv.tv_usec=0;
-			tv.tv_sec=timeout>(time(NULL)-tm)?timeout-(time(NULL)-tm):0;
-			if (select(isock+1,&fds,NULL,&fdse,&tv)<0) {
-				if (++icmp_errs<=ICMP_MAX_ERRS) {
-					log_warn("poll/select failed: %s",strerror(errno));
-				}
-				return -1; 
-			}
+			tv.tv_sec=timeout>tpassed?timeout-tpassed:0;
+			psres=select(isock+1,&fds,NULL,&fdse,&tv);
 #else
+			struct pollfd pfd;
 			pfd.fd=isock;
 			pfd.events=POLLIN;
-			if (poll(&pfd,1,timeout>(time(NULL)-tm)?(timeout-(time(NULL)-tm))*1000:0)<0) {
+			psres=poll(&pfd,1,timeout>tpassed?(timeout-tpassed)*1000:0);
+#endif
+
+			if (psres<0) {
 				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
-
 			}
-#endif
+			if (psres==0)  /* timed out */
+				break;
 
 #ifdef NO_POLL
 			if (FD_ISSET(isock,&fds) || FD_ISSET(isock,&fdse)) {
 #else
 			if (pfd.revents&POLLIN || pfd.revents&POLLERR) {
 #endif
-				sl=sizeof(from);
+				char buf[1024];
+				socklen_t sl=sizeof(from);
+				int len;
 				if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
 					if (len>=sizeof(struct icmp6_hdr)) {
 						/* we get packets without IPv6 header, luckily */
+						struct icmp6_hdr icmpp;
+
 						memcpy(&icmpp, buf, sizeof(icmpp));
 						if (IN6_ARE_ADDR_EQUAL(&from.sin6_addr,&a) &&
 						    ntohs(icmpp.icmp6_id)==id && ntohs(icmpp.icmp6_seq)<=i) {
-							return (i-ntohs(icmpp.icmp6_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
+							return (i-ntohs(icmpp.icmp6_seq))*timeout+(time(NULL)-tm); /* return the number of ticks */
 						} else {
 							/* No regular echo reply. Maybe an error? */
 							if (icmp6_errcmp((char *)&icmpd, sizeof(icmpd), &from.sin6_addr, buf, len, ICMP6_DST_UNREACH) ||
@@ -463,7 +457,8 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 					return -1; /* error */
 				}
 			}
-		} while (time(NULL)-tm<timeout);
+			tpassed=time(NULL)-tm;
+		} while (tpassed<timeout);
 	}
 	return -1; /* no answer */
 }
@@ -482,7 +477,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 		return -1;
 
 #ifdef ENABLE_IPV6
-	if (run_ipv6 && ping6_isocket==-1)
+	if (!run_ipv4 && ping6_isocket==-1)
 		return -1;
 #endif
 
@@ -491,7 +486,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 		return ping4(addr->ipv4,timeout/10,rep);
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6) {
+	ELSE_IPV6 {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			struct in_addr v4;

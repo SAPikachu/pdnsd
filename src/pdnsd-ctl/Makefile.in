@@ -85,7 +85,7 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(sbin_PROGRAMS)
 
 
-DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
+DEFS = @DEFS@ -I. -I$(srcdir) -I../..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@

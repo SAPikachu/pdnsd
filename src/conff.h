@@ -37,13 +37,13 @@ Boston, MA 02111-1307, USA.  */
 #include "list.h"
 
 /* From main.c */
-extern int daemon_p;
-extern int debug_p;
-extern int verbosity;
+extern short int daemon_p;
+extern short int debug_p;
+extern short int verbosity;
+extern short int stat_pipe;
+extern short int notcp;
 extern pthread_t main_thread;
 extern char *pidfile;
-extern int stat_pipe;
-extern int notcp;
 /* ----------- */
 
 typedef DYNAMIC_ARRAY(pdnsd_a) *addr_array;
@@ -108,7 +108,8 @@ typedef struct {
         char         *scheme_file;
 	int           proc_limit;
 	int           procq_limit;
-	int           tcp_qtimeout;
+	time_t        tcp_qtimeout;
+	time_t        timeout;
 	int           par_queries;
 	int           query_port_start;
 	int           query_port_end;

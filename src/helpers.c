@@ -114,7 +114,7 @@ int run_as(char *user)
  * The memory areas referenced by str and rhn may not overlap.
  * The buffer rhn points to is assumed to be 256 bytes in size.
  */
-int str2rhn(unsigned char *str, unsigned char *rhn)
+int str2rhn(const unsigned char *str, unsigned char *rhn)
 {
 	int n=0,i,j;
 
@@ -150,7 +150,7 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
   the first len chars in the input string. It also tolerates strings
   not ending in a dot and returns a message in case of an error.
  */
-char *parsestr2rhn(unsigned char *str, int len, unsigned char *rhn)
+const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 {
 	int n=0,i=0,j;
 
@@ -191,7 +191,7 @@ char *parsestr2rhn(unsigned char *str, int len, unsigned char *rhn)
  * elsewhere (in decompress_name), this takes names from the cache which are validated.
  * The buffer str points to is assumed to be 256 bytes in size.
  */
-void rhn2str(unsigned char *rhn, unsigned char *str)
+void rhn2str(const unsigned char *rhn, unsigned char *str)
 {
 	unsigned char lb;
 
@@ -221,7 +221,7 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
-/* unsigned int rhnlen(unsigned char *rhn)
+/* unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0;
 	unsigned char lb;
@@ -239,7 +239,7 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
  * The answer assembly code uses this; it is guaranteed to not clobber anything
  * after the name.
  */
-unsigned int rhncpy(unsigned char *dst, unsigned char *src)
+unsigned int rhncpy(unsigned char *dst, const unsigned char *src)
 {
 	unsigned int len = rhnlen(src);
 
@@ -253,17 +253,17 @@ unsigned int rhncpy(unsigned char *dst, unsigned char *src)
  * in the record. */
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
 {
+	rr_set_t *rrset=c->rr[T_CNAME-T_MIN];
 	rr_bucket_t *rr;
-	if (!(c->rr[T_CNAME-T_MIN] && c->rr[T_CNAME-T_MIN]->rrs))
+	if (!rrset || !(rr=rrset->rrs))
 		return 0;
-	rr=c->rr[T_CNAME-T_MIN]->rrs;
 	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
 	memcpy(rrn,rr+1,rr->rdlen);
 	rhn2str(rrn,name);
 	return 1;
 }
 
-int str2pdnsd_a(char *addr, pdnsd_a *a)
+int str2pdnsd_a(const char *addr, pdnsd_a *a)
 {
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -271,13 +271,21 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6) {
-		return inet_pton(AF_INET6,addr,&a->ipv6)==1;
+	ELSE_IPV6 {
+		/* Try to map an IPv4 address to IPv6 */
+		struct in_addr a4;
+		if(inet_aton(addr,&a4)) {
+			a->ipv6=ipv4_6_prefix;
+			((uint32_t *)(&a->ipv6))[3]=a4.s_addr;
+			return 1;
+		}
+		return inet_pton(AF_INET6,addr,&a->ipv6)>0;
 	}
 #endif
-	return 0;
+	/* return 0; */
 }
 
+/* definition moved to helpers.h */
 /* int is_inaddr_any(pdnsd_a *a)
 {
 #ifdef ENABLE_IPV4
@@ -286,11 +294,10 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6) {
+	ELSE_IPV6 {
 		return IN6_IS_ADDR_UNSPECIFIED(&a->ipv6);
 	}
 #endif
-	return 0;
 } */
 
 /*
@@ -298,7 +305,7 @@ int str2pdnsd_a(char *addr, pdnsd_a *a)
  */
 const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 {
-	const char *res=NULL;  /* Initialized to inhibit compiler warning */
+	const char *res;
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		if (!(res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen))) {
@@ -307,7 +314,7 @@ const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (run_ipv6) {
+	ELSE_IPV6 {
 		if (!(res=inet_ntop(AF_INET6,&a->ipv6,buf,maxlen))) {
 			log_error("inet_ntop: %s", strerror(errno));
 		}
@@ -316,31 +323,6 @@ const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 	return res?res:"?.?.?.?";
 }
 
-
-#if DEBUG>0
-/* This is a function only needed by dns_query.c in debug mode. */
-
-const char *socka2str(struct sockaddr *a, char *buf, int maxlen)
-{
-	const char *res=NULL;  /* Initialized to inhibit compiler warning */
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		if (!(res=inet_ntop(AF_INET,&((struct sockaddr_in *)a)->sin_addr,buf,maxlen))) {
-			log_error("inet_ntop: %s", strerror(errno));
-		}
-	}
-#endif
-#ifdef ENABLE_IPV6
-	if (run_ipv6) {
-		if (!(res=inet_ntop(AF_INET6,&((struct sockaddr_in6 *)a)->sin6_addr,buf,maxlen))) {
-			log_error("inet_ntop: %s", strerror(errno));
-		}
-	}
-#endif
-	return res?res:"?.?.?.?";
-}
-
-#endif
 
 /* Appropriately set our random device */
 #ifdef R_DEFAULT

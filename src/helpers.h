@@ -48,15 +48,15 @@ inline static int isdchar (unsigned char c)
 	  );
 }
 
-void rhn2str(unsigned char *rhn, unsigned char *str);
-int  str2rhn(unsigned char *str, unsigned char *rhn);
-char *parsestr2rhn(unsigned char *str, int len, unsigned char *rhn);
+void rhn2str(const unsigned char *rhn, unsigned char *str);
+int  str2rhn(const unsigned char *str, unsigned char *rhn);
+const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn);
 
 /* Note added by Paul Rombouts:
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
-inline static unsigned int rhnlen(unsigned char *rhn)
+inline static unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0;
 	unsigned char lb;
@@ -66,7 +66,20 @@ inline static unsigned int rhnlen(unsigned char *rhn)
 	return i+1;
 }
 
-unsigned int rhncpy(unsigned char *dst, unsigned char *src);
+/* count the number of name segments. */
+inline static unsigned int rhnsegcnt(const unsigned char *rhn)
+{
+	unsigned int res=0;
+	unsigned char lb;
+
+	while((lb= *rhn)) {
+		++res;
+		rhn += lb+1;
+	}
+	return res;
+}
+
+unsigned int rhncpy(unsigned char *dst, const unsigned char *src);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
 
@@ -102,12 +115,8 @@ inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
     ;
 }
 
-int str2pdnsd_a(char *addr, pdnsd_a *a);
+int str2pdnsd_a(const char *addr, pdnsd_a *a);
 const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen);
-
-#if DEBUG>0
-const char *socka2str(struct sockaddr *a, char *buf, int maxlen);
-#endif
 
 int init_rng(void);
 #ifdef RANDOM_DEVICE

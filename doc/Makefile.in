@@ -74,7 +74,7 @@ specbuild = @specbuild@
 yflags = @yflags@
 yylineno_option = @yylineno_option@
 
-man_MANS = pdnsd-ctl.8
+man_MANS = pdnsd.8 pdnsd-ctl.8
 
 EXTRA_DIST = pdnsd.conf.in html/dl.html html/doc.html html/faq.html html/index.html txt/faq.txt txt/intro.txt txt/manual.txt $(man_MANS)
 

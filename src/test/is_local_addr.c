@@ -9,15 +9,20 @@
 static char rcsid[]="$Id: is_local_addr.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
 #endif
 
-int daemon_p=0;
-int debug_p=0;
-int verbosity=VERBOSITY;
-pthread_t main_thread;
-
+short int daemon_p=0;
+short int debug_p=0;
+short int verbosity=VERBOSITY;
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-int run_ipv4=DEFAULT_IPV4;
+short int run_ipv4=DEFAULT_IPV4;
 #endif
-int run_ipv6=DEFAULT_IPV6;
+#ifdef ENABLE_IPV6
+struct in6_addr ipv4_6_prefix;
+#endif
+pthread_t main_thread;
+#if DEBUG>0
+FILE *dbg_file;
+#endif
+
 
 int main(int argc, char *argv[]) 
 {
@@ -32,15 +37,15 @@ int main(int argc, char *argv[])
 # ifdef ENABLE_IPV6
 		run_ipv4=1;
 # endif
-		run_ipv6=0;
 		printf("is %s a local addr: %s\n",argv[1],is_local_addr(&a)?"yes":"no");
 		return 0;
 	}
 #endif
 #ifdef ENABLE_IPV6
-	if (inet_pton(AF_INET6,argv[1],&a.ipv4)) {
+	if (inet_pton(AF_INET6,argv[1],&a.ipv6)) {
+# ifdef ENABLE_IPV4
 		run_ipv4=0;
-		run_ipv6=1;
+# endif
 		printf("is %s a local addr: %s\n",argv[1],is_local_addr(&a)?"yes":"no");
 		return 0;
 	}

@@ -82,7 +82,7 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(sbin_PROGRAMS)
 
 
-DEFS = @DEFS@ -I$(srcdir) -I$(top_srcdir)
+DEFS = @DEFS@ -I. -I$(srcdir) -I..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
@@ -291,7 +291,7 @@ conf-parser.o: conf-parser.c ../config.h conf-parser.h ipvers.h conff.h list.h \
 	consts.h cache.h dns.h rr_types.h dns_query.h helpers.h conf-keywords.h \
 	pdnsd_assert.h
 conff.o: conff.c ../config.h ipvers.h conff.h list.h consts.h helpers.h \
-	cache.h dns.h rr_types.h conf-parser.h servers.h pdnsd_assert.h
+	cache.h dns.h dns_query.h rr_types.h conf-parser.h servers.h pdnsd_assert.h
 consts.o: consts.c ../config.h consts.h rr_types.h
 debug.o: debug.c ../config.h helpers.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h pdnsd_assert.h
@@ -307,7 +307,7 @@ error.o: error.c ../config.h error.h thread.h helpers.h cache.h ipvers.h \
 	list.h dns.h rr_types.h conff.h pdnsd_assert.h
 hash.o: hash.c ../config.h hash.h cache.h ipvers.h list.h dns.h \
 	rr_types.h conff.h error.h thread.h helpers.h pdnsd_assert.h \
-	hashconvtable.h
+	./hashconvtable.h
 helpers.o: helpers.c ../config.h ipvers.h thread.h error.h helpers.h \
 	cache.h list.h dns.h rr_types.h conff.h pdnsd_assert.h
 icmp.o: icmp.c ../config.h ipvers.h icmp.h error.h thread.h helpers.h \

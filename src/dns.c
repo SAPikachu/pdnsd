@@ -228,31 +228,30 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 }
 
 
-
 /*
  * Add records for a host as read from a hosts-style file.
  * Returns 1 on success, 0 in an out of memory condition, and -1 when there was a problem with
  * the record data.
  */
-static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_a *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
+static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, unsigned flags, int tp, int reverse)
 {
 	dns_cent_t ce;
 
-	if (!init_cent(&ce, pn, flags, time(NULL), 0  DBG0))
+	if (!init_cent(&ce, pn, 0, time(NULL), flags  DBG0))
 		return 0;
 #ifdef ENABLE_IPV4
 	if (tp==T_A) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv4,tp  DBG0))
+		if (!add_cent_rr(&ce,tp,ttl,0,CF_LOCAL,a_sz,&a->ipv4,0  DBG0))
 			goto free_cent_return0;
 	}
 #endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 	if (tp==T_AAAA) {
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,a_sz,&a->ipv6,tp  DBG0))
+		if (!add_cent_rr(&ce,tp,ttl,0,CF_LOCAL,a_sz,&a->ipv6,0  DBG0))
 			goto free_cent_return0;
 	}
 #endif
-	if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS  DBG0))
+	if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns,0  DBG0))
 		goto free_cent_return0;
 	add_cache(&ce);
 	free_cent(&ce  DBG0);
@@ -289,11 +288,11 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 			return -1;
 		if (!str2rhn(b2,rhn))
 			return -1;
-		if (!init_cent(&ce, b2, flags, time(NULL), 0  DBG0))
+		if (!init_cent(&ce, b2, 0, time(NULL), flags  DBG0))
 			return 0;
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR  DBG0))
+		if (!add_cent_rr(&ce,T_PTR,ttl,0,CF_LOCAL,rhnlen(b3),b3,0  DBG0))
 			goto free_cent_return0;
-		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(rns),rns,T_NS  DBG0))
+		if (!add_cent_rr(&ce,T_NS,ttl,0,CF_LOCAL,rhnlen(rns),rns,0  DBG0))
 			goto free_cent_return0;
 		add_cache(&ce);
 		free_cent(&ce  DBG0);
@@ -310,7 +309,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
  * Errors are largely ignored so that we can skip entries we do not understand
  * (but others possibly do).
  */
-int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char **errstr)
+int read_hosts(char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr)
 {
 	int rv=0;
 	FILE *f;
@@ -331,7 +330,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 		unsigned char *p,*pn,*pi;
 		unsigned char b2[256],b3[256];
 		int tp,sz;
-		pdnsd_a a;
+		pdnsd_ca a;
 
 		p=strchr(buf,'#');
 		if(p) *p=0;

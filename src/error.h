@@ -1,7 +1,7 @@
 /* error.h - Error handling
    Copyright (C) 2000, 2001 Thomas Moestl
 
-   With modifications by Paul Rombouts, 2003.
+   With modifications by Paul Rombouts, 2003, 2004.
 
 This file is part of the pdnsd package.
 
@@ -30,14 +30,15 @@ Boston, MA 02111-1307, USA.  */
 #include <pthread.h>
 #include <stdio.h>
 #include <signal.h>
+#include <syslog.h>
 
 #include "thread.h"
 #include "helpers.h"
 #include "pdnsd_assert.h"
 
 /* --- from error.c */
-extern volatile int waiting;
-extern volatile int use_log_lock;
+extern volatile short int waiting;
+extern volatile short int use_log_lock;
 /* --- */
 
 void crash_msg(char *msg);
@@ -47,9 +48,17 @@ inline static void init_log_lock(void)
 	use_log_lock=1;
 }
 
-void log_error(char *s,...) printfunc(1, 2);
-void log_warn(char *s, ...) printfunc(1, 2);
-void log_info(int level, char *s, ...) printfunc(2, 3);
+void log_message(int prior,const char *s, ...) printfunc(2, 3);
+#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
+#define log_error(args...) log_message(LOG_ERR,args)
+#define log_warn(args...) log_message(LOG_WARNING,args)
+#else
+/* ANSI style. */
+#define log_error(...) log_message(LOG_ERR,__VA_ARGS__)
+#define log_warn(...) log_message(LOG_WARNING,__VA_ARGS__)
+#endif
+
+void log_info(int level, const char *s, ...) printfunc(2, 3);
 
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.
@@ -62,6 +71,7 @@ void log_info(int level, char *s, ...) printfunc(2, 3);
  * The arguments are normal printfs, so you know how to use the args
  */
 #if DEBUG>0
+void debug_msg(int c, const char *fmt, ...) printfunc(2, 3);
 /* from main.c */
 extern FILE *dbg_file;
 #endif
@@ -73,65 +83,30 @@ extern FILE *dbg_file;
  * egcs 2.95, but I could be wrong, corrections welcome.
  */
 # if DEBUG > 0
-/* XXX: The timestamp generation makes this a little heavy-weight */
-#  define DEBUG_MSG_(c,args...)								\
-	{										\
-		if (debug_p) {								\
-			char DM_ts[32];							\
-			time_t DM_tt = time(NULL);					\
-			struct tm DM_tm;						\
-			int *DM_id;							\
-			localtime_r(&DM_tt, &DM_tm);					\
-			if (!c && strftime(DM_ts, sizeof(DM_ts), "%m/%d %T",		\
-			    &DM_tm) > 0 &&						\
-			    (DM_id = (int *)pthread_getspecific(thrid_key)) != NULL)	\
-				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);		\
-			fprintf(dbg_file,args);						\
-			fflush(dbg_file);						\
-		}									\
-	}
-#  define DEBUG_MSG(args...)	DEBUG_MSG_(0,args)
-#  define DEBUG_MSGC(args...)	DEBUG_MSG_(1,args)
-#  define DEBUG_SOCKA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
-#  define SOCKA2STR(a)          socka2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
+#  define DEBUG_MSG(args...)	{if (debug_p) debug_msg(0,args);}
+#  define DEBUG_MSGC(args...)	{if (debug_p) debug_msg(1,args);}
+#  define DEBUG_PDNSDA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
+#  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
 # else
 #  define DEBUG_MSG(args...)
 #  define DEBUG_MSGC(args...)
-#  define DEBUG_SOCKA_MSG(args...)
+#  define DEBUG_PDNSDA_MSG(args...)
 # endif	/* DEBUG > 0 */
 #else
 /* ANSI style. */
 # if DEBUG > 0
 /*
- * XXX: The timestamp generation makes this a little heavy-weight
  * XXX: The ANSI and GCC variadic macros should be merged as far as possible, but that
  *      might make things even more messy...
  */
-#  define DEBUG_MSG_(c,...)								\
-	{										\
-		if (debug_p) {								\
-			char DM_ts[32];							\
-			time_t DM_tt = time(NULL);					\
-			struct tm DM_tm;						\
-			int *DM_id;							\
-			localtime_r(&DM_tt, &DM_tm);					\
-			if (!c && strftime(DM_ts, sizeof(DM_ts), "%m/%d %T",		\
-			    &DM_tm) > 0 &&						\
-			    (DM_id = (int *)pthread_getspecific(thrid_key)) != NULL)	\
-				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);		\
-			fprintf(dbg_file,__VA_ARGS__);					\
-			fflush(dbg_file);						\
-		}									\
-	}
-
-#  define DEBUG_MSG(...)	DEBUG_MSG_(0,__VA_ARGS__)
-#  define DEBUG_MSGC(...)	DEBUG_MSG_(1,__VA_ARGS__)
-#  define DEBUG_SOCKA_MSG(...)  {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
-#  define SOCKA2STR(a)          socka2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
+#  define DEBUG_MSG(...)	{if (debug_p) debug_msg(0,__VA_ARGS__);}
+#  define DEBUG_MSGC(...)	{if (debug_p) debug_msg(1,__VA_ARGS__);}
+#  define DEBUG_PDNSDA_MSG(...)	{char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
+#  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
 # else
 #  define DEBUG_MSG(...)
 #  define DEBUG_MSGC(...)
-#  define DEBUG_SOCKA_MSG(...)
+#  define DEBUG_PDNSDA_MSG(...)
 # endif	/* DEBUG > 0 */
 #endif
 

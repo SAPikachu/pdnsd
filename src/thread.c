@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
-volatile int waiting=0; /* Has the main thread already done sigwait() ? */
+volatile short int waiting=0; /* Has the main thread already done sigwait() ? */
 pthread_attr_t attr_detached;
 pthread_key_t thrid_key;
 
