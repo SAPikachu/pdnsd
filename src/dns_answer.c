@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.58 2002/01/04 14:53:06 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.59 2002/07/06 09:38:18 tmm Exp $";
 #endif
 
 /*
@@ -838,11 +838,13 @@ static int decode_query(unsigned char *data, long rlen, darray *q)
 		ptr+=2;
 		qe->qtype=ntohs(qe->qtype);
 		qe->qclass=ntohs(qe->qclass);
+#ifndef UNDERSCORE
 		/* Underscore only allowed for SRV records. */
 		if (uscore && qe->qtype!=T_SRV) {
 			da_free(*q);
 			return RC_FORMAT;
 		}
+#endif
 	}
 	return RC_OK;
 }
