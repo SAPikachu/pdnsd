@@ -23,11 +23,12 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "error.h"
 #include "helpers.h"
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.29 2001/12/30 18:26:08 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.30 2001/12/30 19:43:27 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
