@@ -46,7 +46,7 @@ OBJS=conff.o y.tab.o lex.yy.o hash.o error.o helpers.o cache.o icmp.o status.o n
 CSOURCES=conff.c y.tab.c lex.yy.c hash.c error.c helpers.c cache.c icmp.c status.c netdev.c servers.c dns_answer.c dns_query.c dns.c main.c
 CHEADERS=cache.h consts.h dns_query.h helpers.h lex.inc.h status.h conff.h dns.h error.h icmp.h netdev.h y.tab.h config.h dns_answer.h hash.h ipvers.h servers.h
 
-.PHONY:all dep deps ChangeLog
+.PHONY:all dep deps ChangeLog test
 
 all:pdnsd
 
@@ -79,6 +79,9 @@ config.h: version config.h.templ
 ChangeLog:
 	rcs2log -R -u "thomas	Thomas Moestl	tmoestl@gmx.net" > ChangeLog
 
+test:
+	cd test; make CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' LIBS='$(LIBS)'
+
 .PHONY: all clean mclean distclean dist install
 
 clean:
@@ -88,6 +91,7 @@ clean:
 	-rm -f config.h
 	-rm -f pdnsd-suse.spec
 	-rm -f pdnsd-redhat.spec
+	-cd test; make clean
 
 mclean: clean
 	-rm -f conf.l
@@ -104,6 +108,7 @@ distclean: clean
 	-rm -f rc/*~
 	-rm -f rc/SuSE/*~
 	-rm -f rc/Redhat/*~
+	-cd test; make distclean
 
 dist: lex.yy.c y.tab.c y.tab.h distclean doc ChangeLog
 	v=`cat version` ; udir=`pwd | awk -F / '{print $$NF}'` ; cd ..  ; dir=pdnsd-$$v ; ard="n" ; if [ $$udir != $$dir ] ; then ard="y" ; ln -s $$udir $$dir ; fi ; tar -cf pdnsd-$$v.tar $$dir/* --exclude="*doc/rfc*" ; cat pdnsd-$$v.tar | gzip >pdnsd-$$v.tar.gz ; bzip2 -f pdnsd-$$v.tar ; if [ $$ard == "y" ] ; then rm $$dir ; fi
