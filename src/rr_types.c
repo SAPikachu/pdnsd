@@ -1,6 +1,6 @@
 /* rr_types.c - A structure with names & descriptions of
                 all rr types known to pdnsd
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.1 2001/04/03 19:36:41 tmm Exp $";
+static char rcsid[]="$Id: rr_types.c,v 1.2 2001/04/03 19:38:39 tmm Exp $";
 #endif
 
 char *rr_info[]={"A",
