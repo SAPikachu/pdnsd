@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.11 2000/06/25 12:13:11 thomas Exp $ */
+/* $Id: config.h.templ,v 1.12 2000/06/25 15:55:48 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -80,8 +80,8 @@
  * should still be more than sufficient. The use of /dev/random is 
  * discouraged, as reading from this device blocks when new random bits
  * need to be gathered. */
-/*#undef RANDOM_DEVICE*/
-#define RANDOM_DEVICE "/dev/urandom"
+#undef RANDOM_DEVICE
+/*#define RANDOM_DEVICE "/dev/urandom"*/
 
 /* -- Debugging Options ------------------------------------------------------ */
 
