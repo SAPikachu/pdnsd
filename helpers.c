@@ -24,6 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "ipvers.h"
 #include "error.h"
 #include "helpers.h"
@@ -31,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.8 2000/06/10 12:50:03 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.9 2000/06/21 20:36:17 thomas Exp $";
 #endif
 
 /*
@@ -40,6 +41,22 @@ static char rcsid[]="$Id: helpers.c,v 1.8 2000/06/10 12:50:03 thomas Exp $";
 void pdnsd_exit()
 {
 	pthread_kill(main_thread,SIGTERM);
+}
+
+/*
+ * Try to grab a mutex. If we can't, fail
+ */
+int softlock_mutex(pthread_mutex_t *mutex)
+{
+	int tr=0;
+	while (1)  {
+		if (pthread_mutex_trylock(mutex)==0)
+			return 1;
+		if (tr++>SOFTLOCK_MAXTRIES)
+			return 0;
+		usleep(1000);
+	}
+	return 0;
 }
 
 /*

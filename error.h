@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.4 2000/06/06 12:16:24 thomas Exp $ */
+/* $Id: error.h,v 1.5 2000/06/21 20:36:17 thomas Exp $ */
 
 #ifndef _ERROR_H_
 #define _ERROR_H_
@@ -26,6 +26,8 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include <stdio.h>
 
+void fatal_sig(int sig);
+void crash_msg(char *msg);
 void init_log(void);
 void log_error(char *s,...);
 void log_warn(char *s, ...);

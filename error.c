@@ -26,10 +26,11 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/types.h>
 #include <signal.h>
 #include "error.h"
+#include "helpers.h"
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.4 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.5 2000/06/21 20:36:17 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
@@ -43,13 +44,20 @@ void init_log(void)
 	pthread_mutex_init(&loglock,NULL);
 }
 
+void crash_msg(char *msg)
+{
+	log_error(msg);
+	log_error("pdnsd probably crashed due to a bug. Please consider sending a bug report to tmoestl@gmx.net");
+}
+
 /* Log an error. If we are a daemon, use the syslog. s is a format string like
  * in printf, the optional following arguments are the arguments like in printf */
 void log_error(char *s,...)
 {
+	int ul;
 	va_list va;
 	va_start(va,s);
-	pthread_mutex_lock(&loglock);
+	ul=softlock_mutex(&loglock);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -59,7 +67,8 @@ void log_error(char *s,...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	pthread_mutex_unlock(&loglock);
+	if (ul)
+		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }
 
@@ -67,9 +76,10 @@ void log_error(char *s,...)
  * in printf, the optional following arguments are the arguments like in printf */
 void log_warn(char *s, ...)
 {
+	int ul;
 	va_list va;
 	va_start(va,s);
-	pthread_mutex_lock(&loglock);
+	ul=softlock_mutex(&loglock);
 	if (daemon_p) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
 		vsyslog(LOG_ERR,s,va);
@@ -79,7 +89,8 @@ void log_warn(char *s, ...)
 		vfprintf(stderr,s,va);
 		fprintf(stderr,"\n");
 	}
-	pthread_mutex_unlock(&loglock);
+	if (ul)
+		pthread_mutex_unlock(&loglock);
 	va_end(va);
 }
 
@@ -91,7 +102,8 @@ void log_info(int level, char *s, ...)
 	va_list va;
 	va_start(va,s);
 	if (level<=verbosity) {
-		pthread_mutex_lock(&loglock);
+		if (!softlock_mutex(&loglock))
+			return;
 		if (daemon_p) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
 			vsyslog(LOG_INFO,s,va);

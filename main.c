@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.4 2000/06/06 16:09:52 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.5 2000/06/21 20:36:17 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -353,6 +353,8 @@ int main(int argc,char *argv[])
 	write_disk_cache();
 	destroy_cache();
 	log_warn("Caught signal %i. Exiting.",sig);
+	if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
+		crash_msg("This is a fatal signal probably triggered by a bug.");
 #if DEBUG>0
 	if (debug_p && daemon_p)
 		fclose(dbg);

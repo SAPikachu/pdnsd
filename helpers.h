@@ -18,15 +18,20 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.3 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: helpers.h,v 1.4 2000/06/21 20:36:17 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
 
 #include "config.h"
+#include <pthread.h>
 #include "cache.h"
 
+
+#define SOFTLOCK_MAXTRIES 1000
+
 void pdnsd_exit(void);
+int softlock_mutex(pthread_mutex_t *mutex);
 
 void strtolower(unsigned char *a);
 int isdchar (unsigned char c);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.4 2000/06/10 20:23:24 thomas Exp $
+$Id: NEWS,v 1.5 2000/06/21 20:36:17 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -33,5 +33,4 @@ Version 1.0.0 has a lot of changes compared to the 0.9.x tree, but much of them
 - cache-code reorganization, only one unified hash (of variable depth)
 - Optimizations & cleanups
 - Automatic deps (only interesting for developers ;-)
-When compiling with standard options, the executable size will be a
-little less than in 0.9.x on most machines.
+

@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.13 2000/06/13 12:12:27 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.14 2000/06/21 20:36:17 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -173,6 +173,68 @@ static void unlock_cache_rw(void)
 	pthread_mutex_lock(&lock_mutex);
 	cache_w_lock=0;
 	pthread_mutex_unlock(&lock_mutex);
+}
+
+/* This are a special version of the ordinary read lock functions. The lock "soft" to avoid deadlocks: they will give up
+ * after a certain number of bad trials. You have to check the exit status though.*/
+
+static int softlock_cache_r(void)
+{
+	int lk=0;
+	int tr=0;
+	while (!lk)  {
+		if (!softlock_mutex(&lock_mutex))
+			return 0;
+		if (!cache_w_lock) {
+			lk=1;
+			cache_r_lock++;
+		}
+		pthread_mutex_unlock(&lock_mutex);
+		if (!lk)
+			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+		if (tr++>SOFTLOCK_MAXTRIES)
+			return 0;
+	}
+	return 1;
+}
+
+static int softunlock_cache_r(void)
+{
+	if (!softlock_mutex(&lock_mutex))
+		return 0;
+	if (cache_r_lock>0) 
+		cache_r_lock--;
+	pthread_mutex_unlock(&lock_mutex);
+	return 1;
+}
+
+static int softlock_cache_rw(void)
+{
+	int lk=0;
+	int tr=0;
+	while (!lk)  {
+		if (!softlock_mutex(&lock_mutex))
+			return 0;
+		if (!(cache_w_lock || cache_r_lock)) {
+			lk=1;
+			cache_w_lock=1;
+		}
+		pthread_mutex_unlock(&lock_mutex);
+		if (!lk)
+			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+		if (tr++>SOFTLOCK_MAXTRIES)
+			return 0;
+	}
+	return 1;
+}
+
+static int softunlock_cache_rw(void)
+{
+	if (!softlock_mutex(&lock_mutex))
+		return 0;
+	cache_w_lock=0;
+	pthread_mutex_unlock(&lock_mutex);
+	return 1;
 }
 
 /*
@@ -729,11 +791,19 @@ void write_disk_cache()
 	}
 	
 	/* purge cache down to allowed size*/
-	lock_cache_rw();
+	if (!softlock_cache_rw()) {
+		crash_msg("Lock failed; could not write disk cache.");
+		return;
+	}
 	purge_cache((long)global.perm_cache*1024);
-	unlock_cache_rw();
-
-	lock_cache_r();
+	if (!softunlock_cache_rw()) {
+		crash_msg("Lock failed; could not write disk cache.");
+		return;
+	}
+	if (!softlock_cache_r()) {
+		crash_msg("Lock failed; could not write disk cache.");
+		return;
+	}
 	fwrite(&ent_num,sizeof(en),1,f); /*we don't know the real size by now, so write a dummy*/
 
 	le=fetch_first(&dns_hash,&pos);
@@ -764,7 +834,7 @@ void write_disk_cache()
 	fseek(f,0,SEEK_SET);
 	fwrite(&en,sizeof(en),1,f); /*write the real size.*/
 	fclose(f);
-	unlock_cache_r();
+	softunlock_cache_r();
 }
 
 /*
