@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.2 2000/07/30 19:01:42 thomas Exp $
+# $Id: Makefile.am,v 1.3 2000/08/05 16:50:39 thomas Exp $
 EXTRA_DIST = pdnsd
 
 DISTRO = @distribution@
@@ -6,7 +6,7 @@ DISTRO = @distribution@
 install-exec-local:
 	if [ "$(DISTRO)" = "Debian" ] ; then \
 	  CURDIR=`pwd`; \
-	  $(mkinstalldirs) /etc/init; \
-	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd /etc/init; \
+	  $(mkinstalldirs) $(DESTDIR)/etc/init; \
+	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd $(DESTDIR)/etc/init; \
 	  update-rc.d pdnsd defaults 19 ;\
 	fi

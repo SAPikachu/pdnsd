@@ -1,8 +1,8 @@
-// $Id: pdnsd.conf.in,v 1.1 2000/07/20 20:03:08 thomas Exp $
+// $Id: pdnsd.conf.in,v 1.2 2000/08/05 16:50:33 thomas Exp $
 
 global {
 	perm_cache=512;
-	cache_dir=@cachedir@;
+	cache_dir="@cachedir@";
 	max_ttl=604800;
 	run_as=@def_id@;
 	paranoid=on;

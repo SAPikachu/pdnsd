@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.5 2000/07/29 21:29:35 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.6 2000/08/05 16:50:36 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -131,7 +131,7 @@ void *status_thread (void *p)
 	(void)p; /* To inhibit "unused variable" warning */
 	strncpy(sock_path, TEMPDIR, 1024);
 	sock_path[1023]='\0';
-	strncat(sock_path, ".pdnsd.status", 1024-strlen(sock_path));
+	strncat(sock_path, "/.pdnsd.status", 1024-strlen(sock_path));
 	sock_path[1023]='\0';
 	unlink(sock_path); /* Delete the socket */
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
@@ -291,6 +291,7 @@ void *status_thread (void *p)
 					sz=sizeof(struct in6_addr);
 					break;
 #endif
+				case T_CNAME:
 				case T_PTR:
 					if (!fsgets(rs,owner,256)) {
 						print_serr(rs,"Bad domain name.");

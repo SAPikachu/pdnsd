@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.3 2000/07/29 18:45:06 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.4 2000/08/05 16:50:36 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1216,7 +1216,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			aa_needed=1;
 	}
 
-	if (ns && ns->num>0 && !aa && aa_needed) {
+	if (ns && ns->num>0 && !aa && aa_needed && (*sv==-1 || !servers[*sv].is_proxy)) {
 		init_qserv(&serv);
 		/* Authority records present. Ask them, because the answer was non-authoritative. To do so, we first put 
 		 * the Authority and the additional section into a dns_cent_t and look for name servers in the Authority 
@@ -1390,7 +1390,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		nopurge=0;
 		for (i=0;i<T_MAX;i++) {
 			if ((*cached)->rr[i]) {
-				if (!((*cached)->rr[i]->flags&CF_NOAUTH) && !!((*cached)->rr[i]->flags&CF_ADDITIONAL)) {
+				if (!((*cached)->rr[i]->flags&CF_NOAUTH) && !((*cached)->rr[i]->flags&CF_ADDITIONAL)) {
 					auth=1;
 				}
 				if ((*cached)->rr[i]->flags&CF_NOPURGE) {

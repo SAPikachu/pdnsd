@@ -1,4 +1,4 @@
-$Id: TODO,v 1.10 2000/07/30 19:01:37 thomas Exp $
+$Id: TODO,v 1.11 2000/08/05 16:50:29 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -180,14 +180,14 @@ Use Autoconf for configuration
 1.0.7
 ================================================================================
 --------------------------------------------------------------------------------
-Include new options in configure.in, do some checks, update    [open	       ]
+Include new options in configure.in, do some checks, update    [-tm, 2000-07-30]
 docs. In particular:
 -[X] rewrite install instructions
--[ ] document new conf file options
+-[X] document new conf file options
 -[X] document new command line options
--[ ] document pdnsd-ctl
+-[X] document pdnsd-ctl
 -[X] replace references to status pipe
--[ ] setup doc build process
+-[X] setup doc build process
 -[X] setup Debain build process for install scripts
 -[X] make rc script installation optional
 -[X] include temp dir for socket, recheck socket code.

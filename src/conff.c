@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.3 2000/07/29 18:45:05 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.4 2000/08/05 16:50:36 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -45,9 +45,9 @@ globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,"",1,0,0600,"/va
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,{{INADDR_ANY}},{{INADDR_ANY}}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,0,{{INADDR_ANY}},{{INADDR_ANY}}};
 #else
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","",0,0,1,1,0,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
 #endif
 
 int serv_num=0;

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.3 2000/07/29 18:45:05 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.4 2000/08/05 16:50:36 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -113,6 +113,7 @@ unsigned char *nm;
 %token <num> CACHING
 %token <num> LEAN_QUERY
 %token <num> PRESET
+%token <num> PROXY_ONLY
 
 %token <num> A
 %token <num> PTR
@@ -387,7 +388,7 @@ serv_el:	IP '=' STRING ';'
 			}
 		| PING_IP '=' STRING ';'
 			{
-				if (!!str2pdnsd_a((char *)$3,&server.ping_a)) {
+				if (!str2pdnsd_a((char *)$3,&server.ping_a)) {
 					yyerror("bad ip in ping_ip= option.");
 					YYERROR;
 				}
@@ -454,7 +455,16 @@ serv_el:	IP '=' STRING ';'
 				if ($3==C_ON || $3==C_ON) {
 					server.is_up=($3==C_OFF);
 				} else {
-					yyerror("bad qualifier in is_up= option.");
+					yyerror("bad qualifier in preset= option.");
+					YYERROR;
+				}
+			}
+		| PROXY_ONLY '=' CONST ';'
+			{
+				if ($3==C_ON || $3==C_ON) {
+					server.is_proxy=($3==C_OFF);
+				} else {
+					yyerror("bad qualifier in proxy_only= option.");
 					YYERROR;
 				}
 			}
