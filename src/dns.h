@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.10 2001/04/06 18:11:34 tmm Exp $ */
+/* $Id: dns.h,v 1.11 2001/04/06 21:30:35 tmm Exp $ */
 
 #ifndef DNS_H
 #define DNS_H
@@ -29,6 +29,7 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/types.h>
 #include <inttypes.h>
 #include "rr_types.h"
+#include "list.h"
 
 /* Deal with byte orders */
 #ifndef BYTE_ORDER
@@ -165,15 +166,9 @@ typedef struct {
 	unsigned char s[255];
 } compel_t;
 
-typedef struct {
-	int      num;
-	compel_t first_el;
-} compbuf_t;
-
-
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len);
 int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *rest);
-int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **cb);
+int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb);
 
 int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errbuf, int errsize);
 

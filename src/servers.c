@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.11 2001/04/03 21:10:55 tmm Exp $";
+static char rcsid[]="$Id: servers.c,v 1.12 2001/04/06 21:30:36 tmm Exp $";
 #endif
 
 /*
@@ -144,13 +144,13 @@ static void retest(int i)
 	servparm_t srv;
 
         /* Unlock the mutex because some of the tests may take a while. */
-	srv=servers[i];
+	srv=*DA_INDEX(servers,i,servparm_t);
 	pthread_mutex_unlock(&servers_lock);
 	s_ts=time(NULL);
 	j=uptest(srv);
 	pthread_mutex_lock(&servers_lock);
-	servers[i].is_up=j;
-	servers[i].i_ts=s_ts;
+	DA_INDEX(servers,i,servparm_t)->is_up=j;
+	DA_INDEX(servers,i,servparm_t)->i_ts=s_ts;
 }
 
 /*
@@ -164,14 +164,16 @@ static void retest(int i)
 void *servstat_thread(void *p)
 {
 	int i,all_none=1;
+	servparm_t *sp;
 
 	(void)p; /* To inhibit "unused variable" warning */
 
 	THREAD_SIGINIT;
 
 	pthread_mutex_lock(&servers_lock);
-	for (i=0;i<serv_num;i++) {
-		if (servers[i].uptest!=C_NONE || servers[i].scheme[0]) {
+	for (i=0;i<da_nel(servers);i++) {
+		sp=DA_INDEX(servers,i,servparm_t);
+		if (sp->uptest!=C_NONE || sp->scheme[0]) {
 			all_none=0;
 		}
 		retest(i);
@@ -182,9 +184,10 @@ void *servstat_thread(void *p)
 	while (1) {
 		schm[0] = '\0';
 		pthread_mutex_lock(&servers_lock);
-		for (i=0;i<serv_num;i++) {
-			if (servers[i].interval>0 && (time(NULL)-servers[i].i_ts>servers[i].interval ||
-						      servers[i].i_ts>time(NULL))) { /* kluge for clock skew */
+		for (i=0;i<da_nel(servers);i++) {
+			sp=DA_INDEX(servers,i,servparm_t);
+			if (sp->interval>0 && (time(NULL)-sp->i_ts>sp->interval ||
+			    sp->i_ts>time(NULL))) { /* kluge for clock skew */
 				retest(i);
 			}
 		}
@@ -214,17 +217,20 @@ void start_servstat_thread()
  */ 
 void mark_server_down(int idx)
 {
-	if (idx>=serv_num) {
+	servparm_t *sp;
+	
+	if (idx>=da_nel(servers)) {
 #if DEBUG>0
 		log_warn("Internal: server index out of range.");
 #endif
 		return;
 	}
+	sp=DA_INDEX(servers,idx,servparm_t);
 	pthread_mutex_lock(&servers_lock);
-	if (servers[idx].uptest==C_PING) {
-		servers[idx].is_up=0;
-		servers[idx].i_ts=time(NULL);
-	} else if (servers[idx].uptest!=C_NONE) {
+	if (sp->uptest==C_PING) {
+		sp->is_up=0;
+		sp->i_ts=time(NULL);
+	} else if (sp->uptest!=C_NONE) {
 		retest(idx);
 	}
 	pthread_mutex_unlock(&servers_lock);
@@ -234,8 +240,8 @@ void mark_server_down(int idx)
 void mark_server(int idx, int up)
 {
 	pthread_mutex_lock(&servers_lock);
-	servers[idx].is_up=up;
-	servers[idx].i_ts=time(NULL);
+	DA_INDEX(servers,idx,servparm_t)->is_up=up;
+	DA_INDEX(servers,idx,servparm_t)->i_ts=time(NULL);
 	pthread_mutex_unlock(&servers_lock);
 }
 
@@ -256,8 +262,8 @@ void test_onquery()
 	
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
-	for (i=0;i<serv_num;i++) {
-		if (servers[i].interval<0) {
+	for (i=0;i<da_nel(servers);i++) {
+		if (DA_INDEX(servers,i,servparm_t)->interval<0) {
 			retest(i);
 		}
 	}

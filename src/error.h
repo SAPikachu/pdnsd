@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.7 2001/04/06 18:09:35 tmm Exp $ */
+/* $Id: error.h,v 1.8 2001/04/06 21:30:36 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -95,7 +95,7 @@ extern FILE *dbg;
  */
 #define PDNSD_ASSERT(cond, msg)						\
 	if (!(cond)) {							\
-		log_error(msg);						\
+		log_error("%s:%d: %s", __FILE__, __LINE__, msg);	\
 		pdnsd_exit();						\
  	}
 #endif

@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.35 2001/04/03 21:10:52 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.36 2001/04/06 21:30:36 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -324,11 +324,14 @@ int main(int argc,char *argv[])
 	if (!(global.run_as[0] && global.strict_suid)) {
 		struct passwd *pws=getpwuid(getuid());
 		char *un=pws?pws->pw_name:"(unknown)";
-		for (i=0; i<serv_num; i++) {
-			if (server.uptest==C_EXEC && server.uptest_usr[0]=='\0') {
+		servparm_t *sp;
+		
+		for (i=0; i<da_nel(servers); i++) {
+			sp=DA_INDEX(servers,i,servparm_t);
+			if (sp->uptest==C_EXEC && sp->uptest_usr[0]=='\0') {
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
-				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user %s!\n",server.uptest_cmd, un);
+				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user %s!\n",sp->uptest_cmd, un);
 			}
 		}
 	}
@@ -357,8 +360,8 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-	for (i=0;i<serv_num;i++) {
-		if (servers[i].uptest==C_PING)
+	for (i=0;i<da_nel(servers);i++) {
+		if (DA_INDEX(servers,i,servparm_t)->uptest==C_PING)
 			np=1;
 	}
 	if (np)

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.27 2001/04/03 19:33:00 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.28 2001/04/06 21:30:35 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -67,18 +67,13 @@ extern int yylineno;
 #endif
 
 /* Bah. I want strlcpy. */
-#define STRNCP(dst, src, err) \
-        do { \
-	        char o; \
-                strncpy((dst),(src),sizeof(dst)); \
-		o=dst[sizeof(dst)-1]; \
-                dst[sizeof(dst)-1]='\0'; \
-	        if (strlen(dst) >= sizeof(dst)-1 && o!='\0') { \
-		        yyerror(err": string too long"); \
-		        YYERROR; \
-	        } \
+#define YSTRNCP(dst, src, err) \
+        do {								\
+	        if (!strncp((char *)(dst),(char *)src,sizeof(dst))) {	\
+		        yyerror(err": string too long"); 		\
+		        YYERROR; 					\
+	        } 							\
 	} while(0);
-
 
 %}
 %union {
@@ -266,7 +261,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| CACHE_DIR '=' STRING ';'
 			{
-				STRNCP(global.cache_dir, (char *)$3, "cache_dir");
+				YSTRNCP(global.cache_dir, (char *)$3, "cache_dir");
 			}
 		| SERVER_PORT '=' NUMBER ';'
 			{
@@ -281,7 +276,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
  			}
 		| SCHEME_FILE '=' STRING ';'
                         {
-				STRNCP(global.scheme_file, (char *)$3, "scheme_file");
+				YSTRNCP(global.scheme_file, (char *)$3, "scheme_file");
                         }
 		| LINKDOWN_KLUGE '=' CONST ';'
 			{
@@ -302,7 +297,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| RUN_AS '=' STRING ';'
 			{
-				STRNCP(global.run_as, (char *)$3, "run_as");
+				YSTRNCP(global.run_as, (char *)$3, "run_as");
 			}
 		| STRICT_SETUID '=' CONST ';'
 			{
@@ -351,7 +346,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| PID_FILE '=' STRING ';'
 			{
-				STRNCP(pidfile, (char *)$3, "pid_file");
+				YSTRNCP(pidfile, (char *)$3, "pid_file");
 			}
 		| C_VERBOSITY '=' NUMBER ';'
 			{
@@ -459,7 +454,7 @@ serv_el:	IP '=' STRING ';'
 			}
 		| SCHEME '=' STRING ';'
 			{
-				STRNCP(server.scheme, (char *)$3, "scheme");
+				YSTRNCP(server.scheme, (char *)$3, "scheme");
 			}
 		| UPTEST '=' CONST ';'
 			{
@@ -487,13 +482,13 @@ serv_el:	IP '=' STRING ';'
 			}
 		| UPTEST_CMD '=' STRING ';'
 			{
-				STRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
+				YSTRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
 				server.uptest_usr[0] = '\0';
 			}
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
-				STRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
-				STRNCP(server.uptest_usr, (char *)$5, "uptest_usr");
+				YSTRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
+				YSTRNCP(server.uptest_usr, (char *)$5, "uptest_usr");
 			}
 		| INTERVAL '=' NUMBER ';'
 			{
@@ -510,11 +505,11 @@ serv_el:	IP '=' STRING ';'
 			}
 		| INTERFACE '=' STRING  ';'
 			{
-				STRNCP(server.interface, (char *)$3, "interface");
+				YSTRNCP(server.interface, (char *)$3, "interface");
 			}
  		| DEVICE '=' STRING  ';'
  			{
-				STRNCP(server.device, (char *)$3, "device");
+				YSTRNCP(server.device, (char *)$3, "device");
   			}
 		| PURGE_CACHE '=' CONST ';'
 			{
@@ -572,37 +567,19 @@ serv_el:	IP '=' STRING ';'
 			}
 		| INCLUDE '=' STRING ';'
 			{
-				server.nalist++;
-				if (!(server.alist=realloc(server.alist,sizeof(*server.alist)*server.nalist))) {
-					yyerror("out of memory!.");
-					YYERROR;
-				}
-				server.alist[server.nalist-1].rule=C_INCLUDED;
-				if (strlen((char *)$3)>255) {
-					yyerror("name too long.");
-					YYERROR;
-				}
-				STRNCP(server.alist[server.nalist-1].domain, (char *)$3, "include");
-				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
-					yyerror("domain name must end in dot for include=/exclude=.");
+				char *e;
+				
+				if ((e=slist_add(&server,(char *)$3,C_INCLUDED))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 			}
 		| EXCLUDE '=' STRING ';'
 			{
-				server.nalist++;
-				if (!(server.alist=realloc(server.alist,sizeof(*server.alist)*server.nalist))) {
-					yyerror("out of memory!.");
-					YYERROR;
-				}
-				server.alist[server.nalist-1].rule=C_EXCLUDED;
-				if (strlen((char *)$3)>255) {
-					yyerror("name too long.");
-					YYERROR;
-				}
-				STRNCP(server.alist[server.nalist-1].domain, (char *)$3, "exclude");
-				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
-					yyerror("domain name must end in dot for include=/exclude=.");
+				char *e;
+				
+				if ((e=slist_add(&server,(char *)$3,C_EXCLUDED))!=NULL) {
+					yyerror(e);
 					YYERROR;
 				}
 			}
@@ -618,7 +595,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				STRNCP((char *)c_name, (char *)$3, "name");
+				YSTRNCP(c_name, (char *)$3, "name");
 				if (c_owner[0]!='\0') {
 					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
 						fprintf(stderr,"Out of memory.\n");
@@ -819,7 +796,7 @@ rrneg_el:	NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				STRNCP((char *)c_name,(char *)$3, "name");
+				YSTRNCP(c_name,(char *)$3, "name");
 			}			
 		| TTL '=' NUMBER ';'
 			{

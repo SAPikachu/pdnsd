@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.7 2000/11/11 16:21:30 thomas Exp $ */
+/* $Id: cache.h,v 1.8 2001/04/06 21:30:43 tmm Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 #include "../ipvers.h" 
 #include <stdio.h>
+#include "../list.h"
 #include "../dns.h"
 #include "../conff.h"
 

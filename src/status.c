@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.18 2001/03/13 00:26:24 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.19 2001/04/06 21:30:36 tmm Exp $";
 #endif
 
 char sock_path[99];
@@ -172,13 +172,14 @@ void *status_thread (void *p)
 					break;
 				if ((cmd2=read_short(rs))<0)
 					break;
-				if (cmd<-1 || cmd>=serv_num) {
+				if (cmd<-1 || cmd>=da_nel(servers)) {
 					print_serr(rs,"Server index out of range.");
+					break;
 				}
 				switch (cmd2) {
 				case CTL_S_UP:
 					if (cmd==-1) 
-						for (i=0;i<serv_num;i++) {
+						for (i=0;i<da_nel(servers);i++) {
 							mark_server(i,1);
 						}
 					else 
@@ -187,7 +188,7 @@ void *status_thread (void *p)
 					break;
 				case CTL_S_DOWN:
 					if (cmd==-1) 
-						for (i=0;i<serv_num;i++) {
+						for (i=0;i<da_nel(servers);i++) {
 							mark_server(i,0);
 						}
 					else
@@ -196,7 +197,7 @@ void *status_thread (void *p)
 					break;
 				case CTL_S_RETEST:
 					if (cmd==-1) 
-						for (i=0;i<serv_num;i++) {
+						for (i=0;i<da_nel(servers);i++) {
 							perform_uptest(i);
 						}
 					else
@@ -283,6 +284,7 @@ void *status_thread (void *p)
 				case T_A:
 					if (read(rs,dbuf,sizeof(struct in_addr))<sizeof(struct in_addr)) {
 						print_serr(rs,"Bad arg.");
+						break;
 					}
 					sz=sizeof(struct in_addr);
 					break;
@@ -290,6 +292,7 @@ void *status_thread (void *p)
 				case T_AAAA:
 					if (read(rs,dbuf,sizeof(struct in6_addr))<sizeof(struct in6_addr)) {
 						print_serr(rs,"Bad arg.");
+						break;
 					}
 					sz=sizeof(struct in6_addr);
 					break;
@@ -309,6 +312,7 @@ void *status_thread (void *p)
 				case T_MX:
 					if (read(rs,dbuf,sizeof(short))<sizeof(short)) {
 						print_serr(rs,"Bad arg.");
+						break;
 					}
 					if (!fsgets(rs,owner,256)) {
 						print_serr(rs,"Bad domain name.");

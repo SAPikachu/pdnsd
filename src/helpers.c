@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.16 2001/04/03 21:10:52 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.17 2001/04/06 21:30:36 tmm Exp $";
 #endif
 
 /*
@@ -352,5 +352,18 @@ int stricomp(char *a, char *b)
 		if (tolower(a[i])!=tolower(b[i]))
 			return 0;
 	}
+	return 1;
+}
+
+/* Bah. I want strlcpy */
+int strncp(char *dst, char *src, int dstsz)
+{
+	char o;
+	
+	strncpy(dst,src,dstsz);
+	o=dst[dstsz-1];
+	dst[dstsz-1]='\0';
+	if (strlen(dst) >= dstsz-1 && o!='\0')
+		return 0;
 	return 1;
 }

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.14 2001/04/06 18:11:34 tmm Exp $ */
+/* $Id: conff.h,v 1.15 2001/04/06 21:30:35 tmm Exp $ */
 
 #ifndef CONFF_H
 #define CONFF_H
@@ -29,6 +29,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdio.h>
 #include <pthread.h>
 #include "ipvers.h"
+#include "list.h"
 
 /* From main.c */
 extern int daemon_p;
@@ -62,8 +63,7 @@ typedef struct {
 	char             is_up;
 	char             is_proxy;
 	int              policy;
-	int              nalist;
-	slist_t          *alist;
+	darray           alist;
         time_t           i_ts;
 	pdnsd_a          ping_a;
 	pdnsd_a          a;
@@ -96,12 +96,12 @@ extern globparm_t global;
 extern servparm_t server;        /* This is only used temporarily */
 extern servparm_t serv_presets;
 
-extern int serv_num;
-extern servparm_t *servers;
+extern darray servers;
 
 void set_serv_presets(servparm_t *server);
 
 void add_server(servparm_t serv);
+char *slist_add(servparm_t *sp, char *nm, int tp);
 void read_config_file(char *nm); /*nm may be NULL*/
 
 void report_conf_stat(int f);

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.6 2001/04/06 18:11:34 tmm Exp $ */
+/* $Id: helpers.h,v 1.7 2001/04/06 21:30:36 tmm Exp $ */
 
 #ifndef HELPERS_H
 #define HELPERS_H
@@ -56,5 +56,8 @@ unsigned short get_rand16(void);
 void fsprintf(int fd, char *format, ...);
 
 int stricomp(char *a, char *b);
+
+/* Bah. I want strlcpy. */
+int strncp(char *dst, char *src, int dstsz);
 
 #endif

@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conf-parse.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.17 2001/04/03 19:10:30 tmm Exp $";
+static char rcsid[]="$Id: conff.c,v 1.18 2001/04/06 21:30:35 tmm Exp $";
 #endif
 
 #ifdef ENABLE_IPV4
@@ -44,13 +44,12 @@ globparm_t global={2048,CACHEDIR,53,{IN6ADDR_ANY_INIT},0,604800,120,900,C_AUTH,C
 #endif
 servparm_t server;
 #ifdef ENABLE_IPV4
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,0,NULL,0,{{INADDR_ANY}},{{INADDR_ANY}}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{{INADDR_ANY}},{{INADDR_ANY}}};
 #else
-servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,0,NULL,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
+servparm_t serv_presets={53,C_NONE,120,900,600,"","","","","",0,0,1,1,0,C_INCLUDED,NULL,0,{IN6ADDR_ANY_INIT},{IN6ADDR_ANY_INIT}};
 #endif
 
-int serv_num=0;
-servparm_t *servers=NULL;
+darray servers=NULL;
 
 void lex_set_io(FILE *in, FILE *out); /* defined in conf.l */
 int  yyparse (void);                  /* from yacc/bison output */
@@ -73,12 +72,43 @@ void set_serv_presets(servparm_t *server)
  */
 void add_server(servparm_t serv)
 {
-	serv_num++;
-	if (!(servers=realloc(servers,sizeof(servparm_t)*serv_num))) {
+	if (!servers) {
+		if (!(servers=DA_CREATE(servparm_t))) {
+			fprintf(stderr,"Error: out of memory.\n");
+			exit(1);
+		}
+	}
+
+	if (!(servers=da_grow(servers,1))) {
 		fprintf(stderr,"Error: out of memory.\n");
 		exit(1);
 	}
-	servers[serv_num-1]=serv;
+	*DA_LAST(servers,servparm_t)=serv;
+}
+
+char *slist_add(servparm_t *sp, char *nm, int tp)
+{
+	slist_t *sl;
+					
+	if (sp->alist!=NULL) {
+		if ((sp->alist=DA_CREATE(slist_t))!=NULL) {
+			return "out of memory!.";
+		}
+	}
+	if ((sp->alist=da_grow(sp->alist,1)) != NULL) {
+		return "out of memory!.";
+	}
+	sl=DA_LAST(sp->alist,slist_t);
+	sl->rule=C_INCLUDED;
+	if (strlen(nm)>255) {
+		return "include/exclude: name too long.";
+	}
+	if (!strncp(sl->domain, nm, sizeof(sl->domain)))
+		return "include/exclude: name too long!";
+	if (sl->domain[strlen(sl->domain)-1]!='.') {
+		return "domain name must end in dot for include=/exclude=.";
+	}
+	return NULL;
 }
 
 /*
@@ -119,6 +149,9 @@ void report_conf_stat(int f)
 {
 	char buf[ADDRSTR_MAXLEN];
 	int i,j;
+	servparm_t *st;
+	slist_t *sl;
+	
 	fsprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
 	fsprintf(f,"\tCache size: %li kB\n",global.perm_cache);
 	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
@@ -139,35 +172,37 @@ void report_conf_stat(int f)
 	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
 	fsprintf(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
 	fsprintf(f,"\tRandomize records in answer: %i\n",global.rnd_recs);
-	for(i=0;i<serv_num;i++) {
+	for(i=0;i<da_nel(servers);i++) {
+		st=DA_INDEX(servers,i,servparm_t);
 		fsprintf(f,"Server %i:\n------\n",i);
-		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&servers[i].a,buf,ADDRSTR_MAXLEN));
-		fsprintf(f,"\tport: %hu\n",servers[i].port);
-		fsprintf(f,"\tuptest: %i\n",servers[i].uptest);
-		fsprintf(f,"\ttimeout: %li\n",servers[i].timeout);
-		fsprintf(f,"\tuptest interval: %li\n",servers[i].interval);
-		fsprintf(f,"\tping timeout: %li\n",servers[i].ping_timeout);
-		fsprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
-		fsprintf(f,"\tinterface: %s\n",servers[i].interface);
-		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",servers[i].device);
-		fsprintf(f,"\tuptest command: %s\n",servers[i].uptest_cmd);
-		fsprintf(f,"\tuptest user: %s\n",servers[i].uptest_usr[0]?servers[i].uptest_usr:"(process owner)");
-		if (servers[i].scheme[0])
-			fsprintf(f,"\tscheme: %s\n", servers[i].scheme);
-		fsprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
-		fsprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
-		fsprintf(f,"\tlean query: %i\n",servers[i].lean_query);
-		fsprintf(f,"\tUse only proxy?: %i\n",servers[i].is_proxy);
-		fsprintf(f,"\tDefault policy: %s\n",servers[i].policy==C_INCLUDED?"included":"excluded");
+		fsprintf(f,"\tip: %s\n",pdnsd_a2str(&st->a,buf,ADDRSTR_MAXLEN));
+		fsprintf(f,"\tport: %hu\n",st->port);
+		fsprintf(f,"\tuptest: %i\n",st->uptest);
+		fsprintf(f,"\ttimeout: %li\n",st->timeout);
+		fsprintf(f,"\tuptest interval: %li\n",st->interval);
+		fsprintf(f,"\tping timeout: %li\n",st->ping_timeout);
+		fsprintf(f,"\tping ip: %s\n",pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));
+		fsprintf(f,"\tinterface: %s\n",st->interface);
+		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
+		fsprintf(f,"\tuptest command: %s\n",st->uptest_cmd);
+		fsprintf(f,"\tuptest user: %s\n",st->uptest_usr[0]!='\0'?st->uptest_usr:"(process owner)");
+		if (st->scheme[0]!='\0')
+			fsprintf(f,"\tscheme: %s\n", st->scheme);
+		fsprintf(f,"\tforce cache purging: %i\n",st->purge_cache);
+		fsprintf(f,"\tserver is cached: %i\n",!st->nocache);
+		fsprintf(f,"\tlean query: %i\n",st->lean_query);
+		fsprintf(f,"\tUse only proxy?: %i\n",st->is_proxy);
+		fsprintf(f,"\tDefault policy: %s\n",st->policy==C_INCLUDED?"included":"excluded");
 		fsprintf(f,"\tPolicies:\n");
-		if (servers[i].nalist==0) {
+		if (st->alist==NULL) {
 			fsprintf(f,"\t\t(none)\n");
 		} else {
-			for (j=0;j<servers[i].nalist;j++) {
-				fsprintf(f,"\t\t%s: %s\n",servers[i].alist[j].rule==C_INCLUDED?"include":"exclude",servers[i].alist[j].domain);
+			for (j=0;j<da_nel(st->alist);j++) {
+				sl=DA_INDEX(st->alist,j,slist_t);
+				fsprintf(f,"\t\t%s: %s\n",sl->rule==C_INCLUDED?"include":"exclude",sl->domain);
 			}
 		}
-		fsprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
+		fsprintf(f,"\tserver assumed available: %i\n",st->is_up);
 	}
 }
 

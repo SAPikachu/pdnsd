@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.15 2001/03/25 19:27:37 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.16 2001/04/06 21:30:35 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -167,7 +167,7 @@ int domain_match(int *o, unsigned char *ms, unsigned char *md, unsigned char *re
  * retval: 0 - error, otherwise length
  * When done, just free() cb (if it is NULL, free will behave correctly).
  */
-int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **cb)
+int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 {
 #if 0
 	/* Delete this debug code when done */
@@ -183,8 +183,8 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **c
 	rl=0;
 	/* part 1: compression */
 	if (*cb) {
-		for (i=0;i<(*cb)->num;i++) {
-			if ((rv=domain_match(&to, in, (&((*cb)->first_el))[i].s,rest))>longest) {
+		for (i=0;i<da_nel(*cb);i++) {
+			if ((rv=domain_match(&to, in, DA_INDEX(*cb,i,compel_t)->s,rest))>longest) {
 				/*
 				 * This has some not obvious implications that should be noted: If a 
 				 * domain name as saved in the list has been compressed, we only can
@@ -194,7 +194,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **c
 				 */
 				memcpy(brest,rest,256);
 				longest=rv;
-				coffs=(&((*cb)->first_el))[i].index+to;
+				coffs=DA_INDEX(*cb,i, compel_t)->index+to;
 			} 
 		}
 		if (coffs>-1) {
@@ -229,16 +229,13 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compbuf_t **c
 	/* part 2: addition to the cache structure */
 	if (add) {
 		if (!*cb) {
-			if (!(*cb=calloc(sizeof(compbuf_t),1)))
-				return 0;
-			(*cb)->num=1;
-		} else {
-			(*cb)->num++;
-			if (!(*cb=(compbuf_t *)realloc(*cb,sizeof(int)+sizeof(compel_t)*(*cb)->num)))
-				return 0;
+			if (!(*cb=DA_CREATE(compel_t)))
+			    return 0;
 		}
-		(&((*cb)->first_el))[(*cb)->num-1].index=offs;
-		strcpy((char *)(&((*cb)->first_el))[(*cb)->num-1].s,(char *)in);
+		if (!(*cb=da_grow(*cb, 1)))
+			return 0;
+		DA_LAST(*cb, compel_t)->index=offs;
+		strcpy((char *)DA_LAST(*cb, compel_t)->s,(char *)in);
 	}
 	return rl;
 }

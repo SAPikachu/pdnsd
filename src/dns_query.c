@@ -29,6 +29,7 @@ Boston, MA 02111-1307, USA.  */
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include "list.h"
 #include "consts.h"
 #include "ipvers.h"
 #include "dns_query.h"
@@ -41,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.35 2001/03/25 20:34:31 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.36 2001/04/06 21:30:35 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -108,11 +109,6 @@ typedef struct {
 	unsigned char nsdomain[256];
 } nsr_t;
 
-typedef struct {
-	int           num;
-	nsr_t         first_ns;
-} ns_t;
-
 /*
  * Takes a pointer (ptr) to a buffer with recnum rrs,decodes them and enters them
  * into a dns_cent_t. *ptr is modified to point after the last rr, and *lcnt is decremented
@@ -120,7 +116,8 @@ typedef struct {
  * The domain names of all name servers found are placed in *ns, which is automatically grown
  * It may be null initially and must be freed when you are done with it.
  */
-static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial, char trusted, unsigned char *nsdomain, char tc)
+static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, darray *ns,time_t queryts,
+    unsigned long serial, char trusted, unsigned char *nsdomain, char tc)
 {
 	unsigned char oname[256];
 	unsigned char db[530],tbuf[256];
@@ -134,6 +131,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 	int slen;
 	unsigned char *bptr,*nptr;
 	long blcnt;
+	nsr_t *nsr;
 
 	for (i=0;i<recnum;i++) {
 		if ((rc=decompress_name(msg, oname, ptr, lcnt, msgsz, &len))!=RC_OK) {
@@ -189,18 +187,14 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					if (trusted ||  tbuf[0]=='\0') {
 						/* add to the nameserver list. */
 						if (!*ns) {
-							if (!(*ns=calloc(sizeof(ns_t),1))) {
+							if (!(*ns=DA_CREATE(nsr_t)))
 								return RC_SERVFAIL;
-							}
-							(*ns)->num=1;
-						} else {
-							(*ns)->num++;
-							if (!(*ns=realloc(*ns,sizeof(ns_t)+sizeof(nsr_t)*((*ns)->num-1)))) {
-								return RC_SERVFAIL;
-							}
 						}
-						rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
-						memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
+						if (!(*ns=da_grow(*ns,1)))
+							return RC_SERVFAIL;
+						nsr=DA_LAST(*ns,nsr_t);
+						rhn2str(db,nsr->name);
+						memcpy(nsr->nsdomain,oname,256);
 					}
 				} 
 				break;
@@ -305,19 +299,15 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				if (trusted ||  tbuf[0]=='\0') {
 					/* add to the nameserver list. */
 					if (!*ns) {
-						if (!(*ns=calloc(sizeof(ns_t),1))) {
+						if (!(*ns=DA_CREATE(nsr_t)))
 							return RC_SERVFAIL;
-						}
-						(*ns)->num=1;
-					} else {
-						(*ns)->num++;
-						if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
-							return RC_SERVFAIL;
-						}
 					}
+					if (!(*ns=da_grow(*ns,1)))
+						return RC_SERVFAIL;
+					nsr=DA_LAST(*ns,nsr_t);
 					/* rhn2str will only convert the first name, which is the NS */
-					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
-					memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
+					rhn2str(db,nsr->name);
+					memcpy(nsr->nsdomain,oname,256);
 				}
 				break;
 #ifdef DNS_NEW_RRS
@@ -715,7 +705,7 @@ static int p_query_sm(query_stat_t *st)
  * You are right, somehow, but I feel it is conceptually elegant ;-)
  */
 
-static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns, unsigned long serial) 
+static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, darray *ns, unsigned long serial) 
 {
 	int i,j,rv;
 	time_t queryts;
@@ -1028,7 +1018,8 @@ static void init_qserv(query_serv_t *q)
 /*
  * Add a server entry to a query_serv_t
  */
-static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, time_t timeout, int si, int flags, int nocache, int thint, char lean_query, char trusted, unsigned char *nsdomain)
+static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, time_t timeout, int si, int flags, int nocache, int thint, char lean_query, char trusted,
+    unsigned char *nsdomain)
 {
 	q->num++;
 	q->qs=realloc(q->qs,sizeof(query_stat_t)*q->num);
@@ -1093,18 +1084,18 @@ static void del_qserv(query_serv_t *q)
  * a cached record for that set). This settings cause the record be purged on the next cache addition.
  * It will also not be used again.
  */
-static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char *name, dns_cent_t **ent, int *sv, int hops, int thint)
+static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char *name, dns_cent_t **ent, int *nocache, int hops, int thint)
 {
 	int aa_needed;
 	pdnsd_a serva;
 	int aa=0;
-	int i,j,k,ad,mc,qo,se,done,nons,pc,srv;
+	int i,j,k,ad,mc,qo,se,done,nons,pc,srv,sv;
 	int rv=0;
 	dns_cent_t *nent,*servent;
 	query_serv_t serv;
 	unsigned char nsbuf[256],nsname[256];
 	unsigned long serial=get_serial();
-	ns_t *ns=NULL;
+	darray ns=NULL;
 	time_t ts;
 	long maxto;
 #ifdef ENABLE_IPV6
@@ -1150,7 +1141,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				}
 				if (rv==RC_OK) {
 					se=global.par_queries*j+i;
-					*sv=q->qs[global.par_queries*j+i].si;
+					sv=q->qs[global.par_queries*j+i].si;
+					*nocache=q->qs[global.par_queries*j+i].nocache;
 					DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
 				}
 				done=1;
@@ -1290,8 +1282,10 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 									}
 									if (rv==RC_OK) {
 										se=global.par_queries*j+i;
-										*sv=q->qs[global.par_queries*j+i].si;
-										DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+										sv=q->qs[global.par_queries*j+i].si;
+										*nocache=q->qs[global.par_queries*j+i].nocache;
+										DEBUG_MSG2("Query to %s succeeded.\n",
+										    socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
 									}
 									done=1;
 									break;
@@ -1330,22 +1324,24 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			aa_needed=1;
 	}
 
-	if (ns && ns->num>0 && !aa && aa_needed && (*sv==-1 || !servers[*sv].is_proxy)) {
+	if (ns && da_nel(ns)>0 && !aa && aa_needed && (sv==-1 || !DA_INDEX(servers,sv,servparm_t)->is_proxy)) {
 		init_qserv(&serv);
 		/* Authority records present. Ask them, because the answer was non-authoritative. To do so, we first put 
 		 * the Authority and the additional section into a dns_cent_t and look for name servers in the Authority 
 		 * section and their addresses in the Answer and additional sections. If none are found, we also need to 
 		 * resolve the name servers.*/
 		if (hops>=0) {
-			for (j=0;j<ns->num;j++) {
+			for (j=0;j<da_nel(ns);j++) {
+				nsr_t *nsr=DA_INDEX(ns,j,nsr_t);
+				
 				if (global.paranoid) {
 					/* paranoia mode: don't query name servers that are not responsible */
-					rhn2str((&ns->first_ns)[j].nsdomain,nsname);
-					domain_match(&i,(&ns->first_ns)[j].nsdomain,rrn,nsname);
+					rhn2str(nsr->nsdomain,nsname);
+					domain_match(&i,nsr->nsdomain,rrn,nsname);
 					if (nsname[0]!='\0')
 						continue;
 				}
-				strcpy((char *)nsname,(char *)(&ns->first_ns)[j].name);
+				strcpy((char *)nsname,(char *)nsr->name);
 				if (!str2rhn(nsname,nsbuf))
 					continue;
 				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,
@@ -1406,7 +1402,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 					if (nons) {
 						/* lean query mode is inherited. CF_NOAUTH and CF_ADDITIONAL are not (as specified
 						 * in CFF_NOINHERIT). */
-						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags&~CFF_NOINHERIT, 0,thint,q->qs[se].lean_query,!global.paranoid,(&ns->first_ns)[j].nsdomain)) {
+						if (!add_qserv(&serv, &serva, 53, q->qs[se].timeout, -1, q->qs[se].flags&~CFF_NOINHERIT, 0,thint,
+						    q->qs[se].lean_query,!global.paranoid,nsr->nsdomain)) {
 							free_cent(**ent);
 							free(*ent);
 							free(ns);
@@ -1460,19 +1457,22 @@ static int p_dns_resolve_from(query_serv_t *q, unsigned char *name, unsigned cha
 static int use_server(servparm_t *s, unsigned char *name)
 {
 	int i;
-	if (s->alist && s->nalist) {
-		for (i=0;i<s->nalist;i++) {
-			if (s->alist[i].domain[0]=='.') {
+	slist_t *sl;
+	
+	if (s->alist) {
+		for (i=0;i<da_nel(s->alist);i++) {
+			sl=DA_INDEX(s->alist,i,slist_t);
+			if (sl->domain[0]=='.') {
 				/* match this domain and all subdomains */
-				if ((strlen((char *)name)==strlen((char *)s->alist[i].domain)-1 && 
-				     stricomp((char *)name,&s->alist[i].domain[1])) ||
-				    (strlen((char *)name)>=strlen((char *)s->alist[i].domain) && 
-				     stricomp((char *)(name+(strlen((char *)name)-strlen((char *)s->alist[i].domain))),s->alist[i].domain)))
-					return s->alist[i].rule==C_INCLUDED;
+				if ((strlen((char *)name)==strlen((char *)sl->domain)-1 && 
+				     stricomp((char *)name,&sl->domain[1])) ||
+				    (strlen((char *)name)>=strlen((char *)sl->domain) && 
+				     stricomp((char *)(name+(strlen((char *)name)-strlen((char *)sl->domain))),sl->domain)))
+					return sl->rule==C_INCLUDED;
 			} else {
 				/* match this domain exactly */
-				if (stricomp((char *)name,s->alist[i].domain))
-					return s->alist[i].rule==C_INCLUDED;
+				if (stricomp((char *)name,sl->domain))
+					return sl->rule==C_INCLUDED;
 			}
 
 		}
@@ -1483,15 +1483,18 @@ static int use_server(servparm_t *s, unsigned char *name)
 
 static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
 {
-	int i,rc;
+	int i,rc,nocache;
 	int one_up=0;
 	query_serv_t serv;
 	dns_cent_t *tc;
+	servparm_t *sp;
+	
 	/* try the servers in the order of their definition */
 	init_qserv(&serv);
-	for (i=0;i<serv_num;i++) {
-		if (servers[i].is_up && use_server(&servers[i],name)) {
-			add_qserv(&serv, &servers[i].a, servers[i].port, servers[i].timeout, i, mk_flag_val(&servers[i]),servers[i].nocache,thint,servers[i].lean_query,1,(unsigned char *)"");
+	for (i=0;i<da_nel(servers);i++) {
+		sp=DA_INDEX(servers,i,servparm_t);
+		if (sp->is_up && use_server(sp,name)) {
+			add_qserv(&serv, &sp->a, sp->port, sp->timeout, i, mk_flag_val(sp),sp->nocache,thint,sp->lean_query,1,(unsigned char *)"");
 			one_up=1;
 		}
 	}
@@ -1502,8 +1505,8 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	}
 
 
-	if ((rc=p_recursive_query(&serv, rrn, name,cached,&i, hops, thint))==RC_OK) {
-		if (!servers[i].nocache) {
+	if ((rc=p_recursive_query(&serv, rrn, name,cached,&nocache, hops, thint))==RC_OK) {
+		if (!nocache) {
 			add_cache(**cached);
 			if ((tc=lookup_cache(name))) {
 				/* The cache may hold more information  than the recent query yielded.
@@ -1623,8 +1626,8 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	test_onquery();
 	if (global.lndown_kluge && !(flags&CF_LOCAL)) {
 		rc=1;
-		for (i=0;i<serv_num;i++) {
-			if (servers[i].is_up)
+		for (i=0;i<da_nel(servers);i++) {
+			if (DA_INDEX(servers,i,servparm_t)->is_up)
 				rc=0;
 		}
 		if (rc) {

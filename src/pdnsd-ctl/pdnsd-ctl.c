@@ -1,5 +1,5 @@
 /* pdnsd-ctl.c - Control pdnsd through a pipe
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -29,11 +29,12 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include "../status.h"
 #include "../conff.h"
+#include "../list.h"
 #include "../dns.h"
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.9 2001/03/13 00:26:31 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.10 2001/04/06 21:30:46 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -50,10 +51,10 @@ typedef struct {
 cmd_s top_cmds[7]={{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
 		   {"source",CTL_SOURCE},{"add",CTL_ADD},{"neg",CTL_NEG}, {NULL,0}};
 cmd_s server_cmds[4]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
-cmd_s record_cmds[4]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
+cmd_s record_cmds[3]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
 cmd_s onoff_cmds[3]= {{"off",0},{"on",1},{NULL,0}};
 #ifdef ENABLE_IPV6
-cmd_s rectype_cmds[5]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+cmd_s rectype_cmds[6]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #else
 cmd_s rectype_cmds[5]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 #endif
@@ -145,7 +146,7 @@ void send_long(long cmd, int f)
 {
 	long nc=htonl(cmd);
 
-	if (write(f,&nc,sizeof(nc))<0) {
+	if (write(f,&nc,sizeof(nc))<sizeof(nc)) {
 		printf("Error: could not write long: %s\n",strerror(errno));
 		exit(2);
 	}
@@ -155,7 +156,7 @@ void send_short(long cmd, int f)
 {
 	short nc=htons(cmd);
 
-	if (write(f,&nc,sizeof(nc))<0) {
+	if (write(f,&nc,sizeof(nc))<sizeof(nc)) {
 		printf("Error: could not write short: %s\n",strerror(errno));
 		exit(2);
 	}
@@ -163,7 +164,11 @@ void send_short(long cmd, int f)
 
 void send_string(int fd, char *s)
 {
-	write(fd,s,strlen(s)+1); /* include the terminating \0 */
+	/* include the terminating \0 */
+	if (write(fd,s,strlen(s)+1)<strlen(s)+1) {
+		printf("Error: could not write short: %s\n",strerror(errno));
+		exit(2);
+	}
 }
 
 int match_cmd(char *cmd, cmd_s cmds[])
