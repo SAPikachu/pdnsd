@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.6 2000/10/15 19:50:13 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.7 2000/10/16 21:23:54 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1349,7 +1349,7 @@ static int use_server(servparm_t *s, unsigned char *name)
 				if ((strlen((char *)name)==strlen((char *)s->alist[i].domain)-1 && 
 				     stricomp((char *)name,&s->alist[i].domain[1])) ||
 				    (strlen((char *)name)>=strlen((char *)s->alist[i].domain) && 
-				     stricomp((char *)(name+(strlen(name)-strlen((char *)s->alist[i].domain))),s->alist[i].domain)))
+				     stricomp((char *)(name+(strlen((char *)name)-strlen((char *)s->alist[i].domain))),s->alist[i].domain)))
 					return s->alist[i].rule==C_INCLUDED;
 			} else {
 				/* match this domain exactly */

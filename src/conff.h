@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.7 2000/10/15 19:50:13 thomas Exp $ */
+/* $Id: conff.h,v 1.8 2000/10/16 21:23:54 thomas Exp $ */
 
 #ifndef _CONFF_H_
 #define _CONFF_H_
@@ -83,6 +83,7 @@ typedef struct {
         char          scheme_file[MAXPATH];
 	int           proc_limit;
 	int           procq_limit;
+	int           tcp_qtimeout;
 } globparm_t;
 
 extern globparm_t global;

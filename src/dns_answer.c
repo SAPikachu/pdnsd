@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.10 2000/10/15 22:11:41 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.11 2000/10/16 21:23:54 thomas Exp $";
 #endif
 
 /*
@@ -959,6 +959,13 @@ void *udp_answer_thread(void *data)
 	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
 
+	if (!global.strict_suid ) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			pdnsd_exit();
+		}
+	}
+
 	do {
 		pthread_mutex_lock(&proc_lock);
 		i=procs;
@@ -967,13 +974,6 @@ void *udp_answer_thread(void *data)
 			usleep(50000);
 	} while (i>global.proc_limit); 
 	
-	if (!global.strict_suid ) {
-		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
-			pdnsd_exit();
-		}
-	}
-
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
@@ -1385,9 +1385,10 @@ void *tcp_answer_thread(void *csock)
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
+	int i;
 	time_t  ts;
 
-
+	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
 
 	if (!global.strict_suid) {
@@ -1396,6 +1397,14 @@ void *tcp_answer_thread(void *csock)
 			pdnsd_exit();
 		}
 	}
+
+	do {
+		pthread_mutex_lock(&proc_lock);
+		i=procs;
+		pthread_mutex_unlock(&proc_lock);
+		if (i>global.proc_limit)
+			usleep(50000);
+	} while (i>global.proc_limit);
 
 	free(csock);
 	rlen=htons(rlen);
@@ -1422,7 +1431,7 @@ void *tcp_answer_thread(void *csock)
 					close(sock);
 					return NULL; 
 				} else {
-					if (time(NULL)-ts>TCP_TIMEOUT) {
+					if (time(NULL)-ts>global.tcp_qtimeout) {
 						close(sock);
 						return NULL; 
 					}
@@ -1446,7 +1455,7 @@ void *tcp_answer_thread(void *csock)
 			if ((olen=read(sock,buf,rlen))<rlen) {
 				if (errno==EWOULDBLOCK) {
 					/* In this case, we loop until timeout */
-					if (time(NULL)-ts>TCP_TIMEOUT) {
+					if (time(NULL)-ts>global.tcp_qtimeout) {
 						free(buf);
 						close(sock);
 						return NULL;
@@ -1503,12 +1512,13 @@ void *tcp_answer_thread(void *csock)
 			}
 			usleep(50000);
 		} while (1);
-#ifdef TCP_NOSUBSEQ
+#ifndef TCP_SUBSEQ
 		/* Do not allow multiple queries in one Sequence.*/
 		close(sock);
 		break;
 #endif
 	}
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 
@@ -1572,7 +1582,7 @@ int init_tcp_socket()
  */
 void *tcp_server_thread(void *p)
 {
-	int sock,i;
+	int sock;
 	pthread_t pt;
 	pthread_attr_t attr;
 	int *csock;
@@ -1580,16 +1590,7 @@ void *tcp_server_thread(void *p)
 
 	(void)p; /* To inhibit "unused variable" warning */
 
-	pthread_cleanup_push(decrease_procs, NULL);
 	THREAD_SIGINIT;
-
-	do {
-		pthread_mutex_lock(&proc_lock);
-		i=procs;
-		pthread_mutex_unlock(&proc_lock);
-		if (i>global.proc_limit)
-			usleep(50000);
-	} while (i>global.proc_limit);
 
 	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
@@ -1656,7 +1657,6 @@ void *tcp_server_thread(void *p)
 	}
 	close(sock);
 	tcp_socket=-1;
-	pthread_cleanup_pop(1);
 	return NULL;
 }
 #endif

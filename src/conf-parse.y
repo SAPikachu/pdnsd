@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.12 2000/10/15 19:50:13 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.13 2000/10/16 21:23:54 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -100,9 +100,7 @@ unsigned char *nm;
 %token <num> C_CTL_PERMS
 %token <num> C_PROC_LIMIT
 %token <num> C_PROCQ_LIMIT
-%token <num> INCLUDE
-%token <num> EXCLUDE
-%token <num> POLICY
+%token <num> TCP_QTIMEOUT
 
 %token <num> IP
 %token <num> PORT
@@ -120,6 +118,9 @@ unsigned char *nm;
 %token <num> LEAN_QUERY
 %token <num> PRESET
 %token <num> PROXY_ONLY
+%token <num> INCLUDE
+%token <num> EXCLUDE
+%token <num> POLICY
 
 %token <num> A
 %token <num> PTR
@@ -360,6 +361,10 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			{
 				global.procq_limit=$3;
 			}
+		| TCP_QTIMEOUT '=' NUMBER ';'
+			{
+				global.tcp_qtimeout=$3;
+			}
 		;
 
 serv_s:		/* empty */		{}
@@ -508,7 +513,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strncpy(server.alist[server.nalist-1].domain,$3,256);
+				strncpy(server.alist[server.nalist-1].domain,(char *)$3,256);
 				server.alist[server.nalist-1].domain[255]='\0';
 				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
 					yyerror("domain name must end in dot for include=/exclude=.");
@@ -527,7 +532,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strncpy(server.alist[server.nalist-1].domain,$3,256);
+				strncpy(server.alist[server.nalist-1].domain,(char *)$3,256);
 				server.alist[server.nalist-1].domain[255]='\0';
 				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
 					yyerror("domain name must end in dot for include=/exclude=.");
