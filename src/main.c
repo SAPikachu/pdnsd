@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.29 2001/01/24 23:50:22 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.30 2001/01/25 09:49:13 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -349,45 +349,15 @@ int main(int argc,char *argv[])
 		}
 #else
 		/* 
-		 * No O_NOFOLLOW. Use lstat to be sure. Nevertheless, this not
-		 * a hole, since the directory for pidfiles should not be world
-		 * writeable. Pure paranoia.
+		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the 
+		 * directory for pidfiles should not be world writeable. 
 		 * OS's that do not support O_NOFOLLOW are currently not 
-		 * supported, this is just-in-case code. Also note
+		 * supported, this is just-in-case code.
 		 */
 		if ((pfd=open(pidfile,O_WRONLY|O_CREAT|O_EXCL, 0600))==-1) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
 			exit(1);
 		}
-		close(pfd);
-		/* We should now have it. */
-		if (lstat(pidfile, &so)==-1) {
-			log_error("Error: lstat on %s failed (should be there!): %s\n", pidfile, strerror(errno));
-			exit(1);
-		}
-		if (S_ISLNK(so.st_mode)) {
-			log_error("Error: huh - %s is a symlink! Possible link attack?\n", pidfile);
-			exit(1);
-		}
-		if ((pfd=open(pidfile,O_WRONLY, 0600))==-1) {
-			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
-			exit(1);
-		}
-		if (fstat(pfd, &sn)==-1) {
-			log_error("Error: fstat failed: %s\n", strerror(errno));
-			exit(1);
-		}
-		/* 
-		 * We check whether this has out uid as owner. This should 
-		 * elimnate the last doubt.
-		 */
-		if (so.st_dev!=sn.st_dev || so.st_ino!=sn.st_ino || so.st_uid!=getuid() || so.st_mtime!=sn.st_mtime ||
-		    so.st_ctime!=sn.st_ctime || so.st_size!=sn.st_size) {
-			log_error("Error: huh - %s has changed under my feet! Possible link attack?\n", pidfile);
-			exit(1);
-		}
-		fchown(pfd, getuid(), getgid());
-		fchmod(pfd, 0600);
 #endif
 		if (!(pf=fdopen(pfd,"w"))) {
 			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
