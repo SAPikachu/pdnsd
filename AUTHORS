@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.6 2000/07/07 10:05:35 thomas Exp $
+$Id: AUTHORS,v 1.7 2000/07/10 15:19:00 thomas Exp $
 
 pdnsd was written by Thomas Moestl (tmoestl@gmx.net)
 
@@ -12,6 +12,7 @@ Foundation.
 Torben Janssen contributed the files in rc/Redhat.
 Soenke J. Peters contributed patches and suggestions for Red Hat compatability.
 Wolfgang Ocker has contributed the code for the server_ip option.
+Markus Mohr has contributed the files in rc/Debian.
 
 Please look into the THANKS file for people who helped me in various ways on
 this project.

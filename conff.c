@@ -32,7 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "y.tab.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.12 2000/07/07 10:05:35 thomas Exp $";
+static char rcsid[]="$Id: conff.c,v 1.13 2000/07/10 15:19:00 thomas Exp $";
 #endif
 
 #ifndef CACHEDIR
@@ -124,6 +124,7 @@ void report_conf_stat(FILE *f)
 	fprintf(f,"\tCache size: %li kB\n",global.perm_cache);
 	fprintf(f,"\tServer directory: %s\n",global.cache_dir);
 	fprintf(f,"\tServer port: %i\n",global.port);
+	fprintf(f,"\tServer ip (0.0.0.0=any available): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
 	fprintf(f,"\tIgnore cache when link is down: %i\n",global.lndown_kluge);
 	fprintf(f,"\tMaximum ttl: %li\n",global.max_ttl);
 	fprintf(f,"\tRun as: %s\n",global.run_as);
@@ -135,7 +136,7 @@ void report_conf_stat(FILE *f)
 		fprintf(f,"\tport: %hu\n",servers[i].port);
 		fprintf(f,"\tuptest: %i\n",servers[i].uptest);
 		fprintf(f,"\ttimeout: %li\n",servers[i].timeout);
-		fprintf(f,"\tpurge interval: %li\n",servers[i].interval);
+		fprintf(f,"\tuptest interval: %li\n",servers[i].interval);
 		fprintf(f,"\tping timeout: %li\n",servers[i].ping_timeout);
 		fprintf(f,"\tping ip: %s\n",pdnsd_a2str(&servers[i].ping_a,buf,ADDRSTR_MAXLEN));
 		fprintf(f,"\tinterface: %s\n",servers[i].interface);
