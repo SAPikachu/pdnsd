@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.16 2001/07/02 18:53:58 tmm Exp $";
+static char rcsid[]="$Id: servers.c,v 1.17 2002/07/19 20:23:41 tmm Exp $";
 #endif
 
 /*
@@ -109,14 +109,13 @@ int uptest (servparm_t serv)
 			ret=0;
 			break;
 		} else if (pid==0) {
-			if (geteuid()!=getuid()) {
-				/* We ran as setuid. This is not inherited to the command for security reasons! */
-				seteuid(getuid());
-			}
-			if (getegid()!=getgid()) {
-				/* We ran as setgid. This is not inherited to the command! */			
-				setegid(getgid());
-			}
+			/*
+			 * If we ran as setuid or setgid, do not inherit this to the
+			 * command. This is just a last guard. Running pdnsd as setuid()
+			 * or setgid() is a no-no.
+			 */
+			setgid(getgid());
+			setuid(getuid());
 			/* Try to setuid() to a different user as specified. Good when you
 			   don't want the test command to run as root */
 			if (!run_as(serv.uptest_usr)) {
