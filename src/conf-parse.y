@@ -25,7 +25,6 @@ Boston, MA 02111-1307, USA.  */
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "ipvers.h" 
 #include <arpa/inet.h>
 #include "conff.h"
 #include "consts.h"
@@ -35,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.9 2000/08/27 12:42:57 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.10 2000/10/08 12:16:08 thomas Exp $";
 #endif
 
 dns_cent_t c_cent;

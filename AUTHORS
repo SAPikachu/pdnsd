@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.12 2000/08/20 20:43:18 thomas Exp $
+$Id: AUTHORS,v 1.13 2000/10/08 12:16:02 thomas Exp $
 
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 
@@ -21,6 +21,7 @@ Soenke J. Peters	contributed patches and suggestions for RedHat
 			compatability
 Lyonel Vincent		extended the serve_aliases option to support an
 			arbitrary number of aliases
+Sverker Wiberg		contributed IPv6 build fixes
 Ron Yorston		contributed the dev-uptest for Linux ppp dial-
 			on-demand devices
 Nikita V. Youshchenko	contributed extensions to the "if" uptest

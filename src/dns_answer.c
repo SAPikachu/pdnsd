@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.6 2000/08/28 19:42:37 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.7 2000/10/08 12:16:08 thomas Exp $";
 #endif
 
 /*
@@ -1035,12 +1035,13 @@ void *udp_answer_thread(void *data)
 			da_udp_errs++;
 			log_error("Error in udp send: %s",strerror(errno));
 		}
-	}
-	sl=sizeof(tmp);
-	getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, &sl);
+	} else {
+		sl=sizeof(tmp);
+		getsockopt(((udp_buf_t *)data)->sock, SOL_SOCKET, SO_ERROR, &tmp, &sl);
 #ifdef SOCKET_LOCKING
-	pthread_mutex_unlock(&s_lock);
+		pthread_mutex_unlock(&s_lock);
 #endif
+	}
 
 	free(resp);
 	free(data);
@@ -1073,7 +1074,6 @@ int init_udp_socket()
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
-		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 		sin=(struct sockaddr *)&sin4;
 		sinl=sizeof(sin4);
@@ -1089,7 +1089,6 @@ int init_udp_socket()
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=global.a.ipv6;
-		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 		sin=(struct sockaddr *)&sin6;
 		sinl=sizeof(sin6);
@@ -1151,7 +1150,6 @@ void *udp_server_thread(void *dummy)
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
-		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 	}
 #endif
@@ -1161,7 +1159,6 @@ void *udp_server_thread(void *dummy)
 		sin6.sin6_port=htons(global.port);
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=global.a.ipv6;
-		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 	}
 #endif
@@ -1355,6 +1352,13 @@ void *tcp_answer_thread(void *csock)
 	int sock=*((int *)csock);
 	unsigned char *buf;
 	unsigned char *resp;
+#ifdef NO_POLL
+	fd_set fds;
+	struct timeval tv;
+#else
+	struct pollfd pfd;
+#endif
+
 
 	THREAD_SIGINIT;
 
@@ -1368,13 +1372,35 @@ void *tcp_answer_thread(void *csock)
 	free(csock);
 	rlen=htons(rlen);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
-	 * the socket is closed by the other side or by tcp timeout */
+	 * the socket is closed by the other side or by tcp timeout. 
+	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's
+	 * TCP server.*/
 	while (1) {
+#ifdef NO_POLL
+		/* FIXME: we need this also for the second read.
+		 * also, we need to see how much we actually got (Nonblocking read &
+		 * return checking) */
+		FD_ZERO(&fds);
+		FD_SET(sock, &fds);
+		tv.tv_usec=(TCP_TIMEOUT%1000)*1000;
+		tv.tv_sec=TCP_TIMEOUT/1000;
+		if (select(socket+1,&fds,NULL,NULL,&tv)<1) {
+			close(sock);
+			break;
+		}
+#else
+		pfd.fd=sock;
+		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
+		if (poll(&pfd,1,TCP_TIMEOUT)<1) {
+			close(sock);
+			break;
+		}
+#endif
 		if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 			/*
 			 * If the socket timed or was closed before we even received the 
 			 * query length, we cannot return an error. So exit silently.
-			 */
+				 */
 			close(sock);
 			return NULL; 
 		}
@@ -1389,10 +1415,10 @@ void *tcp_answer_thread(void *csock)
 			return NULL;
 		}
 		if ((olen=read(sock,buf,rlen))<rlen) {
-			/*
-			 * If the promised length was not sent, we should return an error message,
-			 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
-			 */
+				/*
+				 * If the promised length was not sent, we should return an error message,
+				 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
+				 */
 			if (olen<=2) {
 				/*
 				 * If we did not get the id, we cannot set a valid reply.
@@ -1434,6 +1460,11 @@ void *tcp_answer_thread(void *csock)
 			}
 			free(resp);
 		}
+#ifdef TCP_NOSUBSEQ
+		/* Do not allow multiple queries in one Sequence.*/
+		close(sock);
+		break;
+#endif
 	}
 	return NULL;
 }
@@ -1464,7 +1495,6 @@ int init_tcp_socket()
 		sin4.sin_family=AF_INET;
 		sin4.sin_port=htons(global.port);
 		sin4.sin_addr=global.a.ipv4;
-		memset(&sin4.sin_zero,0,sizeof(sin4.sin_zero));
 		SET_SOCKA_LEN4(sin4);
 		sin=(struct sockaddr *)&sin4;
 		sinl=sizeof(sin4);
@@ -1481,7 +1511,6 @@ int init_tcp_socket()
 		sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		sin6.sin6_addr=in6addr_any;
 		sin6.sin6_addr=global.a.ipv6;
-		memset(&sin6.sin6_zero,0,sizeof(sin6.sin6_zero));
 		SET_SOCKA_LEN6(sin6);
 		sin=(struct sockaddr *)&sin6;
 		sinl=sizeof(sin6);

@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.2 2000/07/29 18:45:06 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.3 2000/10/08 12:16:08 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -219,7 +219,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		from.sin_family=AF_INET;
 		from.sin_port=0;
 		from.sin_addr=addr;
-		memset(&from.sin_zero,0,sizeof(from.sin_zero));
 		SET_SOCKA_LEN4(from);
 		fcntl(osock,F_SETFL,0);
 		if (sendto(osock,&icmpd,8,0,(struct sockaddr *)&from,sizeof(from))==-1) {
@@ -339,7 +338,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		from.sin6_flowinfo=IPV6_FLOWINFO;
 		from.sin6_port=0;
 		from.sin6_addr=a;
-		memset(&from.sin6_zero,0,sizeof(from.sin6_zero));
 		SET_SOCKA_LEN6(from);
 /*		printf("to: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
 		fcntl(osock,F_SETFL,0);

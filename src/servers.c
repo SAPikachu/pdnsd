@@ -42,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.5 2000/08/27 12:42:57 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.6 2000/10/08 12:16:08 thomas Exp $";
 #endif
 
 /*
@@ -83,7 +83,9 @@ int uptest (servparm_t serv)
 	}
 	switch (serv.uptest) {
 	case C_NONE:
-		ret=1;
+		/*ret=1;*/
+		/* Don't change */
+		ret=serv.is_up;
 		break;
 	case C_PING:
 		ret=ping(&serv.ping_a,serv.ping_timeout,2)!=-1;
@@ -92,12 +94,14 @@ int uptest (servparm_t serv)
  	case C_DEV:
 	case C_DIALD:
  		ret=if_up(serv.interface);
+#if TARGET==TARGET_LINUX
  		if (ret!=0 && serv.uptest==C_DEV) {
  			ret=dev_up(serv.interface,serv.device);
  		}
  		if (ret!=0 && serv.uptest==C_DIALD) {
  			ret=dev_up("diald",serv.device);
  		}
+#endif
 		break;
 	case C_EXEC:
 		if ((pid=fork())==-1) {
@@ -274,3 +278,4 @@ void test_onquery()
 	}
 	pthread_mutex_unlock(&servers_lock);
 }
+
