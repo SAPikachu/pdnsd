@@ -36,7 +36,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../cache.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.18 2001/05/12 22:55:21 tmm Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.19 2001/12/30 15:29:43 tmm Exp $";
 #endif
 
 char cache_dir[MAXPATH]=CACHEDIR;
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 				exit(2);
 			}
 			memset(buf,0,sizeof(buf));
-			while (read(pf,buf,1024)>0) {
+			while (read(pf,buf,sizeof(buf) - 1)>0) {
 				fwrite(buf,strlen(buf),sizeof(char),stdout);
 				memset(buf,0,sizeof(buf));
 			}
