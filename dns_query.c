@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.13 2000/06/24 21:44:21 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.14 2000/06/26 11:41:58 thomas Exp $";
 #endif
 
 /*
@@ -62,8 +62,8 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 #endif
 		return add_cent_rr(cent,ttl,queryts,flags,dlen,data,tp);
 	} else {
-		if (trusted)
-			domain_match(&dummy,nsdomain, cent->qname, cbuf);
+		if (!trusted)
+			domain_match(&dummy,nsdomain, oname, cbuf);
 		if (trusted ||  cbuf[0]=='\0') {
 			/* try to find a matching record in cache */
 			if (have_cached(buf)) {
@@ -78,8 +78,13 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 				}
 				return 0;
 			}
-		} else
+		} else {
+#if DEBUG>0
+			rhn2str(nsdomain,cbuf);
+			DEBUG_MSG3("Record for %s not in nsdomain %s; dropped.\n",buf,cbuf);
+#endif
 			return 1; /* don't add, but don't complain either */
+		}
 	}
 	return 0;
 }
@@ -162,12 +167,12 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						(*ns)->num=1;
 					} else {
 						(*ns)->num++;
-						if (!(*ns=realloc(*ns,sizeof(ns_t)*(*ns)->num))) {
+						if (!(*ns=realloc(*ns,sizeof(nsr_t)*(*ns)->num))) {
 							return RC_SERVFAIL;
 						}
 					}
 					rhn2str(db,(&(*ns)->first_ns)[(*ns)->num-1].name);
-					memcpy(db,(&(*ns)->first_ns)[(*ns)->num-1].name,256);
+					memcpy((&(*ns)->first_ns)[(*ns)->num-1].nsdomain,oname,256);
 				} 
 				break;
 			case T_MINFO:
@@ -1054,6 +1059,8 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		 * resolve the name servers.*/
 		if (hops>=0) {
 			for (j=0;j<ns->num;j++) {
+				rhn2str((&ns->first_ns)[j].nsdomain,nsname);
+/*				DEBUG_MSG4("Server %i: %s, nsdomain %s\n",j+1,(&ns->first_ns)[j].name,nsname);*/
 				if (global.paranoid) {
 					/* paranoia mode: don't query name servers that are not responsible */
 					domain_match(&i,(&ns->first_ns)[j].nsdomain,rrn,nsname);

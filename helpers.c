@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.11 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.12 2000/06/26 11:41:58 thomas Exp $";
 #endif
 
 /*
@@ -84,7 +84,7 @@ int run_as(char *user)
 }
 
 /*
- * returns whether c allowed in IN domain names
+ * returns whether c is allowed in IN domain names
  */
 int isdchar (unsigned char c)
 {
@@ -94,9 +94,8 @@ int isdchar (unsigned char c)
 }
 
 /*
- * Take a host name as used in the dns transfer protocol (a length byte, followed by the
- * first part of the name, ..., followed by a 0 lenght byte), and return a string (in str,
- * length is the same as rhn) in the usual dotted notation.
+ * Convert a string given in dotted notation to the transport format (lenght byte prepended
+ * domain name parts, ended by a null length sequence)
  */
 int str2rhn(unsigned char *str, unsigned char *rhn)
 {
@@ -128,7 +127,7 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 			return 0;
 		} else if (str[lb+cnt]=='.') {
 			i++;
-			if (lb+tcnt+1>255)
+			if (lb+tcnt+1>254) /* 254 because the termination 0 has to follow */
 				return 0;
 			rhn[tcnt]=(unsigned char)lb;
 			tcnt++;
@@ -139,9 +138,14 @@ int str2rhn(unsigned char *str, unsigned char *rhn)
 			return 0;
 				
 	} while (1);
-/*	strcat(str,".");*/
 }
 
+/*
+ * Take a host name as used in the dns transfer protocol (a length byte, followed by the
+ * first part of the name, ..., followed by a 0 lenght byte), and return a string (in str,
+ * length is the same as rhn) in the usual dotted notation. Length checking is done 
+ * elsewhere (in decompress_name).
+ */
 void rhn2str(unsigned char *rhn, unsigned char *str)
 {
 	unsigned char lb;
@@ -149,7 +153,7 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 	int cnt=1;
 	str[0]='\0';
 	lb=rhn[0];
-	while (lb) {
+ 	while (lb) {
 		for (i=0;i<lb;i++) {
 			str[cnt-1]=tolower(rhn[cnt]);
 			cnt++;
@@ -158,59 +162,12 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 		str[cnt]='\0';
 		lb=rhn[cnt];
 		cnt++;
-		if (cnt>254)
+		if (cnt>255)
 			break;
 	}
-/*	strcat(str,".");*/
 }
 
-/*
- * Extract an ip from a domain name for ip-to-hostname resolving (in the .in-addr.arpa. domain).
- * Example: 1.0.0.127.in-addr.arpa. -> 127.0.0.1
- */
-int in_addr2ip(struct in_addr *ia, unsigned char *qname)
-{
-	unsigned char tmp[15];
-	int i,n,fd;
-	unsigned int d[4];
-	unsigned char *pt=qname;
-	d[0]=d[1]=d[2]=d[3]=0;
-		
-	for (i=0;i<4;i++) {
-		fd=1;
-		n=0;
-		while (isdigit(*pt)) {
-			fd=0;
-			tmp[n]=*pt;
-			pt++;
-			n++;
-		}
-		if (fd)
-			return 0;
-		if (*pt!='.')
-			return 0;
-		pt++;
-		tmp[n]='\0';
-		sscanf((char *)tmp,"%u",&d[i]);
-		if (d[i]>255)
-			return 0;
-		if (!isdigit(*pt))
-			break;
-	}
-	if (i<4) {
-		for (n=3-i;n>0;n--) {
-			d[n+3-i]=d[n];
-		}
-		for (n=0;n<3-i;n++) {
-			d[n]=0xff;
-		}
-	}
-	snprintf((char *)tmp,15,"%u.%u.%u.%u",d[3],d[2],d[1],d[0]);
-	inet_aton((char *)tmp,ia); 
-	return 1;
-}
-
-/* take a name and its rrn (buffer must be 256 bytes, and return the name indicated by the cnames
+/* take a name and its rrn (buffer must be 256 bytes), and return the name indicated by the cnames
  * in the record. */
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
 {

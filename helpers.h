@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: helpers.h,v 1.6 2000/06/24 18:58:06 thomas Exp $ */
+/* $Id: helpers.h,v 1.7 2000/06/26 11:41:58 thomas Exp $ */
 
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
@@ -39,8 +39,6 @@ int isdchar (unsigned char c);
 
 void rhn2str(unsigned char *rhn, unsigned char *str);
 int  str2rhn(unsigned char *str, unsigned char *rhn);
-
-int in_addr2ip(struct in_addr *ia, unsigned char *qname);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
 

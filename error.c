@@ -30,11 +30,11 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: error.c,v 1.11 2000/06/25 14:25:51 thomas Exp $";
+static char rcsid[]="$Id: error.c,v 1.12 2000/06/26 11:41:58 thomas Exp $";
 #endif
 
 pthread_mutex_t loglock;
-int waiting=0;
+int waiting=0; /* Has the main thread already done sigwait() ? */
 
 /*
  * Initialize a mutex for io-locking in order not to produce gibberish on
@@ -46,14 +46,14 @@ void init_log(void)
 }
 
 /* This is a handler for signals to the threads. We just hand the sigs on to the main thread.
- * Note that this may result in blocked locks. We have no means to resolve the logs here, because in LinuxThreads
+ * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads
  * the mutex functions are not async-signal safe. So, locks may still be active. We account for this by using
- * softlocks in any functions called after sigwait from main(). */
+ * softlocks (see below) in any functions called after sigwait from main(). */
 #if TARGET==TARGET_LINUX
 void thread_sig(int sig)
 {
 	if (sig==SIGTSTP || sig==SIGTTOU || sig==SIGTTIN) {
-		/* nonfatal signal. */
+		/* nonfatal signal. Ignore, because proper handling is very difficult. */
 		return;
 	}
 	if (waiting) {
@@ -63,7 +63,7 @@ void thread_sig(int sig)
 		pthread_exit(NULL);
 	} else {
 		crash_msg("An error occured at startup.");
-		_exit(0);
+		_exit(1);
 	}
 }
 #endif

@@ -41,26 +41,25 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.12 2000/06/25 14:25:51 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.13 2000/06/26 11:41:58 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
 extern int yydebug;
 #endif
 
-/*int sig_2nd=0;*/
 int daemon_p=0;
 int debug_p=0;
 int verbosity=VERBOSITY;
 pthread_t main_thread;
 #if DEBUG>0
- FILE *dbg;
+FILE *dbg;
 #endif
 #ifdef ENABLE_IPV4
- int run_ipv4=DEFAULT_IPV4;
+int run_ipv4=DEFAULT_IPV4;
 #endif
 #ifdef ENABLE_IPV6
- int run_ipv6=DEFAULT_IPV6;
+int run_ipv6=DEFAULT_IPV6;
 #endif
 
 int tcp_socket;
@@ -130,8 +129,6 @@ void print_help (void)
  */
 int main(int argc,char *argv[])
 {
-/*	pdnsd_a a;*/
-
 	int i,sig;
 	char *conf_file="/etc/pdnsd.conf";
 	int stat_pipe=0;
@@ -204,48 +201,6 @@ int main(int argc,char *argv[])
 			exit(1);
 		}
 	}
-	/* The following #ifdef spaghetti is to warn the user when no or two protocols have been activated. */
-	if (!(
-#ifdef ENABLE_IPV4
-		run_ipv4
-# ifdef ENABLE_IPV6
-		||
-# endif
-#endif
-#ifdef ENABLE_IPV6
-		run_ipv6
-#endif
-		)) {
-		fprintf(stderr,"This executable was compiled with support for ");
-#ifdef ENABLE_IPV4
-		fprintf(stderr,"IPv4");
-# ifdef ENABLE_IPV6
-		fprintf(stderr," and ");
-# endif
-#endif
-#ifdef ENABLE_IPV6
-		fprintf(stderr,"IPv6");
-#endif
-		fprintf(stderr,".\n");
-#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-		fprintf(stderr,"One of these protocols must be activated.\nUse the -4 and -6 command line switches.\n");
-#else
-		fprintf(stderr,"This protocol must be activated. Use the ");
-# ifdef ENABLE_IPV4
-		fprintf(stderr,"-4");
-# else
-		fprintf(stderr,"-6");
-#endif
-		fprintf(stderr," command line switch.\n");
-#endif
-		exit(1);
-	}
-#if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-	if (run_ipv4 && run_ipv6) {
-		fprintf(stderr,"Both IPv4 and IPv6 are activated while only one is allowed at a time.\nUse the -4 and -6 command line switches.\n");
-		exit(1);
-	}
-#endif
 
 	init_cache();
 
@@ -262,7 +217,7 @@ int main(int argc,char *argv[])
 	if (global.strict_suid) {
 		if (!run_as(global.run_as)) {
 			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
-			_exit(1);
+			exit(1);
 		}
 	}
 	umask(0077); /* for security reasons */
@@ -305,10 +260,10 @@ int main(int argc,char *argv[])
 		syslog(LOG_INFO,"pdnsd-%s starting.",VERSION);
 		closelog();
 #if DEBUG>0
-		strncpy(dbgdir,global.cache_dir,1024);
-		strncat(dbgdir,"/pdnsd.debug",1024);
-		dbgdir[1023]='\0';
 		if (debug_p) {
+			strncpy(dbgdir,global.cache_dir,1024);
+			strncat(dbgdir,"/pdnsd.debug",1024);
+			dbgdir[1023]='\0';
 			if (!(dbg=fopen(dbgdir,"w")))
 				debug_p=0;
 		}
@@ -330,14 +285,6 @@ int main(int argc,char *argv[])
 #endif
 	read_disk_cache();
 
-	signal(SIGILL,SIG_DFL); 
-	signal(SIGABRT,SIG_DFL);
-	signal(SIGFPE,SIG_DFL);
-	signal(SIGSEGV,SIG_DFL);
-	signal(SIGPIPE,SIG_DFL);
-	signal(SIGTSTP,SIG_DFL);
-	signal(SIGTTOU,SIG_DFL);
-	signal(SIGTTIN,SIG_DFL);
 	sigemptyset(&sigs_msk);
 	sigaddset(&sigs_msk,SIGILL);
 	sigaddset(&sigs_msk,SIGABRT);
@@ -346,7 +293,6 @@ int main(int argc,char *argv[])
 	sigaddset(&sigs_msk,SIGPIPE);
 	sigaddset(&sigs_msk,SIGTERM);
 	if (!daemon_p) {
-		signal(SIGHUP,SIG_DFL);
 		sigaddset(&sigs_msk,SIGINT);
 		sigaddset(&sigs_msk,SIGQUIT);
 	}

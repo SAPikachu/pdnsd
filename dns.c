@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.5 2000/06/24 18:58:06 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.6 2000/06/26 11:41:57 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -36,95 +36,64 @@ static char rcsid[]="$Id: dns.c,v 1.5 2000/06/24 18:58:06 thomas Exp $";
  * rr name form (length byte - string of that length, terminated by a 0 lenght byte).
  *
  * Returned is a dns return code, with one exception: RC_TRUNC, as defined in dns.h, indicates that the message is
- * truncated at the name.
+ * truncated at the name (which needs a special return code, as it might or might not be fatal).
  */
 int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len)
 {
 	unsigned char lb;
-	int nopos=0;
-	long ioffs;
+	int jumped=0;
 	long offs;
 	unsigned char *lptr;
 	int i;
-	int pos=0;
 	int tpos=0;
-	int hops=255;
+	long osz=*sz;
+
 	if (!*sz)
 		return RC_TRUNC;
-	nopos=0;
+	lptr=*src;
 	while (1) {
-		if (nopos) {
-			if (ioffs>=msgsz)
-				return RC_FORMAT;
-		} else {
-			if (pos>=255)
-				return RC_FORMAT;
+		if (lptr-msg>=msgsz)
+			return RC_FORMAT;
+		if (!jumped)
 			if (*sz<=0)
 				return RC_FORMAT;
-		}
 		if (tpos>=255)
 			return RC_FORMAT;
-		if (nopos) {
-			lb=*lptr;
-			ioffs++;
-			lptr++;
-		} else {
-			lb=(*src)[pos];
+		if (!jumped)
 			(*sz)--;
-			pos++;
-			lptr=&(*src)[pos];
-		}
-		if (lb==0) {
-			tgt[tpos]=0;
-			tpos++;
-			break;
-		}
+		lb=*lptr;
+		lptr++;
+
 		do {
-			if (lb>63 && lb<192)     /* The two highest bits must be either 00 or 11 */
+ 			if (lb>63 && lb<192)     /* The two highest bits must be either 00 or 11 */
 				return RC_FORMAT;
 			if (lb>=192) {
-				if (nopos) {
-					hops--;     /* We do this to save endless loop checking */
-					if (hops<=0)
-						return RC_FORMAT;
-					
-					if (ioffs>=msgsz-1)
-						return RC_FORMAT;
-					offs=(((unsigned short)lb&0x3f)<<8)|(*lptr);
-					if (offs>=msgsz-1) 
-						return RC_FORMAT;
-					lptr=msg+offs;
-					ioffs=offs+1;
-					lb=*lptr;
-					lptr++;
-				} else {
-					hops--;
+				if (lptr-msg>=msgsz-1)
+					return RC_FORMAT;
+				if (!jumped) {
 					if ((*sz)<1)
 						return RC_TRUNC;
-					if (pos>=255)
-						return RC_FORMAT;
-					offs=(((unsigned short)lb&0x3f)<<8)|(*lptr);
-					pos++;
 					(*sz)--;
-					if (offs>=msgsz-1) 
-						return RC_FORMAT;
-					nopos=1;
-					lptr=msg+offs;
-					ioffs=offs+1;
-					lb=*lptr;
-					lptr++;
+					jumped=1;
+
 				}
+				offs=(((unsigned short)lb&0x3f)<<8)|(*lptr);
+				if (offs>=msgsz-1) 
+					return RC_FORMAT;
+				lptr=msg+offs;
+				lb=*lptr;
+				lptr++;
 			}
 		} while (lb>63);
-		tgt[tpos]=lb;
+ 		tgt[tpos]=lb;
 		tpos++;
+		if (lb==0) {
+			break;
+		}
 		for (i=0;i<lb;i++) {
-			if (nopos) {
-				if (ioffs>=msgsz)
-					return RC_FORMAT;
-			} else {
-				if (pos>=255)
-					return RC_FORMAT;
+			if (lptr-msg>=msgsz)
+				return RC_FORMAT;
+			if (jumped) {
 				if (*sz<=0)
 					return RC_TRUNC;
 			}
@@ -133,15 +102,12 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 			tgt[tpos]=tolower(*lptr);
 			lptr++;
 			tpos++;
-			if (nopos) {
-				ioffs++;
-			} else {
-				pos++;
+			if (!jumped) {
 				(*sz)--;
 			}
 		}
 	}
-	*src=&(*src)[pos];
+	*src+=osz-*sz;
 	*len=tpos;
 	return RC_OK;
 }
