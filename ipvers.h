@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.3 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: ipvers.h,v 1.4 2000/06/06 13:42:18 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
@@ -75,7 +75,7 @@ struct in_pktinfo
 
 /* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine. 
  * Pass a in_addr* and a in6_addr* */
-#define IPV6_MAPIPV4(a,b) ((uint32_t *)(b))[4]=(a)->s_addr;((uint32_t *)(b))[3]=htonl(0xffff);((uint32_t *)(b))[2]=((uint32_t *)(b))[1]=0
+#define IPV6_MAPIPV4(a,b) ((uint32_t *)(b))[3]=(a)->s_addr;((uint32_t *)(b))[2]=htonl(0xffff);((uint32_t *)(b))[1]=((uint32_t *)(b))[0]=0
 
 /* A macro to extract the pointer to the address of a struct sockaddr (_in or _in6) */
 

@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.10 2000/06/06 11:57:01 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.11 2000/06/06 13:42:18 thomas Exp $";
 #endif
 
 /*
@@ -1103,6 +1103,10 @@ void *udp_server_thread(void *dummy)
 	struct cmsghdr *cmsg;
 	char ctrl[512];
 	int so=1;
+#if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
+	struct in_pktinfo *sip;
+#endif
+
 	(void)dummy; /* To inhibit "unused variable" warning */
 
 	if (!pe) {
@@ -1157,18 +1161,16 @@ void *udp_server_thread(void *dummy)
 	}
 
 #if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
-# ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
-			if (da_udp_errs<UDP_MAX_ERRS) {
-				da_udp_errs++;
-				log_error("Could not set options on udp socket: %s",strerror(errno));
+	/* The following must be set on any case because it also applies for IPv4 packets sent to
+	 * ipv6 addresses. */
+	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
+		if (da_udp_errs<UDP_MAX_ERRS) {
+			da_udp_errs++;
+			log_error("Could not set options on udp socket: %s",strerror(errno));
 			}
-			close(sock);
-			return NULL;
-		}
+		close(sock);
+		return NULL;
 	}
-# endif
 # ifdef ENABLE_IPV6
 	if (run_ipv6) {
 		if (setsockopt(sock,SOL_IPV6,IPV6_PKTINFO,&so,sizeof(so))!=0) {
@@ -1248,13 +1250,27 @@ void *udp_server_thread(void *dummy)
 				cmsg=CMSG_NXTHDR(&msg,cmsg);
 			}
 			if (!cmsg) {
-				if (da_udp_errs<UDP_MAX_ERRS) {
-					da_udp_errs++;
-					log_error("Could not discover udp destination address");
+				/* We might have an IPv4 Packet incoming on our IPv6 port, so we also have to
+				 * check for IPv4 sender addresses */
+				cmsg=CMSG_FIRSTHDR(&msg);
+				while(cmsg) {
+					if (cmsg->cmsg_level==SOL_IP && cmsg->cmsg_type==IP_PKTINFO) {
+						sip=(struct in_pktinfo *)CMSG_DATA(cmsg);
+						IPV6_MAPIPV4(&sip->ipi_addr,&buf->pi.pi6.ipi6_addr);
+						buf->pi.pi6.ipi6_ifindex=sip->ipi_ifindex;
+						break;
+					}
+					cmsg=CMSG_NXTHDR(&msg,cmsg);
 				}
-				free(buf);
-				usleep(50000);
-				continue;
+				if (!cmsg) {
+					if (da_udp_errs<UDP_MAX_ERRS) {
+						da_udp_errs++;
+						log_error("Could not discover udp destination address");
+					}
+					free(buf);
+					usleep(50000);
+					continue;
+				}
 			}
 		}
 # endif
