@@ -52,7 +52,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.15 2000/10/19 21:51:00 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.16 2000/10/19 22:14:01 thomas Exp $";
 #endif
 
 /*
@@ -1431,7 +1431,7 @@ void *tcp_answer_thread(void *csock)
 		}
 #else
 		pfd.fd=sock;
-		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
+		pfd.events=POLLIN;
 		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
 			close(sock);
 			return NULL; 
@@ -1468,7 +1468,7 @@ void *tcp_answer_thread(void *csock)
 		}
 #else
 		pfd.fd=sock;
-		pfd.events=POLL_IN|POLL_ERR|POLL_PRI;
+		pfd.events=POLLIN;
 		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
 			close(sock);
 			free(buf);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.13 2000/10/19 15:40:29 thomas Exp $
+$Id: NEWS,v 1.14 2000/10/19 22:13:58 thomas Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -71,3 +71,5 @@ and a security fix (contributed by Olaf Kirch): when changing
 user and group id, pdnsd did not drop supplementary group IDs that
 the original user was member of.
 
+Version 1.0.14 has a fix in icmp.c that will make it build properly
+on FreeBSD and older Linux systems.
