@@ -1,10 +1,10 @@
-dnl $Id: configure.in,v 1.32 2001/09/23 13:41:23 tmm Exp $
+dnl $Id: configure.in,v 1.33 2001/12/30 15:32:51 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
 test -z "$CFLAGS" && CFLAGS="-Wall -pedantic -g"
 
-CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"@sysconfdir@\\\"\""
+CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
 
 PACKAGE="pdnsd"
 VERSION=`cat version`
