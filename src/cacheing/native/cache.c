@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.15 2000/11/18 14:56:32 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.16 2000/11/28 22:05:54 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -114,6 +114,26 @@ volatile int cache_w_lock=0;
 volatile int cache_r_lock=0;
 
 pthread_mutex_t lock_mutex;
+/* 
+ * These are condition variables for lock coordination, so that normal lock
+ * routines do not need to loop. Basically, a process wanting to acquire a lock
+ * tries first to lock, and if the lock is busy, sleeps on one of the conds.
+ * If the r lock count has gone to zero one process sleeping on the rw cond 
+ * will be awankened.
+ * If the rw lock is lifted, either all threads waiting on the r lock or one
+ * thread waiting on the rw lock is/are awakened. This is determined by policy.
+ */
+pthread_cond_t  rw_cond;
+pthread_cond_t  r_cond;
+
+/* This is to suspend the r lock to avoid lock contention by reading threads */
+volatile int r_pend=0;
+volatile int rw_pend=0;
+volatile int r_susp=0;
+
+/* This threshold is used to temporarily suspend r locking to give rw locking
+ * a chance. */
+#define SUSP_THRESH (r_pend*0.5+2)
 
 /*
  * This is set to 1 once the lock is intialized. This must happen before we get
@@ -140,25 +160,26 @@ static void remove_rrl(rr_lent_t *le);
  * We use a mutex to lock the access to the locks ;-).
  * This is because we do not allow read and write to interfere (for which a normal mutex would be
  * fine), but we also want to allow concurrent reads.
- * A possible danger under high load conditions is that writes are delayed a long time because the
- * read operations do not have to wait for the read lock to clear and thus stuff the readlock close.
- * Lets see.
+ * We use condition variables, and readlock contention protection.
  */
 static void lock_cache_r(void)
 {
-	int lk=0;
 	if (!use_cache_lock)
 		return;
-	while (!lk)  {
-		pthread_mutex_lock(&lock_mutex);
-		if (!cache_w_lock) {
-			lk=1;
+	pthread_mutex_lock(&lock_mutex);
+	r_pend++;
+	do {
+		if (rw_pend>SUSP_THRESH)
+			r_susp=1;
+		if (!cache_w_lock && !r_susp) {
 			cache_r_lock++;
+			r_pend--;
+			break;
 		}
-		pthread_mutex_unlock(&lock_mutex);
-		if (!lk)
-			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
-	}
+		/* This will unlock the mutex while sleeping and relock it before exit */
+		pthread_cond_wait(&r_cond, &lock_mutex);
+	} while (1);
+	pthread_mutex_unlock(&lock_mutex);
 }
 
 static void unlock_cache_r(void)
@@ -168,6 +189,9 @@ static void unlock_cache_r(void)
 	pthread_mutex_lock(&lock_mutex);
 	if (cache_r_lock>0) 
 		cache_r_lock--;
+	/* wakeup threads waiting to write */
+	if (!cache_r_lock)
+		pthread_cond_signal(&rw_cond);
 	pthread_mutex_unlock(&lock_mutex);
 }
 
@@ -179,19 +203,20 @@ static void unlock_cache_r(void)
  */
 static void lock_cache_rw(void)
 {
-	int lk=0;
 	if (!use_cache_lock)
 		return;
-	while (!lk)  {
-		pthread_mutex_lock(&lock_mutex);
+	pthread_mutex_lock(&lock_mutex);
+	rw_pend++;
+	do {
 		if (!(cache_w_lock || cache_r_lock)) {
-			lk=1;
 			cache_w_lock=1;
+			rw_pend--;
+			break;
 		}
-		pthread_mutex_unlock(&lock_mutex);
-		if (!lk)
-			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
-	}
+		/* This will unlock the mutex while sleeping and relock it before exit */
+		pthread_cond_wait(&r_cond, &lock_mutex);
+	} while (1);
+	pthread_mutex_unlock(&lock_mutex);
 }
 
 static void unlock_cache_rw(void)
@@ -200,12 +225,20 @@ static void unlock_cache_rw(void)
 		return;
 	pthread_mutex_lock(&lock_mutex);
 	cache_w_lock=0;
+	/* always reset r suspension (r locking code will set it again */
+	r_susp=0;
+	/* wakeup threads waiting to read or write */
+	if (rw_pend>SUSP_THRESH)
+		pthread_cond_signal(&rw_cond); /* schedule another rw proc */
+	else
+		pthread_cond_broadcast(&r_cond); /* let 'em all read */
 	pthread_mutex_unlock(&lock_mutex);
 }
 
-/* This are a special version of the ordinary read lock functions. The lock "soft" to avoid deadlocks: they will give up
- * after a certain number of bad trials. You have to check the exit status though.*/
-
+/* These are a special version of the ordinary read lock functions. The lock "soft" to avoid deadlocks: they will give up
+ * after a certain number of bad trials. You have to check the exit status though.
+ * To avoid blocking mutexes, we cannot use condition variables here. Never mind, these are only used on
+ * exit*/
 static int softlock_cache_r(void)
 {
 	int lk=0;
@@ -228,6 +261,7 @@ static int softlock_cache_r(void)
 	return 1;
 }
 
+/* On unlocking, we do not wake others. We are about to exit! */
 static int softunlock_cache_r(void)
 {
 	if (!use_cache_lock)
@@ -291,7 +325,6 @@ unsigned long get_serial ()
 	return rv;
 }
 
-
 /*
  * Cache/cent handlers
  */
@@ -307,6 +340,8 @@ void init_cache()
 void init_cache_lock()
 {
 	pthread_mutex_init(&lock_mutex,NULL);
+	pthread_cond_init(&rw_cond,NULL);
+	pthread_cond_init(&r_cond,NULL);
 	use_cache_lock=1;
 }
 
@@ -324,10 +359,13 @@ void destroy_cache()
 		ce=fetch_next((dns_hash_t *)&dns_hash,&pos);
 	}
 	free_dns_hash((dns_hash_t *)&dns_hash);
+
 #if 0
 TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
 	pthread_mutex_destroy(&lock_mutex);
+	pthread_cond_destroy(&rw_cond);
+	pthread_cond_destroy(&r_cond);
 #endif
 }
 

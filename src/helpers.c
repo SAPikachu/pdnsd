@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.9 2000/11/11 14:24:48 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.10 2000/11/28 22:05:50 thomas Exp $";
 #endif
 
 /*
@@ -50,7 +50,9 @@ void pdnsd_exit()
 }
 
 /*
- * Try to grab a mutex. If we can't, fail
+ * Try to grab a mutex. If we can't, fail. This will loop until we get the 
+ * mutex or fail. This is only used in debugging code or at exit, otherwise
+ * we might run into lock contention problems.
  */
 int softlock_mutex(pthread_mutex_t *mutex)
 {
