@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.28 2001/06/02 23:08:13 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.29 2001/06/03 21:11:43 tmm Exp $";
 #endif
 
 /*
@@ -191,15 +191,19 @@ int rhnlen(unsigned char *rhn)
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
- * Returns number of characters copied. The buffer dst points to is assumed to be 256 bytes in size.
+ * Returns number of characters copied. The buffer dst points to is assumed to be 256 (or
+ * at any rate large enough) bytes in size.
+ * The answer assembly code uses this; it is guaranteed to not clobber anything
+ * after the name.
  */
 int rhncpy(unsigned char *dst, unsigned char *src)
 {
-	/* We can use strlen/strncpy here, because a rhn is terminated by a 0 length byte. */
-	PDNSD_ASSERT(rhnlen(src)<=256,"rhncpy: src too long!");
-	strncpy((char *)dst,(char *)src,256);
-	dst[255]='\0';
-	return rhnlen(src);
+	int len;
+
+	len = rhnlen(src);
+	PDNSD_ASSERT(len<=256,"rhncpy: src too long!");
+	memcpy((char *)dst,(char *)src,len>256?256:len);
+	return len;
 }
 
 

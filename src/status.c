@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.31 2001/06/02 20:12:45 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.32 2001/06/03 21:11:43 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -251,6 +251,10 @@ void *status_thread (void *p)
 					break;
 				if ((cmd2=read_short(rs))<-1)	/* caching flags */
 					break;
+				if (ttl < 0) {
+					print_serr(rs, "Bad TTL");
+					break;
+				}
 				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd2, cmd,errbuf,sizeof(errbuf)))
 					print_succ(rs);
 				else
@@ -270,6 +274,10 @@ void *status_thread (void *p)
 					break;
 				if ((cmd2=read_short(rs))<-1)	/* caching flags */
 					break;
+				if (ttl < 0) {
+					print_serr(rs, "Bad TTL");
+					break;
+				}
 
 				sz=-1;
 				switch (cmd) {
@@ -343,6 +351,10 @@ void *status_thread (void *p)
 				if (cmd!=255 && (cmd<T_MIN || cmd>T_MAX)) {
 					DEBUG_MSG("NEG: received bad record type.\n");
 					print_serr(rs,"Bad record type.");
+					break;
+				}
+				if (ttl < 0) {
+					print_serr(rs, "Bad TTL");
 					break;
 				}
 				if (cmd==255) {

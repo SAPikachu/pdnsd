@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.26 2001/06/02 23:08:13 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.27 2001/06/03 21:11:43 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -255,7 +255,9 @@ typedef	struct {
 } pdnsd_ca;
 
 /*
- * Add records for a host as read from a hosts-style file
+ * Add records for a host as read from a hosts-style file.
+ * Returns 1 on success, 0 in an out of memory condition, and -1 when there was a problem with
+ * the record data.
  */
 static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pdnsd_ca *a, int a_sz, time_t ttl, int flags, int tp, int reverse)
 {
@@ -307,14 +309,12 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 			for (i=15;i>=0;i--) {
 				snprintf((char *)b4, sizof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
 				strncat((char *)b2,(char *)b4,sizeof(b2)-strlen(b2)-1);
-				b2[sizeof(b2)-1]='\0';
 			}
 			strncat((char *)b2,"ip6.int.",sizeof(b2)-strlen(b2)-1);
-			b2[sizeof(b2)-1]='\0';
 		}
 #endif
 		if (!str2rhn(b2,rhn))
-			return 0;
+			return -1;
 		if (!init_cent(&ce, b2, flags, time(NULL), 0, 0))
 			return 0;
 		if (!add_cent_rr(&ce,ttl,0,CF_LOCAL,rhnlen(b3),b3,T_PTR,0)) {
@@ -333,13 +333,15 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 
 /*
  * Read a file in /etc/hosts-format and add generate rrs for it.
+ * Errors are largely ignored so that we can skip entries we do not understand
+ * (but others possibly do).
  */
 int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases, char *errbuf, int errsize)
 {
 	FILE *f;
 	unsigned char buf[1025];
 	unsigned char b2[257],b3[256];
-	unsigned char *p,*pn,*pi;
+	unsigned char *p,*pn,*pi,lastc;
 	struct in_addr ina4;
 	int tp;
 	int sz;
@@ -351,17 +353,16 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 		return 0;
 	}
 	while (!feof(f)) {
-		if (fgets((char *)buf,1023,f)==NULL) {
+		if (fgets((char *)buf,sizeof(buf),f)==NULL) {
 			if (feof(f))
 				break;
 			snprintf(errbuf, errsize, "Failed to source %s: %s", fn, strerror(errno));
 			fclose(f);
 			return 0;
 		}
-		buf[1023]='\0';
-/*		printf("read: %s\n", buf);*/
+		buf[sizeof(buf)-1]='\0';
 		p=buf;
-		while (*p) {
+		while (*p != '\0') {
 			if (*p=='#') {
 				*p='\0';
 				break;
@@ -370,26 +371,26 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 		}
 		pi=buf;
 		while (*pi==' ' || *pi=='\t') pi++;
-		if (!*pi)
+		if (*pi=='\0')
 			continue;
 		pn=pi;
 		while (*pn=='.' || *pn==':' || isxdigit(*pn)) pn++;  /* this includes IPv6 (':') */
-		if (!*pn)
+		if (*pn=='\0')
 			continue;
 		*pn='\0';
 		pn++;
 		while (*pn==' ' || *pn=='\t') pn++;
-		if (!*pn)
+		if (*pn=='\0')
 			continue;
 		p=pn;
 		while (isdchar(*p) || *p=='.') p++;
+		lastc=*p;
 		*p='\0';
 		memset(b2,'\0',257);
 		strncpy((char *)b2,(char *)pn,255);
-		if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+		if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<255) {
 			b2[strlen((char *)b2)]='.';
 		}
-/*		printf("i: %s, n: %s--\n",pi,pn);*/
 		if (!str2rhn(b2,b3))
 			continue;
 		if (inet_aton((char *)pi,&ina4)) {
@@ -398,7 +399,7 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 			sz=sizeof(struct in_addr);
 		} else {
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
-			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)) {
+			if (inet_pton(AF_INET6,(char *)pi,&a.ipv6)==1) {
 				tp=T_AAAA;
 				sz=sizeof(struct in6_addr);
 			} else
@@ -407,24 +408,37 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int flags, int aliases,
 			continue;
 #endif
 		}
-		if (!add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1))
+		switch (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,1)) {
+		case 0:
+			strncpy(errbuf, "Out of memory", errsize);
+			errbuf[errsize-1]='\0';
+			return 0;
+		case -1:
 			continue;
+		}
 		while (aliases) {
+			if (lastc=='\0')
+				break;
 			pn=p+1;
 			while (*pn==' ' || *pn=='\t') pn++;
-			if (!*pn)
+			if (*pn=='\0')
 				break;
 			p=pn;
 			while (isdchar(*p) || *p=='.') p++;
+			lastc=*p;
 			*p='\0';
 			memset(b2,'\0',257);
 			strncpy((char *)b2,(char *)pn,255);
-			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<256) {
+			if (b2[strlen((char *)b2)-1]!='.' && strlen((char *)b2)<255) {
 				b2[strlen((char *)b2)]='.';
 			}
 			if (!str2rhn(b2,b3))
 				break;
-			add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0);
+			if (add_host(b2, rns, b3, &a, sz, ttl, flags, tp,0) == 0) {
+				strncpy(errbuf, "Out of memory", errsize);
+				errbuf[errsize-1]='\0';
+				return 0;
+			}
 		}
 	}
 	fclose(f);

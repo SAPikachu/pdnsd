@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.18 2001/04/12 20:04:01 tmm Exp $
+$Id: NEWS,v 1.19 2001/06/03 21:11:41 tmm Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -110,3 +110,28 @@ and P.J. Bostley that made this possible). New types were dded for rr
 sections and pdnsd-ctl.
 Upgrade is recommended.
 
+Version 1.1.4 fixes various smaller bugs, and should also improve the cache
+write performance especially for larger caches.	There are also two new
+features: servers can now be given a label (using the label server option)
+which can be used to identify them for the pdnsd-ctl server command
+(contributed by Andrew M. Bishop), and local records can be marked to make
+the domain record authoritative in pdnsd's cache (which means that pdnsd will
+assume that records that are not present in the cache for that domain are
+non-existent); this is on by default now, and can be controlled using the new
+authrec server option).
+
+Version 1.1.5 contains a fix for a security bug that would allow local users
+that are allowed to use pdnsd-ctl on a running pdnsd server to execute
+arbitrary code as the user that pdnsd runs as (or on Linux, when strict_setuid
+is not enabled, as the user that started pdnsd). The danger of this is usually
+quite limited; the status socket is not enabled by default, it's default
+permissions do only allow the user pdnsd runs as to use the socket,
+strict_setuid is enabled by default and pdnsd runs as an unprivileged user.
+There is also a new configure option, --enable-underscores, that will make
+pdnsd allow underscores in domain names. Furthermore, the SRV record handling
+has been fixed to allow underscores in any case (this was not allowed
+previously, but is required by the RFC). SOA records are not put in the
+answer section any more if no answers are found (this violates the RFC's).
+It may be put in the authority section in a later version.
+There are also various bugfixes in this release.
+Upgrade is recommended.
