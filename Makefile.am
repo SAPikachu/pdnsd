@@ -1,10 +1,10 @@
-# $Id: Makefile.am,v 1.19 2001/03/25 20:01:30 tmm Exp $
+# $Id: Makefile.am,v 1.20 2001/06/04 19:59:50 tmm Exp $
 
 SUBDIRS = src doc contrib
 #GZIP_ENV=
 
 EXTRA_DIST = @PACKAGE@.spec.in config.h config.h.in version file-list.base \
-file-list.base.in ChangeLog.old
+file-list.base.in ChangeLog.old COPYING.BSD
 
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
