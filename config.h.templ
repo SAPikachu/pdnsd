@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.12 2000/06/25 15:55:48 thomas Exp $ */
+/* $Id: config.h.templ,v 1.13 2000/06/29 10:24:50 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -44,7 +44,7 @@
  * If you activete IPv6, you should also activate DNS_NEW_RRS below. */
 #define ENABLE_IPV4
 #define DEFAULT_IPV4 1
-#undef ENABLE_IPV6
+#define ENABLE_IPV6
 #define DEFAULT_IPV6 0
 
 /* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
@@ -62,7 +62,7 @@
  * In short, these RRs are:
  * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
  * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
-#undef DNS_NEW_RRS
+#define DNS_NEW_RRS
 
 /* Define this for "hard" RFC 2181 compliance: this RFC states that
  * implementations should discard answers whose RR sets have multiple

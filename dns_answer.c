@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.21 2000/06/27 18:24:22 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.22 2000/06/29 10:24:51 thomas Exp $";
 #endif
 
 /*
@@ -410,7 +410,7 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 }
 
 /*
- * The code below actually handles A and AAAA.
+ * Add an additional
  */
 static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_t **sva, int *svan,dns_hdr_t **ans, unsigned long *rlen, char udp, time_t queryts,	compbuf_t **cb, int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
 {
@@ -432,18 +432,19 @@ static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_t **sva
 	}
 	if (rc) {
 		/* add_rr will do nothing when sz>512 bytes. */
-		if (rc) {
-			add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn,
-			       ts,ttl,flags); 
-				/* mark it as added */
-			if (!sva_add(sva,svan,buf,NULL,tp,rr)) {
-				return 0;
-			}
+		add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn,
+		       ts,ttl,flags); 
+			/* mark it as added */
+		if (!sva_add(sva,svan,buf,NULL,tp,rr)) {
+			return 0;
 		}
 	}
 	return 1;
 }
 
+/*
+ * The code below actually handles A and AAAA additionals.
+ */
 static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t **ans, unsigned long *rlen, char udp, time_t queryts,	compbuf_t **cb) 
 {
 	unsigned char  buf[256]; /* this is buffer space for the ns record */
@@ -455,8 +456,8 @@ static int add_additional_a(unsigned char *rhn, sva_t **sva, int *svan,dns_hdr_t
 				       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
 			return 0;
 #ifdef DNS_NEW_RRS
-		if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_A-T_MIN]->rrs,
-				       ae->rr[T_A-T_MIN]->ts,ae->rr[T_A-T_MIN]->ttl,ae->rr[T_A-T_MIN]->flags,S_ADDITIONAL))
+		if (!add_additional_rr(rhn, buf, sva, svan, ans, rlen, udp, queryts, cb, T_AAAA, ae->rr[T_AAAA-T_MIN]->rrs,
+				       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
 			return 0;
 #endif
 		free_cent(*ae);
@@ -514,7 +515,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 	compbuf_t *cb=NULL;
 	dns_hdr_t *ans;
 	dns_queryel_t *qe;
-	dns_cent_t *cached/*,*bcached*/;
+	dns_cent_t *cached;
 	unsigned char *nb;
 	int have_ns=0;
 	dns_cent_t *ae;
@@ -575,7 +576,7 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			if ((rc=p_dns_cached_resolve(NULL,buf, bufr, &cached, MAX_HOPS,qe->qtype,queryts))!=RC_OK) {
 				while (ar) {
 					au=ar->next;
-					free_rr(*ar);
+					free_rr(ar->rr);
 					free(ar);
 					ar=au;
 				}
@@ -584,13 +585,14 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 				ans->rcode=rc;
 				return (unsigned char *)ans;
 			}
-/*			if (!(cached->flags&CF_LOCAL))*/
 			aa=0;
 			strcpy((char *)oname,(char *)buf);
 			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&svan)) {
+				free_cent(*cached);
+				free(cached);
 				while (ar) {
 					au=ar->next;
-					free_rr(*ar);
+					free_rr(ar->rr);
 					free(ar);
 					ar=au;
 				}
@@ -602,12 +604,8 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			hops--;
 			/* If there is only a cname and rd is set, add the cname to the response (add_to_response
 			 * has already done this) and repeat the inquiry with the c name */
-/*			if ((qe->qtype>=QT_MIN || cached->rr[qe->qtype-T_MIN]==NULL) && cached->rr[T_CNAME-T_MIN]!=NULL && hdr->rd!=0) {*/
 			if ((qe->qtype>=QT_MIN || !cached->rr[qe->qtype-T_MIN]) && cnc>0 && hdr->rd!=0) {
 				/* We did follow_cname_chain, so bufr and buf must contain the last cname in the chain.*/
-				/*memset(bufr,0,256);
-				strcpy(bufr,(char *)(cached->rr[T_CNAME-T_MIN]+1));
-				rhn2str(bufr,buf);*/
 				cont=1;
 			}
 			/* maintain a list for authority records: We will add every name server we got an authoritative
@@ -622,6 +620,8 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 						if (!add_ar(rr, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
 							    cached->rr[T_NS-T_MIN]->flags)) {
 							free(ans);
+							free_cent(*cached);
+							free(cached);
 							while (ar) {
 								au=ar->next;
 								free_rr(ar->rr);
@@ -768,7 +768,7 @@ static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
 		if (res==RC_TRUNC) {
 			if (hdr->tc) {
 				(*q)->num=i;
-				if ((*q)->num==0) {
+				if (i==0) {
 					free(*q);
 					return RC_FORMAT; /*not even one complete query*/
 				}
@@ -784,7 +784,7 @@ static int decode_query(unsigned char *data,unsigned long rlen, dns_query_t **q)
 		if (sz<4) {
 			/* truncated in qname or qclass*/
 			(*q)->num=i;
-			if ((*q)->num==0) {
+			if (i==0) {
 				free(*q);
 				return RC_FORMAT; /*not even one complete query*/
 			}
@@ -886,9 +886,10 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 	if (hdr->rcode!=RC_OK) {
 		free(resp);
 		DEBUG_MSG1("Bad rcode.\n");
-		return NULL; /* discard (may cause error storms */
+		return NULL; /* discard (may cause error storms) */
 	}
 
+	free(resp);
 	res=decode_query(data,*rlen,&q);
 	if (res) {
 		*rlen=sizeof(dns_hdr_t);
@@ -912,7 +913,6 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_SERVFAIL);
 		return (unsigned char *)resp;
 	}
-	free(resp);
 	free(q);
 	return (unsigned char *)ans;
 }
@@ -987,6 +987,8 @@ void *udp_answer_thread(void *data)
 		DEBUG_MSG2("Answering to: %s, ", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
 # if TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
+# else
+		DEBUG_MSG1("\n");
 # endif
 	}
 #endif
@@ -1007,6 +1009,8 @@ void *udp_answer_thread(void *data)
 		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,50));
 # if TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,50));
+# else
+		DEBUG_MSG1("\n");
 # endif
 	}
 #endif
@@ -1364,9 +1368,8 @@ void *tcp_answer_thread(void *csock)
 				close(sock);
 				return NULL;
 			}
-			rlen=nlen;
 			free(buf);
-			rlen=htons(rlen);
+			rlen=htons(nlen);
 			if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 				free(resp);
 				close(sock);

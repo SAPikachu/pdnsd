@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.14 2000/06/26 11:41:58 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.15 2000/06/29 10:24:51 thomas Exp $";
 #endif
 
 /*
@@ -276,7 +276,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 			case T_SRV:
@@ -296,7 +297,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 			case T_NXT:
@@ -316,7 +318,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 			case T_NAPTR:
@@ -356,7 +359,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_FORMAT;
 				if (ntohs(rhdr->rdlength)>530)
 					return RC_FORMAT;
-				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial))
+				if (!rr_to_cache(*cent, ntohl(rhdr->ttl), oname, slen, db, ntohs(rhdr->type),flags,queryts,serial,trusted,
+						 nsdomain))
 					return RC_SERVFAIL;
 				break;
 #endif
