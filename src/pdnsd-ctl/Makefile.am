@@ -1,6 +1,6 @@
-# $Id: Makefile.am,v 1.1 2000/10/25 19:03:04 thomas Exp $
+# $Id: Makefile.am,v 1.2 2000/11/11 16:21:36 thomas Exp $
 
 sbin_PROGRAMS = pdnsd-ctl
 
-pdnsd_ctl_SOURCES = pdnsd-ctl.c
+pdnsd_ctl_SOURCES = pdnsd-ctl.c rr_types.c
 

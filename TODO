@@ -1,4 +1,4 @@
-$Id: TODO,v 1.25 2000/11/07 12:49:49 thomas Exp $
+$Id: TODO,v 1.26 2000/11/11 16:21:24 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -225,7 +225,7 @@ Grab neg_ttl from SOA, if present?			       [-tm, 2000-11-06]
 Are the requerying policy in p_recursive_query (aa_needed...)  [-tm, 2000-11-06]
 conflicting in some cases?				     
 --------------------------------------------------------------------------------
-Extend pdnsd-ctl to support creating negative cached records   [open	       ]
+Extend pdnsd-ctl to support creating negative cached records   [-tm, 2000-11-11]
 (and maybe for setting some other options). 		    
 --------------------------------------------------------------------------------
 Extend config file format to support creating negative cached  [open	       ]

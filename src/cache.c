@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.11 2000/11/11 14:24:51 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.12 2000/11/11 16:21:33 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -406,6 +406,10 @@ int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, 
  */
 static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
 {
+	if (cent->flags&(DF_LOCAL) && cent->flags&DF_NEGATIVE) {
+		return 1; /* ignore. Local has precedence */
+	}
+
 	if (!cent->rr[tp-T_MIN]) {
 		if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial))
 			return 0;
@@ -659,7 +663,8 @@ static int purge_cent(dns_cent_t *cent, int delete)
 		rv+=purge_rrset(cent,i);
 	}
 	/* if the record was purged empty, delete it from the cache. */
-	if (cent->num_rrs==0 && delete && (!cent->flags&DF_NEGATIVE || time(NULL)-cent->ts>cent->ttl+CACHE_LAT)) {
+	if (cent->num_rrs==0 && delete && (!cent->flags&DF_NEGATIVE || 
+					   ((time(NULL)-cent->ts>cent->ttl+CACHE_LAT) && !cent->flags&DF_LOCAL))) {
 		del_cache_int_rrl(cent); /* this will subtract the cent's left size from cache_size */
 	}
 	return rv;

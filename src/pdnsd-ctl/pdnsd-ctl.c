@@ -30,9 +30,10 @@ Boston, MA 02111-1307, USA.  */
 #include "../status.h"
 #include "../conff.h"
 #include "../dns.h"
+#include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.2 2000/11/01 21:24:35 thomas Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.3 2000/11/11 16:21:36 thomas Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -43,8 +44,10 @@ typedef struct {
 	int  val;
 } cmd_s;
 
-cmd_s top_cmds[6]={{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
-		   {"source",CTL_SOURCE},{"add",CTL_ADD},{NULL,0}};
+#define CTL_AUX_LISTRRT 16
+
+cmd_s top_cmds[7]={{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
+		   {"source",CTL_SOURCE},{"add",CTL_ADD},{"neg",CTL_NEG}, {NULL,0}};
 cmd_s server_cmds[4]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
 cmd_s record_cmds[4]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
 cmd_s onoff_cmds[3]= {{"off",0},{"on",1},{NULL,0}};
@@ -97,6 +100,17 @@ void print_help(void)
  	printf("\tIf you want no other record than the newly added in the cache, do\n");
  	printf("\tpdnsdctl record <name> delete\n");
  	printf("\tbefore adding records.\n");
+
+	printf("neg\tname\t[type]\t[ttl]\n");
+ 	printf("\tAdd a negative cached record to pdnsd's cache, replacing existing\n");
+	printf("\trecords for the same name and type. If no type is given, the whole\n");
+	printf("\tdomain is cached negative. For negative cached records, errors are\n");
+	printf("\timmediately returned on a query, without querying other servers first.\n");
+	printf("\tThe ttl is optional, the default is 900 seconds.\n");
+
+	printf("list-rrtypes\n");
+	printf("\tList available rr types for the neg command. Note that those are only\n");
+	printf("\tused for the neg command, not for add!\n");
 }
 
 int open_sock(char *pipe)
@@ -121,22 +135,22 @@ int open_sock(char *pipe)
 	return s;
 }
 
-void send_command(short cmd, int f)
-{
-	short nc=htons(cmd);
-
-	if (write(f,&nc,sizeof(nc))<0) {
-		printf("Error: could not write cmd: %s\n",strerror(errno));
-		exit(2);
-	}
-}
-
 void send_long(long cmd, int f)
 {
 	long nc=htonl(cmd);
 
 	if (write(f,&nc,sizeof(nc))<0) {
 		printf("Error: could not write long: %s\n",strerror(errno));
+		exit(2);
+	}
+}
+
+void send_short(long cmd, int f)
+{
+	short nc=htons(cmd);
+
+	if (write(f,&nc,sizeof(nc))<0) {
+		printf("Error: could not write short: %s\n",strerror(errno));
 		exit(2);
 	}
 }
@@ -162,8 +176,8 @@ int match_cmd(char *cmd, cmd_s cmds[])
 int main(int argc, char *argv[])
 {
 	int pf,cmd,acnt;
-	int rv=0;
-	short cmd2;
+	int i,rv=0;
+	short cmd2,tp;
 	char errmsg[256]="";
 	long ttl;
 	struct in_addr ina4;
@@ -185,10 +199,16 @@ int main(int argc, char *argv[])
 		print_help();
 	} else if (strcmp(argv[1],"version")==0) {
 		print_version();
+	} else if (strcmp(argv[1],"list-rrtypes")==0) {
+		printf("Available RR types for the neg command:\n");
+		for (i=0;i<T_MAX;i++) {
+			printf("%s\n",rr_info[i]);
+		}
+		exit(0);
 	} else {
 		cmd=match_cmd(argv[1],top_cmds);
 		pf=open_sock(sock_path);
-		send_command(cmd,pf);
+		send_short(cmd,pf);
 		switch (cmd) {
 		case CTL_STATS:
 			if (argc!=2) {
@@ -214,8 +234,8 @@ int main(int argc, char *argv[])
 					exit(2);
 				}
 			}
-			send_command(cmd2,pf);
-			send_command(match_cmd(argv[3],server_cmds),pf);
+			send_short(cmd2,pf);
+			send_short(match_cmd(argv[3],server_cmds),pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
 			if (rv)
@@ -226,7 +246,7 @@ int main(int argc, char *argv[])
 				print_help();
 				exit(2);
 			}
-			send_command(match_cmd(argv[3],record_cmds),pf);
+			send_short(match_cmd(argv[3],record_cmds),pf);
 			send_string(pf,argv[2]);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
@@ -254,7 +274,7 @@ int main(int argc, char *argv[])
 			if (argc==6 || (argc==5 && !isdigit(argv[4][0]))) {
 				cmd2=match_cmd(argv[acnt],onoff_cmds);
 			}
-			send_command(cmd2,pf);
+			send_short(cmd2,pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
 			if (rv)
@@ -266,12 +286,12 @@ int main(int argc, char *argv[])
 				exit(2);
 			}
 			cmd=match_cmd(argv[2],rectype_cmds);
-			send_command(cmd,pf);
+			send_short(cmd,pf);
 			send_string(pf,argv[4]);
 			ttl=900;
 			if (argc==6) {
 				if (sscanf(argv[5],"%li",&ttl)!=1) {
-					printf("Bad argument for source\n");
+					printf("Bad argument for add\n");
 					exit(2);
 				}
 			}
@@ -305,6 +325,38 @@ int main(int argc, char *argv[])
 			if (rv)
 				read(pf,errmsg,255);
 			break;
+		case CTL_NEG:
+			if (argc<3 || argc>5) {
+				print_help();
+				exit(2);
+			}
+			send_string(pf,argv[2]);
+			tp=255;
+			ttl=900;
+			if (argc==4) {
+				if (isdigit(argv[3][0])) {
+					if (sscanf(argv[3],"%li",&ttl)!=1) {
+						printf("Bad argument (ttl) for neg\n");
+						exit(2);
+					}
+				} else {
+					if ((tp=rr_tp_byname(argv[3]))==-1) {
+						printf("Bad argument (type) for neg\n");
+						exit(2);
+					}
+				}
+			} else if (argc==5) {
+				if ((tp=rr_tp_byname(argv[3]))==-1) {
+					printf("Bad argument (type) for neg\n");
+					exit(2);
+				}
+				if (sscanf(argv[4],"%li",&ttl)!=1) {
+					printf("Bad argument (ttl) for neg\n");
+					exit(2);
+				}
+			}
+			send_short(tp,pf);
+			send_long(ttl,pf);
 		}
 		close(pf);
 	}

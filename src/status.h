@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: status.h,v 1.5 2000/07/30 19:01:39 thomas Exp $ */
+/* $Id: status.h,v 1.6 2000/11/11 16:21:27 thomas Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_
@@ -28,11 +28,12 @@ Boston, MA 02111-1307, USA.  */
 extern char sock_path[1024];
 
 /* The commands for pdnsd-ctl */
-#define CTL_STATS   1 /* Give out stats (like the "traditional" status pipe) */
-#define CTL_SERVER  2 /* Enable or disable a server */
-#define CTL_RECORD  3 /* Delete or invalidate records */
-#define CTL_SOURCE  4 /* Read a hosts-style file */
-#define CTL_ADD     5 /* Read a hosts-style file */
+#define CTL_STATS    1 /* Give out stats (like the "traditional" status pipe) */
+#define CTL_SERVER   2 /* Enable or disable a server */
+#define CTL_RECORD   3 /* Delete or invalidate records */
+#define CTL_SOURCE   4 /* Read a hosts-style file */
+#define CTL_ADD      5 /* Read a hosts-style file */
+#define CTL_NEG      6 /* Read a hosts-style file */
 
 #define CTL_S_UP     1
 #define CTL_S_DOWN   2

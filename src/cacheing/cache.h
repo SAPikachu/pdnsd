@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.6 2000/11/06 21:19:11 thomas Exp $ */
+/* $Id: cache.h,v 1.7 2000/11/11 16:21:30 thomas Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -110,6 +110,7 @@ typedef struct rr_lent_s {
  * the flag values for whole domains in the cache
  */
 #define DF_NEGATIVE    1       /* this one is for whole-domain negative cacheing (created on NXDOMAIN)*/
+#define DF_LOCAL       2       /* local record (in conj. with DF_NEGATIVE) */
 
 #define DFF_NOINHERIT (DF_NEGATIVE) /* not to be inherited on requery */
 

@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.9 2000/11/04 23:14:57 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.10 2000/11/11 16:21:27 thomas Exp $";
 #endif
 
 char sock_path[1024];
@@ -65,7 +65,7 @@ void print_succ(int rs)
 }
 
 /* Read a cmd short */
-short read_cmd(int fh)
+short read_short(int fh)
 {
 	short cmd;
 
@@ -167,9 +167,9 @@ void *status_thread (void *p)
 				break;
 			case CTL_SERVER:
 				DEBUG_MSG1("Received SERVER command.\n");
-				if ((cmd=read_cmd(rs))<-1)
+				if ((cmd=read_short(rs))<-1)
 					break;
-				if ((cmd2=read_cmd(rs))<0)
+				if ((cmd2=read_short(rs))<0)
 					break;
 				if (cmd<-1 || cmd>=serv_num) {
 					print_serr(rs,"Server index out of range.");
@@ -208,7 +208,7 @@ void *status_thread (void *p)
 				break;
 			case CTL_RECORD:
 				DEBUG_MSG1("Received RECORD command.\n");
-				if ((cmd=read_cmd(rs))<0)
+				if ((cmd=read_short(rs))<0)
 					break;
 				if (!fsgets(rs,buf,256)) {
 					print_serr(rs,"Bad domain name.");
@@ -251,7 +251,7 @@ void *status_thread (void *p)
 				}
 				if ((ttl=read_long(rs))<0)
 					break;
-				if ((cmd=read_cmd(rs))<0)
+				if ((cmd=read_short(rs))<0)
 					break;
 				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd,errbuf,256))
 					print_succ(rs);
@@ -260,7 +260,7 @@ void *status_thread (void *p)
 				break;
 			case CTL_ADD:
 				DEBUG_MSG1("Received ADD command.\n");
-				if ((cmd=read_cmd(rs))<0)
+				if ((cmd=read_short(rs))<0)
 					break;
 				if (!fsgets(rs,buf,256)) {
 					print_serr(rs,"Bad owner name.");
@@ -317,6 +317,46 @@ void *status_thread (void *p)
 					break;
 				}
 				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd);
+				add_cache(cent);
+				print_succ(rs);
+				break;
+			case CTL_NEG:
+				DEBUG_MSG1("Received NEG command.\n");
+				if (!fsgets(rs,buf,256)) {
+					DEBUG_MSG1("pipe NEG: received bad domain name.\n");
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if (buf[strlen(buf)-1]!='.') {
+					buf[strlen(buf)+1]='\0';
+					buf[strlen(buf)]='.';
+				}
+				if (!str2rhn((unsigned char *)buf,(unsigned char *)owner)) {
+					DEBUG_MSG1("pipe NEG: received bad domain name.\n");
+					print_serr(rs,"Bad domain name.");
+					break;
+				}
+				if ((cmd=read_short(rs))<0)
+					break;
+				if ((ttl=read_long(rs))<0)
+					break;
+				if (cmd!=255 && (cmd<T_MIN || cmd>T_MAX)) {
+					DEBUG_MSG1("pipe NEG: received bad record type.\n");
+					print_serr(rs,"Bad record type.");
+					break;
+				}
+				if (cmd==255) {
+					if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL|DF_NEGATIVE, time(NULL), ttl)) {
+						print_serr(rs,"Out of memory");
+						break;
+					}
+				} else {
+					if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0)) {
+						print_serr(rs,"Out of memory");
+						break;
+					}
+					add_cent_rrset(&cent,cmd,ttl,0,CF_LOCAL|CF_NEGATIVE,0);
+				}
 				add_cache(cent);
 				print_succ(rs);
 				break;
