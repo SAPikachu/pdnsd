@@ -879,42 +879,6 @@ static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned sho
 	rep->arcount=0;
 }
 
-#if 0
-/* Debug code contributed by Kiyo Kelvin Lee. */
-static void debug_dump_query(void *data, long len)
-{
-	unsigned char *udata = (unsigned char *)data;
-	dns_hdr_t *hdr = (dns_hdr_t *)data;
-	char buf[1024];
-	char *cp = buf;
-	long i, n, l;
-	l = (len > 256) ? 256 : len;
-	for (i = 0; i < l; i++)
-	{
-		n = sprintf(cp, "%02x", udata[i]);
-		cp += n;
-	}
-	*cp++ = ' ';
-	for (i = 0; i < l; i++)
-	{
-		*cp++ = isprint(udata[i]) ? udata[i] : '.';
-	}
-	*cp = '\0';
-	DEBUG_MSG("data=%p len=%d\n", udata, len);
-	DEBUG_MSG("data%s=%s\n", (l < len) ? "(first 256 bytes)" : "", buf);
-	DEBUG_MSG(
-		"id=%04x rd=%d tc=%d aa=%d opcode=%04x "
-		"qr=%d rcode=%04x z1=%d au=%d z2=%d ra=%d\n",
-		hdr->id, hdr->rd, hdr->tc, hdr->aa, hdr->opcode,
-		hdr->qr, hdr->rcode, hdr->z1, hdr->au, hdr->z2, hdr->ra);
-	DEBUG_MSG(
-		"qdcount=%04x ancount=%04x nscount=%04x arcount=%04x\n",
-		hdr->qdcount, hdr->ancount, hdr->nscount, hdr->arcount);
-}
-#else
-#define debug_dump_query(d, r)
-#endif
-
 /*
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
@@ -927,9 +891,9 @@ static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 	dlist q;
 	dns_hdr_t *ans;
 
-	debug_dump_query(data, rlen);
-
 	DEBUG_MSG("Received query.\n");
+	DEBUG_DUMP_DNS_MSG(NULL, data, rlen);
+
 	/*
 	 * We will ignore all records that come with a query, except for the actual query records.
 	 * We will send back the query in the response. We will reject all non-queries, and

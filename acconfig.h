@@ -129,7 +129,7 @@
  * The only defined debug levels by now are 0 (off) and 1 (on).
  * Defining this larger than 1 does no harm.
  * When in doubt, leave it defined to 1. */
-#define DEBUG 9
+#define DEBUG 1
 
 /* This defines the default verbosity of informational messages you will get. 
    This has nothing to to with the debug option (-g), but may be set with -v 

@@ -1,3 +1,19 @@
+2005-01-12  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.c,src/dns_answer.c,src/dns_query.c
+
+	I have extended some debug code contributed by Kiyo Kelvin Lee to dump
+	the data received by pdnsd in debug mode (queries from clients, replies
+	from name servers). Because this will give very verbose debug output,
+	I've arranged it so that this data dump only occurs if pdnsd has been
+	configured and compiled with --with-debug=9 and pdnsd has been called
+	with -v9.
+
+	Additionally, in the case that pdnsd rejects a reply from a name server
+	because it is not well formed, I have refined the debug messages to
+	distinguish between format errors due to unexpected truncation and
+	others kinds of format errors.
+
 2004-10-30  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/rr_types.c

@@ -183,7 +183,7 @@ static int rr_to_cache(dns_cent_array *centa, time_t ttl, unsigned char *oname, 
  * by the size of the rrs.
  */
 static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz,
-		    unsigned flags, time_t queryts, char tc)
+		    unsigned flags, time_t queryts)
 {
 	int rc;
 	int i;
@@ -193,10 +193,10 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 		int len;
 		uint16_t type,class; uint32_t ttl; uint16_t rdlength;
 		if ((rc=decompress_name(msg, msgsz, ptr, lcnt, oname, &len))!=RC_OK) {
-			return rc==RC_TRUNC?(tc?RC_OK:RC_FORMAT):rc;
+			return rc;
 		}
 		if (*lcnt<sizeof(rr_hdr_t)) {
-			return tc?RC_OK:RC_FORMAT;
+			return RC_TRUNC;
 		}
 		*lcnt-=sizeof(rr_hdr_t);
 		GETINT16(type,*ptr);
@@ -204,7 +204,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 		GETINT32(ttl,*ptr);
 		GETINT16(rdlength,*ptr);
 		if (*lcnt<rdlength) {
-			return tc?RC_OK:RC_FORMAT;
+			return RC_TRUNC;
 		}
 
 		if (!(type<T_MIN || type>T_MAX || class!=C_IN)) {
@@ -863,6 +863,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			return rv;
 		}
 		/* rv==RC_OK */
+		DEBUG_DUMP_DNS_MSG(PDNSD_A(st), st->recvbuf, st->recvl);
 
 		/* Basic sanity checks */
 		if (st->recvl>=sizeof(dns_hdr_t) && ntohs(st->recvbuf->id)==st->myrid &&
@@ -971,30 +972,32 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 		/* Now read the answer, authority and additional sections,
 		   storing the results in the arrays ans_sec,auth_sec and add_sec.
 		*/
-		if ((rv=rrs2cent(&ans_sec,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,
-				 st->flags, queryts, st->recvbuf->tc))!=RC_OK)
-		{
-			goto format_error;
-		}
+		rv=rrs2cent(&ans_sec,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,
+			    st->flags, queryts);
 
-		{
+		if(rv==RC_OK) {
 			uint16_t nscount=ntohs(st->recvbuf->nscount);
-			if (nscount)
-				if((rv=rrs2cent(&auth_sec,&rrp,&lcnt,nscount, (unsigned char *)st->recvbuf,st->recvl,
-						st->flags|CF_ADDITIONAL, queryts, st->recvbuf->tc))!=RC_OK)
-				{
-					goto format_error;
-				}
+			if (nscount) {
+				rv=rrs2cent(&auth_sec,&rrp,&lcnt,nscount, (unsigned char *)st->recvbuf,st->recvl,
+					    st->flags|CF_ADDITIONAL, queryts);
+			}
 		}
 
-		{
+		if(rv==RC_OK) {
 			uint16_t arcount=ntohs(st->recvbuf->arcount);
-			if (arcount)
-				if((rv=rrs2cent(&add_sec,&rrp,&lcnt,arcount, (unsigned char *)st->recvbuf,st->recvl,
-						st->flags|CF_ADDITIONAL, queryts, st->recvbuf->tc))!=RC_OK)
-				{
-					goto format_error;
-				}
+			if (arcount) {
+				rv=rrs2cent(&add_sec,&rrp,&lcnt,arcount, (unsigned char *)st->recvbuf,st->recvl,
+					    st->flags|CF_ADDITIONAL, queryts);
+			}
+		}
+
+		if(!(rv==RC_OK || (rv==RC_TRUNC && st->recvbuf->tc))) {
+			DEBUG_PDNSDA_MSG(rv==RC_FORMAT?"Format error in reply from %s.\n":
+					 rv==RC_TRUNC?"Format error in reply from %s (message unexpectedly truncated).\n":
+					 "Out of memory while processing reply from %s.\n",
+					 PDNSDA2STR(PDNSD_A(st)));
+			rv=RC_SERVFAIL;
+			goto free_ent_centarrays_recvbuf_return;
 		}
 
 		{
@@ -1268,13 +1271,6 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			}
 		}
 		goto free_centarrays_recvbuf_return;
-
-	format_error:
-		DEBUG_PDNSDA_MSG(rv==RC_FORMAT?"Format error in reply from %s.\n":
-				 "Out of memory while processing reply from %s.\n",
-				 PDNSDA2STR(PDNSD_A(st)));
-		rv=RC_SERVFAIL;
-		goto free_ent_centarrays_recvbuf_return;
 
 	free_ns_ent_centarrays_recvbuf_return:
 		dlist_free(*ns); *ns=NULL;

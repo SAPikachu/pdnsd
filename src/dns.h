@@ -238,4 +238,11 @@ char *get_tname(int id);
 char *get_ename(int id);
 #endif
 
+#if DEBUG>=9
+void debug_dump_dns_msg(pdnsd_a *a, void *data, unsigned long len);
+#define DEBUG_DUMP_DNS_MSG(a,d,l) {if(debug_p && global.verbosity>=9) debug_dump_dns_msg(a,d,l);}
+#else
+#define DEBUG_DUMP_DNS_MSG(a,d,l)
+#endif
+
 #endif

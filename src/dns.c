@@ -483,3 +483,56 @@ char *get_ename(int id)
 
 
 #endif
+
+
+#if DEBUG>=9
+/* Based on debug code contributed by Kiyo Kelvin Lee. */
+
+void debug_dump_dns_msg(pdnsd_a *a, void *data, unsigned long len)
+{
+	unsigned char *udata = (unsigned char *)data;
+#       define dmpchksz 16
+	char buf[dmpchksz*4+2];
+	unsigned long i, j, k, l;
+
+	if(a) {
+		DEBUG_PDNSDA_MSG("received data from %s\n", PDNSDA2STR(a));
+	}
+	DEBUG_MSG("pointer=%p len=%lu\n", udata, len);
+
+	for (i = 0; i < len; i += dmpchksz) {
+		char *cp = buf;
+		k = l = i + dmpchksz;
+		if(k > len) k = len;
+		for (j = i; j < k; ++j) {
+			int n = sprintf(cp, "%02x ", udata[j]);
+			cp += n;
+		}
+		for (; j < l; ++j) {
+			*cp++ = ' ';
+			*cp++ = ' ';
+			*cp++ = ' ';
+		}
+		*cp++ = ' ';
+		for (j = i; j < k; ++j) {
+			*cp++ = isprint(udata[j]) ? udata[j] : '.';
+		}
+		PDNSD_ASSERT(cp < buf + sizeof(buf), "debug_dump_dns_msg: line buffer overflowed");
+		*cp = '\0';
+		DEBUG_MSG("%s\n", buf);
+	}
+
+	if(len >= sizeof(dns_hdr_t)) {
+		dns_hdr_t *hdr = (dns_hdr_t *)data;
+
+		DEBUG_MSG(
+			"id=%04x qr=%x opcode=%x aa=%x tc=%x rd=%x "
+			"ra=%x z2=%x au=%x z1=%x rcode=%x\n",
+			ntohs(hdr->id), hdr->qr, hdr->opcode, hdr->aa, hdr->tc, hdr->rd,
+			hdr->ra, hdr->z2, hdr->au, hdr->z1, hdr->rcode);
+		DEBUG_MSG(
+			"qdcount=%04x ancount=%04x nscount=%04x arcount=%04x\n",
+			ntohs(hdr->qdcount), ntohs(hdr->ancount), ntohs(hdr->nscount), ntohs(hdr->arcount));
+	}
+}
+#endif
