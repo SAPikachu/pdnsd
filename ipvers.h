@@ -21,7 +21,10 @@ Boston, MA 02111-1307, USA.  */
 #define _IPVERS_H_
 
 #include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #if !defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
 # error "You need to define either or both of ENABLE_IPV4 and ENABLE_IPV6. Look into your config.h.templ"
@@ -44,6 +47,9 @@ struct in_pktinfo
 };
 #endif
 
+#if defined(ENABLE_IPV4) && !defined(SIN_LEN) && (TARGET==TARGET_BSD)
+# define SIN_LEN
+#endif 
 
 #if defined(ENABLE_IPV6) && TARGET==LINUX
 
@@ -104,8 +110,8 @@ struct in_pktinfo
  * The non-4.4BSD behaviour is the only one that is POSIX-conformant.*/
 #if defined(SIN6_LEN) || defined(SIN_LEN)
 # define BSD44_SOCKA
-# define SET_SOCKA_LEN4(socka) (socka.sin_len=SIN_LEN)
-# define SET_SOCKA_LEN6(socka) (socka.sin6_len=SIN6_LEN)
+# define SET_SOCKA_LEN4(socka) (socka.sin_len=sizeof(struct sockaddr_in))
+# define SET_SOCKA_LEN6(socka) (socka.sin6_len=sizeof(struct sockaddr_in6))
 #else
 # define SET_SOCKA_LEN4(socka)
 # define SET_SOCKA_LEN6(socka)

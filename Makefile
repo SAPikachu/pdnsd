@@ -30,7 +30,11 @@ LEXFLAGS=-i
 # so I rather don't do it because it may not be thread-safe (the lexer is not 
 # used multithreaded, but that may change). Does anyone know if under that
 # conditions I do not need -ll when using lex?
+#
+# The following line is for linux: 
 LIBS=-lpthread -lefence
+# and this for BSD:
+#LIBS=-lc_r
 #------------------------------------------------------------------------------
 # (End of options) 
 # The following lines just define variables for the C compiler derived from the

@@ -978,8 +978,13 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 	free_cent(ce);
 	if (reverse) {
 		if (tp==T_A) 
+#if TARGET==TARGET_BSD
+			snprintf((char *)b2,256,"%li.%li.%li.%li.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
+				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+#else
 			snprintf((char *)b2,256,"%i.%i.%i.%i.in-addr.arpa.",ntohl(a->ipv4.s_addr)&0xff,(ntohl(a->ipv4.s_addr)>>8)&0xff,
 				 (ntohl(a->ipv4.s_addr)>>16)&0xff, (ntohl(a->ipv4.s_addr)>>24)&0xff);
+#endif
 #if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
 		else {/* means T_AAAA*/
 			b2[0]='\0';

@@ -20,11 +20,11 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
-#include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include "ipvers.h" 
 #include <arpa/inet.h>
 #include "conff.h"
 #include "consts.h"

@@ -31,9 +31,8 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #include "config.h"
+#include "ipvers.h"
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/uio.h>
 #include <netdb.h>
 #include <signal.h>
@@ -43,7 +42,6 @@ Boston, MA 02111-1307, USA.  */
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-#include "ipvers.h"
 #include "dns.h"
 #include "dns_answer.h"
 #include "dns_query.h"
@@ -51,6 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "error.h"
 
+#if TARGET!=TARGET_BSD
 /*
  * This is for error handling to prevent spewing the log files.
  * Maximums of different message types are set.
@@ -1317,3 +1316,4 @@ void start_dns_servers()
 	} else
 		log_info(2,"udp server thread started.");
 }
+#endif

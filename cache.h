@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.  */
 #define _CACHE_H_
 
 #include "config.h"
-#include <arpa/inet.h>
+#include "ipvers.h" 
 #include <stdio.h>
 #include "dns.h"
 #include "conff.h"

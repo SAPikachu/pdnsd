@@ -23,8 +23,6 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "ipvers.h"

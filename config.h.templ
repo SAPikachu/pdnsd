@@ -70,9 +70,13 @@
  * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
 #define DNS_NEW_RRS
 
+/* These are the possible targets. Normally no need to touch them */
+#define TARGET_LINUX 0
+#define TARGET_BSD   1
+
 /* Define your Target here. Currently defined are LINUX (any architecture)
  * and FREEBSD (experimental; hopefully works for other BSD variants*/
-#define TARGET LINUX
+#define TARGET TARGET_LINUX 
 
 /* Set this to debug the hash tables. Turn this off normally, or you will get
  * flooded with diagnostic messages */

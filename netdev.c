@@ -18,12 +18,10 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 #include "config.h"
-#include <sys/types.h>
+#include "ipvers.h"
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
@@ -31,7 +29,6 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include "ipvers.h"
 #include "netdev.h"
 #include "error.h"
 
@@ -40,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
  * flavours of Unix if you can and want.
  */
 
-#if TARGET==LINUX
+#if TARGET==TARGET_LINUX
 
 int isdn_errs=0;
 
@@ -201,6 +198,8 @@ int is_local_addr(pdnsd_a *a)
 #endif
 	return 0;
 }
+
+#elif TARGET==TARGET_BSD
 
 #else
 # error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=LINUX on your compiler command line."

@@ -27,21 +27,23 @@ Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
 #include <stdlib.h>
-#include <sys/socket.h>
-#if TARGET==LINUX
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include "ipvers.h"
+#if TARGET==TARGET_LINUX
 # include <linux/types.h>
 # include <linux/icmp.h>
+#endif
+#if TARGET==TARGET_BSD
+# include <netinet/in_systm.h>
 #endif
 #ifdef ENABLE_IPV6
 # include <netinet/ip6.h>
 # include <netinet/icmp6.h>
 #endif
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
 #include <netinet/ip.h>
-#include "ipvers.h"
 #include "icmp.h"
 #include "error.h"
 
@@ -50,7 +52,7 @@ int icmp_errs=0; /* This is only here to minimize log output. Since the
 		    consequences of a race is only one log message more/less
 		    (out of ICMP_MAX_ERRS), no lock is required. */
 
-#if TARGET==LINUX
+#if TARGET==TARGET_LINUX
 
 /*
  * These are the ping implementations for Linux in ther IPv4/ICMPv4 and IPv6/ICMPv6 versions.
@@ -371,6 +373,8 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 	return -1;
 }
 
+#elif TARGET==TARGET_BSD
+
 #else
 # error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=LINUX on your compiler command line."
-#endif /*TARGET==LINUX*/
+#endif /*TARGET==TARGET_LINUX*/
