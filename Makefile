@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.11 2000/06/06 21:20:52 thomas Exp $
+# $Id: Makefile,v 1.12 2000/06/10 10:36:49 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -34,7 +34,7 @@ LEXFLAGS=-i
 # conditions I do not need -ll when using lex?
 #
 # The following line is for linux: 
-LIBS=-lpthread -lefence
+LIBS=-lpthread
 # and this for BSD (just leave it empty):
 #LIBS=
 # OS-specific C compiler flags for the linking stage.

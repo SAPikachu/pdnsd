@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.5 2000/06/06 21:20:52 thomas Exp $ */
+/* $Id: config.h.templ,v 1.6 2000/06/10 10:36:49 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -20,7 +20,7 @@
  * kernerls earlier than 2.2.12 (if you did apply newer isdn patches, it may work 
  * fine). This is not on by default because it will cause compile problems on some
  * systems */
-#define ISDN_SUPPORT
+#undef ISDN_SUPPORT
 
 /* The following regulates the IP Protocol support. Supported types are IPv4
  * and IPv6 (aka IPng). You may enable either or both of these protocols. 
@@ -44,7 +44,7 @@
  * If you activete IPv6, you should also activate DNS_NEW_RRS below. */
 #define ENABLE_IPV4
 #define DEFAULT_IPV4 1
-#define ENABLE_IPV6
+#undef ENABLE_IPV6
 #define DEFAULT_IPV6 0
 
 /* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
@@ -62,7 +62,7 @@
  * In short, these RRs are:
  * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
  * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
-#define DNS_NEW_RRS
+#undef DNS_NEW_RRS
 
 /* Define this for "hard" RFC 2181 compliance: this RFC states that
  * implementations should discard answers whose RR sets have multiple
