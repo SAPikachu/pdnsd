@@ -2,7 +2,7 @@
 #
 # Client regression testing for pdnsd.
 #
-# $Id: clnt-test.sh,v 1.1 2001/04/12 01:29:36 tmm Exp $
+# $Id: clnt-test.sh,v 1.2 2001/04/12 02:45:40 tmm Exp $
 
 DIG=/usr/bin/dig
 ERR="{ echo "Failed."; exit 1; }"
@@ -19,7 +19,7 @@ $DIG local IXFR
 
 nmap -sT 192.168.0.50
 
-dd if=/dev/random | nc -p 53 192.168.0.50
+dd if=/dev/random | nc 192.168.0.50 53
 
 # Test that the server is still alive.
 $DIG www.gmx.de A || $ERR
