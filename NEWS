@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.20 2001/07/02 18:24:05 tmm Exp $
+$Id: NEWS,v 1.21 2001/12/30 19:33:30 tmm Exp $
 
 Version 0.9.4 was the first to be released to the public. For information on 
 changes, see ChangeLog.
@@ -140,3 +140,9 @@ Version 1.1.6 adds the query_port_start and query_port_end options (contributed
 by Andreas Steinmetz), that allow confining the ports pdnsd uses for outgoing
 queries to a certain range. It also fixes numerous bugs, one of which could
 cause pdnsd to hang; update is therefore recommended.
+
+Version 1.1.7 fixes a (one-character) bug that might be remotely exploitable to
+gain access as the user pdnsd runs as (an unprivileged user by default). To do
+this, an attacker needs to control a name server that is queried by pdnsd, and
+send a malicious reply to such a query. Upgrading is strongly recommended!
+There are also minor bug fixes and stability improvements.
