@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.7 2000/08/08 17:58:09 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.8 2000/08/12 18:24:53 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -352,7 +352,7 @@ int main(int argc,char *argv[])
 #if DEBUG>0
 		if (debug_p) {
 			strncpy(dbgdir,global.cache_dir,1024);
-			strncat(dbgdir,"/pdnsd.debug",1024);
+			strncat(dbgdir,"/pdnsd.debug",1023-strlen(dbgdir));
 			dbgdir[1023]='\0';
 			if (!(dbg=fopen(dbgdir,"w")))
 				debug_p=0;
