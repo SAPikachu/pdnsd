@@ -33,7 +33,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.5 2000/11/15 17:27:02 thomas Exp $";
+static char rcsid[]="$Id: netdev.c,v 1.6 2001/02/25 00:56:26 tmm Exp $";
 #endif
 
 /*
@@ -92,7 +92,7 @@ int dev_up(char *ifname, char *devname)
  	FILE *fd;
  	int pidi, pidd, rv;
 	
- 	snprintf(buffer, 256, "/var/run/%s.pid", ifname) ;
+ 	snprintf(buffer, sizeof(buffer), "/var/run/%s.pid", ifname) ;
  	if ( (fd=fopen(buffer, "r")) == NULL ) {
  		return 0 ;
  	}
@@ -103,7 +103,7 @@ int dev_up(char *ifname, char *devname)
  	}
  	fclose(fd) ;
  
- 	snprintf(buffer, 256, "/var/lock/LCK..%s", devname) ;
+ 	snprintf(buffer, sizeof(buffer), "/var/lock/LCK..%s", devname) ;
  	if ( (fd=fopen(buffer, "r")) == NULL ) {
 		return 0 ;
  	}

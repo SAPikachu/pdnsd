@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.32 2001/02/21 14:25:09 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.33 2001/02/25 00:56:25 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -234,8 +234,12 @@ int main(int argc,char *argv[])
 		} else if (strcmp(argv[i],"-p")==0) {
 			if (i<argc-1) {
 				i++;
-				strncpy(pidfile,argv[i],1024);
-				pidfile[1023]='\0';
+				if (strlen(argv[4]) >= sizeof(pidfile)) {
+					fprintf(stderr,"Error: pidfile name too long.\n");
+					exit(1);
+				}
+				strncpy(pidfile,argv[i],sizeof(pidfile));
+				pidfile[sizeof(pidfile)-1]='\0';
 			} else {
 				fprintf(stderr,"Error: file name expected after -p option.\n");
 				exit(1);
@@ -422,11 +426,10 @@ int main(int argc,char *argv[])
 		closelog();
 #if DEBUG>0
 		if (debug_p) {
-			strncpy(dbgdir,global.cache_dir,1024);
-			dbgdir[1023]='\0';
-			strncat(dbgdir,"/pdnsd.debug",1023-strlen(dbgdir));
-			if (!(dbg=fopen(dbgdir,"w")))
-				debug_p=0;
+			if (snprintf(dbgdir, sizeof(dbgdir), "%s/pdnsd.debug", global.cache_dir) < sizeof(dbgdir)) {
+				if (!(dbg=fopen(dbgdir,"w")))
+					debug_p=0;
+			}
 		}
 #endif
 	} else {

@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.13 2001/01/15 23:10:15 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.14 2001/02/25 00:56:25 tmm Exp $";
 #endif
 
 /*
@@ -333,7 +333,7 @@ void fsprintf(int fd, char *format, ...)
 
 	va_list va;
 	va_start(va,format);
-	vsnprintf(buf,1023,format,va);
+	vsnprintf(buf,sizeof(buf),format,va);
 	write(fd,buf,strlen(buf));
 
 	va_end(va);

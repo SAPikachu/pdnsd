@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.24 2001/02/15 23:17:49 thomas Exp $
+dnl $Id: configure.in,v 1.25 2001/02/25 00:56:23 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -63,12 +63,6 @@ AC_ARG_WITH(cachedir,
   cachedir=$withval)
 AC_DEFINE_UNQUOTED(CACHEDIR, "$cachedir")
 AC_SUBST(cachedir)
-
-AC_ARG_WITH(tempdir,
-[  --with-tempdir=dir          Default directory for the pdnsd 
-                              control socket (default=/tmp)],
-  tempdir=$withval)
-AC_DEFINE_UNQUOTED(TEMPDIR, "$tempdir")
 
 AC_ARG_WITH(dbm,
 [  --with-dbm=dbm              Specifiy database manager to use for 

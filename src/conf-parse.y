@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.21 2001/01/24 23:02:55 thomas Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.22 2001/02/25 00:56:25 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -64,6 +64,20 @@ int idx;
  */
 extern int yylineno;
 #endif
+
+/* Bah. I want strlcpy. */
+#define STRNCP(dst, src, err) \
+        do { \
+	        char o; \
+                strncpy((dst),(src),sizeof(dst)); \
+		o=dst[sizeof(dst)-1]; \
+                dst[sizeof(dst)-1]='\0'; \
+	        if (strlen(global.run_as) >= sizeof(global.run_as)-1 && o!='\0') { \
+		        yyerror(err": string too long"); \
+		        YYERROR; \
+	        } \
+	} while(0);
+
 
 %}
 %union {
@@ -250,8 +264,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| CACHE_DIR '=' STRING ';'
 			{
-				strncpy(global.cache_dir,(char *)$3,MAXPATH);
-				global.cache_dir[MAXPATH-1]='\0';
+				STRNCP(global.cache_dir, (char *)$3, "cache_dir");
 			}
 		| SERVER_PORT '=' NUMBER ';'
 			{
@@ -266,8 +279,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
  			}
 		| SCHEME_FILE '=' STRING ';'
                         {
-                                strncpy(global.scheme_file,(char *)$3,MAXPATH);
-                                global.scheme_file[MAXPATH-1]='\0';
+				STRNCP(global.scheme_file, (char *)$3, "scheme_file");
                         }
 		| LINKDOWN_KLUGE '=' CONST ';'
 			{
@@ -288,8 +300,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| RUN_AS '=' STRING ';'
 			{
-				strncpy(global.run_as,(char *)$3,20);
-				global.run_as[19]='\0';
+				STRNCP(global.run_as, (char *)$3, "run_as");
 			}
 		| STRICT_SETUID '=' CONST ';'
 			{
@@ -338,8 +349,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| PID_FILE '=' STRING ';'
 			{
-				strncpy(pidfile,(char *)$3,MAXPATH);
-				pidfile[MAXPATH-1]='\0';
+				STRNCP(pidfile, (char *)$3, "pid_file");
 			}
 		| C_VERBOSITY '=' NUMBER ';'
 			{
@@ -447,9 +457,7 @@ serv_el:	IP '=' STRING ';'
 			}
 		| SCHEME '=' STRING ';'
 			{
-				strncpy(server.scheme,(char *)$3,32);
-				server.scheme[31]='\0';
-
+				STRNCP(server.scheme, (char *)$3, "scheme");
 			}
 		| UPTEST '=' CONST ';'
 			{
@@ -477,15 +485,12 @@ serv_el:	IP '=' STRING ';'
 			}
 		| UPTEST_CMD '=' STRING ';'
 			{
-				strncpy(server.uptest_cmd,(char *)$3,512);
-				server.uptest_cmd[511]='\0';
+				STRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
 			}
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
-				strncpy(server.uptest_cmd,(char *)$3,512);
-				strncpy(server.uptest_usr,(char *)$5,20);
-				server.uptest_cmd[511]='\0';
-				server.uptest_usr[19]='\0';
+				STRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
+				STRNCP(server.uptest_usr, (char *)$5, "uptest_usr");
 			}
 		| INTERVAL '=' NUMBER ';'
 			{
@@ -502,13 +507,11 @@ serv_el:	IP '=' STRING ';'
 			}
 		| INTERFACE '=' STRING  ';'
 			{
-				strncpy(server.interface,(char *)$3,6);
-				server.interface[6]='\0';
+				STRNCP(server.interface, (char *)$3, "interface");
 			}
  		| DEVICE '=' STRING  ';'
  			{
- 				strncpy(server.device,(char *)$3,6);
- 				server.device[6]='\0';
+				STRNCP(server.device, (char *)$3, "device");
   			}
 		| PURGE_CACHE '=' CONST ';'
 			{
@@ -576,8 +579,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strncpy(server.alist[server.nalist-1].domain,(char *)$3,256);
-				server.alist[server.nalist-1].domain[255]='\0';
+				STRNCP(server.alist[server.nalist-1].domain, (char *)$3, "include");
 				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
 					yyerror("domain name must end in dot for include=/exclude=.");
 					YYERROR;
@@ -595,8 +597,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				}
-				strncpy(server.alist[server.nalist-1].domain,(char *)$3,256);
-				server.alist[server.nalist-1].domain[255]='\0';
+				STRNCP(server.alist[server.nalist-1].domain, (char *)$3, "exclude");
 				if (server.alist[server.nalist-1].domain[strlen(server.alist[server.nalist-1].domain)-1]!='.') {
 					yyerror("domain name must end in dot for include=/exclude=.");
 					YYERROR;

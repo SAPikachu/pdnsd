@@ -33,10 +33,11 @@ Boston, MA 02111-1307, USA.  */
 #include "../rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.5 2001/01/24 22:29:18 thomas Exp $";
+static char rcsid[]="$Id: pdnsd-ctl.c,v 1.6 2001/02/25 00:56:29 tmm Exp $";
 #endif
 
-char sock_path[MAXPATH];
+char cache_dir[MAXPATH]=CACHEDIR;
+char sock_path[99];
 char buf[1024];
 
 typedef struct {
@@ -64,7 +65,11 @@ void print_version(void)
 
 void print_help(void)
 {
-	printf("Usage: pdnsd-ctl <command> [options]\n\n");
+	printf("Usage: pdnsd-ctl [-c cachedir] <command> [options]\n\n");
+
+	printf("Command line options\n");
+
+	printf("\t-c cachedir\n\tset the cache directory to cachedir (must match pdnsd setting)\n");
 
 	printf("Commands and needed options are:\n");
 
@@ -184,36 +189,51 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_IPV6
 	struct in6_addr ina6;
 #endif
+	while ((i=getopt(argc, argv, "c:")) != -1) {
+		switch(i) {
+		case 'c':
+			if (strlen(optarg)>=sizeof(cache_dir)) {
+				printf("-c: directory name too long\n");
+				exit(2);
+			}
+			strncpy(cache_dir, optarg, sizeof(cache_dir));
+			cache_dir[sizeof(cache_dir)-1]='\0';
+			break;
+		case '?':
+			exit(2);
+		}
+	}
+	argc -= optind;
+	argv += optind;
 
-	strncpy(sock_path, TEMPDIR, MAXPATH);
-	sock_path[MAXPATH-1]='\0';
-	strncat(sock_path, "/.pdnsd.status/socket", MAXPATH-1-strlen(sock_path));
-	sock_path[MAXPATH-1]='\0';
-
-	if (argc<2) {
+	if (snprintf(sock_path, sizeof(sock_path), "%s/pdnsd.status", cache_dir)>=sizeof(sock_path)) {
+		printf("Cache dir string too long\n");
+		exit(2);
+	}
+	if (argc<1) {
 		print_help();
 		exit(2);
 	}
-	if (strcmp(argv[1],"help")==0) {
+	if (strcmp(argv[0],"help")==0) {
 		print_version();
 		print_help();
 		exit(0);
-	} else if (strcmp(argv[1],"version")==0) {
+	} else if (strcmp(argv[0],"version")==0) {
 		print_version();
 		exit(0);
-	} else if (strcmp(argv[1],"list-rrtypes")==0) {
+	} else if (strcmp(argv[0],"list-rrtypes")==0) {
 		printf("Available RR types for the neg command:\n");
 		for (i=0;i<T_MAX;i++) {
 			printf("%s\n",rr_info[i]);
 		}
 		exit(0);
 	} else {
-		cmd=match_cmd(argv[1],top_cmds);
+		cmd=match_cmd(argv[0],top_cmds);
 		pf=open_sock(sock_path);
 		send_short(cmd,pf);
 		switch (cmd) {
 		case CTL_STATS:
-			if (argc!=2) {
+			if (argc!=1) {
 				print_help();
 				exit(2);
 			}
@@ -224,48 +244,48 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case CTL_SERVER:
-			if (argc!=4) {
+			if (argc!=3) {
 				print_help();
 				exit(2);
 			}
-			if (strcmp(argv[2],"all")==0)
+			if (strcmp(argv[1],"all")==0)
 				cmd2=-1;
 			else {
-				if (sscanf(argv[2],"%hi",&cmd2)!=1) {
+				if (sscanf(argv[1],"%hi",&cmd2)!=1) {
 					printf("Bad argument for server\n");
 					exit(2);
 				}
 			}
 			send_short(cmd2,pf);
-			send_short(match_cmd(argv[3],server_cmds),pf);
+			send_short(match_cmd(argv[2],server_cmds),pf);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
 			if (rv)
 				read(pf,errmsg,255);
 			break;
 		case CTL_RECORD:	
-			if (argc!=4) {
+			if (argc!=3) {
 				print_help();
 				exit(2);
 			}
-			send_short(match_cmd(argv[3],record_cmds),pf);
-			send_string(pf,argv[2]);
+			send_short(match_cmd(argv[2],record_cmds),pf);
+			send_string(pf,argv[1]);
 			read(pf,&cmd2,sizeof(cmd2));
 			rv=ntohs(cmd2);
 			if (rv)
 				read(pf,errmsg,255);
 			break;
 		case CTL_SOURCE:
-			if (argc<4 || argc>6) {
+			if (argc<3 || argc>5) {
 				print_help();
 				exit(2);
 			}
+			send_string(pf,argv[1]);
 			send_string(pf,argv[2]);
-			send_string(pf,argv[3]);
 			ttl=900;
-			acnt=4;
-			if (argc==6 || (argc==5 && isdigit(argv[4][0]))) {
-				if (sscanf(argv[4],"%li",&ttl)!=1) {
+			acnt=3;
+			if (argc==5 || (argc==4 && isdigit(argv[3][0]))) {
+				if (sscanf(argv[3],"%li",&ttl)!=1) {
 					printf("Bad argument for source\n");
 					exit(2);
 				}
@@ -273,7 +293,7 @@ int main(int argc, char *argv[])
 			}
 			send_long(ttl,pf);
 			cmd2=0;
-			if (argc==6 || (argc==5 && !isdigit(argv[4][0]))) {
+			if (argc==5 || (argc==4 && !isdigit(argv[3][0]))) {
 				cmd2=match_cmd(argv[acnt],onoff_cmds);
 			}
 			send_short(cmd2,pf);
@@ -283,16 +303,16 @@ int main(int argc, char *argv[])
 				read(pf,errmsg,255);
 			break;
 		case CTL_ADD:
-			if (argc<5 || argc>6) {
+			if (argc<4 || argc>5) {
 				print_help();
 				exit(2);
 			}
-			cmd=match_cmd(argv[2],rectype_cmds);
+			cmd=match_cmd(argv[1],rectype_cmds);
 			send_short(cmd,pf);
-			send_string(pf,argv[4]);
+			send_string(pf,argv[3]);
 			ttl=900;
-			if (argc==6) {
-				if (sscanf(argv[5],"%li",&ttl)!=1) {
+			if (argc==5) {
+				if (sscanf(argv[4],"%li",&ttl)!=1) {
 					printf("Bad argument for add\n");
 					exit(2);
 				}
@@ -301,7 +321,7 @@ int main(int argc, char *argv[])
 
 			switch (cmd) {
 			case T_A:
-				if (!inet_aton(argv[3],&ina4)) {
+				if (!inet_aton(argv[2],&ina4)) {
 					printf("Bad IP for add a option\n");
 					exit(2);
 				}
@@ -309,7 +329,7 @@ int main(int argc, char *argv[])
 				break;
 #ifdef ENABLE_IPV6
 			case T_AAAA:
-				if (!inet_pton(AF_INET6,(char *)argv[3],&ina6)) {
+				if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
 					printf("Bad IP (v6) for add aaaa option\n");
 					exit(2);
 				}
@@ -318,7 +338,7 @@ int main(int argc, char *argv[])
 #endif
 			case T_PTR:
 			case T_CNAME:
-				send_string(pf,argv[3]);
+				send_string(pf,argv[2]);
 				break;
 			}
 
@@ -328,31 +348,31 @@ int main(int argc, char *argv[])
 				read(pf,errmsg,255);
 			break;
 		case CTL_NEG:
-			if (argc<3 || argc>5) {
+			if (argc<2 || argc>4) {
 				print_help();
 				exit(2);
 			}
-			send_string(pf,argv[2]);
+			send_string(pf,argv[1]);
 			tp=255;
 			ttl=900;
-			if (argc==4) {
-				if (isdigit(argv[3][0])) {
-					if (sscanf(argv[3],"%li",&ttl)!=1) {
+			if (argc==3) {
+				if (isdigit(argv[2][0])) {
+					if (sscanf(argv[2],"%li",&ttl)!=1) {
 						printf("Bad argument (ttl) for neg\n");
 						exit(2);
 					}
 				} else {
-					if ((tp=rr_tp_byname(argv[3]))==-1) {
+					if ((tp=rr_tp_byname(argv[2]))==-1) {
 						printf("Bad argument (type) for neg\n");
 						exit(2);
 					}
 				}
-			} else if (argc==5) {
-				if ((tp=rr_tp_byname(argv[3]))==-1) {
+			} else if (argc==4) {
+				if ((tp=rr_tp_byname(argv[2]))==-1) {
 					printf("Bad argument (type) for neg\n");
 					exit(2);
 				}
-				if (sscanf(argv[4],"%li",&ttl)!=1) {
+				if (sscanf(argv[3],"%li",&ttl)!=1) {
 					printf("Bad argument (ttl) for neg\n");
 					exit(2);
 				}

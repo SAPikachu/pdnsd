@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.16 2001/02/20 16:41:17 tmm Exp $
+# $Id: Makefile.am,v 1.17 2001/02/25 00:56:22 tmm Exp $
 
 SUBDIRS = src doc
 #GZIP_ENV=
@@ -16,8 +16,10 @@ install-data-hook:
 	fi
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
+	  chown $(def_id) $(DESTDIR)$(cachedir); \
 	fi
 	chmod 0640 $(DESTDIR)$(cachedir)/pdnsd.cache
+	chmod 0750 $(DESTDIR)$(cachedir)
 
 dist-hook: $(PACKAGE).spec
 	cp $(PACKAGE).spec $(distdir)
