@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.4 2000/08/20 20:43:25 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.5 2000/10/19 15:40:34 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -273,6 +273,8 @@ void init_cache()
 /* Delete the cache. Call only once */
 void destroy_cache()
 {
+	/* lock the cache, in case that any thread is still accssing. */
+	softlock_cache_rw();
 	free_dns_hash(&dns_hash);
 #if TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
@@ -780,6 +782,7 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
  *
  * The locks are not very fine grained here, but I don't think this needs fixing as this routine 
  * is only called on exit.
+ *
  */
 void write_disk_cache()
 {

@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.12 2000/10/19 12:21:57 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.13 2000/10/19 15:40:32 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -698,7 +698,7 @@ static int p_query_sm(query_stat_t *st)
 # endif
 # ifdef ENABLE_IPV6
 		    || (run_ipv6 && (sender6.sin6_port!=st->a.sin6.sin6_port || 
-				     IN6_ARE_ADDR_EQUAL(&sender6.sin6_addr,&st->a.sin6.sin6_addr)))
+				     !IN6_ARE_ADDR_EQUAL(&sender6.sin6_addr,&st->a.sin6.sin6_addr)))
 # endif
 			) {
 			DEBUG_MSG1("Bad answer received. Ignoring it.\n");
@@ -792,6 +792,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			if (st->qm==TCP_UDP) {
 				st->recvbuf=NULL;
 				st->nstate=QSN_UDPINITIAL;
+				st->myrid=get_rand16();
+				st->hdr->id=htons(st->myrid);
 				DEBUG_MSG2("TCP connection refused by %s. Trying to use UDP.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
 				return -1;
 			}
@@ -1167,9 +1169,9 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 # endif
 				if (srv<0) {
 					log_warn("poll/select failed: %s",strerror(errno));
-					for (k=0;k<mc;k++) {
+/*					for (k=0;k<mc;k++) {
 						p_cancel_query(&q->qs[global.par_queries*j+k]);
-					}
+						}*/
 					rv=RC_SERVFAIL;
 					done=1;
 					break;
@@ -1237,7 +1239,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 			break;
 	}
 #ifndef NO_POLL
-		free(polls);
+	free(polls);
 #endif
 	if (rv!=RC_OK) {
 		DEBUG_MSG1("No query succeeded.\n");
