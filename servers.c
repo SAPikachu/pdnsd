@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "netdev.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.3 2000/06/04 16:50:08 thomas Exp $";
+static char rcsid[]="$Id: servers.c,v 1.4 2000/06/13 12:12:27 thomas Exp $";
 #endif
 
 pthread_t stt;
@@ -189,13 +189,13 @@ void mark_server_down(int idx)
 	int j;
 	long s_ts;
 	servparm_t srv;
-	pthread_mutex_lock(&servers_lock);
 	if (idx>=serv_num) {
 #if DEBUG>0
 		log_warn("Internal: server index out of range.");
 #endif
 		return;
 	}
+	pthread_mutex_lock(&servers_lock);
 	if (servers[idx].uptest==C_PING) {
 		servers[idx].is_up=0;
 		servers[idx].i_ts=time(NULL);

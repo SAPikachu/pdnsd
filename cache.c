@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.12 2000/06/12 14:37:06 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.13 2000/06/13 12:12:27 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -923,7 +923,7 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 					free_rr(*rrb);
 					free(rrb);
 				} else {
-					if (had) {
+					if (!had) {
 						if (!insert_rrl(ret->rr[tp-T_MIN],ret,tp)) {
 							unlock_cache_rw();
 							return 0;

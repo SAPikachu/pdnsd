@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.9 2000/06/12 14:37:06 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.10 2000/06/13 12:12:27 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -1174,24 +1174,11 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	int rc;
 	int need_req=0;
 	int timed=0;
-	long ttl=0;
+	time_t ttl=0;
 	int auth=0;
 	int i,nopurge=0;
 	short flags=0;
 
-	/* first, update server records set onquery */
-	test_onquery();
-	if (global.lndown_kluge) {
-		rc=1;
-		for (i=0;i<serv_num;i++) {
-			if (servers[i].is_up)
-				rc=0;
-		}
-		if (rc) {
-			DEBUG_MSG1("Link is down.\n");
-			return RC_SERVFAIL;
-		}
-	}
 	DEBUG_MSG3("Starting cached resolve for: %s, query %s\n",name,get_tname(thint));
 	if ((*cached=lookup_cache(name))) {
 		DEBUG_MSG1("Record found in cache.\n");
@@ -1210,7 +1197,10 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 					break;
 			}
 		}
-		if (thint==QT_ALL) {
+		if ((*cached)->rr[T_CNAME-T_MIN]) {
+			flags=(*cached)->rr[T_CNAME-T_MIN]->flags;
+			ttl=(*cached)->rr[T_CNAME-T_MIN]->ts+(*cached)->rr[T_CNAME-T_MIN]->ttl;
+		} else if (thint==QT_ALL) {
 			for (i=0;i<T_NUM;i++) {
 				if ((*cached)->rr[i]) {
 					flags|=(*cached)->rr[i]->flags;
@@ -1262,6 +1252,19 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			}
 		}
 		DEBUG_MSG5("Requery decision: req=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,timed,flags,ttl-queryts);
+	}
+	/* update server records set onquery */
+	test_onquery();
+	if (global.lndown_kluge && !(flags&CF_LOCAL)) {
+		rc=1;
+		for (i=0;i<serv_num;i++) {
+			if (servers[i].is_up)
+				rc=0;
+		}
+		if (rc) {
+			DEBUG_MSG1("Link is down.\n");
+			return RC_SERVFAIL;
+		}
 	}
 	if (!(*cached) || need_req || (timed && !(flags&CF_LOCAL))) {
 		bcached=*cached;

@@ -7,3 +7,4 @@ lex.yy.x
 lex.inc.h
 yy.tab.c
 yy.tab.h 
+a-conf.h

@@ -18,12 +18,13 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: ipvers.h,v 1.4 2000/06/06 13:42:18 thomas Exp $ */
+/* $Id: ipvers.h,v 1.5 2000/06/13 12:12:27 thomas Exp $ */
 
 #ifndef _IPVERS_H_
 #define _IPVERS_H_
 
 #include "config.h"
+#include "a-conf.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -41,7 +42,7 @@ extern int run_ipv4;
 extern int run_ipv6;
 #endif
 
-#if defined(ENABLE_IPV4) && TARGET==LINUX
+#if defined(ENABLE_IPV4) && TARGET==LINUX && defined(NO_IN_PKTINFO)
 struct in_pktinfo
 {
 	int		ipi_ifindex;

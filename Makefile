@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.15 2000/06/12 14:37:06 thomas Exp $
+# $Id: Makefile,v 1.16 2000/06/13 12:12:27 thomas Exp $
 #
 # Following are the variables you should set to values describing your local
 # system
@@ -22,7 +22,7 @@ YACC=bison -y
 # strict C compiler flags. Note that some warnings are normal.
 STRICT_CF=-Wstrict-prototypes -Wall -pedantic # -Wmissing-prototypes  -Wpointer-arith
 # The flags given in the C compiler call (these are for gcc)
-CFLAGS=-O2 -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
+CFLAGS=-g -W -Wchar-subscripts -Wcomment -Wformat -Wimplicit -Wmultichar -Wparentheses -Wswitch -Wunused $(STRICT_CF)
 # The flags given for bison/yacc; OK for bison and yacc
 YACCFLAGS=-d
 # the flags given for lex; should be OK for lex and flex
@@ -51,7 +51,7 @@ DEFINES=-DCACHEDIR=\"$(PDNSD_CACHEDIR)\"
 
 OBJS=conff.o y.tab.o lex.yy.o hash.o error.o helpers.o cache.o icmp.o status.o netdev.o servers.o dns_answer.o dns_query.o dns.o main.o
 CSOURCES=conff.c y.tab.c lex.yy.c hash.c error.c helpers.c cache.c icmp.c status.c netdev.c servers.c dns_answer.c dns_query.c dns.c main.c
-CHEADERS=cache.h consts.h dns_query.h helpers.h lex.inc.h status.h conff.h dns.h error.h icmp.h netdev.h y.tab.h config.h dns_answer.h hash.h ipvers.h servers.h
+CHEADERS=cache.h consts.h dns_query.h helpers.h lex.inc.h status.h conff.h dns.h error.h icmp.h netdev.h y.tab.h config.h dns_answer.h hash.h ipvers.h servers.h a-conf.h
 
 .PHONY:all dep deps ChangeLog test
 
@@ -68,7 +68,7 @@ dep: .deps
 # The .c to .o rules are in .deps, which is made by make deps. Have a look at
 # the deps rule if you want to change something.
 # .deps in turn is dependent on $(CSOURCES) and $(CHEADERS).
-$(OBJS): .deps 
+$(OBJS): .deps
 	make -f .deps CC='$(CC)' CFLAGS='$(CFLAGS)' DEFINES='$(DEFINES)' $(OBJS)
 
 pdnsd: .deps $(OBJS)  
@@ -82,6 +82,9 @@ lex.yy.c lex.inc.h: conf.l.templ config.h
 
 config.h: version config.h.templ
 	v=`cat version` ; sed -e "s/\\/\\*VERSION-INSERT-LOC\\*\\//#define VERSION \"$$v\"/" config.h.templ > config.h
+
+a-conf.h: config.h
+	./a-conf.sh $(CC)
 
 ChangeLog:
 	rcs2log -R -u "thomas	Thomas Moestl	tmoestl@gmx.net" > ChangeLog
@@ -98,6 +101,7 @@ clean:
 	-rm -f config.h
 	-rm -f pdnsd-suse.spec
 	-rm -f pdnsd-redhat.spec
+	-rm -f a-conf.h
 	-cd test; make clean
 
 mclean: clean
