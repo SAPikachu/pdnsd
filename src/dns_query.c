@@ -43,7 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.45 2001/06/02 20:12:45 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.46 2001/06/02 23:08:13 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -129,14 +129,14 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 #ifdef DNS_NEW_RRS
 	int j,k;
 #endif
-	int len;
+	int len, uscore;
 	int slen;
 	unsigned char *bptr,*nptr;
 	long blcnt;
 	nsr_t *nsr;
 
 	for (i=0;i<recnum;i++) {
-		if ((rc=decompress_name(msg, oname, ptr, lcnt, msgsz, &len))!=RC_OK) {
+		if ((rc=decompress_name(msg, oname, ptr, lcnt, msgsz, &len, &uscore))!=RC_OK) {
 			if (rc==RC_TRUNC && tc)
 				return RC_OK;
 			return rc==RC_TRUNC?RC_FORMAT:rc;
@@ -159,6 +159,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 			/* Some types contain names that may be compressed, so these need to be processed.
 			 * the other records are taken as they are
 			 * The maximum lenth for a decompression buffer is 530 bytes (maximum SOA record length) */
+#if defined(DNS_NEW_RRS) && !defined(UNDERSCORE)
+			/* Underscore only allowed in SRV records */
+			if (uscore && ntohs(rhdr.type)!=T_SRV)
+				return RC_FORMAT;
+#endif		
 			switch (ntohs(rhdr.type)) {
 			case T_CNAME:
 			case T_MB:
@@ -170,7 +175,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 			case T_PTR:
 				blcnt=*lcnt; /* make backups for decompression, because rdlength is the authoritative */
 				bptr=*ptr;   /* record length and pointer and size will by modified by that */
-				if ((rc=decompress_name(msg, db, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, db, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				if (*lcnt-blcnt!=ntohs(rhdr.rdlength))
 					return RC_FORMAT;
@@ -204,11 +209,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				blcnt=*lcnt;
 				bptr=*ptr;
 				nptr=db;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				slen=len;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				/*nptr+=len;*/
 				slen+=len;
@@ -233,7 +238,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr+2;
 				nptr=db+2;
 				slen=2;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				/*nptr+=len;*/
 				slen+=len;
@@ -249,11 +254,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				blcnt=*lcnt;
 				bptr=*ptr;
 				nptr=db;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				slen=len;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				slen+=len;
@@ -297,11 +302,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr+2;
 				nptr=db+2;
 				slen=2;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				slen+=len;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				slen+=len;
@@ -321,7 +326,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr+6;
 				nptr=db+6;
 				slen=6;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				/*nptr+=len;*/
 				slen+=len;
@@ -338,7 +343,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr;
 				nptr=db;
 				slen=0;
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				nptr+=len;
 				/* XXX: This test can go away */
@@ -387,7 +392,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 						slen++;
 					}
 				}
-				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK)
+				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len, NULL))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				/*nptr+=len;*/
 				slen+=len;
@@ -804,8 +809,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		DEBUG_MSG("Bad number of query records in answer.\n");
 		return RC_SERVFAIL;
 	}
-	/* check & skip the query record. */
-	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i))!=RC_OK)
+	/* check & skip the query record. We can ignore undersocres here, because they will be
+	 * detected in the name comparison */
+	if ((rv=decompress_name((unsigned char *)st->recvbuf, nbuf, &rrp, &lcnt, st->recvl, &i, NULL))!=RC_OK)
 		return rv==RC_TRUNC?RC_FORMAT:rv;
 
 	i=0;

@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.52 2001/06/02 18:07:15 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.53 2001/06/02 23:08:13 tmm Exp $";
 #endif
 
 /*
@@ -776,7 +776,7 @@ error_ar:
  */
 static int decode_query(unsigned char *data, long rlen, darray *q)
 {
-	int i,res,l;
+	int i,res,l,uscore;
 	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
 	unsigned char *ptr=(unsigned char *)(hdr+1);
 	long sz=rlen-sizeof(dns_hdr_t);
@@ -792,7 +792,7 @@ static int decode_query(unsigned char *data, long rlen, darray *q)
 		if (!(*q=da_grow(*q,1)))
 			return RC_SERVFAIL;
 		qe=DA_LAST(*q,dns_queryel_t);
-		res=decompress_name(data,qe->query,&ptr,&sz,rlen,&l);
+		res=decompress_name(data,qe->query,&ptr,&sz,rlen,&l,&uscore);
 		if (res==RC_TRUNC) {
 			if (hdr->tc) {
 				if (i==0) {
@@ -826,6 +826,13 @@ static int decode_query(unsigned char *data, long rlen, darray *q)
 		ptr+=2;
 		qe->qtype=ntohs(qe->qtype);
 		qe->qclass=ntohs(qe->qclass);
+#if defined(DNS_NEW_RRS) && !defined(UNDERSCORE)
+		/* Underscore only allowed for SRV records. */
+		if (uscore && qe->qtype!=T_SRV) {
+			da_free(*q);
+			return RC_FORMAT;
+		}
+#endif	
 	}
 	return RC_OK;
 }

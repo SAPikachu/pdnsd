@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.25 2001/06/02 18:07:50 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.26 2001/06/02 23:08:13 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -36,11 +36,13 @@ static char rcsid[]="$Id: dns.c,v 1.25 2001/06/02 18:07:50 tmm Exp $";
  * len is the total name lentgh.
  * msg and msgsz are needed for decompression (see rfc1035). The returned data is decompressed, but still in the
  * rr name form (length byte - string of that length, terminated by a 0 lenght byte).
+ * If uscore is NULL, an underscore will be treated as illegal (except when UNDERSCORE is defined). Otherwise,
+ * *uscore will be set to 0 if the name contained no underscores, and to 1 otherwise.
  *
  * Returned is a dns return code, with one exception: RC_TRUNC, as defined in dns.h, indicates that the message is
  * truncated at the name (which needs a special return code, as it might or might not be fatal).
  */
-int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len)
+int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src, long *sz, long msgsz, int *len, int *uscore)
 {
 	unsigned char lb;
 	int jumped=0;
@@ -53,6 +55,8 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 
 	if (!*sz)
 		return RC_TRUNC;
+	if (uscore!=NULL)
+		*uscore=0;
 	lptr=*src;
 	while (1) {
 		if (lptr-msg>=msgsz)
@@ -105,8 +109,10 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 			}
 			if (tpos>=255)
 				return RC_FORMAT;
-			if (!isdchar(*lptr))
+			if (!isdchar(*lptr) && (uscore==NULL || *lptr!='_'))
 				return RC_FORMAT;
+			if (*lptr=='_' && uscore!=NULL)
+				*uscore=1;
 			tgt[tpos]=*lptr;
 			lptr++;
 			tpos++;
@@ -301,8 +307,10 @@ static int add_host(unsigned char *pn, unsigned char *rns, unsigned char *b3, pd
 			for (i=15;i>=0;i--) {
 				snprintf((char *)b4, sizof(b4),"%x.%x.",((unsigned char *)&a->ipv6)[i]&&0xf,(((unsigned char *)&a->ipv6)[i]&&0xf0)>>4);
 				strncat((char *)b2,(char *)b4,sizeof(b2)-strlen(b2)-1);
+				b2[sizeof(b2)-1]='\0';
 			}
 			strncat((char *)b2,"ip6.int.",sizeof(b2)-strlen(b2)-1);
+			b2[sizeof(b2)-1]='\0';
 		}
 #endif
 		if (!str2rhn(b2,rhn))

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.12 2001/06/02 20:12:45 tmm Exp $ */
+/* $Id: error.h,v 1.13 2001/06/02 23:08:13 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -56,7 +56,7 @@ void log_info(int level, char *s, ...) printfunc(2, 3);
 /* from main.c */
 extern FILE *dbg_file;
 
-/* XXX: Through the timestamp generation, this gets a little heavy-weight */
+/* XXX: The timestamp generation makes this a little heavy-weight */
 #define DEBUG_MSG_(c,...)								\
 	do {										\
 		if (debug_p) {								\
