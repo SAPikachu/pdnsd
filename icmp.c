@@ -32,18 +32,22 @@ Boston, MA 02111-1307, USA.  */
 #include <errno.h>
 #include <string.h>
 #include "ipvers.h"
+#if TARGET==TARGET_BSD
+# include <netinet/in_systm.h>
+#endif
+#include <netinet/ip.h>
 #if TARGET==TARGET_LINUX
 # include <linux/types.h>
 # include <linux/icmp.h>
-#endif
-#if TARGET==TARGET_BSD
-# include <netinet/in_systm.h>
+#else
+# include <netinet/ip_icmp.h>
 #endif
 #ifdef ENABLE_IPV6
 # include <netinet/ip6.h>
 # include <netinet/icmp6.h>
 #endif
 #include <netinet/ip.h>
+#include <netdb.h>
 #include "icmp.h"
 #include "error.h"
 
@@ -52,8 +56,25 @@ int icmp_errs=0; /* This is only here to minimize log output. Since the
 		    consequences of a race is only one log message more/less
 		    (out of ICMP_MAX_ERRS), no lock is required. */
 
-#if TARGET==TARGET_LINUX
+#if TARGET==TARGET_BSD
+# define icmphdr   icmp
+# define iphdr     ip
+# define ip_ihl    ip_hl
+# define ip_saddr  ip_src.s_addr
+#else
+# define ip_saddr  saddr
+# define ip_ihl    ihl
+#endif
 
+#if TARGET==TARGET_LINUX
+# define icmp_type  type
+# define icmp_code  code
+# define icmp_cksum checksum
+# define icmp_id un.echo.id
+# define icmp_seq un.echo.sequence
+#endif
+
+#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
 /*
  * These are the ping implementations for Linux in ther IPv4/ICMPv4 and IPv6/ICMPv6 versions.
  * I know they share some code, but I'd rather keep them separated in some parts, as some
@@ -81,18 +102,32 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 	int rve=1;
 	int len;
 	int isock,osock;
+#if TARGET==TARGET_LINUX
 	struct icmp_filter f;
+#else
+	struct protoent *pe;
+	int SOL_IP;
+#endif
 	struct sockaddr_in from;
 	struct icmphdr icmpd;
 	struct icmphdr *icmpp;
 	struct msghdr msg;
-	__u32 sum;
-	__u16 *ptr;
-	__u16 id=(__u16)(rand()&0xffff); /* randomize a ping id */
+	unsigned long sum;
+	unsigned short *ptr;
+	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
-	/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
-	 * So, set it manually and unportable ;-) */
-	f.data=0xfffffffe;
+
+#if TARGET!=LINUX	
+	if ((pe=getprotobyname("ip"))) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+		}
+		return -1;
+	}
+	SOL_IP=pe->p_proto;
+#endif
+
 	for (i=0;i<rep;i++) {
 		/* Open a raw socket for replies */
 		isock=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -103,6 +138,12 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			}
 			return -1;
 		}
+#if TARGET==TARGET_LINUX
+		/* Fancy ICMP filering -- only on Linux */
+		
+		/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
+		 * So, set it manually and unportable ;-) */
+		f.data=0xfffffffe;
 		if (setsockopt(isock,SOL_RAW,ICMP_FILTER,&f,sizeof(f))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
@@ -111,6 +152,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			close(isock);
 			return -1;
 		}
+#endif
 		fcntl(isock,F_SETFL,O_NONBLOCK);
 		/* send icmp_echo_request */
 		osock=socket(PF_INET,SOCK_RAW,IPPROTO_ICMP);
@@ -131,15 +173,15 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			close(isock);
 			return -1;
 		}
-		icmpd.type=ICMP_ECHO;
-		icmpd.code=0;
-		icmpd.checksum=0;
-		icmpd.un.echo.id=htons((short)id);
-		icmpd.un.echo.sequence=htons((short)i);
+		icmpd.icmp_type=ICMP_ECHO;
+		icmpd.icmp_code=0;
+		icmpd.icmp_cksum=0;
+		icmpd.icmp_id=htons((short)id);
+		icmpd.icmp_seq=htons((short)i);
 
 		/* Checksumming - Algorithm taken from nmap. Thanks... */
 
-		ptr=(__u16 *)&icmpd;
+		ptr=(unsigned short *)&icmpd;
 		sum=0;
 
 		for (len=0;len<4;len++) {
@@ -147,14 +189,14 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 		}
 		sum = (sum >> 16) + (sum & 0xffff);
 		sum += (sum >> 16);
-		icmpd.checksum=~sum;
+		icmpd.icmp_cksum=~sum;
 
 
 		from.sin_family=AF_INET;
 		from.sin_port=0;
 		from.sin_addr=addr;
 		SET_SOCKA_LEN4(from);
-		if (sendto(osock,&icmpd,sizeof(icmpd),0,&from,sizeof(from))==-1) {
+		if (sendto(osock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
 				log_warn("icmp ping: sendto() failed: %s.",strerror(errno));
@@ -177,14 +219,14 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				return -1;  /* error in sending (e.g. no route to host) */
 			}
 			sl=sizeof(from);
-			if ((len=recvfrom(isock,&buf,sizeof(buf),0,&from,&sl))!=-1) {
-				if (len>20 && len-((struct iphdr *)buf)->ihl*4>=8) {
-					icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ihl);
-					if (((struct iphdr *)buf)->saddr==addr.s_addr &&
-					     ntohs(icmpp->un.echo.id)==id && ntohs(icmpp->un.echo.sequence)<=i) {
+			if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
+				if (len>20 && len-((struct iphdr *)buf)->ip_ihl*4>=8) {
+					icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
+					if (((struct iphdr *)buf)->ip_saddr==addr.s_addr &&
+					     icmpp->icmp_type==ICMP_ECHOREPLY && ntohs(icmpp->icmp_id)==id && ntohs(icmpp->icmp_seq)<=i) {
 						close(osock);
 						close(isock);
-						return (i-ntohs(icmpp->un.echo.sequence))*timeout+tm; /* return the number of ticks */
+						return (i-ntohs(icmpp->icmp_seq))*timeout+tm; /* return the number of ticks */
 					}
 				}
 			} else {
@@ -231,6 +273,20 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	struct msghdr msg;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 	socklen_t sl;
+#if TARGET!=TARGET_LINUX
+	int SOL_IPV6;
+	struct protoent *pe;
+
+	if ((pe=getprotobyname("ipv6"))) {
+		if (icmp_errs<ICMP_MAX_ERRS) {
+			icmp_errs++;
+			log_warn("icmp ping: socket() failed: %s",strerror(errno));
+		}
+		return -1;
+	}
+	SOL_IPV6=pe->p_proto;
+#endif
+
 
 	ICMP6_FILTER_SETBLOCKALL(&f);
 	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REQUEST,&f);
@@ -289,7 +345,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		from.sin6_addr=a;
 		SET_SOCKA_LEN6(from);
 /*		printf("to: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
-		if (sendto(osock,&icmpd,sizeof(icmpd),0,&from,sizeof(from))==-1) {
+		if (sendto(osock,&icmpd,sizeof(icmpd),0,(struct sockaddr *)&from,sizeof(from))==-1) {
 			if (icmp_errs<ICMP_MAX_ERRS) {
 				icmp_errs++;
 				log_warn("icmpv6 ping: sendto() failed: %s.",strerror(errno));
@@ -313,7 +369,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			}
 			sl=sizeof(from);
 /*			printf("before: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
-			if ((len=recvfrom(isock,&buf,sizeof(buf),0,&from,&sl))!=-1) {
+			if ((len=recvfrom(isock,&buf,sizeof(buf),0,(struct sockaddr *)&from,&sl))!=-1) {
 				if (len>=sizeof(struct icmp6_hdr)) {
 /*	   			        printf("reply: %s.\n",inet_ntop(AF_INET6,&from.sin6_addr,buf,1024));*/
 				        /* we get packets without IPv6 header, luckily */
@@ -373,8 +429,6 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 	return -1;
 }
 
-#elif TARGET==TARGET_BSD
-
 #else
-# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=LINUX on your compiler command line."
+# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=TARGET_LINUX on your compiler command line."
 #endif /*TARGET==TARGET_LINUX*/

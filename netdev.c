@@ -37,11 +37,12 @@ Boston, MA 02111-1307, USA.  */
  * flavours of Unix if you can and want.
  */
 
-#if TARGET==TARGET_LINUX
+#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
+# if TARGET==TARGET_LINUX
 
 int isdn_errs=0;
 
-#ifdef ISDN_SUPPORT
+#  ifdef ISDN_SUPPORT
 
 /*
  * Test the status of an ippp interface. Taken from the isdn4k-utils (thanks!) and adapted
@@ -50,8 +51,8 @@ int isdn_errs=0;
  * If your kernel is too old or too new, just try to get the status as uptest=exec command
  * This will work, although slower.
  */
-
-#include <linux/isdn.h>
+ 
+#   include <linux/isdn.h>
 
 int statusif(char *name)
 {
@@ -74,7 +75,8 @@ int statusif(char *name)
 	close(isdninfo);
 	return rc;
 }
-#endif
+#  endif
+# endif
 
 /*
  * Test whether the network device specified in devname is up and
@@ -88,25 +90,27 @@ int statusif(char *name)
  */
 int if_up(char *devname)
 {
-	struct protoent *pe;
+        struct protoent *pe;
 	int sock;
 	struct ifreq ifr;
+# if TARGET==TARGET_LINUX
 	if (strlen(devname)>4 && strlen(devname)<=6 && strncmp(devname,"ippp",4)==0) {
 		/* This function didn't manage the interface uptest correctly. Thanks to
 		 * Joachim Dorner for pointing out. 
 		 * The new code was shamelessly stolen from isdnctrl.c of the 
 		 * isdn4k-utils. */
-#ifdef ISDN_SUPPORT
+#  ifdef ISDN_SUPPORT
 		return statusif(devname);
-#else
+#  else
 		if (isdn_errs==0) {
 			log_warn("An ippp? device specified for uptest, but pdnsd was compiled without ISDN support.");
 			log_warn("The uptest result will be wrong.");
 			isdn_errs++;
 		}
-#endif
+#  endif
 		/* If it doesn't match our rules for isdn devices, treat as normal if */
 	}
+# endif
 	if (!(pe=getprotobyname("udp")))
 		return 0;
 	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
@@ -124,20 +128,22 @@ int if_up(char *devname)
 	return 1;
 }
 
+# if TARGET==TARGET_LINUX
+
 int is_local_addr(pdnsd_a *a)
 {
 	int i,res;
-#ifdef ENABLE_IPV4
+#  ifdef ENABLE_IPV4
 	struct protoent *pe;
 	int sock;
 	struct ifreq ifr;
-#endif
-#ifdef ENABLE_IPV6
+#  endif
+#  ifdef ENABLE_IPV6
 	char   buf[50];
 	FILE   *f;
 	struct in6_addr b;
-#endif
-#ifdef ENABLE_IPV4
+#  endif
+#  ifdef ENABLE_IPV4
 	if (run_ipv4) {
 		res=0;
 		if (!(pe=getprotobyname("udp")))
@@ -162,8 +168,8 @@ int is_local_addr(pdnsd_a *a)
 		return res;
 	}
 
-#endif
-#ifdef ENABLE_IPV6
+#  endif
+#  ifdef ENABLE_IPV6
 	if (run_ipv6) {
 		/* the interface configuration and information retrieval is obiously currently done via 
 		 * rt-netlink sockets. I think it is relatively likely to change in an incompatible way the 
@@ -195,12 +201,55 @@ int is_local_addr(pdnsd_a *a)
 		}
 		fclose(f);
 	}
-#endif
+#  endif
 	return 0;
 }
 
-#elif TARGET==TARGET_BSD
+# else
+
+int is_local_addr(pdnsd_a *a)
+{
+	struct protoent *pe;
+	int sock;
+        struct ifconf ifc;
+	char buf[2048];
+	int i;
+
+	ifc.ifc_len=2048;
+	ifc.ifc_buf=buf;
+	if (!(pe=getprotobyname("udp")))
+		return 0;
+	if ((sock=socket(PF_INET,SOCK_DGRAM, pe->p_proto))==-1)
+		return 0;
+	if (ioctl(sock,SIOCGIFCONF,&ifc)==-1) {
+	        return 0;
+	}
+	for (i=0;i<ifc.ifc_len/sizeof(struct ifreq);i++) {
+#  ifdef ENABLE_IPV4
+	  if (run_ipv4) {
+	          if (ifc.ifc_req[i].ifr_addr.sa_family==AF_INET &&
+		      ((struct sockaddr_in *)&ifc.ifc_req[i].ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr) {
+		          return 1;
+	          }
+	  }
+#  endif
+#  ifdef ENABLE_IPV6
+	  if (run_ipv6) {
+	          if (ifc.ifc_req[i].ifr_addr.sa_family==AF_INET6 &&
+		      IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ifc.ifc_req[i].ifr_addr)->sin6_addr,&a->ipv6)) {
+		          return 1;
+	          }
+	  }
+#  endif
+	        
+	}
+	close(sock);
+	
+	return 0;
+}
+
+# endif
 
 #else
-# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=LINUX on your compiler command line."
+# error "No OS macro defined. Currently, only Linux is supported. Do -DTARGET=TARGET_LINUX on your compiler command line."
 #endif
