@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.6 2000/08/08 17:53:16 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.7 2000/08/08 17:58:09 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -421,7 +421,7 @@ int main(int argc,char *argv[])
 		signal(SIGINT,bsd_sighnd);
 		signal(SIGQUIT,bsd_sighnd);
 	}
-	while (!sigr) usleep(500000);
+	while (!sigr) usleep(250000);
 	sig=sigr;
 #endif
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
