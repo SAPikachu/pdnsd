@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: pdnsd.in,v 1.4 2001/05/17 14:14:30 tmm Exp $
+# $Id: pdnsd.in,v 1.5 2001/07/04 11:36:18 tmm Exp $
 #
 #	/etc/rc.d/init.d/pdnsd
 #
@@ -25,36 +25,56 @@ test -x @prefix@/sbin/pdnsd || exit 0
 
 RETVAL=0
 
+start() {
+	echo -n 'Starting pdnsd: '
+	daemon @prefix@/sbin/pdnsd -d
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/pdnsd
+	return $RETVAL
+}
+
+stop() {
+	echo -n 'Shutting down pdnsd: '
+	killproc pdnsd
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/pdnsd
+	return $RETVAL
+}
+
+restart() {
+	stop
+	start
+}
+
+condrestart() {
+	[ -e /var/lock/subsys/pdnsd ] && restart
+	return 0
+}
+
 #
 #	See how we were called.
 #
 case "$1" in
   start)
-	echo -n 'Starting pdnsd: '
-	daemon @prefix@/sbin/pdnsd -d
-	RETVAL=$? 
-	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/pdnsd
-	echo
+	start
 	;;
   stop)
-	echo -n 'Shutting down pdnsd: '
-	killproc pdnsd 
-	RETVAL=$? 
-	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/pdnsd
-	echo
+	stop
 	;;
   status)
-    status pdnsd
-  	exit $?
+	status pdnsd
 	;;
   reload|restart)
-	$0 stop
-	$0 start
-	RETVAL=$?
+	restart
+  	;;
+  condrestart)
+	condrestart
   	;;
   *)
-	echo "Usage: /etc/rc.d/init.d/pdnsd {start|stop|status|restart|reload}"
-	exit 1
+	echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
+	RETVAL=1
 esac
 
 exit $RETVAL
