@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.8 2001/04/06 21:30:43 tmm Exp $ */
+/* $Id: cache.h,v 1.9 2001/04/10 22:21:09 tmm Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -152,6 +152,7 @@ void free_cent(dns_cent_t cent);
 
 dns_cent_t *copy_cent(dns_cent_t *cent);
 rr_bucket_t *copy_rr(rr_bucket_t *rr);
+rr_bucket_t *create_rr(int dlen, void *data);
 
 unsigned long get_serial(void);
 

@@ -42,7 +42,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.36 2001/04/06 21:30:35 tmm Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.37 2001/04/10 22:21:04 tmm Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -194,7 +194,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 							return RC_SERVFAIL;
 						nsr=DA_LAST(*ns,nsr_t);
 						rhn2str(db,nsr->name);
-						memcpy(nsr->nsdomain,oname,256);
+						rhncpy(nsr->nsdomain,oname);
 					}
 				} 
 				break;
@@ -307,7 +307,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					nsr=DA_LAST(*ns,nsr_t);
 					/* rhn2str will only convert the first name, which is the NS */
 					rhn2str(db,nsr->name);
-					memcpy(nsr->nsdomain,oname,256);
+					rhncpy(nsr->nsdomain,oname);
 				}
 				break;
 #ifdef DNS_NEW_RRS
@@ -751,8 +751,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr->ancount=0;
 		st->hdr->nscount=0;
 		st->hdr->arcount=0;
-		strcpy(((char *)(st->hdr+1)),(char *)rrn);
-		*(((unsigned char *)(st->hdr+1))+strlen((char *)rrn))='\0';
+		rhncpy((unsigned char *)(st->hdr+1),rrn);
 		temp_q.qtype=htons(st->qt);
 		temp_q.qclass=htons(C_IN);
 		memcpy(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1,&temp_q,4);
@@ -1056,7 +1055,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, time_t timeout, int 
 	q->qs[q->num-1].qt=thint;
 	q->qs[q->num-1].lean_query=lean_query;
 	q->qs[q->num-1].trusted=trusted;
-	strcpy((char *)q->qs[q->num-1].nsdomain,(char *)nsdomain);
+	rhncpy(q->qs[q->num-1].nsdomain,nsdomain);
 	q->qs[q->num-1].state=QS_INITIAL;
 	q->qs[q->num-1].qm=query_method;
 	return 1;

@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.28 2001/04/06 21:30:35 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.29 2001/04/10 22:21:04 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -67,7 +67,7 @@ extern int yylineno;
 #endif
 
 /* Bah. I want strlcpy. */
-#define YSTRNCP(dst, src, err) \
+#define YSTRNCP(dst, src, err) 						\
         do {								\
 	        if (!strncp((char *)(dst),(char *)src,sizeof(dst))) {	\
 		        yyerror(err": string too long"); 		\
@@ -669,7 +669,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+1,c_ptr,T_PTR);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR);
 			}
 		| MX '=' STRING ',' NUMBER ';'
 			{
@@ -688,8 +688,8 @@ rr_el:		NAME '=' STRING ';'
 				memset(buf,0,sizeof(buf));
 				ts=htons($5);
 				memcpy(buf,&ts,2);
-				memcpy(buf+2,c_ptr,strlen((char *)c_ptr)+1);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+3,buf,T_MX);
+				memcpy(buf+2,c_ptr,rhnlen(c_ptr));
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX);
 			}
 		| CNAME '=' STRING ';'
 			{
@@ -705,7 +705,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,strlen((char *)c_ptr)+1,c_ptr,T_CNAME);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
 			{
@@ -735,11 +735,9 @@ rr_el:		NAME '=' STRING ';'
 				c_soa.expire=htonl($13);
 				c_soa.minimum=htonl($15);
 				memset(buf,0,sizeof(buf));
-				strcpy((char *)buf,(char *)c_soa_owner);
-				idx=strlen((char *)c_soa_owner)+1;
-				strcpy((char *)&buf[idx],(char *)c_soa_r);
-				idx+=strlen((char *)c_soa_r)+1;
-				memcpy(&buf[idx],&c_soa,sizeof(soa_r_t));
+				idx=rhncpy(buf,c_soa_owner);
+				idx+=rhncpy(buf+idx,c_soa_r);
+				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 				idx+=sizeof(soa_r_t);
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA);
 			}			

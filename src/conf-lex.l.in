@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.18 2001/04/03 19:10:29 tmm Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.19 2001/04/10 22:21:03 tmm Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -33,14 +33,13 @@ extern YYSTYPE yylval;
 int br_level=0;
 %}
 
-/* In the location below, %option yylineno is inserted by
- * configure in some cases.
- * It causes yylineno to be available in flex, which I prefer
- * for error reporting. It is a little hairy, though, because
- * it is neither part of the POSIX nor offcially documented in
- * the AT&T lex. Look into the configure.in for the 
- * implementation.In short, if your lexer generator chokes on this, 
- * well, you won't get line numbers in the output.*/
+/* In the location below, %option yylineno is inserted by configure in some 
+ * cases.
+ * It causes yylineno to be available in flex, which I prefer for error 
+ * reporting. It is a little hairy, though, because it is neither part of 
+ * the POSIX nor offcially documented in the AT&T lex. Look into configure.in
+ * for the implementation. In short, if your lexer generator chokes on this, 
+ * you won't get line numbers in the output.*/
 @yylineno_option@
 
 %s comment
@@ -144,9 +143,9 @@ C_CLOSE \*\/
 						if (br_level==0)
 							BEGIN(INITIAL);
 					}
-<comment>.				/*belch.*/
-[\ \t]+					/*dish of the day*/
-"\n"                                    /*-<=>-*/
+<comment>.				/* Delete text in comments, */
+[\ \t]+					/* white space, */
+"\n"                                    /* new lines. */
 .					{return ERROR;}
 
 %%

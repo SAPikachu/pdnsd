@@ -55,7 +55,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.41 2001/04/06 21:30:35 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.42 2001/04/10 22:21:04 tmm Exp $";
 #endif
 
 /*
@@ -525,31 +525,35 @@ static int add_additional_a(unsigned char *rhn, darray *sva, dns_hdr_t **ans, lo
 }
 
 typedef struct rre_s {
-	unsigned char  nm[256];
-	struct rre_s   *next;
-	rr_bucket_t    rr;
-	unsigned char  buf[256]; /* this is buffer space for the ns record */
+	int	       tp;
+	unsigned char  tnm[256]; /* Name for the domain a record refers to */
+	/* rr, nm, ts, ttl, flags only have meanings if tp==RRETP_AUTH */
+	int    	       sz;
+	unsigned char  nm[256];  /* Name of the domain the record is for (if needed) */
 	time_t         ts;
 	time_t         ttl;
 	unsigned short flags;
 } rr_ext_t;
 
-static int add_ar(rr_bucket_t *rr, rr_ext_t **ar, unsigned char *bufr, time_t ts, time_t ttl, int flags)
-{
-	rr_ext_t **tmp;
-	rr_bucket_t *rr2;
+/* types for the tp field */
+#define RRETP_AUTH	1	/* For name server: add to authority, add address to additional. */
+#define RRETP_ADD	2	/* For other records: add the address of buf to additional */
 
-	tmp=ar;
-	while (*tmp) tmp=&(*tmp)->next;
-	if (!(rr2=copy_rr(rr)) || !(*tmp=calloc(sizeof(rr_ext_t),1))) {
+static int add_ar(void *tnm, int tsz, darray *ar, unsigned char *nm, time_t ts, time_t ttl, int flags, int tp)
+{
+	rr_ext_t *re;
+	
+	if ((*ar=da_grow(*ar,1))==NULL) {
 		return 0;
 	}
-	memcpy(&(*tmp)->nm,bufr,256);
-	(*tmp)->ts=ts;
-	(*tmp)->ttl=ttl;
-	(*tmp)->flags=flags;
-	memcpy(&(*tmp)->rr,rr2,sizeof(rr_bucket_t)+rr2->rdlen);
-	free(rr2);
+	re=DA_LAST(*ar,rr_ext_t);
+	rhncpy(re->nm,nm);
+	re->ts=ts;
+	re->ttl=ttl;
+	re->flags=flags;
+	re->tp=tp;
+	re->sz=tsz;
+	memcpy(re->nm,tnm,tsz);
 	return 1;
 }
 
@@ -569,14 +573,12 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	int i,rc,hops,cont,cnc=0;
 	time_t queryts=time(NULL);
 	rr_bucket_t *rr,*at;
-	rr_ext_t *ar,*au;
+	darray ar;
+	rr_ext_t *rre;
 	darray cb=NULL;
 	dns_hdr_t *ans;
 	dns_queryel_t *qe;
 	dns_cent_t *cached;
-	unsigned char *nb;
-	int have_ns=0;
-	dns_cent_t *ae;
 	std_query_t temp_q;
 
 	ar=NULL;
@@ -605,8 +607,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 		qe=DA_INDEX(q,i,dns_queryel_t);
 		if (!(ans=(dns_hdr_t *)realloc(ans,*rlen+strlen((char *)qe->query)+5)))
 			return NULL;
-		strcpy(((char *)ans)+*rlen,(char *)qe->query);
-		*rlen+=strlen((char *)qe->query)+1;
+		*rlen+=rhncpy(((unsigned char *)ans)+*rlen,qe->query);
 		temp_q.qtype=htons(qe->qtype);
 		temp_q.qclass=htons(qe->qclass);
 		memcpy(((unsigned char *)ans)+*rlen,&temp_q,sizeof(temp_q));
@@ -627,43 +628,27 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 		}
 	}
 	
+	if ((ar=DA_CREATE(rr_ext_t))==NULL) {
+		free(ans);
+		return NULL;
+	}
 	/* second, the answer section */
 	for (i=0;i<da_nel(q);i++) {
 		qe=DA_INDEX(q,i,dns_queryel_t);
-		memset(bufr,0,256);
-		strcpy((char *)bufr,(char *)qe->query);
+		rhncpy(bufr,qe->query);
 		rhn2str(qe->query,buf);
 		/* look if we have a cached copy. otherwise, perform a nameserver query. Same with timeout */
 		hops=MAX_HOPS;
 		do {
 			cont=0;
 			if ((rc=p_dns_cached_resolve(NULL,buf, bufr, &cached, MAX_HOPS,qe->qtype,queryts))!=RC_OK) {
-				while (ar) {
-					au=ar->next;
-					free_rr(ar->rr);
-					free(ar);
-					ar=au;
-				}
-				if (cb)
-					da_free(cb);
 				ans->rcode=rc;
-				return (unsigned char *)ans;
+				goto error_ar;
 			}
 			aa=0;
 			strcpy((char *)oname,(char *)buf);
-			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva)) {
-				free_cent(*cached);
-				free(cached);
-				while (ar) {
-					au=ar->next;
-					free_rr(ar->rr);
-					free(ar);
-					ar=au;
-				}
-				if (cb)
-					da_free(cb);
-				return NULL;
-			}
+			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva))
+				goto error_cached;
 			cnc=follow_cname_chain(cached,buf,bufr);
 			hops--;
 			/* If there is only a cname and rd is set, add the cname to the response (add_to_response
@@ -677,135 +662,55 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 			 * answer from (and only those) to this list. This list will be appended to the record. This
 			 * is at max one ns record per result. For extensibility, however, we support an arbitrary number
 			 * of rrs (including 0) 
-			 * We only do this for the last record in a cname chain, to prevent answer bloat.*/
+			 * We only do this for the last record in a cname chain, to prevent answer bloat. */
 			if (!cont) {
 				if (cached->rr[T_NS-T_MIN]) {
 					rr=cached->rr[T_NS-T_MIN]->rrs;
 					while (rr) {
-						if (!add_ar(rr, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
-							    cached->rr[T_NS-T_MIN]->flags)) {
-							free(ans);
-							free_cent(*cached);
-							free(cached);
-							while (ar) {
-								au=ar->next;
-								free_rr(ar->rr);
-								free(ar);
-								ar=au;
-							}
-							if (cb)
-								da_free(cb);
-							return NULL;
-						}
+						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
+							    cached->rr[T_NS-T_MIN]->flags,RRETP_AUTH))
+							goto error_cached;
 						rr=rr->next;
 					}
 				}
-			} else {
-				free_cent(*cached);
-				free(cached);
+				/* Add the rest of the additional A and AAAA records */
+				for (i=0;i<AR_NUM;i++) {
+					if (cached->rr[ar_recs[i]-T_MIN]) {
+						rr=cached->rr[ar_recs[i]-T_MIN]->rrs;
+						while (rr) {
+							if (!add_ar(((unsigned char *)(rr+1))+ar_offs[i], rr->rdlen-ar_offs[i],&ar, (unsigned char *)"",
+							    0,0,0,RRETP_ADD))
+								goto error_cached;
+							at=at->next;
+						}
+					}
+				}
 			}
+
+			free_cent(*cached);
+			free(cached);
 		} while (cont && hops>=0);
 	}
 
         /* Add the authority section */
-	if (ar) {
-		au=ar;
-		while (au) {
-			if (!add_additional_rr(au->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
-					       &au->rr, au->ts, au->ttl, au->flags,S_AUTHORITY)) {
-				free_cent(*cached);
-				free(cached);
-				while (ar) {
-					au=ar->next;
-					free_rr(ar->rr);
-					free(ar);
-					ar=au;
-				}
-				if (cb)
-					da_free(cb);
-				return NULL;
-			}
-			au=au->next;
-		}
-
-	} else { 
-		/* If this is not present, we do not have any ns records for the final name. Try to add records for higher-level domains
-		 * if we have such cached. */
-		nb=buf;
-		while (1) {
-			if (!(nb=(unsigned char *)strchr((char *)nb,'.')) || !*++nb)
-				break;
-			
-			str2rhn(nb,bufr);
-
-			if ((ae=lookup_cache(nb))) {
-				if (ae->rr[T_NS-T_MIN]) {
-					rr=ae->rr[T_NS-T_MIN]->rrs;
-					have_ns=1;
-					while (rr) {
-						if (!add_additional_rr(bufr, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
-								       rr, ae->rr[T_NS-T_MIN]->ts, ae->rr[T_NS-T_MIN]->ttl,
-								       ae->rr[T_NS-T_MIN]->flags,S_AUTHORITY) ||
-						    !add_ar(rr, &ar, bufr, ae->rr[T_NS-T_MIN]->ts, ae->rr[T_NS-T_MIN]->ttl,
-							    ae->rr[T_NS-T_MIN]->flags)) {
-							free_cent(*cached);
-							free(cached);
-							free_cent(*ae);
-							free(ae);
-							while (ar) {
-								au=ar->next;
-								free_rr(ar->rr);
-								free(ar);
-								ar=au;
-							}
-							if (cb)
-								da_free(cb);
-							return NULL;
-						}
-						rr=rr->next;
-					}
-				}
-				free_cent(*ae);
-				free(ae);
-				if (have_ns)
-					break;
-			}
+	for (i=0;i<da_nel(ar);i++) {
+		rre=DA_INDEX(ar,i,rr_ext_t);
+		if (rre->tp == RRETP_AUTH) {
+			if ((rr=create_rr(rre->sz,rre->tnm))==NULL ||
+			    !add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
+				rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY))
+				goto error_ans;
 		}
 	}
 
 	/* now add the name server addresses */
-	while(ar) {
-		if (!add_additional_a(ar->buf, &sva, &ans, rlen, udp, queryts, &cb)) {
-			free_cent(*cached);
-			free(cached);
-			if (cb)
-				da_free(cb);
-			return NULL;
-		}
-		au=ar->next;
-		free_rr(ar->rr);
-		free(ar);
-		ar=au;
+	for (i=0;i<da_nel(ar);i++) {
+		rre=DA_INDEX(ar,i,rr_ext_t);
+		if (!add_additional_a(rre->tnm, &sva, &ans, rlen, udp, queryts, &cb))
+			goto error_ans;
 	}
-
-	/* Add the rest of the additional A and AAAA records */
-	for (i=0;i<AR_NUM;i++) {
-		if (cached->rr[ar_recs[i]-T_MIN]) {
-			at=cached->rr[ar_recs[i]-T_MIN]->rrs;
-			while (at) {
-				if (!add_additional_a(((unsigned char *)(at+1))+ar_offs[i], &sva, &ans, rlen, udp, queryts, &cb)) {
-					free_cent(*cached);
-					free(cached);
-					if (cb)
-						da_free(cb);
-					return NULL;
-				}
-				at=at->next;
-			}
-		}
-	}
-	if (sva)
-		da_free(sva);
+	da_free(ar);
+	
 	free_cent(*cached);
 	free(cached);
 	if (cb)
@@ -813,7 +718,22 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	if (aa)
 		ans->aa=1;
 	return (unsigned char *)ans;
-}
+
+	/* You may not like goto's, but here we avoid lots of code duplication. */
+error_cached:
+	free_cent(*cached);
+	free(cached);
+error_ans:
+	free(ans);
+	ans=NULL;
+error_ar:
+	da_free(ar);
+	if (cb)
+		da_free(cb);
+	if (sva)
+		da_free(sva);
+	return (unsigned char *)ans;
+}	
 
 /*
  * Decode the query (the query messgage is in data and rlen bytes long) into q
@@ -1595,11 +1515,16 @@ void *tcp_answer_thread(void *csock)
 			} else {
 				memcpy(&err,buf,sizeof(err)>olen?olen:sizeof(err));
 				err=mk_error_reply(err.id,olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
-				if (write(sock,&err,sizeof(err))!=sizeof(err)) {
+				rlen=htons(sizeof(err));
+				if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 					free(buf);
 					close(sock);
 					return NULL;
 				}
+				write(sock,&err,sizeof(err)); /* error anyway. */
+				free(buf);
+				close(sock);
+				return NULL;
 			}
 		} else {
 			nlen=rlen;

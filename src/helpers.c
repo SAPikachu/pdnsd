@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.17 2001/04/06 21:30:36 tmm Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.18 2001/04/10 22:21:04 tmm Exp $";
 #endif
 
 /*
@@ -179,6 +179,25 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 			break;
 	}
 }
+
+/* Return the length of a rhn. This is for better abstraction and could be a macro */
+int rhnlen(unsigned char *rhn)
+{
+	return strlen((char *)rhn)+1;
+}
+
+/*
+ * Non-validating rhn copy (use with checked or generated data only).
+ * Returns number of characters copied.
+ */
+int rhncpy(unsigned char *dst, unsigned char *src)
+{
+	/* We can use strlen/strcpy here, because a rhn is terminated by a 0 length byte. */
+	PDNSD_ASSERT(rhnlen(src)<=256,"rhncpy: src too long!");
+	strcpy((char *)dst,(char *)src);
+	return rhnlen(src);
+}
+
 
 /* take a name and its rrn (buffer must be 256 bytes), and return the name indicated by the cnames
  * in the record. */

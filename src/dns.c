@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.16 2001/04/06 21:30:35 tmm Exp $";
+static char rcsid[]="$Id: dns.c,v 1.17 2001/04/10 22:21:04 tmm Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -104,6 +104,8 @@ int decompress_name(unsigned char *msg, unsigned char *tgt, unsigned char **src,
 					return RC_TRUNC;
 			}
 			if (tpos>=255)
+				return RC_FORMAT;
+			if (!isdchar(*lptr))
 				return RC_FORMAT;
 			tgt[tpos]=*lptr;
 			lptr++;
@@ -192,14 +194,13 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 				 * can't be compressed. So we take the first occurence of a given length.
 				 * This works perfectly, but watch it if you change something.
 				 */
-				memcpy(brest,rest,256);
+				rhncpy(brest,rest);
 				longest=rv;
 				coffs=DA_INDEX(*cb,i, compel_t)->index+to;
 			} 
 		}
 		if (coffs>-1) {
-			strcpy((char *)out,(char *)brest);
-			rl=strlen((char *)brest);
+			rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
 			out[rl]=192|((coffs&0x3f00)>>8);
 			out[rl+1]=coffs&0xff;
 			rl+=2;
@@ -214,8 +215,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 			rhn2str(in,buf1);
 			printf("%s not compressed.\n",buf1);
 #endif
-			strcpy((char *)out,(char *)in);
-			rl=strlen((char *)out)+1;
+			rl=rhncpy(out,in);
 		}
 	} else {
 #if 0
@@ -235,7 +235,7 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, darray *cb)
 		if (!(*cb=da_grow(*cb, 1)))
 			return 0;
 		DA_LAST(*cb, compel_t)->index=offs;
-		strcpy((char *)DA_LAST(*cb, compel_t)->s,(char *)in);
+		rhncpy(DA_LAST(*cb, compel_t)->s,in);
 	}
 	return rl;
 }
