@@ -55,7 +55,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.42 2001/04/10 22:21:04 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.43 2001/04/11 03:10:53 tmm Exp $";
 #endif
 
 /*
@@ -976,7 +976,7 @@ void *udp_answer_thread(void *data)
 		 * logging is already done. Just exit the thread now.
 		 */
 		free(data);
-		return NULL;
+		pthread_exit(NULL);
 	}
 	if (rlen>512) {
 		rlen=512;
@@ -1448,14 +1448,14 @@ void *tcp_answer_thread(void *csock)
 		tv.tv_sec=global.tcp_qtimeout;
 		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
 			close(sock);
-			return NULL; 
+			pthread_exit(NULL);
 		}
 #else
 		pfd.fd=sock;
 		pfd.events=POLLIN;
 		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
 			close(sock);
-			return NULL; 
+			pthread_exit(NULL);
 		}
 #endif
 		if (read(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
@@ -1464,12 +1464,12 @@ void *tcp_answer_thread(void *csock)
 			 * query length, we cannot return an error. So exit silently.
 			 */
 			close(sock);
-			return NULL; 
+			pthread_exit(NULL);
 		}
 		rlen=ntohs(rlen);
 		if (rlen == 0) {
 			log_error("TCP zero size query received.\n");
-			return NULL;
+			pthread_exit(NULL);
 		}
 		buf=(unsigned char *)calloc(sizeof(unsigned char),rlen);
 		if (!buf) {
@@ -1478,7 +1478,7 @@ void *tcp_answer_thread(void *csock)
 				log_error("Out of memory in request handling.");
 			}
 			close (sock);
-			return NULL;
+			pthread_exit(NULL);
 		}
 
 #ifdef NO_POLL
@@ -1489,7 +1489,7 @@ void *tcp_answer_thread(void *csock)
 		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
 			close(sock);
 			free(buf);
-			return NULL; 
+			pthread_exit(NULL);
 		}
 #else
 		pfd.fd=sock;
@@ -1497,7 +1497,7 @@ void *tcp_answer_thread(void *csock)
 		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
 			close(sock);
 			free(buf);
-			return NULL; 
+			pthread_exit(NULL);
 		}
 #endif
 		if ((olen=read(sock,buf,rlen))<rlen) {
@@ -1511,7 +1511,7 @@ void *tcp_answer_thread(void *csock)
 				 */
 				free(buf);
 				close(sock);
-				return NULL;
+				pthread_exit(NULL);
 			} else {
 				memcpy(&err,buf,sizeof(err)>olen?olen:sizeof(err));
 				err=mk_error_reply(err.id,olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
@@ -1519,12 +1519,12 @@ void *tcp_answer_thread(void *csock)
 				if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 					free(buf);
 					close(sock);
-					return NULL;
+					pthread_exit(NULL);
 				}
 				write(sock,&err,sizeof(err)); /* error anyway. */
 				free(buf);
 				close(sock);
-				return NULL;
+				pthread_exit(NULL);
 			}
 		} else {
 			nlen=rlen;
@@ -1535,19 +1535,19 @@ void *tcp_answer_thread(void *csock)
 				*/
 				free(buf);
 				close(sock);
-				return NULL;
+				pthread_exit(NULL);
 			}
 			free(buf);
 			rlen=htons(nlen);
 			if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
 				free(resp);
 				close(sock);
-				return NULL;
+				pthread_exit(NULL);
 			}
 			if (write(sock,resp,ntohs(rlen))!=ntohs(rlen)) {
 				free(resp);
 				close(sock);
-				return NULL;
+				pthread_exit(NULL);
 			}
 			free(resp);
 		}
