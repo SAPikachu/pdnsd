@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.4 2000/07/30 19:01:39 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.5 2000/08/07 19:00:57 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -378,7 +378,9 @@ int main(int argc,char *argv[])
 		sigaddset(&sigs_msk,SIGINT);
 		sigaddset(&sigs_msk,SIGQUIT);
 	}
+#if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
+#endif
 
 	start_servstat_thread();
 
@@ -396,7 +398,11 @@ int main(int argc,char *argv[])
 
 	DEBUG_MSG1("All threads started successfully.\n");
 
+#if TARGET==TARGET_LINUX
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
+#else
+	sigsuspend(&sigs_msk);
+#endif
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
 	DEBUG_MSG1("Signal caught, writing disk cache.\n");
