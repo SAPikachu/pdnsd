@@ -1,4 +1,4 @@
-$Id: TODO,v 1.26 2000/11/11 16:21:24 thomas Exp $
+$Id: TODO,v 1.27 2000/11/12 12:55:15 thomas Exp $
 
 The pdnsd TODO list.
 
@@ -228,10 +228,10 @@ conflicting in some cases?
 Extend pdnsd-ctl to support creating negative cached records   [-tm, 2000-11-11]
 (and maybe for setting some other options). 		    
 --------------------------------------------------------------------------------
-Extend config file format to support creating negative cached  [open	       ]
+Extend config file format to support creating negative cached  [-tm, 2000-11-11]
 records.
 --------------------------------------------------------------------------------
-Document negative (problems with QT_ALL, problems without      [open	       ]
+Document negative (problems with QT_ALL, problems without      [-tm, 2000-11-11]
 lean_query, policy options, neg_ttl, min_ttl)
 --------------------------------------------------------------------------------
 Source address discovery for FreeBSD. Subtasks:		       [-tm, 2000-11-07]
