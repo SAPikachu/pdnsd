@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.19 2001/03/25 19:18:56 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.20 2001/03/25 20:49:01 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -107,8 +107,8 @@ volatile rr_lent_t *rrset_l_tail=NULL;
  * We do not count the hash table sizes here. Those are very small compared
  * to the cache entries.
  */
-volatile unsigned long cache_size=0;
-volatile unsigned long ent_num=0;
+volatile long cache_size=0;
+volatile long ent_num=0;
 
 volatile int cache_w_lock=0;
 volatile int cache_r_lock=0;
@@ -144,7 +144,7 @@ volatile int use_cache_lock=0;
 /*
  * Prototypes for internal use
  */
-static void purge_cache(unsigned long sz);
+static void purge_cache(long sz);
 static void del_cache_int(dns_cent_t *cent);
 static void del_cache_int_rrl(dns_cent_t *cent);
 static void remove_rrl(rr_lent_t *le);
@@ -716,7 +716,7 @@ static int purge_cent(dns_cent_t *cent, int delete)
  * - for cached sets with CF_NOPURGE not set: delete if timed out
  * - additional: delete oldest sets.
  */
-static void purge_cache(unsigned long sz)
+static void purge_cache(long sz)
 {
 	dns_cent_t *ce;
 	dns_hash_pos_t pos;
@@ -795,7 +795,7 @@ void read_disk_cache()
 	unsigned char *data;
 	unsigned char num_rr;
 	char path[1024];
-	unsigned long cnt;
+	long cnt;
 	FILE *f;
 	unsigned char nb[256];
 
@@ -1264,8 +1264,8 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 /* Report the cache status to the file descriptor f, for the status fifo (see status.c) */
 void report_cache_stat(int f)
 {
-	unsigned long mc=(long)global.perm_cache*1024+MCSZ;
-	unsigned long csz=cache_size*100/mc;
+	long mc=(long)global.perm_cache*1024+MCSZ;
+	long csz=cache_size*100/mc;
 	fsprintf(f,"\nCache status:\n=============\n");
 	fsprintf(f,"%li kB maximum disk cache size.\n",global.perm_cache);
 	fsprintf(f,"%li of %lu bytes (%lu%%) memory cache used in %lu entries.\n",cache_size,mc,csz,ent_num);

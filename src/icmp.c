@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.18 2001/03/25 20:34:31 tmm Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.19 2001/03/25 20:48:55 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5
@@ -286,8 +286,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 						memcpy(&iph, buf, sizeof(iph));
 						if (len-iph.ip_ihl*4>=ICMP_BASEHDR_LEN) {
 							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_ihl, sizeof(icmpp));
-							icmpp=(struct icmphdr *)(((unsigned long int *)buf)+((struct iphdr *)buf)->ip_ihl);
-							if (iph.ip_saddr==addr.s_addr && icmpp->icmp_type==ICMP_ECHOREPLY &&
+							if (iph.ip_saddr==addr.s_addr && icmpp.icmp_type==ICMP_ECHOREPLY &&
 							    ntohs(icmpp.icmp_id)==id && ntohs(icmpp.icmp_seq)<=i) {
 								return (i-ntohs(icmpp.icmp_seq))*timeout+time(NULL)-tm; /* return the number of ticks */
 							} else {

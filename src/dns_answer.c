@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.37 2001/03/25 20:34:31 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.38 2001/03/25 20:48:55 tmm Exp $";
 #endif
 
 /*
@@ -893,7 +893,7 @@ static dns_hdr_t mk_error_reply(unsigned short id, unsigned short opcode,unsigne
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
  */
-static unsigned char *process_query(unsigned char *data, unsigned long *rlen, char udp)
+static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 {
 #if DEBUG>0
 	unsigned char buf[256];
@@ -1245,7 +1245,7 @@ int init_udp_socket()
 void *udp_server_thread(void *dummy)
 {
 	int sock;
-	unsigned long qlen;
+	long qlen;
 #ifdef ENABLE_IPV4
 	struct sockaddr_in sin4;
 #endif
