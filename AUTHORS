@@ -1,4 +1,4 @@
-$Id: AUTHORS,v 1.3 2000/06/13 12:15:17 thomas Exp $
+$Id: AUTHORS,v 1.4 2000/06/22 10:11:24 thomas Exp $
 
 pdnsd was written by Thomas Moestl (tmoestl@gmx.net)
 
@@ -8,7 +8,7 @@ nmap was written by Fyodor. The insd4k-utils were written by Fritz Elfert and
 others.
 
 Torben Janssen contributed the files in rc/Redhat.
-Soeren J. Peters contributed patches and suggestions for Red Hat compatability.
+Soenke J. Peters contributed patches and suggestions for Red Hat compatability.
 
-Thanks to Byrial Jensen, Fraser McCrossan, Joachim Dorner, Alan Swanson,
-Bert Frederiks, Jonathan Hudson and Daniel Smolik for reporting bugs!
+Please look into the THANKS file for people who helped me in various ways on
+this project.
