@@ -34,11 +34,12 @@ Boston, MA 02111-1307, USA.  */
 #include "../../helpers.h"
 #include "../../dns.h"
 #include "../../error.h"
+#include "../../debug.h"
 #include "../../thread.h"
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.23 2001/04/11 17:55:01 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.24 2001/04/12 18:48:31 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -109,6 +110,10 @@ volatile rr_lent_t *rrset_l_tail=NULL;
  */
 volatile long cache_size=0;
 volatile long ent_num=0;
+
+#define cache_free(ptr, dbg)		do { if (dbg) pdnsd_free(ptr); else free(ptr); } while (0)
+#define cache_calloc(sz, n, dbg)	((dbg)?(pdnsd_calloc(sz,n)):(calloc(sz,n)))
+#define cache_realloc(ptr, sz, dbg)	((dbg)?(pdnsd_realloc(ptr,sz)):(realloc(ptr,sz)))
 
 volatile int cache_w_lock=0;
 volatile int cache_r_lock=0;
@@ -388,10 +393,12 @@ int mk_flag_val(servparm_t *server)
  * is used for whole-domain negative cacheing. 
  * By convention, the ttl should be set to 0, and the ttl should
  * be set correctly when DF_NEGATIVE is not set. */
-int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl)
+int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl, int dbg)
 {
 	int i;
-	if (!(cent->qname=calloc(sizeof(unsigned char),strlen((char *)qname)+1)))
+
+	cent->qname=cache_calloc(sizeof(unsigned char),strlen((char *)qname)+1, dbg);
+	if (cent->qname == NULL)
 		return 0;
 	strcpy((char *)cent->qname,(char *)qname);
 	cent->cs=sizeof(dns_cent_t)+strlen((char *)qname)+1;
@@ -400,19 +407,19 @@ int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, ti
 	cent->ts=ts;
 	cent->ttl=ttl;
 	cent->lent=NULL;
-	for(i=0;i<T_NUM;i++) {
+	for(i=0;i<T_NUM;i++)
 		cent->rr[i]=NULL;
-	}
 	return 1;
 }
 
 /*
  * Create a cent using the given values.
  */
-rr_bucket_t *create_rr(int dlen, void *data)
+rr_bucket_t *create_rr(int dlen, void *data, int dbg)
 {
 	rr_bucket_t *rrb;
-	if (!(rrb=(rr_bucket_t *)calloc(sizeof(rr_bucket_t)+dlen,1)))
+	rrb=(rr_bucket_t *)cache_calloc(sizeof(rr_bucket_t)+dlen,1,dbg);
+	if (rrb == NULL)
 		return NULL;
 	rrb->next=NULL;
 		
@@ -425,9 +432,10 @@ rr_bucket_t *create_rr(int dlen, void *data)
  * Adds an empty. rrset_t with the requested data to a cent. This is exactly what you need to
  * to do to create a negatively cached cent.
  */
-int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
+int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
 {
-	if (!(cent->rr[tp-T_MIN]=calloc(sizeof(rr_set_t),1)))
+	cent->rr[tp-T_MIN]=cache_calloc(sizeof(rr_set_t),1,dbg);
+	if (cent->rr[tp-T_MIN]==NULL)
 		return 0;
 	if (flags&CF_NOCACHE) {
 		flags&=~CF_NOCACHE;
@@ -445,13 +453,13 @@ int add_cent_rrset(dns_cent_t *cent, int tp, time_t ttl, time_t ts, int flags, u
 /*
  * Adds a rr record (usually prepared by create_rr) to a cent. For cache.c internal use. 
  */
-static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial)
+static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg)
 {
 	if ((cent->flags&DF_LOCAL) && (cent->flags&DF_NEGATIVE))
 		return 1; /* ignore. Local has precedence. */
 
 	if (!cent->rr[tp-T_MIN]) {
-		if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial))
+		if (!add_cent_rrset(cent, tp, ttl, ts, flags, serial, dbg))
 			return 0;
 	}
 	/* If we add a record, this is not negative any more. */
@@ -469,9 +477,8 @@ static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl
 	rr->next=cent->rr[tp-T_MIN]->rrs;
 	cent->rr[tp-T_MIN]->rrs=rr;
 #if DEBUG>0
-	if (cent->rr[tp-T_MIN]->flags&CF_NEGATIVE) {
+	if (cent->rr[tp-T_MIN]->flags&CF_NEGATIVE)
 		DEBUG_MSG2("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%i\n",cent->rr[tp-T_MIN]->flags);
-	}
 #endif
 	return 1;
 }
@@ -481,7 +488,7 @@ static int add_cent_rr_int(dns_cent_t *cent, rr_bucket_t *rr, int tp, time_t ttl
  * and a pointer to the data. A record is allocated, and the data is copied into
  * it. Do this for all rrs in a cache entry. 
  */
-int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp)
+int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, int dbg)
 {
 	rr_bucket_t *rrb;
 	/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
@@ -493,13 +500,13 @@ int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags, int dlen, 
 			rrb=rrb->next;
 		}
 	}
-	if (!(rrb=create_rr(dlen,data)))
+	if (!(rrb=create_rr(dlen,data,dbg)))
 		return 0;
-	return add_cent_rr_int(cent,rrb,tp,ttl,ts,flags,0);
+	return add_cent_rr_int(cent,rrb,tp,ttl,ts,flags,0,dbg);
 }
 
 /* Free a complete rrset including all memory. Returns the size of the memory freed */
-static int del_cent_rrset(dns_cent_t *cent, int tp)
+static int del_cent_rrset(dns_cent_t *cent, int tp, int dbg)
 {
 	rr_bucket_t *rrb,*rrn;
 	int rv=0;
@@ -511,14 +518,14 @@ static int del_cent_rrset(dns_cent_t *cent, int tp)
 	while (rrb) {
 		rv+=sizeof(rr_bucket_t)+rrb->rdlen;
 		rrn=rrb->next;
-		free_rr(*rrb);
-		free(rrb);
+		free_rr(*rrb, dbg);
+		cache_free(rrb,dbg);
 		rrb=rrn;
 	}
 	cent->num_rrs--;
 	rv+=sizeof(rr_set_t);
 	cent->cs-=rv;
-	free(cent->rr[tp-T_MIN]);
+	cache_free(cent->rr[tp-T_MIN],dbg);
 	cent->rr[tp-T_MIN]=NULL;
 	return rv;
 }
@@ -529,19 +536,19 @@ static int del_cent_rrset(dns_cent_t *cent, int tp)
  * cache.h.
  */
 /*
-void free_rr(rr_bucket_t rr)
+void free_rr(rr_bucket_t rr, int dbg)
 {
 }
 */
 
 /* Free all rr records from a cache entry. */
-void free_cent(dns_cent_t cent)
+void free_cent(dns_cent_t cent, int dbg)
 {
 	int i;
 	for (i=0;i<T_NUM;i++) {
-		del_cent_rrset(&cent, i+T_MIN);
+		del_cent_rrset(&cent, i+T_MIN, dbg);
 	}
-	free(cent.qname);
+	cache_free(cent.qname,dbg);
 }
 
 static long get_rrlent_ts(rr_lent_t *le)
@@ -610,30 +617,36 @@ static void remove_rrl(rr_lent_t *le)
 }
 
 /* Copy a rr_bucket_t into newly allocated memory */
-rr_bucket_t *copy_rr(rr_bucket_t *rr)
+rr_bucket_t *copy_rr(rr_bucket_t *rr, int dbg)
 {
 	rr_bucket_t *rrn;
-	if (!(rrn=calloc(sizeof(rr_bucket_t)+rr->rdlen,1))) {
+	rrn=cache_calloc(sizeof(rr_bucket_t)+rr->rdlen,1,dbg);
+	if (rrn == NULL)
 		return NULL;
-	}
 	memcpy(rrn,rr,sizeof(rr_bucket_t)+rr->rdlen);
 	rrn->next=NULL;
 	return rrn;
 }
 
 /* Copy a cache entry into newly allocated memory */
-dns_cent_t *copy_cent(dns_cent_t *cent)
+dns_cent_t *copy_cent(dns_cent_t *cent, int dbg)
 {
 	dns_cent_t *ic;
 	int i;
 	rr_bucket_t *rr,**rri;
-	
-	if (!(ic=calloc(sizeof(dns_cent_t),1)))
+
+	/*
+	 * We do not debug cache internals with it, as mallocs seem to be
+	 * "lost" when they enter the cache for a longer time.
+	 */
+	ic=cache_calloc(sizeof(dns_cent_t),1,dbg);
+	if (ic == NULL)
 		return NULL;
 	*ic=*cent;
-	
-	if (!(ic->qname=calloc(sizeof(unsigned char),strlen((char *)cent->qname)+1))) {
-		free(ic);
+
+	ic->qname=cache_calloc(sizeof(unsigned char),strlen((char *)cent->qname)+1,dbg);
+	if (ic->qname == NULL) {
+		cache_free(ic,dbg);
 		return NULL;
 	}
 	strcpy((char *)ic->qname,(char *)cent->qname);
@@ -644,9 +657,9 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 
 	for (i=0;i<T_NUM;i++) {
 		if (cent->rr[i]) {
-			if (!(ic->rr[i]=(rr_set_t *)calloc(sizeof(rr_set_t),1))) {
-				free_cent(*ic);
-				free(ic);
+			if (!(ic->rr[i]=(rr_set_t *)cache_calloc(sizeof(rr_set_t),1,dbg))) {
+				free_cent(*ic,dbg);
+				cache_free(ic,dbg);
 				return NULL;
 			}
 			memcpy(ic->rr[i],cent->rr[i],sizeof(rr_set_t));
@@ -654,9 +667,9 @@ dns_cent_t *copy_cent(dns_cent_t *cent)
 			rri=&ic->rr[i]->rrs;
 			rr=cent->rr[i]->rrs;
 			while(rr) {
-				if (!(*rri=copy_rr(rr))) {
-					free_cent(*ic);
-					free(ic);
+				if (!(*rri=copy_rr(rr,dbg))) {
+					free_cent(*ic,dbg);
+					cache_free(ic,dbg);
 					return NULL;
 				}
 				rri=(rr_bucket_t **)&(*rri)->next;
@@ -683,7 +696,7 @@ static int purge_rrset(dns_cent_t *cent, int tp)
 	    cent->rr[tp-T_MIN]->ts+cent->rr[tp-T_MIN]->ttl+CACHE_LAT<time(NULL)) {
 		/* well, it must go. */
 		remove_rrl(cent->rr[tp-T_MIN]->lent);
-		return del_cent_rrset(cent,tp);
+		return del_cent_rrset(cent,tp,0);
 	}
 	return 0;
 }
@@ -736,7 +749,7 @@ static void purge_cache(long sz)
 		      (*le)->cent->flags&CF_LOCAL)) {
 			/*next=(*le)->next;*/
 			if ((*le)->rrset)
-				cache_size-=del_cent_rrset((*le)->cent, (*le)->tp);
+				cache_size-=del_cent_rrset((*le)->cent, (*le)->tp,0);
 			/* this will also delete negative cache entries */
 			if ((*le)->cent->num_rrs==0) {
 				del_cache_int((*le)->cent);
@@ -838,7 +851,7 @@ void read_disk_cache()
 				return;
 			}
 		}
-		if (!init_cent(&ce, nb, fe.flags, fe.ts, fe.ttl)) {
+		if (!init_cent(&ce, nb, fe.flags, fe.ts, fe.ttl,0)) {
 			free(data);
 			fclose(f);
 			log_error("Out of memory in reading cache file. Exiting.");
@@ -850,7 +863,7 @@ void read_disk_cache()
 			if (fread(&num_rr,sizeof(num_rr),1,f)!=1) {
 				log_warn("Error in disk cache file.");
 				free(data);
-				free_cent(ce);
+				free_cent(ce,0);
 				fclose(f);
 				return;
 			}
@@ -858,22 +871,22 @@ void read_disk_cache()
 				if (fread(&sh,sizeof(sh),1,f)!=1) {
 					log_warn("Error in disk cache file.");
 					free(data);
-					free_cent(ce);
+					free_cent(ce,0);
 					fclose(f);
 					return;
 				}
 				/* Add the rrset header in any case (needed for negative cacheing */
-				add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0);
+				add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0, 0);
 				for (;num_rr>1;num_rr--) {
 					if (!read_rr(&rr,&data,&dtsz,f)) {
-						free_cent(ce);
+						free_cent(ce,0);
 						return;
 					}
-					if (!add_cent_rr(&ce,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,i+T_MIN)) {
+					if (!add_cent_rr(&ce,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,i+T_MIN,0)) {
 						log_error("Out of memory in reading cache file. Exiting.");
 						pdnsd_exit();
 						free(data);
-						free_cent(ce);
+						free_cent(ce,0);
 						fclose(f);
 						return;
 					}
@@ -881,7 +894,7 @@ void read_disk_cache()
 			}
 		}
 		add_cache(ce);
-		free_cent(ce);
+		free_cent(ce,0);
 	}
 	free(data);
 	fclose(f);
@@ -1061,9 +1074,9 @@ void add_cache(dns_cent_t cent)
 	lock_cache_rw();
 
 	if (!(ce=dns_lookup((dns_hash_t *)&dns_hash,cent.qname))) {
-		if(!(ce=copy_cent(&cent))) {
+		if(!(ce=copy_cent(&cent,0))) {
 			log_warn("Out of cache memory.");
-			free_cent(*ce);
+			free_cent(*ce,0);
 			unlock_cache_rw();
 			return;
 		}
@@ -1073,7 +1086,7 @@ void add_cache(dns_cent_t cent)
 			if (ce->rr[i]) {
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN,ce->rr[i]->ts)) {
 					log_warn("Out of cache memory.");
-					free_cent(*ce);
+					free_cent(*ce,0);
 					unlock_cache_rw();
 					return;
 				}
@@ -1083,7 +1096,7 @@ void add_cache(dns_cent_t cent)
 		if (cent.flags&DF_NEGATIVE) {
 			if (!(ce->lent=insert_rrl(NULL,ce,-1,cent.ts))) {
 				log_warn("Out of cache memory.");
-				free_cent(*ce);
+				free_cent(*ce,0);
 				unlock_cache_rw();
 				return;
 			}
@@ -1115,29 +1128,29 @@ void add_cache(dns_cent_t cent)
 			if (cent.rr[i] && !(ce->rr[i] && ce->rr[i]->flags&CF_LOCAL)) {
 				if (ce->rr[i]) {
 					remove_rrl(ce->rr[i]->lent);
-					del_cent_rrset(ce,i+T_MIN);
+					del_cent_rrset(ce,i+T_MIN,0);
 				}
 				rr=cent.rr[i]->rrs;
 				/* pre-initialize a rrset_t for the case we have a negative cached
 				 * rrset, in which case no further rrs will be added. */
-				if (!add_cent_rrset(ce,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0)) {
+				if (!add_cent_rrset(ce,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0,0)) {
 					log_warn("Out of cache memory.");
 					unlock_cache_rw();
 					return;
 				}
 				while (rr) {
-					if (!(rrb=create_rr(rr->rdlen, rr+1))) {
+					if (!(rrb=create_rr(rr->rdlen, rr+1, 0))) {
 						if (ce->rr[i]) /* cleanup this entry */
-							del_cent_rrset(ce,i+T_MIN);
+							del_cent_rrset(ce,i+T_MIN,0);
 						log_warn("Out of cache memory.");
 						unlock_cache_rw();
 						return;
 					}
-					add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0);
+					add_cent_rr_int(ce,rrb,i+T_MIN,cent.rr[i]->ttl, cent.rr[i]->ts, cent.rr[i]->flags,0,0);
 					rr=rr->next;
 				}
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN,ce->rr[i]->ts)) {
-					del_cent_rrset(ce,i+T_MIN);
+					del_cent_rrset(ce,i+T_MIN,0);
 					log_warn("Out of cache memory.");
 					unlock_cache_rw();
 					return;
@@ -1165,11 +1178,11 @@ static void del_cache_int(dns_cent_t *cent)
 	for (i=0;i<T_NUM;i++) {
 		if (cent->rr[i]) {
 			remove_rrl(cent->rr[i]->lent);
-			del_cent_rrset(cent,i+T_MIN);
+			del_cent_rrset(cent,i+T_MIN,0);
 		}
 	}
 	/* free the cent ptrs and rrs */
-	free_cent(*cent);
+	free_cent(*cent,0);
 	free(cent);
 
 	ent_num--;
@@ -1242,7 +1255,7 @@ dns_cent_t *lookup_cache(unsigned char *name)
 	dns_cent_t *ret;
 	lock_cache_r();
 	if ((ret=dns_lookup((dns_hash_t *)&dns_hash,name))) {
-		ret=copy_cent(ret);  /* this may return NULL, check for it! */
+		ret=copy_cent(ret, 1);  /* this may return NULL, check for it! */
 	}
 	unlock_cache_r();
 	return ret;
@@ -1268,14 +1281,14 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 		     (ret->rr[tp-T_MIN]->flags&CF_ADDITIONAL && ret->rr[tp-T_MIN]->serial!=serial) || 
 		     (ret->rr[tp-T_MIN]->serial==serial && ret->rr[tp-T_MIN]->ttl!=ttl))) {
 			remove_rrl(ret->rr[tp-T_MIN]->lent);
-			del_cent_rrset(ret,tp);
+			del_cent_rrset(ret,tp,0);
 		}
 		if (!ret->rr[tp-T_MIN] || ret->rr[tp-T_MIN]->serial==serial) {
 			if (ret->rr[tp-T_MIN])
 				had=1;
-			if ((rrb=create_rr(dlen,data))) {
-				if (!add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial)) {
-					free_rr(*rrb);
+			if ((rrb=create_rr(dlen,data,0))) {
+				if (!add_cent_rr_int(ret,rrb,tp,ttl,ts,flags,serial,0)) {
+					free_rr(*rrb,0);
 					free(rrb);
 					cache_size+=ret->cs;
 				} else {

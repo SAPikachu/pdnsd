@@ -31,10 +31,18 @@
 #include "list.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: list.c,v 1.2 2001/04/12 02:46:24 tmm Exp $";
+static char rcsid[]="$Id: list.c,v 1.3 2001/04/12 18:48:23 tmm Exp $";
 #endif
 
-darray da_create(int sz)
+#ifdef ALLOC_DEBUG
+darray DBGda_create(int sz, char *file, int line)
+{
+	DEBUG_MSG4("+ da_create, %s:%d, %d bytes\n", file, line, DA_ALIGNSZ(sz));
+	return Dda_create(sz);
+}
+#endif
+
+darray Dda_create(int sz)
 {
 	darray a;
 	int tpsz = DA_ALIGNSZ(sz); /* Round up sizes for aligned access */
@@ -55,13 +63,18 @@ darray da_grow(darray a, int n)
 
 darray da_resize(darray a, int n)
 {
+	darray tmp;
+	
 	PDNSD_ASSERT(a!=NULL, "Access to uninitialized array.");
 	PDNSD_ASSERT(n>=0, "da_resize to negative size");
 	a->nel=n;
 	if (a->nel>a->ael || a->nel<a->ael-2*DA_PREALLOC) {
 		/* adjust alloced space. */
 		a->ael=a->nel+DA_PREALLOC;
-		return realloc(a, sizeof(struct darray_head)+a->tpsz*a->ael);
+		tmp=(darray)realloc(a, sizeof(struct darray_head)+a->tpsz*a->ael);
+		if (tmp==NULL)
+			da_free(a);
+		return tmp;
 	} else
 		return a;
 }
@@ -80,7 +93,19 @@ int da_nel(darray a)
 	return a->nel;
 }
 
-void da_free(darray a)
+#ifdef ALLOC_DEBUG
+darray DBGda_free(darray a, char *file, int line)
+{
+	if (a==NULL)
+		DEBUG_MSG3("- da_free, %s:%d, not initialized\n", file, line);
+	else
+		DEBUG_MSG4("- da_free, %s:%d, %d bytes\n", file, line, a->tpsz);
+	Dda_free(a);
+	return;
+}
+#endif
+
+void Dda_free(darray a)
 {
 	free(a);
 }

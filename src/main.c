@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.37 2001/04/11 17:54:57 tmm Exp $";
+static char rcsid[]="$Id: main.c,v 1.38 2001/04/12 18:48:23 tmm Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -56,7 +56,7 @@ int debug_p=0;
 int verbosity=VERBOSITY;
 pthread_t main_thread;
 #if DEBUG>0
-FILE *dbg;
+FILE *dbg_file;
 #endif
 #ifdef ENABLE_IPV4
 int run_ipv4=DEFAULT_IPV4;
@@ -419,7 +419,7 @@ int main(int argc,char *argv[])
 #if DEBUG>0
 		if (debug_p) {
 			if (snprintf(dbgdir, sizeof(dbgdir), "%s/pdnsd.debug", global.cache_dir) < sizeof(dbgdir)) {
-				if (!(dbg=fopen(dbgdir,"w")))
+				if (!(dbg_file=fopen(dbgdir,"w")))
 					debug_p=0;
 			} else
 				debug_p=0;
@@ -427,7 +427,7 @@ int main(int argc,char *argv[])
 #endif
 	} else {
 #if DEBUG>0
-		dbg=stdout;
+		dbg_file=stdout;
 #endif
 		printf("pdnsd-%s starting.\n",VERSION);
 		DEBUG_MSG1("Debug messages activated\n");
@@ -506,7 +506,7 @@ int main(int argc,char *argv[])
 	free_rng();
 #if DEBUG>0
 	if (debug_p && daemon_p)
-		fclose(dbg);
+		fclose(dbg_file);
 #endif
 	_exit(0);
 }

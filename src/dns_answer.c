@@ -53,9 +53,10 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 #include "cacheing/cache.h"
 #include "error.h"
+#include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.45 2001/04/12 02:46:23 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.46 2001/04/12 18:48:22 tmm Exp $";
 #endif
 
 /*
@@ -179,21 +180,25 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	int nlen,ilen,blen,osz;
 	rr_hdr_t rrh;
 	unsigned char *rrht;
+	dns_hdr_t *nans;
 #ifdef DNS_NEW_RRS
 	int j,k,wlen;
 #endif
 
 	osz=*sz;
 	if (!(nlen=compress_name(rrn,nbuf,*sz,cb))) {
-		free(*ans);
+		pdnsd_free(*ans);
 		return 0;
 	}
 
 	/* This buffer is over-allocated usually due to compression. Never mind, just a few bytes,
 	 * and the buffer is freed soon*/
-	*ans=(dns_hdr_t *)realloc(*ans,*sz+sizeof(rr_hdr_t)+nlen+rr->rdlen);
-	if (!*ans)
+	nans=(dns_hdr_t *)pdnsd_realloc(*ans,*sz+sizeof(rr_hdr_t)+nlen+rr->rdlen);
+	if (!nans) {
+		pdnsd_free(*ans);
 		return 0;
+	}
+	*ans=nans;
 	memcpy((unsigned char *)(*ans)+*sz,nbuf,nlen); 
 	*sz+=nlen;
 	rrht=((unsigned char *)(*ans))+(*sz);
@@ -218,7 +223,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	case T_NS:
 	case T_PTR:
 		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		*sz+=rrh.rdlength;
@@ -228,13 +233,13 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 	case T_RP:
 #endif
 		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		*sz+=rrh.rdlength;
 		ilen=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength+=blen;
@@ -249,7 +254,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),2);
 		*sz+=2;
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+2, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength=2+blen;
@@ -257,13 +262,13 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		break;
 	case T_SOA:
 		if (!(rrh.rdlength=compress_name(((unsigned char *)(rr+1)), ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		*sz+=rrh.rdlength;
 		ilen=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength+=blen;
@@ -279,14 +284,14 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		*sz+=2;
 		ilen=2;
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength=2+blen;
 		*sz+=blen;
 		ilen+=rhnlen((unsigned char *)(rr+1));
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength+=blen;
@@ -296,7 +301,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)(rr+1),6);
 		*sz+=6;
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+6, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength=6+blen;
@@ -304,7 +309,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 		break;
 	case T_NXT:
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+6, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength=blen;
@@ -326,7 +331,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short typ
 			ilen+=k+1;
 		}
 		if (!(blen=compress_name(((unsigned char *)(rr+1))+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb))) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 		rrh.rdlength=ilen+blen;
@@ -433,16 +438,16 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, darr
 			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
 				/* mark it as added */
 				if (!sva_add(sva,NULL,rrn,tp,b)) {
-					free(*ans);
+					pdnsd_free(*ans);
 					return 0;
 				}
 			}
-			/* Mark for additional address records. XXX: this should be a more effective algorithm; at least the list is small*/
+			/* Mark for additional address records. XXX: this should be a more effective algorithm; at least the list is small */
 			for (i=0;i<AR_NUM;i++) {
 				if (ar_recs[i]==tp) {
 					if (!add_ar(((unsigned char *)(b+1))+ar_offs[i], b->rdlen-ar_offs[i],ar, (unsigned char *)"",
 					    0,0,0,RRETP_ADD)) {
-						free(*ar);
+						pdnsd_free(*ans);
 						return 0;
 					}
 					break;
@@ -549,7 +554,7 @@ static int add_additional_rr(unsigned char *rhn, unsigned char *buf, darray *sva
 		       ts,ttl,flags); 
 		/* mark it as added */
 		if (!sva_add(sva,buf,NULL,tp,rr)) {
-			free(*ans);
+			pdnsd_free(*ans);
 			return 0;
 		}
 	}
@@ -577,8 +582,8 @@ static int add_additional_a(unsigned char *rhn, darray *sva, dns_hdr_t **ans, lo
 					       ae->rr[T_AAAA-T_MIN]->ts,ae->rr[T_AAAA-T_MIN]->ttl,ae->rr[T_AAAA-T_MIN]->flags,S_ADDITIONAL))
 			    retval = 0;
 #endif
-		free_cent(*ae);
-		free(ae);
+		free_cent(*ae,1);
+		pdnsd_free(ae);
 	}
 	return retval;
 }
@@ -598,13 +603,13 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	darray ar;
 	rr_ext_t *rre;
 	darray cb=NULL;
-	dns_hdr_t *ans;
+	dns_hdr_t *ans, *nans;
 	dns_queryel_t *qe;
 	dns_cent_t *cached;
 	std_query_t temp_q;
 
 	ar=NULL;
-	ans=(dns_hdr_t *)calloc(sizeof(dns_hdr_t),1);
+	ans=(dns_hdr_t *)pdnsd_calloc(sizeof(dns_hdr_t),1);
 	if (!ans)
 		return NULL;
 	ans->id=hdr->id;
@@ -627,8 +632,11 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	/* first, add the query to the response */
 	for (i=0;i<da_nel(q);i++) {
 		qe=DA_INDEX(q,i,dns_queryel_t);
-		if (!(ans=(dns_hdr_t *)realloc(ans,*rlen+rhnlen(qe->query)+4)))
+		if (!(nans=(dns_hdr_t *)pdnsd_realloc(ans,*rlen+rhnlen(qe->query)+4))) {
+			pdnsd_free(ans);
 			return NULL;
+		}
+		ans=nans;
 		*rlen+=rhncpy(((unsigned char *)ans)+*rlen,qe->query);
 		temp_q.qtype=htons(qe->qtype);
 		temp_q.qclass=htons(qe->qclass);
@@ -651,7 +659,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	}
 	
 	if ((ar=DA_CREATE(rr_ext_t))==NULL) {
-		free(ans);
+		pdnsd_free(ans);
 		return NULL;
 	}
 	/* second, the answer section */
@@ -691,7 +699,7 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 					while (rr) {
 						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, cached->rr[T_NS-T_MIN]->ts, cached->rr[T_NS-T_MIN]->ttl,
 						    cached->rr[T_NS-T_MIN]->flags,RRETP_AUTH)) {
-							free(ans);
+							pdnsd_free(ans);
 							goto error_cached;
 						}
 						rr=rr->next;
@@ -699,8 +707,8 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 				}
 			}
 
-			free_cent(*cached);
-			free(cached);
+			free_cent(*cached,1);
+			pdnsd_free(cached);
 		} while (cont && hops>=0);
 	}
 
@@ -708,14 +716,19 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 	for (i=0;i<da_nel(ar);i++) {
 		rre=DA_INDEX(ar,i,rr_ext_t);
 		if (rre->tp == RRETP_AUTH) {
-			if ((rr=create_rr(rre->sz,rre->tnm))==NULL) {
-				free(ans);
+			if ((rr=create_rr(rre->sz,rre->tnm,1))==NULL) {
+				pdnsd_free(ans);
 				goto error_ans;
 			}
 			rhn2str(rre->nm,buf);
 			if (!add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
-				rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY))
+			    rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY)) {
+				free_rr(*rr,1);
+				pdnsd_free(rr);
 				goto error_ans;
+			}
+			free_rr(*rr,1);
+			pdnsd_free(rr);
 		}
 	}
 
@@ -737,8 +750,8 @@ static unsigned char *compose_answer(darray q, dns_hdr_t *hdr, long *rlen, char 
 
 	/* You may not like goto's, but here we avoid lots of code duplication. */
 error_cached:
-	free_cent(*cached);
-	free(cached);
+	free_cent(*cached,1);
+	pdnsd_free(cached);
 error_ans:
 	ans=NULL; /* already freed if we get here */
 error_ar:
@@ -848,7 +861,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	int res;
 	dns_hdr_t *hdr;
 	darray q;
-	dns_hdr_t *resp=(dns_hdr_t *)calloc(sizeof(dns_hdr_t),1);
+	dns_hdr_t *resp=(dns_hdr_t *)pdnsd_calloc(sizeof(dns_hdr_t),1);
 	dns_hdr_t *ans;
 	
 
@@ -868,7 +881,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	 */
 	hdr=(dns_hdr_t *)data;
 	if (*rlen<2) { 
-		free(resp);
+		pdnsd_free(resp);
 		DEBUG_MSG1("Message too short.\n");
 		return NULL; /* message too short: no id provided. */
 	}
@@ -879,7 +892,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 		return (unsigned char *)resp;
 	}
 	if (hdr->qr==QR_RESP) {
-		free(resp);
+		pdnsd_free(resp);
 		DEBUG_MSG1("Response, not query.\n");
 		return NULL; /* RFC says: discard */
 	}
@@ -896,7 +909,7 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 		return (unsigned char *)resp;
 	}
 	if (hdr->rcode!=RC_OK) {
-		free(resp);
+		pdnsd_free(resp);
 		DEBUG_MSG1("Bad rcode.\n");
 		return NULL; /* discard (may cause error storms) */
 	}
@@ -912,22 +925,23 @@ static unsigned char *process_query(unsigned char *data, long *rlen, char udp)
 	if (debug_p) {
 		dns_queryel_t *qe;
 
-		fprintf(dbg, "Questions are:\n ");
+		fprintf(dbg_file, "Questions are:\n ");
 		for (res=0;res<da_nel(q);res++) {
 			qe=DA_INDEX(q,res,dns_queryel_t);
 			rhn2str(qe->query,buf);
-			fprintf(dbg, "\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,buf);
+			fprintf(dbg_file, "\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,buf);
 		}
 	}
 #endif
 
 	if (!(ans=(dns_hdr_t *)compose_answer(q, hdr, rlen, udp))) {
 		/* An out of memory condition or similar could cause NULL output. Send failure notification */
+		da_free(q);
 		*rlen=sizeof(dns_hdr_t);
 		*resp=mk_error_reply(hdr->id,hdr->opcode,RC_SERVFAIL);
 		return (unsigned char *)resp;
 	}
-	free(resp);
+	pdnsd_free(resp);
 	da_free(q);
 	return (unsigned char *)ans;
 }
@@ -990,7 +1004,7 @@ void *udp_answer_thread(void *data)
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
 		 * logging is already done. Just exit the thread now.
 		 */
-		free(data);
+		pdnsd_free(data);
 		pthread_exit(NULL);
 	}
 	if (rlen>512) {
@@ -998,7 +1012,6 @@ void *udp_answer_thread(void *data)
 		((dns_hdr_t *)resp)->tc=1; /*set truncated bit*/
 	}
 	DEBUG_MSG4("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,((dns_hdr_t *)resp)->tc,get_ename(((dns_hdr_t *)resp)->rcode));
-
 
 	v.iov_base=(char *)resp;
 	v.iov_len=rlen;
@@ -1090,8 +1103,8 @@ void *udp_answer_thread(void *data)
 #endif
 	}
 	
-	free(resp);
-	free(data);
+	pdnsd_free(resp);
+	pdnsd_free(data);
 	pthread_cleanup_pop(1);
 	return NULL;
 }
@@ -1246,7 +1259,7 @@ void *udp_server_thread(void *dummy)
 #endif
 
 	while (1) {
-		if (!(buf=(udp_buf_t *)calloc(sizeof(udp_buf_t),1))) {
+		if (!(buf=(udp_buf_t *)pdnsd_calloc(sizeof(udp_buf_t),1))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");
@@ -1292,7 +1305,7 @@ void *udp_server_thread(void *dummy)
 						da_udp_errs++;
 						log_error("Could not discover udp destination address");
 					}
-					free(buf);
+					pdnsd_free(buf);
 					usleep_r(50000);
 					continue;
 				}
@@ -1338,7 +1351,7 @@ void *udp_server_thread(void *dummy)
 							da_udp_errs++;
 							log_error("Could not discover udp destination address");
 						}
-						free(buf);
+						pdnsd_free(buf);
 						usleep_r(50000);
 						continue;
 					}
@@ -1381,7 +1394,7 @@ void *udp_server_thread(void *dummy)
 #endif
 
 		if (qlen<0) {
-			free(buf);
+			pdnsd_free(buf);
 			usleep_r(50000);
 /*			if (errno==EINTR) {
 			close(sock);
@@ -1399,7 +1412,7 @@ void *udp_server_thread(void *dummy)
 				pthread_create(&pt,&attr,udp_answer_thread,(void *)buf);
 			} else {
 				pthread_mutex_unlock(&proc_lock);
-				free(buf);
+				pdnsd_free(buf);
 				usleep_r(50000);
 			}
 		}
@@ -1450,7 +1463,7 @@ void *tcp_answer_thread(void *csock)
 			usleep_r(50000);
 	} while (i>global.proc_limit);
 
-	free(csock);
+	pdnsd_free(csock);
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
 	 * the socket is closed by the other side or by tcp timeout. 
 	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's
@@ -1486,7 +1499,7 @@ void *tcp_answer_thread(void *csock)
 			log_error("TCP zero size query received.\n");
 			pthread_exit(NULL);
 		}
-		buf=(unsigned char *)calloc(sizeof(unsigned char),rlen);
+		buf=(unsigned char *)pdnsd_calloc(sizeof(unsigned char),rlen);
 		if (!buf) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
@@ -1503,7 +1516,7 @@ void *tcp_answer_thread(void *csock)
 		tv.tv_sec=global.tcp_qtimeout;
 		if (select(sock+1,&fds,NULL,NULL,&tv)<1) {
 			close(sock);
-			free(buf);
+			pdnsd_free(buf);
 			pthread_exit(NULL);
 		}
 #else
@@ -1511,7 +1524,7 @@ void *tcp_answer_thread(void *csock)
 		pfd.events=POLLIN;
 		if (poll(&pfd,1,global.tcp_qtimeout*1000)<1) {
 			close(sock);
-			free(buf);
+			pdnsd_free(buf);
 			pthread_exit(NULL);
 		}
 #endif
@@ -1524,7 +1537,7 @@ void *tcp_answer_thread(void *csock)
 				/*
 				 * If we did not get the id, we cannot set a valid reply.
 				 */
-				free(buf);
+				pdnsd_free(buf);
 				close(sock);
 				pthread_exit(NULL);
 			} else {
@@ -1532,12 +1545,12 @@ void *tcp_answer_thread(void *csock)
 				err=mk_error_reply(err.id,olen>=3?err.opcode:OP_QUERY,RC_FORMAT);
 				rlen=htons(sizeof(err));
 				if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
-					free(buf);
+					pdnsd_free(buf);
 					close(sock);
 					pthread_exit(NULL);
 				}
 				write(sock,&err,sizeof(err)); /* error anyway. */
-				free(buf);
+				pdnsd_free(buf);
 				close(sock);
 				pthread_exit(NULL);
 			}
@@ -1548,23 +1561,23 @@ void *tcp_answer_thread(void *csock)
 				* A return value of NULL is a fatal error that prohibits even the sending of an error message.
 				* logging is already done. Just exit the thread now.
 				*/
-				free(buf);
+				pdnsd_free(buf);
 				close(sock);
 				pthread_exit(NULL);
 			}
-			free(buf);
+			pdnsd_free(buf);
 			rlen=htons(nlen);
 			if (write(sock,&rlen,sizeof(rlen))!=sizeof(rlen)) {
-				free(resp);
+				pdnsd_free(resp);
 				close(sock);
 				pthread_exit(NULL);
 			}
 			if (write(sock,resp,ntohs(rlen))!=ntohs(rlen)) {
-				free(resp);
+				pdnsd_free(resp);
 				close(sock);
 				pthread_exit(NULL);
 			}
-			free(resp);
+			pdnsd_free(resp);
 		}
 #ifndef TCP_SUBSEQ
 		/* Do not allow multiple queries in one sequence.*/
@@ -1668,7 +1681,7 @@ void *tcp_server_thread(void *p)
 	}
 	
 	while (1) {
-		if (!(csock=(int *)calloc(sizeof(int),1))) {
+		if (!(csock=(int *)pdnsd_calloc(sizeof(int),1))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
 				da_mem_errs++;
 				log_error("Out of memory in request handling.");
@@ -1679,7 +1692,7 @@ void *tcp_server_thread(void *p)
 			return NULL;
 		}
 		if ((*csock=accept(sock,NULL,0))==-1) {
-			free(csock);
+			pdnsd_free(csock);
 			if (errno!=EINTR && first) {
 				first=0; /* special handling, not da_tcp_errs*/
 				log_error("tcp accept failed: %s",strerror(errno));
@@ -1705,7 +1718,7 @@ void *tcp_server_thread(void *p)
 			} else {
 				pthread_mutex_unlock(&proc_lock);
 				close(*csock);
-				free(csock);
+				pdnsd_free(csock);
 				usleep_r(50000);
 			}
 		}

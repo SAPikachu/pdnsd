@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: error.h,v 1.8 2001/04/06 21:30:36 tmm Exp $ */
+/* $Id: error.h,v 1.9 2001/04/12 18:48:23 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -49,38 +49,38 @@ void log_info(int level, char *s, ...);
  */
 #if DEBUG>0
 /* from main.c */
-extern FILE *dbg;
+extern FILE *dbg_file;
 
 #define DEBUG_MSG1(x)							\
-	if (debug_p) {							\
-		fprintf(dbg,x);						\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x);					\
+		fflush(dbg_file);					\
+	} } while (0)
 #define DEBUG_MSG2(x,y)							\
-	if (debug_p) {							\
-		fprintf(dbg,x,y);					\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x,y);					\
+		fflush(dbg_file);					\
+	} } while (0)
 #define DEBUG_MSG3(x,y,z)						\
-	if (debug_p) {							\
-		fprintf(dbg,x,y,z);					\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x,y,z);				\
+		fflush(dbg_file);					\
+	} } while (0)
 #define DEBUG_MSG4(x,y,z,a)						\
-	if (debug_p) {							\
-		fprintf(dbg,x,y,z,a);					\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x,y,z,a);				\
+		fflush(dbg_file);					\
+	} } while (0)
 #define DEBUG_MSG5(x,y,z,a,b)						\
-	if (debug_p) {							\
-		fprintf(dbg,x,y,z,a,b);					\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x,y,z,a,b);				\
+		fflush(dbg_file);					\
+	} } while (0)
 #define DEBUG_MSG6(x,y,z,a,b,c)						\
-	if (debug_p) {							\
-		fprintf(dbg,x,y,z,a,b,c);				\
-		fflush(dbg);						\
-	}
+	do { if (debug_p) {						\
+		fprintf(dbg_file,x,y,z,a,b,c);				\
+		fflush(dbg_file);					\
+	} } while (0)
 #else
 #define DEBUG_MSG1(x) 
 #define DEBUG_MSG2(x,y) 
@@ -94,8 +94,8 @@ extern FILE *dbg;
  * This is a macro so that it can be made empty after sufficient testing if !defined(DEBUG)
  */
 #define PDNSD_ASSERT(cond, msg)						\
-	if (!(cond)) {							\
+	do { if (!(cond)) {						\
 		log_error("%s:%d: %s", __FILE__, __LINE__, msg);	\
 		pdnsd_exit();						\
- 	}
+ 	} } while (0)
 #endif

@@ -24,7 +24,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $Id */
+/* $Id: list.h,v 1.2 2001/04/12 18:48:23 tmm Exp $ */
 
 #ifndef LIST_H
 #define LIST_H
@@ -57,14 +57,26 @@ typedef struct darray_head *darray;
  * Some or all of these should be inline.
  * They aren't macros for type safety.
  */
-darray da_create(int sz);
+darray Dda_create(int sz);
 darray da_grow(darray a, int n);
 darray da_resize(darray a, int n);
 char *da_index(darray a, int i);
 int da_nel(darray a);
-void da_free(darray a);
+void Dda_free(darray a);
 
 /* Number of elements to over-allocate by default */
 #define DA_PREALLOC	5
+
+/* alloc/free debug code.*/
+#ifdef ALLOC_DEBUG
+darray DBGda_create(int sz, char *file, int line);
+darray DBGda_free(darray a, char *file, int line);
+
+#define da_create(sz)	DBGda_create(sz, __FILE__, __LINE__)
+#define da_free(a)	DBGda_free(a, __FILE__, __LINE__)
+#else
+#define da_create	Dda_create
+#define da_free		Dda_free
+#endif
 
 #endif /* def LIST_H */

@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: cache.h,v 1.9 2001/04/10 22:21:09 tmm Exp $ */
+/* $Id: cache.h,v 1.10 2001/04/12 18:48:26 tmm Exp $ */
 
 #ifndef _CACHE_H_
 #define _CACHE_H_
@@ -141,18 +141,18 @@ dns_cent_t *lookup_cache(unsigned char *name);
 int add_cache_rr_add(unsigned char *name, time_t ttl, time_t ts, short flags, int dlen, void *data, int tp, unsigned long serial);
 
 int mk_flag_val(servparm_t *server);
-int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl);
-int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial);
-int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp);
-void free_cent(dns_cent_t cent);
+int init_cent(dns_cent_t *cent, unsigned char *qname, short flags, time_t ts, time_t ttl, int dbg);
+int add_cent_rrset(dns_cent_t *cent,  int tp, time_t ttl, time_t ts, int flags, unsigned long serial, int dbg);
+int add_cent_rr(dns_cent_t *cent, time_t ttl, time_t ts, short flags,int dlen, void *data, int tp, int dbg);
+void free_cent(dns_cent_t cent, int dbg);
 
 /* Because this is empty by now, it is defined as an empty macro to save overhead.*/
 /*void free_rr(rr_bucket_t cent);*/
-#define free_rr(x)
+#define free_rr(x, dbg)
 
-dns_cent_t *copy_cent(dns_cent_t *cent);
-rr_bucket_t *copy_rr(rr_bucket_t *rr);
-rr_bucket_t *create_rr(int dlen, void *data);
+dns_cent_t *copy_cent(dns_cent_t *cent, int dbg);
+rr_bucket_t *copy_rr(rr_bucket_t *rr, int dbg);
+rr_bucket_t *create_rr(int dlen, void *data, int dbg);
 
 unsigned long get_serial(void);
 

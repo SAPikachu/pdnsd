@@ -18,11 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: conff.h,v 1.15 2001/04/06 21:30:35 tmm Exp $ */
+/* $Id: conff.h,v 1.16 2001/04/12 18:48:22 tmm Exp $ */
 
 #ifndef CONFF_H
 #define CONFF_H
 
+/* XXX should use the system defined one */
 #define MAXPATH 1024
 
 #include "config.h"

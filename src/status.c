@@ -40,10 +40,10 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.20 2001/04/11 03:30:11 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.21 2001/04/12 18:48:23 tmm Exp $";
 #endif
 
-char sock_path[99];
+char sock_path[MAXPATH];
 
 pthread_t st;
 
@@ -330,12 +330,13 @@ void *status_thread (void *p)
 				if (sz<0)
 					break;
 			
-				if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0)) {
+				if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0, 1)) {
 					print_serr(rs,"Out of memory");
 					break;
 				}
-				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd);
+				add_cent_rr(&cent,ttl,0,CF_LOCAL,sz,dbuf,cmd,1);
 				add_cache(cent);
+				free_cent(cent,1);
 				print_succ(rs);
 				break;
 			case CTL_NEG:
@@ -357,22 +358,23 @@ void *status_thread (void *p)
 					break;
 				}
 				if (cmd==255) {
-					if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL|DF_NEGATIVE, time(NULL), ttl)) {
+					if (!init_cent(&cent, (unsigned char *)buf, DF_LOCAL|DF_NEGATIVE, time(NULL), ttl, 1)) {
 						print_serr(rs,"Out of memory");
 						break;
 					}
 				} else {
-					if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0)) {
+					if (!init_cent(&cent, (unsigned char *)buf, 0, time(NULL), 0, 1)) {
 						print_serr(rs,"Out of memory");
 						break;
 					}
-					if (!add_cent_rrset(&cent,cmd,ttl,0,CF_LOCAL|CF_NEGATIVE,0)) {
-						free_cent(cent);
+					if (!add_cent_rrset(&cent,cmd,ttl,0,CF_LOCAL|CF_NEGATIVE,0, 1)) {
+						free_cent(cent, 1);
 						print_serr(rs,"Out of memory");
 						break;
 					}
 				}
 				add_cache(cent);
+				free_cent(cent, 1);
 				print_succ(rs);
 				break;
 			default:

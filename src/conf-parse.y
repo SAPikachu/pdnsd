@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.30 2001/04/11 03:30:10 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.31 2001/04/12 18:48:22 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -144,6 +144,7 @@ unsigned char *nm;
 %token <num> PTR
 %token <num> MX
 %token <num> SOA
+%token <num> CNAME
 %token <num> NAME
 %token <num> OWNER
 %token <num> TTL
@@ -213,8 +214,9 @@ spec:		GLOBAL '{'
 				}
 
 				/* add the authority */
-				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen((char *)c_owner)+1, c_owner, T_NS);
+				add_cent_rr(&c_cent, c_ttl,0,CF_LOCAL, strlen((char *)c_owner)+1, c_owner, T_NS,0);
 				add_cache(c_cent);
+				free_cent(c_cent,0);
 			}
 		| NEG '{' 
 				{
@@ -488,7 +490,7 @@ serv_el:	IP '=' STRING ';'
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
 				YSTRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
-				YSTRNCP(server.uptest_usr, (char *)$5, "uptest_usr");
+				YSTRNCP(server.uptest_usr, (char *)$5, "uptest_cmd");
 			}
 		| INTERVAL '=' NUMBER ';'
 			{
@@ -597,7 +599,7 @@ rr_el:		NAME '=' STRING ';'
 				}
 				YSTRNCP(c_name, (char *)$3, "name");
 				if (c_owner[0]!='\0') {
-					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
+					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0, 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -614,7 +616,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				if (c_name[0]!='\0') {
-					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0)) {
+					if (!init_cent(&c_cent, c_name, 0, time(NULL), 0, 0)) {
 						fprintf(stderr,"Out of memory.\n");
 						YYERROR;
 					}
@@ -658,7 +660,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 #endif
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp, 0);
 			}
 		| PTR '=' STRING ';'
 			{
@@ -674,7 +676,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR,0);
 			}
 		| MX '=' STRING ',' NUMBER ';'
 			{
@@ -693,8 +695,8 @@ rr_el:		NAME '=' STRING ';'
 				memset(buf,0,sizeof(buf));
 				ts=htons($5);
 				memcpy(buf,&ts,2);
-				memcpy(buf+2,c_ptr,rhnlen(c_ptr));
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX);
+				rhncpy(buf+2,c_ptr);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX,0);
 			}
 		| CNAME '=' STRING ';'
 			{
@@ -710,7 +712,7 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME,0);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
 			{
@@ -744,7 +746,7 @@ rr_el:		NAME '=' STRING ';'
 				idx+=rhncpy(buf+idx,c_soa_r);
 				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 				idx+=sizeof(soa_r_t);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA,0);
 			}			
 		;
 
@@ -773,7 +775,7 @@ source_el:	OWNER '=' STRING ';'
 					yyerror("you must specify owner before file= in source records.");
 					YYERROR;
 				}
-				if (!read_hosts((char *)$3, c_owner, c_ttl, c_aliases,errbuf,strlen(errbuf)))
+				if (!read_hosts((char *)$3, c_owner, c_ttl, c_aliases,errbuf,sizeof(errbuf)))
 					fprintf(stderr,errbuf);
 			}
 		| SERVE_ALIASES '=' CONST ';'
@@ -816,11 +818,12 @@ rrneg_el:	NAME '=' STRING ';'
 					YYERROR;
 				}
 				hdtp=1;
-				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, DF_LOCAL|DF_NEGATIVE, time(NULL), c_ttl,0)) {
 					fprintf(stderr,"Out of memory");
 					YYERROR;
 				}
 				add_cache(c_cent);
+				free_cent(c_cent,0);
 			}
                 | TYPES '=' rr_type_list ';'
 			{
@@ -838,16 +841,17 @@ rr_type_list:   RRTYPE
 					yyerror("you must specify a name before the types= option.");
 					YYERROR;
 				}
-				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0)) {
+				if (!init_cent(&c_cent, (unsigned char *)c_name, 0, time(NULL), 0, 0)) {
 					fprintf(stderr,"Out of memory");
 					YYERROR;
 				}
-				if (!add_cent_rrset(&c_cent,$1,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0)) {
-					free_cent(c_cent);
+				if (!add_cent_rrset(&c_cent,$1,c_ttl,0,CF_LOCAL|CF_NEGATIVE,0, 0)) {
+					free_cent(c_cent,0);
 					fprintf(stderr,"Out of memory");
 					YYERROR;
 				}
 				add_cache(c_cent);
+				free_cent(c_cent, 0);
 				
 			}
                 | rr_type_list ',' rr_type_list 
