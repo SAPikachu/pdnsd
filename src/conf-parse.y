@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.36 2001/07/01 21:03:15 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.37 2003/04/06 23:02:46 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -270,6 +270,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| CACHE_DIR '=' STRING ';'
 			{
 				YSTRNCP(global.cache_dir, (char *)$3, "cache_dir");
+				free($3);
 			}
 		| SERVER_PORT '=' NUMBER ';'
 			{
@@ -281,10 +282,12 @@ glob_el:	PERM_CACHE '=' CONST ';'
 					yyerror("bad ip in server_ip= option.");
 					YYERROR;
 				}
+				free($3);
  			}
 		| SCHEME_FILE '=' STRING ';'
                         {
 				YSTRNCP(global.scheme_file, (char *)$3, "scheme_file");
+				free($3);
                         }
 		| LINKDOWN_KLUGE '=' CONST ';'
 			{
@@ -306,6 +309,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| RUN_AS '=' STRING ';'
 			{
 				YSTRNCP(global.run_as, (char *)$3, "run_as");
+				free($3);
 			}
 		| STRICT_SETUID '=' CONST ';'
 			{
@@ -355,6 +359,7 @@ glob_el:	PERM_CACHE '=' CONST ';'
 		| PID_FILE '=' STRING ';'
 			{
 				YSTRNCP(pidfile, (char *)$3, "pid_file");
+				free($3);
 			}
 		| C_VERBOSITY '=' NUMBER ';'
 			{
@@ -479,6 +484,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror("bad ip in ip= option.");
 					YYERROR;
 				}
+				free($3);
 			}
 		| PORT '=' NUMBER ';'
 			{
@@ -487,6 +493,7 @@ serv_el:	IP '=' STRING ';'
 		| SCHEME '=' STRING ';'
 			{
 				YSTRNCP(server.scheme, (char *)$3, "scheme");
+				free($3);
 			}
 		| UPTEST '=' CONST ';'
 			{
@@ -511,16 +518,20 @@ serv_el:	IP '=' STRING ';'
 					yyerror("bad ip in ping_ip= option.");
 					YYERROR;
 				}
+				free($3);
 			}
 		| UPTEST_CMD '=' STRING ';'
 			{
 				YSTRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
 				server.uptest_usr[0] = '\0';
+				free($3);
 			}
 		| UPTEST_CMD '=' STRING ',' STRING ';'
 			{
 				YSTRNCP(server.uptest_cmd, (char *)$3, "uptest_cmd");
 				YSTRNCP(server.uptest_usr, (char *)$5, "uptest_cmd");
+				free($3);
+				free($5);
 			}
 		| INTERVAL '=' NUMBER ';'
 			{
@@ -538,10 +549,12 @@ serv_el:	IP '=' STRING ';'
 		| INTERFACE '=' STRING  ';'
 			{
 				YSTRNCP(server.interface, (char *)$3, "interface");
+				free($3);
 			}
  		| DEVICE '=' STRING  ';'
  			{
 				YSTRNCP(server.device, (char *)$3, "device");
+				free($3);
   			}
 		| PURGE_CACHE '=' CONST ';'
 			{
@@ -605,6 +618,7 @@ serv_el:	IP '=' STRING ';'
 					yyerror(e);
 					YYERROR;
 				}
+				free($3);
 			}
 		| EXCLUDE '=' STRING ';'
 			{
@@ -614,10 +628,12 @@ serv_el:	IP '=' STRING ';'
 					yyerror(e);
 					YYERROR;
 				}
+				free($3);
 			}
 		| LABEL '=' STRING ';'
 			{
 				YSTRNCP(server.label, (char *)$3, "label");
+				free($3);
 			}
 		;
 
@@ -638,6 +654,7 @@ rr_el:		NAME '=' STRING ';'
 						YYERROR;
 					}
 				}
+				free($3);
 			}			
 		| OWNER '=' STRING ';'
 			{
@@ -655,6 +672,7 @@ rr_el:		NAME '=' STRING ';'
 						YYERROR;
 					}
 				}
+				free($3);
 			}
 		| TTL '=' NUMBER ';'
 			{
@@ -704,6 +722,7 @@ rr_el:		NAME '=' STRING ';'
 #endif
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,sz,&c_a,tp, 0);
+				free($3);
 			}
 		| PTR '=' STRING ';'
 			{
@@ -720,6 +739,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_PTR,0);
+				free($3);
 			}
 		| MX '=' STRING ',' NUMBER ';'
 			{
@@ -740,6 +760,7 @@ rr_el:		NAME '=' STRING ';'
 				memcpy(buf,&ts,2);
 				rhncpy(buf+2,c_ptr);
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX,0);
+				free($3);
 			}
 		| CNAME '=' STRING ';'
 			{
@@ -756,6 +777,7 @@ rr_el:		NAME '=' STRING ';'
 					YYERROR;
 				}
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME,0);
+				free($3);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
 			{
@@ -790,6 +812,8 @@ rr_el:		NAME '=' STRING ';'
 				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
 				idx+=sizeof(soa_r_t);
 				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,idx,buf,T_SOA,0);
+				free($3);
+				free($5);
 			}			
 		;
 
@@ -807,6 +831,7 @@ source_el:	OWNER '=' STRING ';'
 					yyerror("bad domain name - must end in root domain.");
 					YYERROR;
 				}
+				free($3);
 			}
 		| TTL '=' NUMBER ';'
 			{
@@ -820,6 +845,7 @@ source_el:	OWNER '=' STRING ';'
 				}
 				if (!read_hosts((char *)$3, c_owner, c_ttl, c_flags, c_aliases,errbuf,sizeof(errbuf)))
 					fprintf(stderr,"%s\n",errbuf);
+				free($3);
 			}
 		| SERVE_ALIASES '=' CONST ';'
 			{
@@ -854,6 +880,7 @@ rrneg_el:	NAME '=' STRING ';'
 					YYERROR;
 				}
 				YSTRNCP(c_name,(char *)$3, "name");
+				free($3);
 			}			
 		| TTL '=' NUMBER ';'
 			{

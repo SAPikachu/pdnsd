@@ -25,7 +25,7 @@ Boston, MA 02111-1307, USA.  */
 #include "rr_types.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.22 2001/07/01 21:03:15 tmm Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.23 2003/04/06 23:02:46 tmm Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -131,8 +131,12 @@ C_CLOSE \*\/
 						 return ERROR;					     
 					 }}
 
-<INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;
-					 yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
+<INITIAL>\"[^\"]*\"			{if ((yylval.nm=(unsigned char *)strdup(yytext+1)) == NULL) {
+						fprintf(stderr,"Out of memory.\n");
+						return ERROR;
+					}
+					yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';
+					return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}
 <INITIAL>{C_COMM}[^\n]*			/*munch munch*/
 
