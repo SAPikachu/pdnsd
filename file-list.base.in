@@ -1,5 +1,5 @@
 %defattr(-,root,root)
 %doc AUTHORS THANKS COPYING ChangeLog ChangeLog.old INSTALL NEWS README TODO doc/
-%config /etc/pdnsd.conf
+%config /etc/pdnsd.conf.sample
 %attr(770, @def_id@, @def_id@) %dir @cachedir@
 %attr(660, @def_id@, @def_id@) %config @cachedir@/pdnsd.cache
