@@ -38,8 +38,18 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.20 2000/07/06 21:55:24 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.21 2000/07/10 12:08:52 thomas Exp $";
 #endif
+
+#if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
+# error "You may not define NO_TCP_QUERIES when M_PRESET is not set to UDP_ONLY"
+#endif
+#if defined(NO_UDP_QUERIES) && M_PRESET!=TCP_ONLY
+# error "You may not define NO_UDP_QUERIES when M_PRESET is not set to TCP_ONLY"
+#endif
+
+/* The method we use for querying other servers */
+int query_method=M_PRESET;
 
 /*
  * Take a rr and do The Right Thing: add it to the cache list if the oname matches the owner name of the
@@ -107,7 +117,7 @@ typedef struct {
  * The domain names of all name servers found are placed in *ns, which is automatically grown
  * It may be null initially and must be freed when you are done with it.
  */
-static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial, char trusted, unsigned char *nsdomain)
+static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recnum, unsigned char *msg, long msgsz, int flags, ns_t **ns,time_t queryts,unsigned long serial, char trusted, unsigned char *nsdomain, char tc)
 {
 	unsigned char oname[256];
 	unsigned char db[530],tbuf[256];
@@ -124,15 +134,23 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 
 	for (i=0;i<recnum;i++) {
 		if ((rc=decompress_name(msg, oname, ptr, lcnt, msgsz, &len))!=RC_OK) {
+			if (rc==RC_TRUNC && tc)
+				return RC_OK;
 			return rc==RC_TRUNC?RC_FORMAT:rc;
 		}
-		if (*lcnt<sizeof(rr_hdr_t)) 
+		if (*lcnt<sizeof(rr_hdr_t)) {
+			if (tc)
+				return RC_OK;
 			return RC_FORMAT;
+		}
 		*lcnt-=sizeof(rr_hdr_t);
 		rhdr=(rr_hdr_t *)*ptr;
 		*ptr+=sizeof(rr_hdr_t);
-		if (*lcnt<ntohs(rhdr->rdlength))
+		if (*lcnt<ntohs(rhdr->rdlength)) {
+			if (tc)
+				return RC_OK;
 			return RC_FORMAT;
+		}
 		if (!(ntohs(rhdr->type)<T_MIN || ntohs(rhdr->type)>T_MAX || ntohs(rhdr->class)!=C_IN)) {
 			/* skip otherwise */
 			/* Some types contain names that may be compressed, so these need to be processed.
@@ -150,6 +168,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				blcnt=*lcnt; /* make backups for decompression, because rdlength is the authoritative */
 				bptr=*ptr;   /* record length and pointer and size will by modified by that */
 				if ((rc=decompress_name(msg, db, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				if (*lcnt-blcnt>ntohs(rhdr->rdlength))
@@ -189,11 +209,15 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr;
 				nptr=db;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
 				slen=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				/*nptr+=len;*/
@@ -212,14 +236,19 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 			case T_RT:
 			case T_KX:
 #endif
-				if (*lcnt<2)
+				if (*lcnt<2) {
+					if (tc)
+						return RC_OK;
 					return RC_FORMAT;
+				}
 				memcpy(db,*ptr,2); /* copy the preference field*/
 				blcnt=*lcnt-2;
 				bptr=*ptr+2;
 				nptr=db+2;
 				slen=2;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				/*nptr+=len;*/
@@ -237,17 +266,24 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				bptr=*ptr;
 				nptr=db;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
 				slen=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
 				slen+=len;
-				if (blcnt<20)
+				if (blcnt<20) {
+					if (tc)
+						return RC_OK;
 					return RC_FORMAT;
+				}
 				blcnt-=20;
 				memcpy(nptr,bptr,20); /*copy the rest of the SOA record*/
 				slen+=20;
@@ -261,19 +297,26 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				break;
 #ifdef DNS_NEW_RRS
 			case T_PX:
-				if (*lcnt<2)
+				if (*lcnt<2) {
+					if (tc)
+						return RC_OK;
 					return RC_FORMAT;
+				}
 				memcpy(db,*ptr,2); /* copy the preference field*/
 				blcnt=*lcnt-2;
 				bptr=*ptr+2;
 				nptr=db+2;
 				slen=2;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
 				slen+=len;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
@@ -287,14 +330,19 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_SERVFAIL;
 				break;
 			case T_SRV:
-				if (*lcnt<6)
+				if (*lcnt<6) {
+					if (tc)
+						return RC_OK;
 					return RC_FORMAT;
+				}
 				memcpy(db,*ptr,6);
 				blcnt=*lcnt-6;
 				bptr=*ptr+6;
 				nptr=db+6;
 				slen=6;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				/*nptr+=len;*/
@@ -313,10 +361,19 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				nptr=db;
 				slen=0;
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (rc==RC_TRUNC && tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				nptr+=len;
-				len=blcnt<ntohs(rhdr->rdlength)-len?blcnt:((ntohs(rhdr->rdlength)-len<0?0:ntohs(rhdr->rdlength)-len));
+				if (blcnt<ntohs(rhdr->rdlength)) {
+					if (tc)
+						return RC_OK;
+					return RC_FORMAT;
+				}
+				if (ntohs(rhdr->rdlength)-len<0)
+					return RC_FORMAT;
+				len=ntohs(rhdr->rdlength)-len;
 				memcpy(nptr,bptr,len);
 				slen+=len;
 				blcnt-=len;
@@ -329,8 +386,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					return RC_SERVFAIL;
 				break;
 			case T_NAPTR:
-				if (*lcnt<4)
+				if (*lcnt<4) {
+					if (tc)
+						return RC_OK;
 					return RC_FORMAT;
+				}
 				memcpy(db,*ptr,4); /* copy the preference field*/
 				blcnt=*lcnt-4;
 				bptr=*ptr+4;
@@ -338,8 +398,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 				slen=4;
 				/* 3 text strings following */
 				for (j=0;j<3;j++) {
-					if (blcnt<=0)
+					if (blcnt<=0) {
+						if (tc)
+							return RC_OK;
 						return RC_FORMAT;
+					}
 					k=*bptr;
 					blcnt--;
 					slen++;
@@ -347,8 +410,11 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					nptr++;
 					bptr++;
 					for (;k>0;k--) {
-						if (blcnt==0)
+						if (blcnt==0) {
+							if (tc)
+								return RC_OK;
 							return RC_TRUNC;
+						}
 						*nptr=*bptr;
 						blcnt--;
 						nptr++;
@@ -357,6 +423,8 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 					}
 				}
 				if ((rc=decompress_name(msg, nptr, &bptr, &blcnt, msgsz, &len))!=RC_OK) {
+					if (tc)
+						return RC_OK;
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				}
 				/*nptr+=len;*/
@@ -396,6 +464,351 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
  * control, we will do the parallel queries multiplexed in one thread.
  */
 
+/* The query state machine that is called from p_exec_query */
+static int p_query_sm(query_stat_t *st) 
+{
+	struct protoent *pe;
+	int rv;
+	unsigned int sz;
+#if DEBUG>0
+	char buf[ADDRSTR_MAXLEN];
+#endif
+#ifdef ENABLE_IPV4
+	struct sockaddr_in sender4;
+#endif
+#ifdef ENABLE_IPV6
+	struct sockaddr_in6 sender6;
+#endif
+	struct sockaddr *sender;
+	socklen_t slen,slenc;
+
+	switch (st->nstate){
+		/* TCP query code */
+#ifndef NO_TCP_QUERIES
+	case QSN_TCPINITIAL:
+		if (!(pe=getprotobyname("tcp"))) {
+			DEBUG_MSG2("getprotobyname failed: %s\n", strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		}
+# ifdef ENABLE_IPV4
+		if (run_ipv4) {
+			if ((st->sock=socket(PF_INET,SOCK_STREAM,pe->p_proto))==-1) {
+				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			/* sin4 is intialized, hopefully. */
+		}
+# endif
+# ifdef ENABLE_IPV6
+		if (run_ipv6) {
+			if ((st->sock=socket(PF_INET6,SOCK_STREAM,pe->p_proto))==-1) {
+				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			/* sin6 is intialized, hopefully. */
+		}
+# endif
+		/* transmit query by tcp*/
+		fcntl(st->sock,F_SETFL,O_NONBLOCK);
+		st->rts=time(NULL);
+		if ((rv=connect(st->sock,st->sin,st->sinl))!=0)
+		{
+			if (errno==EINPROGRESS) {
+				st->nstate=QSN_TCPALLOC;
+			} else if (errno==ECONNREFUSED) {
+				close(st->sock);
+				st->nstate=QSN_DONE;
+				return RC_TCPREFUSED;
+			} else {
+				/* Since "connection refused" does not cost any time, we do not try to switch the
+				 * server status to offline */
+				close(st->sock);
+				DEBUG_MSG3("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		} else {
+			st->nstate=QSN_TCPCONNECT;
+			return -1; /* hold on */ 
+		}
+		/* fall through in case of EINPROGRESS */
+	case QSN_TCPALLOC:
+# ifdef NO_POLL
+		FD_ZERO(&st->writes);
+		FD_SET(sock,&st->writes);
+		st->tv.tv_sec=0;
+		st->tv.tv_usec=0/*PAR_GRAN*1000*/;
+		rv=select(st->sock+1,NULL,&st->writes,NULL,&st->tv);
+# else
+		st->polls.fd=st->sock;
+		st->polls.events=POLLOUT;
+		rv=poll(&st->polls,1,0/*PAR_GRAN*/);
+# endif
+		if (rv==0) {
+			if (time(NULL)-st->rts>st->timeout) {
+				close(st->sock);
+				/* timed out. Try to mark the server as offline if possible */
+				if (st->si>=0)
+					mark_server_down(st->si);
+				DEBUG_MSG2("Timeout while connecting to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			} else {
+				return -1;
+			}
+		} else if (rv==-1) {
+			close(st->sock);
+			DEBUG_MSG2("poll failed: %s\n",strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		} else {
+			sz=sizeof(rv);
+			if (getsockopt(st->sock,SOL_SOCKET,SO_ERROR,&rv,&sz)==-1) {
+				close(st->sock);
+				DEBUG_MSG2("getsockopt failed: %s\n",strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			if (rv==ECONNREFUSED) {
+				close(st->sock);
+				st->nstate=QSN_DONE;
+				return RC_TCPREFUSED;
+			} else if (rv!=0) {
+				close(st->sock);
+				DEBUG_MSG2("Error on socket: %s\n",strerror(rv));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+		st->rts=time(NULL);
+		st->nstate=QSN_TCPCONNECT;
+	case QSN_TCPCONNECT:
+		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
+			if (errno!=EAGAIN) {
+				close(st->sock);
+				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			if (time(NULL)-st->rts>st->timeout) {
+				close(st->sock);
+				/* timed out. Try to mark the server as offline if possible */
+				if (st->si>=0)
+					mark_server_down(st->si);
+				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			return -1;
+		}
+		st->nstate=QSN_TCPLWRITTEN;
+		st->rts=time(NULL);
+		/* fall through on success */
+	case QSN_TCPLWRITTEN:
+		if (write(st->sock,st->hdr,ntohs(st->transl))==-1) {
+			if (errno!=EAGAIN) {
+				close(st->sock);
+				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			if (time(NULL)-st->rts>st->timeout) {
+				close(st->sock);
+				/* timed out. Try to mark the server as offline if possible */
+				if (st->si>=0)
+					mark_server_down(st->si);
+				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			return -1;
+		}
+		st->nstate=QSN_TCPQWRITTEN;
+		st->rts=time(NULL);
+		/* fall through on success */
+	case QSN_TCPQWRITTEN:
+		if (read(st->sock,&st->recvl,sizeof(st->recvl))!=sizeof(st->recvl)) {
+			if (errno==EAGAIN) {
+				if (time(NULL)-st->rts>st->timeout) {
+					close(st->sock);
+					/* timed out. Try to mark the server as offline if possible */
+					if (st->si>=0)
+						mark_server_down(st->si);
+					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+					st->nstate=QSN_DONE;
+					return RC_SERVFAIL; /* mock error code */
+				}
+				return -1;
+			} else {
+				close(st->sock);
+				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+		st->recvl=ntohs(st->recvl);
+		st->nstate=QSN_TCPLREAD;
+		if (!(st->recvbuf=(dns_hdr_t *)calloc(st->recvl,1))) {
+			close(st->sock);
+			DEBUG_MSG1("Out of memory in query.\n");
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		}
+		st->rts=time(NULL);
+		/* fall through on success */
+	case QSN_TCPLREAD:
+		if (read(st->sock,st->recvbuf,st->recvl)!=st->recvl) {
+			if (errno==EAGAIN) {
+				if (time(NULL)-st->rts>st->timeout) {
+					close(st->sock);
+					/* timed out. Try to mark the server as offline if possible */
+					if (st->si>=0)
+						mark_server_down(st->si);
+					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+					st->nstate=QSN_DONE;
+					return RC_SERVFAIL; /* mock error code */
+				}
+				return -1;
+			} else {
+				close(st->sock);
+				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+		st->nstate=QSN_DONE;
+		close(st->sock);
+		return RC_OK;
+#endif		
+
+#ifndef NO_UDP_QUERIES
+		/* UDP query code */
+	case QSN_UDPINITIAL:
+		if (!(pe=getprotobyname("udp"))) {
+			DEBUG_MSG2("getprotobyname failed: %s\n", strerror(errno));
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		}
+# ifdef ENABLE_IPV4
+		if (run_ipv4) {
+			if ((st->sock=socket(PF_INET,SOCK_DGRAM,pe->p_proto))==-1) {
+				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+# endif
+# ifdef ENABLE_IPV6
+		if (run_ipv6) {
+			if ((st->sock=socket(PF_INET6,SOCK_DGRAM,pe->p_proto))==-1) {
+				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+# endif
+		/* transmit query by udp*/
+		fcntl(st->sock,F_SETFL,O_NONBLOCK);
+		st->rts=time(NULL);
+		st->nstate=QSN_UDPTRANSMIT;
+		
+	case QSN_UDPTRANSMIT:
+		if (sendto(st->sock,st->hdr,ntohs(st->transl),MSG_DONTWAIT,st->sin,st->sinl)==-1) {
+			if (errno!=EAGAIN) {
+				close(st->sock);
+				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			if (time(NULL)-st->rts>st->timeout) {
+				close(st->sock);
+				/* timed out. Try to mark the server as offline if possible */
+				if (st->si>=0)
+					mark_server_down(st->si);
+				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+			return -1;
+		}
+		st->nstate=QSN_UDPRECEIVE;
+		st->rts=time(NULL);
+		if (!(st->recvbuf=(dns_hdr_t *)calloc(512,1))) {
+			close(st->sock);
+			DEBUG_MSG1("Out of memory in query.\n");
+			st->nstate=QSN_DONE;
+			return RC_SERVFAIL; /* mock error code */
+		}
+		/* fall through */ 
+	case QSN_UDPRECEIVE:
+# ifdef ENABLE_IPV4
+		if (run_ipv4) {
+			slen=sizeof(sender4);
+			sender=(struct sockaddr *)&sender4;
+		}
+# endif
+# ifdef ENABLE_IPV6
+		if (run_ipv6) {
+			slen=sizeof(sender6);
+			sender=(struct sockaddr *)&sender6;
+		}
+# endif
+		slenc=slen;
+		if ((rv=recvfrom(st->sock,st->recvbuf,512,0, sender, &slen))<0) {
+			if (errno==EAGAIN) {
+				if (time(NULL)-st->rts>st->timeout) {
+					close(st->sock);
+					/* timed out. Try to mark the server as offline if possible */
+					if (st->si>=0)
+						mark_server_down(st->si);
+					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+					st->nstate=QSN_DONE;
+					return RC_SERVFAIL; /* mock error code */
+				}
+				return -1;
+			} else {
+				close(st->sock);
+				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL; /* mock error code */
+			}
+		}
+		st->recvl=rv;
+		if (slen<slenc || st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid 
+# ifdef ENABLE_IPV4
+		    || (run_ipv4 && (sender4.sin_port!=st->a.sin4.sin_port || 
+				     sender4.sin_addr.s_addr!=st->a.sin4.sin_addr.s_addr))
+# endif
+# ifdef ENABLE_IPV6
+		    || (run_ipv6 && (sender6.sin6_port!=st->a.sin6.sin6_port || 
+				     sender6.sin6_addr!=st->a.sin6.sin6_addr))
+# endif
+			) {
+			DEBUG_MSG1("Bad answer received. Ignoring it.\n");
+			if (time(NULL)-st->rts>st->timeout) {
+				close(st->sock);
+				/* timed out. Try to mark the server as offline if possible */
+				if (st->si>=0)
+					mark_server_down(st->si);
+				DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				st->nstate=QSN_DONE;
+				return RC_SERVFAIL;
+			}
+			return -1;
+		}
+		st->nstate=QSN_DONE;
+		close(st->sock);
+		return RC_OK;
+#endif
+	case QSN_DONE:
+		return -1;
+	}
+	return -1;
+}
+
 /*
  * The function that will actually execute a query. It takes a state structure in st.
  * st->state must be set to QS_INITIAL before calling. 
@@ -409,6 +822,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
  * are returned in ent.
  * All ns records, to whomever they might belong, are additionally returned in the ns list.
  * Free it when done.
+ * This function calls another query state machine function that supports TCP and UDP.
  *
  * If you want to tell me that this function has a truly ugly coding style, ah, well...
  * You are right, somehow, but I feel it is conceptually elegant ;-)
@@ -416,9 +830,7 @@ static int rrs2cent(dns_cent_t **cent, unsigned char **ptr, long *lcnt, int recn
 
 static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *name, int *aa, query_stat_t *st, ns_t **ns, unsigned long serial) 
 {
-	struct protoent *pe;
 	int i,j,rv;
-	unsigned int sz;
 	unsigned long queryts;
 	long lcnt;
 	unsigned char *rrp;
@@ -436,36 +848,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->hdr=(dns_hdr_t *)calloc(sizeof(dns_hdr_t)+strlen((char *)rrn)+5,1);
 		if (!st->hdr) {
 			st->state=QS_DONE;
-			return RC_SERVFAIL; /* mock error code */
+ 			return RC_SERVFAIL; /* mock error code */
 		}
-		if (!(pe=getprotobyname("tcp"))) {
-			free(st->hdr);
-			DEBUG_MSG2("getprotobyname failed: %s\n", strerror(errno));
-			st->state=QS_DONE;
-			return RC_SERVFAIL; /* mock error code */
-		}
-#ifdef ENABLE_IPV4
-		if (run_ipv4) {
-			if ((st->sock=socket(PF_INET,SOCK_STREAM,pe->p_proto))==-1) {
-				free(st->hdr);
-				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			/* sin4 is intialized, hopefully. */
-		}
-#endif
-#ifdef ENABLE_IPV6
-		if (run_ipv6) {
-			if ((st->sock=socket(PF_INET6,SOCK_STREAM,pe->p_proto))==-1) {
-				free(st->hdr);
-				DEBUG_MSG2("Could not open socket: %s\n", strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			/* sin6 is intialized, hopefully. */
-		}
-#endif
 		st->myrid=get_rand16();
 		st->hdr->id=htons(st->myrid);
 		st->hdr->qr=QR_QUERY;
@@ -484,328 +868,43 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		*(((unsigned char *)(st->hdr+1))+strlen((char *)rrn))='\0';
 		((std_query_t *)(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1))->qtype=htons(st->qt);
 		((std_query_t *)(((unsigned char *)(st->hdr+1))+strlen((char *)rrn)+1))->qclass=htons(C_IN);
-		/* transmit query by tcp*/
-		fcntl(st->sock,F_SETFL,O_NONBLOCK);
-		st->rts=time(NULL);
-		if ((rv=connect(st->sock,st->sin,st->sinl))!=0)
-		{
-			if (errno==EINPROGRESS) {
-				st->state=QS_ALLOC;
-			} else {
-				/* Since "connection refused" does not cost any time, we do not try to switch the
-				 * server status to offline */
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while connecting to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		} else {
-			st->state=QS_CONNECT;
-			return -1; /* hold on */ 
-		}
-		/* fall through in case of EINPROGRESS */
-	case QS_ALLOC:
-#ifdef NO_POLL
-		FD_ZERO(&st->writes);
-		FD_SET(sock,&st->writes);
-		st->tv.tv_sec=0;
-		st->tv.tv_usec=0/*PAR_GRAN*1000*/;
-		rv=select(st->sock+1,NULL,&st->writes,NULL,&st->tv);
-#else
-		st->polls.fd=st->sock;
-		st->polls.events=POLLOUT;
-		rv=poll(&st->polls,1,0/*PAR_GRAN*/);
-#endif
-		if (rv==0) {
-			if (time(NULL)-st->rts>st->timeout) {
-				free(st->hdr);
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while connecting to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			} else {
-				return -1;
-			}
-		} else if (rv==-1) {
-			free(st->hdr);
-			close(st->sock);
-			DEBUG_MSG2("poll failed: %s\n",strerror(errno));
-			st->state=QS_DONE;
-			return RC_SERVFAIL; /* mock error code */
-		} else {
-			sz=sizeof(rv);
-			if (getsockopt(st->sock,SOL_SOCKET,SO_ERROR,&rv,&sz)==-1 || rv!=0) {
-				free(st->hdr);
-				close(st->sock);
-				if (rv)
-					DEBUG_MSG2("Error on socket: %s\n",strerror(rv));
-				else
-					DEBUG_MSG2("getsockopt failed: %s\n",strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
-		st->rts=time(NULL);
-		if (st->trusted)
-			st->state=QS_CONNECT;
-		else {
-			st->state=QS_REQUERY;
-                        /* ok, ok... but it is the only goto in pdnsd, and it may be excused by a.) this is basically a state machine,
-			 * and b.) otherwise, a significant rewrite would have been needed, introducing new bugs. Sigh... */
-			goto REQUERY; 
-		}
-		/* fall through if ok and trusted */
-	case QS_CONNECT:
-		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				free(st->hdr);
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
-		}
-		st->state=QS_LWRITTEN;
-		st->rts=time(NULL);
-		/* fall through on success */
-	case QS_LWRITTEN:
-		if (write(st->sock,st->hdr,ntohs(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				free(st->hdr);
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
-		}
-		st->state=QS_QWRITTEN;
-		st->rts=time(NULL);
-		/* fall through on success */
-	case QS_QWRITTEN:
-		if (read(st->sock,&st->recvl,sizeof(st->recvl))!=sizeof(st->recvl)) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					free(st->hdr);
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-					st->state=QS_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
-		st->recvl=ntohs(st->recvl);
-		st->state=QS_LREAD;
-		if (!(st->recvbuf=(dns_hdr_t *)calloc(st->recvl,1))) {
-			free(st->hdr);
-			close(st->sock);
-			DEBUG_MSG1("Out of memory in query.\n");
-			st->state=QS_DONE;
-			return RC_SERVFAIL; /* mock error code */
-		}
-		st->rts=time(NULL);
-		/* fall through on success */
-	case QS_LREAD:
-		if (read(st->sock,st->recvbuf,st->recvl)!=st->recvl) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					free(st->recvbuf);
-					free(st->hdr);
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG2("Timeout while waiting for data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-					st->state=QS_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				free(st->recvbuf);
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
-	
-                /* Basic sanity checks */
-		if (st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid || st->recvbuf->qr!=QR_RESP || 
-		    st->recvbuf->opcode!=OP_QUERY || st->recvbuf->tc || st->recvbuf->z || 
-		    (st->recvbuf->rcode!=RC_OK && st->recvbuf->rcode!=RC_NOTSUPP)) {
-			free(st->hdr);
-			rv=st->recvbuf->rcode;
+		if (!st->trusted)
+			st->hdr->rd=0;
+		st->recvbuf=NULL;
+		if (st->qm==UDP_ONLY)
+			st->nstate=QSN_UDPINITIAL;
+		else
+			st->nstate=QSN_TCPINITIAL;
+		st->state=QS_QUERY;
+		/* fall through */
+		
+	case QS_QUERY:
+		if ((rv=p_query_sm(st))==RC_TCPREFUSED) {
 			free(st->recvbuf);
-			close(st->sock);
-			st->state=QS_DONE;
-			if (rv!=RC_OK) {
-				DEBUG_MSG3("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(rv));
-				return rv;
+			if (st->qm==TCP_UDP) {
+				st->recvbuf=NULL;
+				st->nstate=QSN_UDPINITIAL;
+				DEBUG_MSG2("TCP connection refused by %s. Trying to use UDP.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+				return -1;
 			}
-			DEBUG_MSG2("Server %s returned invalid answer\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-			return RC_SERVFAIL; /* mock error code */
+			free(st->hdr);
+			st->state=QS_DONE;
+			DEBUG_MSG2("TCP connection refused by %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+		return RC_SERVFAIL;
+		} else if (rv==-1) {
+			return -1;
+		} else if (rv!=RC_OK) {
+			free(st->hdr);
+			free(st->recvbuf);
+			st->state=QS_DONE;
+			return rv;
 		}
 
-		if (!(st->recvbuf->rcode==RC_NOTSUPP)){
-			st->state=QS_DONE;
-			/* break on success, and if no requery is needed */
-			break;
-		}
-		/* seems as if we have got no recursion avaliable. We will have to do it by ourselves (sigh...) */
-		st->state=QS_REQUERY;
-		free(st->recvbuf);
-		st->hdr->rd=0;
-		st->myrid=get_rand16();
-		st->hdr->id=htons(st->myrid);
-		st->rts=time(NULL);
-		DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-		/* fall through on requery */
-	case QS_REQUERY:
-	REQUERY:
-		if (write(st->sock,&st->transl,sizeof(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				free(st->hdr);
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
-		}
-		st->state=QS_LWRITTEN2;
-		st->rts=time(NULL);
-		/* fall through on success */
-	case QS_LWRITTEN2:
-		while (write(st->sock,st->hdr,ntohs(st->transl))==-1) {
-			if (errno!=EAGAIN) {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG3("Error while sending data to %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			if (time(NULL)-st->rts>st->timeout) {
-				free(st->hdr);
-				close(st->sock);
-				/* timed out. Try to mark the server as offline if possible */
-				if (st->si>=0)
-					mark_server_down(st->si);
-				DEBUG_MSG2("Timeout while sending data to %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-			return -1;
-		}
-		st->state=QS_QWRITTEN2;
-		st->rts=time(NULL);
-		/* fall through on success */
-	case QS_QWRITTEN2:
-		if (read(st->sock,&st->recvl,sizeof(st->recvl))!=sizeof(st->recvl)) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					free(st->hdr);
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-					st->state=QS_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG2("Timeout while receiving data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
-		st->recvl=ntohs(st->recvl);
-		if (!(st->recvbuf=(dns_hdr_t *)calloc(st->recvl,1))) {
-			free(st->hdr);
-			close(st->sock);
-			DEBUG_MSG1("Out of memory in query.\n");
-			st->state=QS_DONE;
-			return RC_SERVFAIL; /* mock error code */
-		}
-		st->rts=time(NULL);
-		st->state=QS_LREAD2;
-		/* fall through on success */
-	case QS_LREAD2:
-		if (read(st->sock,st->recvbuf,st->recvl)!=st->recvl) {
-			if (errno==EAGAIN) {
-				if (time(NULL)-st->rts>st->timeout) {
-					free(st->recvbuf);
-					free(st->hdr);
-					close(st->sock);
-					/* timed out. Try to mark the server as offline if possible */
-					if (st->si>=0)
-						mark_server_down(st->si);
-					DEBUG_MSG3("Error while receiving data from %s: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),strerror(errno));
-					st->state=QS_DONE;
-					return RC_SERVFAIL; /* mock error code */
-				}
-				return -1;
-			} else {
-				free(st->recvbuf);
-				free(st->hdr);
-				close(st->sock);
-				DEBUG_MSG2("Timeout while receiving data from %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
-				st->state=QS_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
-		}
 
 		/* Basic sanity checks */
 		if (st->recvl<sizeof(dns_hdr_t) || ntohs(st->recvbuf->id)!=st->myrid || st->recvbuf->qr!=QR_RESP || 
-		    st->recvbuf->opcode!=OP_QUERY || st->recvbuf->tc || st->recvbuf->z || st->recvbuf->rcode!=RC_OK) {
+		    st->recvbuf->opcode!=OP_QUERY || st->recvbuf->z || 
+		    (st->recvbuf->rcode!=RC_OK && !(st->hdr->rd && st->recvbuf->rcode==RC_NOTSUPP))) {
 			free(st->hdr);
 			rv=st->recvbuf->rcode;
 			free(st->recvbuf);
@@ -818,7 +917,21 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			DEBUG_MSG2("Server %s returned invalid answer\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
 			return RC_SERVFAIL; /* mock error code */
 		}
+
+		if (st->recvbuf->rcode==RC_NOTSUPP){
+		
+			/* seems as if we have got no recursion avaliable. We will have to do it by ourselves (sigh...) */
+			free(st->recvbuf);
+			st->recvbuf=NULL;
+			st->hdr->rd=0;
+			st->myrid=get_rand16();
+			st->hdr->id=htons(st->myrid);
+			DEBUG_MSG2("Server %s does not support recursive query. Querying nonrecursive.\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN));
+			return -1;
+		}
+
 		st->state=QS_DONE;
+		/* break on success, and if no requery is needed */
 		break;
 	case QS_DONE:
 		return -1;
@@ -831,7 +944,6 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	 * first, if there are any query records, skip them
 	 */
 	free(st->hdr);
-	close(st->sock);
 	queryts=time(NULL);
 	lcnt=st->recvl;
 	rrp=(unsigned char *)(st->recvbuf+1);
@@ -894,7 +1006,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		st->flags|=CF_NOAUTH;
 	}
 	if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->ancount), (unsigned char *)st->recvbuf,st->recvl,st->flags,
-		     ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
+		     ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
 		free_cent(**ent);
 		free(*ent);
 		free(st->recvbuf);
@@ -903,7 +1015,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 
 	if (ntohs(st->recvbuf->nscount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->nscount), (unsigned char *)st->recvbuf,st->recvl,
-			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
+			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -913,7 +1025,7 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	
 	if (ntohs(st->recvbuf->arcount)>0) {
 		if (rrs2cent(ent,&rrp,&lcnt,ntohs(st->recvbuf->arcount), (unsigned char *)st->recvbuf,st->recvl,
-			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain)!=RC_OK) {
+			     st->flags|CF_ADDITIONAL,ns,queryts,serial, st->trusted, st->nsdomain, st->recvbuf->tc)!=RC_OK) {
 			free(st->recvbuf);
 			free_cent(**ent);
 			free(*ent);
@@ -930,21 +1042,14 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
  */
 static void p_cancel_query(query_stat_t *st) 
 {
-	switch (st->state){
-	case QS_LREAD:
-	case QS_LREAD2:
-		free(st->recvbuf); /* fall deep */
-	case QS_ALLOC:
-	case QS_CONNECT:
-	case QS_LWRITTEN:
-	case QS_QWRITTEN:
-	case QS_REQUERY:
-	case QS_LWRITTEN2:
-	case QS_QWRITTEN2:
+	if (st->state==QS_QUERY){
+		free(st->recvbuf);
 		free(st->hdr);
-		close(st->sock);
-		st->state=QS_DONE;
+		if (st->nstate!=QSN_TCPINITIAL && st->nstate!=QSN_UDPINITIAL && st->nstate!=QSN_DONE) {
+			close(st->sock);
+		}
 	}
+	st->state=QS_DONE;
 }
 
 /*
@@ -996,6 +1101,7 @@ static int add_qserv(query_serv_t *q, pdnsd_a *a, int port, long timeout, int si
 	q->qs[q->num-1].trusted=trusted;
 	strcpy((char *)q->qs[q->num-1].nsdomain,(char *)nsdomain);
 	q->qs[q->num-1].state=QS_INITIAL;
+	q->qs[q->num-1].qm=query_method;
 	return 1;
 }
 
@@ -1259,7 +1365,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		nopurge=0;
 		for (i=0;i<T_MAX;i++) {
 			if ((*cached)->rr[i]) {
-				if (!((*cached)->rr[i]->flags&CF_NOAUTH)) {
+				if (!((*cached)->rr[i]->flags&CF_NOAUTH) && !!((*cached)->rr[i]->flags&CF_ADDITIONAL)) {
 					auth=1;
 				}
 				if ((*cached)->rr[i]->flags&CF_NOPURGE) {

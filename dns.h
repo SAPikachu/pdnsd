@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns.h,v 1.2 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: dns.h,v 1.3 2000/07/10 12:08:52 thomas Exp $ */
 
 #ifndef _DNS_H_
 #define _DNS_H_
@@ -116,9 +116,10 @@ Boston, MA 02111-1307, USA.  */
 #define RC_REFUSED  5
 
 /*
- * A special internal retval
+ * special internal retvals
  */
-#define RC_TRUNC  255
+#define RC_TCPREFUSED 254
+#define RC_TRUNC      255
 
 /* query/response */
 #define QR_QUERY    0

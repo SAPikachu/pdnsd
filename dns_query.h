@@ -18,11 +18,12 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.6 2000/06/24 18:58:06 thomas Exp $ */
+/* $Id: dns_query.h,v 1.7 2000/07/10 12:08:52 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
 
+#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #ifdef NO_POLL
@@ -31,11 +32,16 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/poll.h>
 #endif
 #include "dns.h"
-#include "config.h"
 #include "cache.h"
 
 #define PAR_QUERIES   2
 #define PAR_GRAN     50
+
+#define UDP_ONLY 1
+#define TCP_ONLY 2
+#define TCP_UDP  3
+
+extern int query_method;
 
 /* --- structures and state constants for parallel query */
 typedef struct {
@@ -55,6 +61,8 @@ typedef struct {
 	int                 flags;
 	int                 nocache;
 	int                 state;
+	int                 nstate;
+	int                 qm;
 	char                trusted;
 	unsigned char       nsdomain[256];
 	/* internal state for p_exec_query */
@@ -82,17 +90,23 @@ typedef struct {
 	query_stat_t  *qs;
 } query_serv_t;
 
-#define QS_INITIAL    0  /* This is the initial state. Set this before starting. */
-#define QS_ALLOC      1  /* Resources allocated */
-#define QS_CONNECT    2  /* Connected. */
-#define QS_LWRITTEN   3  /* Query length has been transmitted. */
-#define QS_QWRITTEN   4  /* Query transmitted. */
-#define QS_LREAD      5  /* Answer length read */
-#define QS_REQUERY    6  /* Requery needed */
-#define QS_LWRITTEN2  7  /* Non-RD case of 3 */
-#define QS_QWRITTEN2  8  /* Non-RD case of 4 */
-#define QS_LREAD2     9  /* Non-RD case of 5 */
-#define QS_DONE      10  /* done, resources freed, result is in stat_t */
+#define QS_INITIAL       0  /* This is the initial state. Set this before starting. */
+#define QS_QUERY         1
+#define QS_DONE         11  /* done, resources freed, result is in stat_t */
+
+
+#define QSN_TCPINITIAL   1  /* Start a TCP query. */
+#define QSN_TCPALLOC     2  /* Resources allocated */
+#define QSN_TCPCONNECT   3  /* Connected. */
+#define QSN_TCPLWRITTEN  4  /* Query length has been transmitted. */
+#define QSN_TCPQWRITTEN  5  /* Query transmitted. */
+#define QSN_TCPLREAD     6  /* Answer length read */
+
+#define QSN_UDPINITIAL  20  /* Start a UDP query */
+#define QSN_UDPTRANSMIT 21  /* Start a UDP query */
+#define QSN_UDPRECEIVE  22  /* Start a UDP query */
+
+#define QSN_DONE        11
 
 /* --- parallel query */
 int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);

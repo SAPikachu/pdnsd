@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.15 2000/07/03 15:56:36 thomas Exp $ */
+/* $Id: config.h.templ,v 1.16 2000/07/10 12:08:52 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -46,6 +46,36 @@
 #define DEFAULT_IPV4 1
 #undef ENABLE_IPV6
 #define DEFAULT_IPV6 0
+
+/* In all pdnsd versions before 1.0.6, DNS queries were always done over
+ * TCP. Now, you have the choice. You can control that behaviour using 
+ * the -m command line switch, and you can give a preset here. There
+ * are 3 different modes:
+ * UDP_ONLY: This is undoubtedly the fastest query method, because
+ *       no TCP negotiation needs to be done.
+ * TCP_ONLY: This is slower than uo, but generally more secure
+ *       against DNS spoofing. Note that some name servers on the 
+ *       internet do not support TCP queries, notably dnscache.
+ * TCP_UDP: TCP, then UDP. If the TCP query fails with a "connection refused"-
+ *       error, the query is retried using UDP. */
+#define M_PRESET UDP_ONLY
+
+/* In addition to choosing the presets, you may also completely disable
+ * one of the protocols (TCP for preset UDP_ONLY and UDP for preset TCP_ONLY).
+ * This saves some executable space. */
+#undef NO_UDP_QUERIES
+#define NO_TCP_QUERIES
+
+/* With the following option, you can disable the TCP server functionality
+ * of pdnsd. Nearly no program does TCP queries, so you probably can do
+ * this safely and save some executable space and one thread.
+ * You also can turn off the TCP server at runtimu with the -t option. */
+#define NO_TCP_SERVER
+
+/* By undefining the following, you can disable the UDP source address
+ * discovery code. This is not recommended, but you may need it when
+ * running into compilation problems. */
+#define SRC_ADDR_DISC
 
 /* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
  * unsure about what this means, just leave this as it is.*/

@@ -33,15 +33,13 @@ Boston, MA 02111-1307, USA.  */
 #include "status.h"
 #include "servers.h"
 #include "dns_answer.h"
+#include "dns_query.h"
 #include "error.h"
 #include "helpers.h"
 #include "icmp.h"
-/*
- *#include "netdev.h"
- */
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.14 2000/07/07 10:05:35 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.15 2000/07/10 12:08:52 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -62,8 +60,8 @@ int run_ipv4=DEFAULT_IPV4;
 int run_ipv6=DEFAULT_IPV6;
 #endif
 
-int tcp_socket;
-int udp_socket;
+int tcp_socket=-1;
+int udp_socket=-1;
 
 sigset_t sigs_msk;
 
@@ -108,19 +106,28 @@ void print_help (void)
 	printf("-g\t\t--or--\n");
 	printf("--debug\t\tPrint some debug messages on the console or to the\n");
 	printf("\t\tfile pdnsd.debug in your cache directory (in daemon mode).\n");
+	printf("-t\t\t--or--\n");
+	printf("--notcp\t\tDisables the TCP server thread. pdnsd will then only\n");
+	printf("\t\tserve UDP queries.\n");
+	printf("-p\t\tWrites the pid the server runs as to a specified filename.\n");
+	printf("\t\tWorks only in daemon mode.\n");
 	printf("-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n");
 	printf("\t\t(normal operation) to 3 (many messages for debugging).\n");
 	printf("\t\tUse like -v2\n");
+	printf("-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n");
+	printf("\t\tuo (UDP only), to (TCP only), and tu (TCP or, if the server\n");
+	printf("\t\tdoes not support this, UDP). Use like -muo. Preset: %s\n", 
+	       M_PRESET==UDP_ONLY?"-muo":(M_PRESET==TCP_ONLY?"-mto":"mtu"));
 	printf("-c\t\t--or--\n");
 	printf("--config-file\tspecifies the file the configuration is read from.\n");
 	printf("\t\tDefault is /etc/pdnsd.conf\n");
 #ifdef ENABLE_IPV4
 	printf("-4\t\tenables IPv4 support. IPv6 support is automatically\n");
-	printf("\t\tdisabled (should it be available). %s by default.\n",run_ipv4?"On":"Off");
+	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV4?"On":"Off");
 #endif
 #ifdef ENABLE_IPV6
 	printf("-6\t\tenables IPv6 support. IPv4 support is automatically\n");
-	printf("\t\tdisabled (should it be available). %s by default.\n",run_ipv6?"On":"Off");
+	printf("\t\tdisabled (should it be available). %s by default.\n",DEFAULT_IPV6?"On":"Off");
 #endif
 }
 
@@ -135,6 +142,9 @@ int main(int argc,char *argv[])
 #if DEBUG>0
 	char dbgdir[1024];
 #endif
+	int notcp=0;
+	char *pidfile=NULL;
+	FILE *pf;
 
 	mk_hash_ctable();
 	main_thread=pthread_self();
@@ -155,13 +165,52 @@ int main(int argc,char *argv[])
 			stat_pipe=1;
 		} else if (strcmp(argv[i],"-d")==0 || strcmp(argv[i],"--daemon")==0) {
 			daemon_p=1;
-
+		} else if (strcmp(argv[i],"-t")==0 || strcmp(argv[i],"--notcp")==0) {
+			notcp=1;
+		} else if (strcmp(argv[i],"-p")==0) {
+			if (i<argc-1) {
+				i++;
+				pidfile=argv[i];
+			} else {
+				fprintf(stderr,"Error: file name expected after -p option.\n");
+				exit(1);
+			}
 		} else if (strncmp(argv[i],"-v",2)==0) {
 			if (strlen(argv[i])!=3 || !isdigit(argv[i][2])) {
 				fprintf(stderr,"Error: one digit expected after -v option (like -v2).\n");
 				exit(1);
 			}
 			verbosity=argv[i][2]-'0';
+		} else if (strncmp(argv[i],"-m",2)==0) {
+			if (strlen(argv[i])!=4) {
+				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
+				exit(1);
+			}
+			if (strcmp(&argv[i][2],"uo")==0) {
+#ifdef NO_UDP_QUERIES
+				fprintf(stderr,"Error: pdnsd was compiled without UDP support.\n");
+				exit(1);
+#else
+				query_method=UDP_ONLY;
+#endif
+			} else if (strcmp(&argv[i][2],"to")==0) {
+#ifdef NO_TCP_QUERIES
+				fprintf(stderr,"Error: pdnsd was compiled without TCP support.\n");
+				exit(1);
+#else
+				query_method=TCP_ONLY;
+#endif
+			} else if (strcmp(&argv[i][2],"tu")==0) {
+#if !defined(NO_UDP_QUERIES) || !defined(NO_TCP_QUERIES)
+				fprintf(stderr,"Error: pdnsd was not compiled with UDP  and TCP support.\n");
+				exit(1);
+#else
+				query_method=TCP_UDP;
+#endif
+			} else {
+				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
+				exit(1);
+			}
 		} else if (strcmp(argv[i],"-4")==0) {
 #ifdef ENABLE_IPV4
 			run_ipv4=1;
@@ -206,7 +255,16 @@ int main(int argc,char *argv[])
 
 	read_config_file(conf_file);
 	init_log();
-	tcp_socket=init_tcp_socket();
+	if (daemon_p && pidfile) {
+		if (!(pf=fopen(pidfile,"w"))) {
+			log_error("Error: could not open pid file %s: %s\n",pidfile, strerror(errno));
+			exit(1);
+		}
+	}
+#ifndef NO_TCP_SERVER
+	if (!notcp)
+		tcp_socket=init_tcp_socket();
+#endif
 	udp_socket=init_udp_socket();
 	if (tcp_socket==-1 && udp_socket==-1) {
 		log_error("tcp and udp initialization failed. Exiting.");
@@ -243,6 +301,10 @@ int main(int argc,char *argv[])
 		if (i!=0)
 			_exit(0); /* exit parent, so we are no session group leader */
 		chdir("/");
+		if (pidfile) {
+			fprintf(pf,"%i\n",getpid());
+			fclose(pf);
+		}
 		if ((i=open("/dev/null",O_RDONLY))==-1) {
 			log_error("Could not become a daemon: open for /dev/null failed: %s",strerror(errno));
 			_exit(1);
@@ -312,7 +374,7 @@ int main(int argc,char *argv[])
 
 	start_dns_servers();
 
-	DEBUG_MSG1("All threads successfully started.\n");
+	DEBUG_MSG1("All threads started successfully.\n");
 
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 	waiting=1;

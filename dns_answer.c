@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.25 2000/07/07 10:05:35 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.26 2000/07/10 12:08:52 thomas Exp $";
 #endif
 
 /*
@@ -964,7 +964,7 @@ void *udp_answer_thread(void *data)
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
-#if TARGET==TARGET_LINUX
+#if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
 	msg.msg_control=ctrl;
 	msg.msg_controllen=512;
 #else
@@ -977,7 +977,7 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin4;
 		msg.msg_namelen=sizeof(struct sockaddr_in);
-# if TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
 		((udp_buf_t *)data)->pi.pi4.ipi_spec_dst=((udp_buf_t *)data)->pi.pi4.ipi_addr;
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in_pktinfo));
@@ -987,7 +987,7 @@ void *udp_answer_thread(void *data)
 		msg.msg_controllen=CMSG_SPACE(sizeof(struct in_pktinfo));
 # endif		
 		DEBUG_MSG2("Answering to: %s, ", inet_ntoa(((udp_buf_t *)data)->addr.sin4.sin_addr));
-# if TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.pi4.ipi_spec_dst));
 # else
 		DEBUG_MSG1("\n");
@@ -999,7 +999,7 @@ void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin6;
 		msg.msg_namelen=sizeof(struct sockaddr_in6);
-# if TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
 		cmsg=CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_len=CMSG_LEN(sizeof(struct in6_pktinfo));
 		cmsg->cmsg_level=SOL_IPV6;
@@ -1009,7 +1009,7 @@ void *udp_answer_thread(void *data)
 # endif
 
 		DEBUG_MSG2("Answering to: %s, ", inet_ntop(AF_INET6,&((udp_buf_t *)data)->addr.sin6.sin6_addr,buf,50));
-# if TARGET==TARGET_LINUX
+# if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX
 		DEBUG_MSG2("source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,50));
 # else
 		DEBUG_MSG1("\n");
@@ -1140,7 +1140,7 @@ void *udp_server_thread(void *dummy)
 	}
 #endif
 
-#if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
+#if defined (SRC_ADDR_DISC) && TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
 	/* The following must be set on any case because it also applies for IPv4 packets sent to
 	 * ipv6 addresses. */
 	if (setsockopt(sock,SOL_IP,IP_PKTINFO,&so,sizeof(so))!=0) {
@@ -1172,7 +1172,6 @@ void *udp_server_thread(void *dummy)
 	}
 # endif
 #endif
-
 	while (1) {
 		if (!(buf=(udp_buf_t *)calloc(sizeof(udp_buf_t),1))) {
 			if (da_mem_errs<MEM_MAX_ERRS) {
@@ -1194,7 +1193,7 @@ void *udp_server_thread(void *dummy)
 		msg.msg_control=ctrl;
 		msg.msg_controllen=512;
 
-#if TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
+#if defined(SRC_ADDR_DISC) && TARGET==TARGET_LINUX /* RFC compat (only Linux): set source address correctly. */
 # ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
@@ -1259,7 +1258,7 @@ void *udp_server_thread(void *dummy)
 			}
 		}
 # endif
-#else /* TARGET==TARGET_LINUX*/
+#else /* !SRC_ADDR_DISC */
 # ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
@@ -1275,6 +1274,7 @@ void *udp_server_thread(void *dummy)
 		}
 # endif
 #endif
+
 		if (qlen<0) {
 			free(buf);
 			usleep(50000);
@@ -1294,6 +1294,7 @@ void *udp_server_thread(void *dummy)
 	return NULL;
 }
 
+#ifndef NO_TCP_SERVER
 /*
  * Process a dns query via tcp. The argument is a pointer to the socket.
  */
@@ -1515,6 +1516,7 @@ void *tcp_server_thread(void *p)
 	tcp_socket=-1;
 	return NULL;
 }
+#endif
 
 /*
  * Starts the tcp server thread and the udp server thread. Both threads
@@ -1524,6 +1526,7 @@ void start_dns_servers()
 {
 	pthread_attr_t attrt,attru;
 	
+#ifndef NO_TCP_SERVER       
 	if (tcp_socket!=-1) {
 		pthread_attr_init(&attrt);
 		pthread_attr_setdetachstate(&attrt,PTHREAD_CREATE_DETACHED);
@@ -1533,6 +1536,7 @@ void start_dns_servers()
 		} else
 			log_info(2,"tcp server thread started.");
 	}		
+#endif
 
 	if (udp_socket!=-1) {
 		pthread_attr_init(&attru);
