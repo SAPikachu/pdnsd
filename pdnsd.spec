@@ -23,8 +23,8 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.1.8b1
-Release: par8
+Version: 1.1.9
+Release: par
 License: GPL
 Group:  Daemons
 Source: %{name}-%{version}-%{release}.tar.gz
@@ -75,7 +75,8 @@ CFLAGS="${CFLAGS:-%{optflags} -Wall}" ./configure \
 	%{?_with_nptl:--with-thread-lib=nptl} \
 	%{?_with_underscores:--enable-underscores} \
 	%{?_with_ipv6:--enable-ipv6} \
-	%{?_with_tcpqueries:--enable-tcp-queries}
+	%{?_with_tcpqueries:--enable-tcp-queries} \
+	%{?_without_debug:--with-debug=0}
 
 make
 

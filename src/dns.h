@@ -1,6 +1,8 @@
 /* dns.h - Declarations for dns handling and generic dns functions
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify

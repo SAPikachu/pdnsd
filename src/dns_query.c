@@ -1,6 +1,8 @@
 /* dns_query.c - Execute outgoing dns queries and write entries to cache
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -228,7 +230,7 @@ static int rrs2cent(dns_cent_t *cent, unsigned char **ptr, long *lcnt, int recnu
 						rhn2str(db,nsr->name);
 						rhncpy(nsr->nsdomain,oname);
 					}
-				} 
+				}
 				break;
 			case T_MINFO:
 #ifdef DNS_NEW_RRS
@@ -543,9 +545,9 @@ static int bind_socket(int s)
  * (except perhaps in UDP mode if TCP failed; QSN_DONE makes QS_DONE be set in state), or the st->event 
  * structure must be setup correctly, because it is then used to setup a poll() or select() together with st.>sock. 
  * If that poll/select is succesful for that socket, p_exec_query is called again and will hand over to p_query_sm. 
- * So, you can assume that read(), write() and recvfrom() will not block at sthe start of a state handling when you 
+ * So, you can assume that read(), write() and recvfrom() will not block at the start of a state handling when you 
  * have set st->event and returned -1 (which means "call again") as last step of the last state handling. */
-static int p_query_sm(query_stat_t *st) 
+static int p_query_sm(query_stat_t *st)
 {
 	struct protoent *pe;
 	int rv;
@@ -650,13 +652,8 @@ static int p_query_sm(query_stat_t *st)
 	case QSN_TCPQWRITTEN:
 	        {
 			uint16_t recvl_net;
-			if ((rv=read(st->sock,&recvl_net,sizeof(recvl_net)))!=sizeof(recvl_net)) {
-				if(rv==-1) st->s_errno=errno;
-				close(st->sock);
-				DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
-				st->nstate=QSN_DONE;
-				return RC_SERVFAIL; /* mock error code */
-			}
+			if ((rv=read(st->sock,&recvl_net,sizeof(recvl_net)))!=sizeof(recvl_net))
+				goto error_receiv_data;
 			st->recvl=ntohs(recvl_net);
 		}
 		if (!(st->recvbuf=(dns_hdr_t *)pdnsd_calloc(st->recvl,1))) {
@@ -669,16 +666,17 @@ static int p_query_sm(query_stat_t *st)
 		st->event=QEV_READ;
 		return -1;
 	case QSN_TCPLREAD:
-		if ((rv=read(st->sock,st->recvbuf,st->recvl))!=st->recvl) {
-			if(rv==-1) st->s_errno=errno;
-			close(st->sock);
-			DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
-			st->nstate=QSN_DONE;
-			return RC_SERVFAIL; /* mock error code */
-		}
+		if ((rv=read(st->sock,st->recvbuf,st->recvl))!=st->recvl)
+			goto error_receiv_data;
 		st->nstate=QSN_DONE;
 		close(st->sock);
 		return RC_OK;
+	error_receiv_data:
+		if(rv==-1) st->s_errno=errno;
+		close(st->sock);
+		DEBUG_SOCKA_MSG("Error while receiving data from %s: %s\n", SOCKA2STR(st->sin),strerror(errno));
+		st->nstate=QSN_DONE;
+		return RC_SERVFAIL; /* mock error code */
 #endif
 
 #ifndef NO_UDP_QUERIES
@@ -722,7 +720,7 @@ static int p_query_sm(query_stat_t *st)
 			st->nstate=QSN_DONE;
 			return RC_SERVFAIL; /* mock error code */
 		}
-		
+
 		/* transmit query by udp*/
 		/* send will hopefully not block on a freshly opened socket (the buffer
 		 * must be empty) */
@@ -786,7 +784,7 @@ static int p_query_sm(query_stat_t *st)
  * If you want to tell me that this function has a truly ugly coding style, ah, well...
  * You are right, somehow, but I feel it is conceptually elegant ;-)
  */
-static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *rrn, int *aa, query_stat_t *st, nsr_array *ns, unsigned long serial) 
+static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *rrn, int *aa, query_stat_t *st, nsr_array *ns, unsigned long serial)
 {
 	dns_cent_t *ent;
 	int rv;
@@ -796,12 +794,14 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 	unsigned char nbuf[256];
 
 	switch (st->state){
-	case QS_INITIAL:
+	case QS_INITIAL: {
+		int rrnlen;
 		st->sin=SIN_ADDR(st);
 		if (!st->lean_query)
 			st->qt=QT_ALL;
-		st->transl=sizeof(dns_hdr_t)+rhnlen(rrn)+4;
-		st->hdr=(dns_hdr_t *)pdnsd_calloc(st->transl,1);
+		rrnlen=rhnlen(rrn);
+		st->transl=sizeof(dns_hdr_t)+rrnlen+4;
+		st->hdr=(dns_hdr_t *)pdnsd_malloc(st->transl);
 		if (!st->hdr) {
 			st->state=QS_DONE;
  			return RC_SERVFAIL; /* mock error code */
@@ -822,12 +822,12 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 		st->hdr->ancount=0;
 		st->hdr->nscount=0;
 		st->hdr->arcount=0;
-		rhncpy((unsigned char *)(st->hdr+1),rrn);
+		memcpy((unsigned char *)(st->hdr+1),rrn,rrnlen);
 		{
 			std_query_t temp_q;
 			temp_q.qtype=htons(st->qt);
 			temp_q.qclass=htons(C_IN);
-			memcpy(((unsigned char *)(st->hdr+1))+rhnlen(rrn),&temp_q,4);
+			memcpy(((unsigned char *)(st->hdr+1))+rrnlen,&temp_q,4);
 		}
 		if (!st->trusted)
 			st->hdr->rd=0;
@@ -838,7 +838,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 			st->nstate=QSN_TCPINITIAL;
 		st->state=QS_QUERY;
 		/* fall through */
-		
+	}
 	case QS_QUERY:
 		if ((rv=p_query_sm(st))==RC_TCPREFUSED) {
 			pdnsd_free(st->recvbuf);
@@ -941,7 +941,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
 		rv=RC_SERVFAIL;
 		goto free_recvbuf_return;
 	}
-	
+
 	if (lcnt<4) {
 		rv=RC_SERVFAIL; /* mock error code */
 		goto free_recvbuf_return;
@@ -1093,7 +1093,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, unsigned char *r
  * Cancel a query, freeing all resources. Any query state is valid as input (this may even be called
  * if a call to p_exec_query already returned error or success) 
  */
-static void p_cancel_query(query_stat_t *st) 
+static void p_cancel_query(query_stat_t *st)
 {
 	if (st->state==QS_QUERY){
 		pdnsd_free(st->recvbuf);
@@ -1121,10 +1121,10 @@ static int add_qserv(query_stat_array *q, pdnsd_a *a, int port, time_t timeout, 
     unsigned char *nsdomain)
 {
 	query_stat_t *qs;
-	
+
 	if ((*q=DA_GROW1(*q))==NULL)
 		return 0;
-	
+
 	qs=&DA_LAST(*q);
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -1186,220 +1186,214 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned c
 {
 	dns_cent_t *ent;
 	int aa=0;
-	int i,j,k,ad,auth_sv=0;  /* Initialized to inhibit compiler warning */
+	int i,j,k,auth_sv=0;  /* Initialized to inhibit compiler warning */
 	int rv=RC_SERVFAIL;
 	query_stat_t *qse=NULL;  /* Initialized to inhibit compiler warning */
 	unsigned long serial=get_serial();
 	nsr_array ns=NULL;
-	time_t ts;
+	{
+		time_t ts;
+		int ad=(DA_NEL(q)+(global.par_queries-1))/global.par_queries;
 #ifndef NO_POLL
-	struct pollfd *polls=pdnsd_calloc(global.par_queries,sizeof(struct pollfd));
-
-	if (!polls) {
-		log_warn("Out of memory in p_recursive_query!");
-		return RC_SERVFAIL;
-	}
+		struct pollfd polls[global.par_queries];  /* Variable length array, may cause portability problems */
 #endif
 
-	ad=(DA_NEL(q)+(global.par_queries-1))/global.par_queries;
-	for (j=0;j<ad;j++) {
-		int qo,mc=DA_NEL(q)-j*global.par_queries;
-		if (mc>global.par_queries)
-			mc=global.par_queries;
-		/* First, call p_exec_query once for each parallel set to initialize.
-		 * Then, as long as not all have the state QS_DONE or we have a timeout,
-		 * build a poll/select set for all active queries and call them accordingly. */
-		qo=1;
-		for (i=0;i<mc;i++) {
-			/* The below should not happen any more, but may once again
-			 * (immediate success) */
-			query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
-			rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
-			if (rv==RC_OK || rv==RC_NAMEERR) {
-				for (k=0;k<mc;k++) {
-					p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
-				}
-				if (rv==RC_OK) {
-					qse=qs;
-					auth_sv=qs->auth_serv;
-					*nocache=qs->nocache;
-					DEBUG_SOCKA_MSG("Query to %s succeeded.\n",SOCKA2STR(qs->sin));
-				}
-				goto done;
-			}
-			if (qs->state!=QS_DONE)
-				qo=0;
-		}
-		if (!qo) {
-			/* we do time keeping by hand, because poll/select might be interrupted and
-			 * the returned times are not always to be trusted upon */
-			ts=time(NULL);
-			do {
-				int pc,srv;
-				long maxto;
-#ifdef NO_POLL
-				fd_set              reads;
-				fd_set              writes;
-				struct timeval      tv;
-				int                 maxfd;
-#endif
-				/* build poll/select sets, maintain time. 
-				 * If you do parallel queries, the highest timeout may be honored
-				 * also for the other servers when their timeout is exceeded and
-				 * the highest is not. This could be fixed, but this does not
-				 * affect functionality or timeouts at all in practice (if we wait
-				 * longer anyway, why not for more servers) and is therefore still there.*/
-				maxto=0;
-				pc=0;
-				rv=RC_SERVFAIL;
-				
-# ifdef NO_POLL
-				FD_ZERO(&reads);
-				FD_ZERO(&writes);
-				maxfd=0;
-				for (i=0;i<mc;i++) {
-					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
-					if (qs->state!=QS_DONE) {
-						if (qs->timeout>maxto)
-							maxto=qs->timeout;
-						if (qs->sock>maxfd)
-							maxfd=qs->sock;
-						switch (qs->event) {
-						case QEV_READ:
-							FD_SET(qs->sock,&reads);
-							break;
-						case QEV_WRITE:
-							FD_SET(qs->sock,&writes);
-							break;
-						}
-						pc++;
-					}
-				}
-				if (pc==0) {
-					/* In this case, ALL are done and we do not need to cancel any
-					 * query. */
-					break;
-				}
-				maxto-=time(NULL)-ts;
-				tv.tv_sec=(maxto>0)?maxto:0;
-				tv.tv_usec=0;
-				srv=select(maxfd+1,&reads,&writes,NULL,&tv);
-# else
-				for (i=0;i<mc;i++) {
-					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
-					if (qs->state!=QS_DONE) {
-						if (qs->timeout>maxto)
-							maxto=qs->timeout;
-						
-						polls[pc].fd=qs->sock;
-						switch (qs->event) {
-						case QEV_READ:
-							polls[pc].events=POLLIN;
-							break;
-						case QEV_WRITE:
-							polls[pc].events=POLLOUT;
-							break;
-						}
-						pc++;
-					}
-				}
-				if (pc==0) {
-					/* In this case, ALL are done and we do not need to cancel any
-					 * query. */
-					break;
-				}
-				maxto-=time(NULL)-ts;
-				srv=poll(polls,pc,(maxto>0)?(maxto*1000):0);
-# endif
-				if (srv<0) {
-					log_warn("poll/select failed: %s",strerror(errno));
-					for (k=0;k<mc;k++)
+		for (j=0;j<ad;j++) {
+			int qo,mc=DA_NEL(q)-j*global.par_queries;
+			if (mc>global.par_queries)
+				mc=global.par_queries;
+			/* First, call p_exec_query once for each parallel set to initialize.
+			 * Then, as long as not all have the state QS_DONE or we have a timeout,
+			 * build a poll/select set for all active queries and call them accordingly. */
+			qo=1;
+			for (i=0;i<mc;i++) {
+				/* The below should not happen any more, but may once again
+				 * (immediate success) */
+				query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
+				rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
+				if (rv==RC_OK || rv==RC_NAMEERR) {
+					for (k=0;k<mc;k++) {
 						p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
-					rv=RC_SERVFAIL;
+					}
+					if (rv==RC_OK) {
+						qse=qs;
+						auth_sv=qs->auth_serv;
+						if(nocache) *nocache=qs->nocache;
+						DEBUG_SOCKA_MSG("Query to %s succeeded.\n",SOCKA2STR(qs->sin));
+					}
 					goto done;
 				}
-				
-				qo=1;
-				for (i=0;i<mc;i++) {
-					query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
-					/* Check if we got a poll/select event, or whether we are timed out */
-					if (qs->state!=QS_DONE) {
-						if (srv==0 || time(NULL)-ts>=qs->timeout) {
-							/* We have timed out. cancel this, and see whether we need to mark
-							 * a server down. */
-							p_cancel_query(qs);
-							mark_server_down(SOCK_PDNSD_A(qs->a),1);
-							/* set rv, we might be the last! */
-							rv=RC_SERVFAIL;
-						} else {
-							int srv_event=0;
-							/* This detection may seem subobtimal, but normally, we have at most 2-3 parallel
-							 * queries, and anything else would be higher overhead, */
+				if (qs->state!=QS_DONE)
+					qo=0;
+			}
+			if (!qo) {
+				/* we do time keeping by hand, because poll/select might be interrupted and
+				 * the returned times are not always to be trusted upon */
+				ts=time(NULL);
+				do {
+					int pc,srv;
+					long maxto;
 #ifdef NO_POLL
+					fd_set              reads;
+					fd_set              writes;
+					struct timeval      tv;
+					int                 maxfd;
+#endif
+					/* build poll/select sets, maintain time. 
+					 * If you do parallel queries, the highest timeout may be honored
+					 * also for the other servers when their timeout is exceeded and
+					 * the highest is not. This could be fixed, but this does not
+					 * affect functionality or timeouts at all in practice (if we wait
+					 * longer anyway, why not for more servers) and is therefore still there.*/
+					maxto=0;
+					pc=0;
+					rv=RC_SERVFAIL;
+
+# ifdef NO_POLL
+					FD_ZERO(&reads);
+					FD_ZERO(&writes);
+					maxfd=0;
+					for (i=0;i<mc;i++) {
+						query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
+						if (qs->state!=QS_DONE) {
+							if (qs->timeout>maxto)
+								maxto=qs->timeout;
+							if (qs->sock>maxfd)
+								maxfd=qs->sock;
 							switch (qs->event) {
 							case QEV_READ:
-								srv_event=FD_ISSET(qs->sock,&reads);
+								FD_SET(qs->sock,&reads);
 								break;
 							case QEV_WRITE:
-								srv_event=FD_ISSET(qs->sock,&writes);
+								FD_SET(qs->sock,&writes);
 								break;
 							}
-#else
-							for (k=0;k<pc;k++) {
-								if (polls[k].fd==qs->sock) {
-									/*
-									 * In case of an error, reenter the state machine
-									 * to catch it.
-									 */
-									switch (qs->event) {
-									case QEV_READ:
-										srv_event=polls[k].revents&(POLLIN|POLLERR|POLLHUP|POLLNVAL);
-										break;
-									case QEV_WRITE:
-										srv_event=polls[k].revents&(POLLOUT|POLLERR|POLLHUP|POLLNVAL);
-										break;
-									}
+							pc++;
+						}
+					}
+					if (pc==0) {
+						/* In this case, ALL are done and we do not need to cancel any
+						 * query. */
+						break;
+					}
+					maxto-=time(NULL)-ts;
+					tv.tv_sec=(maxto>0)?maxto:0;
+					tv.tv_usec=0;
+					srv=select(maxfd+1,&reads,&writes,NULL,&tv);
+# else
+					for (i=0;i<mc;i++) {
+						query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
+						if (qs->state!=QS_DONE) {
+							if (qs->timeout>maxto)
+								maxto=qs->timeout;
+
+							polls[pc].fd=qs->sock;
+							switch (qs->event) {
+							case QEV_READ:
+								polls[pc].events=POLLIN;
+								break;
+							case QEV_WRITE:
+								polls[pc].events=POLLOUT;
+								break;
+							}
+							pc++;
+						}
+					}
+					if (pc==0) {
+						/* In this case, ALL are done and we do not need to cancel any
+						 * query. */
+						break;
+					}
+					maxto-=time(NULL)-ts;
+					srv=poll(polls,pc,(maxto>0)?(maxto*1000):0);
+# endif
+					if (srv<0) {
+						log_warn("poll/select failed: %s",strerror(errno));
+						for (k=0;k<mc;k++)
+							p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
+						rv=RC_SERVFAIL;
+						goto done;
+					}
+
+					qo=1;
+					for (i=0;i<mc;i++) {
+						query_stat_t *qs=&DA_INDEX(q,global.par_queries*j+i);
+						/* Check if we got a poll/select event, or whether we are timed out */
+						if (qs->state!=QS_DONE) {
+							if (srv==0 || time(NULL)-ts>=qs->timeout) {
+								/* We have timed out. cancel this, and see whether we need to mark
+								 * a server down. */
+								p_cancel_query(qs);
+								mark_server_down(SOCK_PDNSD_A(qs->a),1);
+								/* set rv, we might be the last! */
+								rv=RC_SERVFAIL;
+							} else {
+								int srv_event=0;
+								/* This detection may seem subobtimal, but normally, we have at most 2-3 parallel
+								 * queries, and anything else would be higher overhead, */
+#ifdef NO_POLL
+								switch (qs->event) {
+								case QEV_READ:
+									srv_event=FD_ISSET(qs->sock,&reads);
+									break;
+								case QEV_WRITE:
+									srv_event=FD_ISSET(qs->sock,&writes);
 									break;
 								}
-							}
-#endif
-							if (srv_event) {
-								rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
-								if (rv==RC_OK || rv==RC_NAMEERR) {
-									for (k=0;k<mc;k++) {
-										p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
+#else
+								for (k=0;k<pc;k++) {
+									if (polls[k].fd==qs->sock) {
+										/*
+										 * In case of an error, reenter the state machine
+										 * to catch it.
+										 */
+										switch (qs->event) {
+										case QEV_READ:
+											srv_event=polls[k].revents&(POLLIN|POLLERR|POLLHUP|POLLNVAL);
+											break;
+										case QEV_WRITE:
+											srv_event=polls[k].revents&(POLLOUT|POLLERR|POLLHUP|POLLNVAL);
+											break;
+										}
+										break;
 									}
-									if (rv==RC_OK) {
-										qse=qs;
-										auth_sv=qs->auth_serv;
-										*nocache=qs->nocache;
-										DEBUG_SOCKA_MSG("Query to %s succeeded.\n",
-										    SOCKA2STR(qs->sin));
-									}
-									goto done;
 								}
-								else if(rv==RC_SERVFAIL && qs->s_errno==ECONNREFUSED)
-								  mark_server_down(SOCK_PDNSD_A(qs->a),0);
+#endif
+								if (srv_event) {
+									rv=p_exec_query(&ent, name, rrn, &aa, qs,&ns,serial);
+									if (rv==RC_OK || rv==RC_NAMEERR) {
+										for (k=0;k<mc;k++) {
+											p_cancel_query(&DA_INDEX(q,global.par_queries*j+k));
+										}
+										if (rv==RC_OK) {
+											qse=qs;
+											auth_sv=qs->auth_serv;
+											if(nocache) *nocache=qs->nocache;
+											DEBUG_SOCKA_MSG("Query to %s succeeded.\n",
+													SOCKA2STR(qs->sin));
+										}
+										goto done;
+									}
+									else if(rv==RC_SERVFAIL && qs->s_errno==ECONNREFUSED)
+										mark_server_down(SOCK_PDNSD_A(qs->a),0);
+								}
+								/* recheck, this might have changed after the last p_exec_query */
+								if (qs->state!=QS_DONE) {
+									qo=0;
+								}
 							}
-							/* recheck, this might have changed after the last p_exec_query */
-							if (qs->state!=QS_DONE) {
-								qo=0;
-							}
-						} 
+						}
 					}
-				}
-			} while (!qo);
+				} while (!qo);
+			}
 		}
 	}
  done:
-#ifndef NO_POLL
-	pdnsd_free(polls);
-#endif
 	if (rv!=RC_OK) {
 		DEBUG_MSG("No query succeeded. Returning error code \"%s\"\n",get_ename(rv));
 		return rv;
 	}
-	
+
 	/*
 	 * Look into the query type hint. If it is a wildcard (QT_*), we need an authoritative answer.
 	 * Same if there is no record that answers the query. Mark the cache record if it is not an aa.
@@ -1421,7 +1415,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned c
 				pdnsd_a serva;
 				unsigned char nsbuf[256],nsname[256];
 				nsr_t *nsr=&DA_INDEX(ns,j);
-				
+
 				if (global.paranoid) {
 					int rem;
 					/* paranoia mode: don't query name servers that are not responsible */
@@ -1435,7 +1429,7 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned c
 					continue;
 				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,
 				   so it's ok */
-				
+
 #ifdef ENABLE_IPV4
 				if (run_ipv4)
 					serva.ipv4.s_addr=INADDR_ANY;
@@ -1467,14 +1461,14 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned c
 									memcpy(&ina,servent->rr[T_A-T_MIN]->rrs+1,sizeof(ina));
 									IPV6_MAPIPV4(&ina,&serva.ipv6);
 								}
-						
+
 						}
 #endif
 						free_cent(servent  DBG1);
 						pdnsd_free(servent);
 					}
 				}
-				
+
 				if (!is_inaddr_any(&serva)) {
 					/* We've got an address. Add it to the list if it wasn't one of the servers we queried. */
 					/* The given address may not be ours!!! */
@@ -1532,16 +1526,6 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, unsigned c
 #undef  aa_needed
 }
 
-/* 
- * following the resolvers. Some take a list of servers for parallel query. The others query the servers supplied by the user.
- */
-inline static int p_dns_resolve_from(query_stat_array q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint)
-{
-	int dummy;
-
-	return p_recursive_query(q, name, rrn, cached, &dummy, hops, thint);
-} 
-
 /*
  * This checks the given name to resolve against the access list given for the server using the
  * include=, exclude= and policy= parameters.
@@ -1584,7 +1568,7 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	int i,rc,nocache;
 	int one_up=0;
 	query_stat_array serv;
-	
+
 	/* try the servers in the order of their definition */
 	init_qserv(&serv);
 	lock_server_data();
@@ -1630,7 +1614,7 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	}
 	del_qserv(serv);
 	return rc;
-} 
+}
 
 static int set_flags_ttl(short *flags, time_t *ttl, dns_cent_t *cached, int i)
 {
@@ -1737,8 +1721,8 @@ int p_dns_cached_resolve(query_stat_array q, unsigned char *name, unsigned char 
 	if (!cached || (!(cached->flags&DF_LOCAL) && !neg && (need_req || (timed && !(flags&CF_LOCAL))))) {
 		dns_cent_t *ent;
 		DEBUG_MSG("Trying name servers.\n");
-		if (q) 
-			rc=p_dns_resolve_from(q,name, rrn, &ent,hops,thint);
+		if (q)
+			rc=p_recursive_query(q,name, rrn, &ent,NULL,hops,thint);
 		else
 			rc=p_dns_resolve(name, rrn, &ent,hops,thint);
 		if (rc!=RC_OK) {

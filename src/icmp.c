@@ -1,6 +1,8 @@
 /* icmp.c - Server response tests using ICMP echo requests
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify

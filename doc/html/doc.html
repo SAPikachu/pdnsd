@@ -34,7 +34,7 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
     with revisions by Paul Rombouts.<br>
-    It is up-to-date for version 1.1.8b1-par8. For older documentation, please refer to the doc
+    It is up-to-date for version 1.1.9-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -59,8 +59,8 @@
     You can do this as root, but it is safer to build a binary package first as a normal user,
     and then, when all has gone well, install the resulting binary package as root as in the previous section.
     How to build an RPM package without being root is described at
-    <a href="http://www-106.ibm.com/developerworks/library/l-rpm2/">
-    http://www-106.ibm.com/developerworks/library/l-rpm2/</a>.<br><br>
+    <a href="http://www.ibm.com/developerworks/library/l-rpm2/">
+    http://www.ibm.com/developerworks/library/l-rpm2/</a>.<br><br>
     Several pdnsd-specific options are available when building RPM packages:
     <table cellpadding=7>
       <tr>
@@ -109,6 +109,14 @@
 	</td>
 	<td>
 	  Has the same effect as <code>--enable-tcp-queries</code> (<a href="#enabletcpqueries">see below</a>).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--without&nbsp;debug</code>
+	</td>
+	<td>
+	  Has the same effect as <code>--with-debug=0</code> (<a href="#withdebug">see below</a>).
 	</td>
       </tr>
       <tr>
@@ -402,14 +410,19 @@
 	  You can change this any time in your config file.
 	</td>
       </tr>
+      <a name="withdebug"></a>
       <tr>
 	<td>
 	  <code>--with-debug=level</code>
 	</td>
 	<td>
-          Specify debugging level. Debug output will only be generated if you turn on special
-	  switches; it might be useful for debugginh your config files, so I recommend
-	  using the default (9).
+          Specify debugging level. Normally you can safely switch debugging off
+	  by setting the level to 0. This will increase speed (although only
+	  marginally) and save space in the executable (only about 5kB).
+	  Presently the only defined debug levels are 0 (off) and 1 (on).
+	  Setting the level higher than 1 does no harm. Debug output will only
+	  be generated if you turn on special switches; it might be useful for
+	  debugging your config files, so I recommend using the default (9).
 	</td>
       </tr>
       <tr>
@@ -739,7 +752,8 @@
 	<td>
 	  <b><code>cache_dir=string;</code></b><br>
 	  Set the directory you want to keep the cache in.
-	  The default is <code>&quot;/var/cache/pdnsd&quot;</code>.
+	  The default is <code>&quot;/var/cache/pdnsd&quot;</code>
+	  (unless pdnsd was compiled with a different default).
 	</td>
       </tr>
       <tr>
@@ -1081,6 +1095,17 @@
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
       <tr>
 	<td>
+	  <b><code> label=string;</code></b><br>
+	  Specify a label for the server section. This can be used to refer to this section
+	  when using <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>, the pdnsd control utility.<br>
+	  You can give several server sections the same label, but if you want to change the addresses
+	  of a server section (see <b><code>ip</code></b> option below) during run-time with
+	  <code>pdnsd-ctl&nbsp;server&nbsp;<i>label</i>&nbsp;up&nbsp;<i>dns1</i>,<i>dns2</i>,...</code>,
+	  the label must be unique.
+	</td>
+      </tr>
+      <tr>
+	<td>
 	  <b><code>ip=string;</code></b><br>
 	  Give the IP (the IP, <em>not</em> the hostname) of the server.<br>
 	  Multiple IP addresses can be given per server section.
@@ -1323,7 +1348,7 @@
 	  the name given as string, the server is queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
 	  If the given name starts with a dot, the whole subdomain
-	  of the given name including the one of that name is matched, e.g. <code>&quot;foo.bar.&quot</code> 
+	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code> 
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to include all subdomains, but not the domain of the given
@@ -1344,7 +1369,7 @@
 	  the name given as string, the server is not queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
 	  If the given name starts with a dot, the whole subdomain
-	  of the given name including the one of that name is matched, e.g. <code>&quot;foo.bar.&quot</code> 
+	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code> 
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to exclude all subdomains, but not the domain of the given
@@ -1356,10 +1381,11 @@
       </tr>
     </table>
     <br>
+    <a name="rrsection"></a>
     <h3>2.1.3 <code>rr</code> Section</h3>
     Every rr section specifies a dns resource record that is stored locally. It
     allows you to specify own dns records that are served by pdnsd in a limited way.
-    Only PTR, A and SOA records are implemented.<br>
+    Only A, PTR, MX, CNAME and SOA records are implemented.<br>
     This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
     and localhost. (and perhaps even one or two hosts) without having to start an
     extra named if your cached name servers do not serve those records.
@@ -1413,7 +1439,7 @@
 	<td>
 	  <b><code>a=string;</code></b><br>
 	  Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
-	  this adrress for the hostname given in the name option.
+	  this address for the hostname given in the name option.
 	</td>
       </tr>
       <tr>
@@ -1423,29 +1449,63 @@
 	  dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
 	  you want to have the adress 127.0.0.1 into localhost, and localhost into 127.0.0.1, you need something 
 	  like the following sections:<br>
-	  <code>
-	    rr {<br>
-	    owner=&quot;localhost.&quot;;<br>
-	    name=&quot;localhost.&quot;;<br>
-	    a=&quot;127.0.0.1&quot;;<br>
-	    soa=&quot;localhost.&quot;,&quot;root.localhost.&quot;,42,86400,900,86400,86400;<br>
-	    }<br>
-	    rr {<br>
-	    owner=&quot;localhost.&quot;;<br>
-	    name=&quot;1.0.0.127.in-addr.arpa.&quot;;<br>
-	    ptr=&quot;localhost.&quot;;<br>
-	    soa=&quot;localhost.&quot;,&quot;root.localhost.&quot;,42,86400,900,86400,86400;<br>
-	    }<br>
-	  </code>
+	  <pre>
+    rr {
+	owner="localhost.";
+	name="localhost.";
+	a="127.0.0.1";
+	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+    }
+    rr {
+	owner="localhost.";
+	name="1.0.0.127.in-addr.arpa.";
+	ptr="localhost.";
+	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
+    }</pre>
 	  The second section is for reverse resolving and uses the ptr option. There is something special
 	  about the name in the second section: when a resolver wants to get a hostname from an internet
-	  address, it composes an adress that is build of the IP address in reverse byte order 
+	  address, it composes an adress that is built of the IP address in reverse byte order 
 	  (<code>1.0.0.127</code> instead of <code>127.0.0.1</code>) where each byte of the adress written 
 	  as number constitutes a sub-domain under the domain <code>in-addr.arpa.</code> <br>
 	  So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (eg <code>1.2.3.4</code>),
 	  reverse the byte order (<code>4.3.2.1</code>) and append in-addr.arpa. (<code>4.3.2.1.in-addr.arpa.</code>) 
 	  Then, define an <code>rr</code> section giving this address as <code>name</code> and the domain name corresponding to
 	  that ip in the <code>ptr</code> option.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>cname=string;</code></b><br>
+	  Defines a CNAME (canonical name) record.
+	  The argument should be a fully-qualified host name in dotted notation (see name).
+	  A CNAME is the DNS equivalent of an alias or symbolic link.<br>
+	  A useful application for CNAMEs is giving short, easy to remember nicknames to hosts with complicated names.
+	  For example, you might want the name "<tt>news</tt>" to refer to your ISP's newsserver "<tt>nntp2.myisp.com</tt>".
+	  Instead of adding an A record for "<tt>news</tt>" with the same address as "<tt>nntp2.myisp.com</tt>", you could
+	  put in a CNAME pointing to "<tt>nntp2.myisp.com</tt>", so that if the IP address of the newsserver changed,
+	  you there is no need to update the record for "<tt>news</tt>".<br>
+	  To implement this with pdnsd, you could add the following section to your configuration file:<br>
+	  <pre>
+    rr {
+	owner="localhost";
+	name="news";
+	cname="nntp2.myisp.com";
+    }</pre>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>mx=string,number;</code></b><br>
+	  Defines an MX (mail exchange) record. The string is the host name of the mail server in dotted notation (see name).
+	  The number specifies the preference level.<br>
+	  When you send mail to someone, your mail typically goes from your E-mail client to an SMTP server.
+	  The SMTP server then checks for the MX record of the domain in the E-mail address.
+	  For example, with <tt>joe@example.com</tt>, it would look for the MX record for <tt>example.com</tt> and find
+	  that the name of mail server for that domain is, say, <tt>mail.example.com</tt>.
+	  The SMTP server then gets the A record for <tt>mail.example.com</tt>, and connects to the mail server.<br>
+	  If there are multiple MX records, the SMTP server will pick one based on the preference level
+	  (starting with the lowest preference number, working its way up).<br>
+	  Don't define MX records with pdnsd unless you know what you're doing.
 	</td>
       </tr>
       <tr>
@@ -1484,16 +1544,15 @@
     timed out. Example: Netscape Communicator will ask for the servers  news and mail
     on startup if unconfigured. If you do not have a dns search list for your network,
     you can inhibit outgoing queries for these by specifying<br>
-    <code>
-    neg {<br>
-    name=&quot;news.&quot;;<br>
-    types=domain;<br>
-    }<br>
-    neg {<br>
-    name=&quot;mail.&quot;;<br>
-    types=domain;<br>
-    }<br>
-    </code>
+    <pre>
+    neg {
+	name="news.";
+	types=domain;
+    }
+    neg {
+	name="mail.";
+	types=domain;
+    }</pre>
     in your config file. If you have a search list, you have to repeat that for any
     entry in your search list in addition to the entries given above!
     <br><br>
@@ -1530,7 +1589,7 @@
 	  e.g. <code>A</code>, <code>CNAME</code>, <code>NS</code>, <code>PTR</code>, <code>MX</code>, 
 	  <code>AAAA</code>, ...<br>
 	  The command <code>pdnsd-ctl list-rrtypes</code> will give you a complete list
-	  of those types. <code>pdnsd-ctl</code> is build along with pdnsd and will be installed
+	  of those types. <code>pdnsd-ctl</code> is built along with pdnsd and will be installed
 	  in the same directory as the pdnsd binary during <code>make install</code>.
 	</td>
       </tr>
@@ -1630,6 +1689,7 @@
 	<td></td>
 	<td></td>
 	<td></td>
+	<td></td>
 	<td>print a command summary.</td>
       </tr>
       <tr>
@@ -1639,7 +1699,21 @@
 	<td></td>
 	<td></td>
 	<td></td>
+	<td></td>
 	<td>print version info</td>
+      </tr>
+      <tr>
+	<td>status</td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td>
+	  Print a description of pdnsd's cache status and configuration.
+	  Also shows which remote name servers are assumed to be available.
+	</td>
       </tr>
       <tr>
 	<td>server</td>
@@ -1648,11 +1722,12 @@
 	<td>[<i>dns1</i>[,<i>dns2</i>[,...]]]</td>
 	<td></td>
 	<td></td>
+	<td></td>
 	<td>
 	  Set the status of the server with the given <i>index</i> or <i>label</i> (where the given label
 	  matches the one given with the label option in the respective server section in the config file)
 	  to up or down, or  force a retest. The index is assigned in the order of definition in
-	  pdnsd.cache starting with 0. Use the status command to view the indices and labels.
+	  <code>pdnsd.conf</code> starting with 0. Use the status command to view the indices and labels.
 	  You can specify <code>all</code> instead of an index or label to perform the action for all
 	  servers registered with pdnsd. Example:<br>
 	  <code>pdnsd-ctl&nbsp;server&nbsp;0&nbsp;retest</code><br>
@@ -1676,6 +1751,7 @@
 	<td></td>
 	<td></td>
 	<td></td>
+	<td></td>
 	<td>
 	  Delete or invalidate the record of the given domain <i>name</i> if it is in the
 	  cache. Invalidation means that the record is marked as timed out, and
@@ -1695,6 +1771,7 @@
 	<td>[<i>ttl</i>]</td>
 	<td>[(on|off)]</td>
 	<td>[noauth]</td>
+	<td></td>
 	<td>
 	  Load a hosts-style file. Works like using the pdnsd source option.
 	  <i>owner</i> and <i>ttl</i> are used as in the source section. <i>ttl</i> has a default
@@ -1714,7 +1791,8 @@
 	<td><i>name</i></td>
 	<td>[<i>ttl</i>]</td>
 	<td>[noauth]</td>
-	<td rowspan=4>
+	<td></td>
+	<td rowspan=5>
 	  Add a record of the given type to the pdnsd cache, replacing existing
 	  records for the same <i>name</i> and type. The 2nd argument corresponds
 	  to the argument of the option in the rr section that is named like
@@ -1726,7 +1804,7 @@
 	  the description of the <code>authrec</code> config file options for a description of what
 	  that means.
 	  If you want no other record than the newly added in the cache, do<br>
-	  <code>pdnsdctl record <i>name</i> delete</code>
+	  <code>pdnsd-ctl record <i>name</i> delete</code>
 	  before adding records. This is also better when overwriting local records. Example:<br>
 	  <code>pdnsd-ctl&nbsp;add&nbsp;a&nbsp;127.0.0.1&nbsp;localhost.&nbsp;900</code>
 	</td>
@@ -1738,6 +1816,7 @@
 	<td><i>name</i></td>
 	<td>[<i>ttl</i>]</td>
 	<td>[noauth]</td>
+	<td></td>
       </tr>
       <tr>
 	<td>add</td>
@@ -1746,12 +1825,23 @@
 	<td><i>name</i></td>
 	<td>[<i>ttl</i>]</td>
 	<td>[noauth]</td>
+	<td></td>
       </tr>
       <tr>
 	<td>add</td>
 	<td>cname</td>
 	<td><i>host</i></td>
 	<td><i>name</i></td>
+	<td>[<i>ttl</i>]</td>
+	<td>[noauth]</td>
+	<td></td>
+      </tr>
+      <tr>
+	<td>add</td>
+	<td>mx</td>
+	<td><i>host</i></td>
+	<td><i>name</i></td>
+	<td><i>pref</i></td>
 	<td>[<i>ttl</i>]</td>
 	<td>[noauth]</td>
       </tr>
@@ -1762,7 +1852,8 @@
 	<td>[<i>ttl</i>]</td>
 	<td></td>
 	<td></td>
-	<td rowspan=4>
+	<td></td>
+	<td>
 	Add a negative cached record to pdnsd's cache, replacing existing
 	records for the same <i>name</i> and <i>type</i>. If no type is given, the whole
 	domain is cached negative. For negative cached records, errors are
@@ -1773,6 +1864,19 @@
 	Example:<br>
 	<code>pdnsd-ctl&nbsp;neg&nbsp;foo.bar&nbsp;A&nbsp;900</code><br>
 	<code>pdnsd-ctl&nbsp;neg&nbsp;foo.baz&nbsp;900</code><br>
+	</td>
+      </tr>
+      <tr>
+	<td>list-rrtypes</td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td></td>
+	<td>
+	  List available rr types for the neg command.
+	  Note that those are only used for the neg command, not for add!
 	</td>
       </tr>
     </table>
@@ -1937,7 +2041,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 09 Oct 2003 by Paul Rombouts</i>
+      <i>Last revised: 08 Jan 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

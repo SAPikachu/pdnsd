@@ -63,7 +63,8 @@ CFLAGS="${CFLAGS:-%{optflags} -Wall}" ./configure \
 	%{?_with_nptl:--with-thread-lib=nptl} \
 	%{?_with_underscores:--enable-underscores} \
 	%{?_with_ipv6:--enable-ipv6} \
-	%{?_with_tcpqueries:--enable-tcp-queries}
+	%{?_with_tcpqueries:--enable-tcp-queries} \
+	%{?_without_debug:--with-debug=0}
 
 make
 

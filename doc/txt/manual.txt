@@ -2,8 +2,8 @@
                                                                                
 This is the "official" pdnsd documentation and reference written by Thomas
 Moestl with revisions by Paul Rombouts.
-It is up-to-date for version 1.1.8b1-par8. For older documentation, please
-refer to the doc directory of the respective pdnsd package.
+It is up-to-date for version 1.1.9-par. For older documentation, please refer
+to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
 
@@ -33,8 +33,7 @@ or alternatively from a tarball using the command
 You can do this as root, but it is safer to build a binary package first as a
 normal user, and then, when all has gone well, install the resulting binary
 package as root as in the previous section. How to build an RPM package without
-being root is described at http://www-106.ibm.com/developerworks/library/l-rpm2
-/.
+being root is described at http://www.ibm.com/developerworks/library/l-rpm2/.
 
 Several pdnsd-specific options are available when building RPM packages:
 
@@ -52,6 +51,8 @@ Several pdnsd-specific options are available when building RPM packages:
                                                                                
 --with tcpqueries       Has the same effect as --enable-tcp-queries (see below 
                         ).                                                     
+                                                                               
+--without debug         Has the same effect as --with-debug=0 (see below).     
                                                                                
 --define "distro        Has the same effect as --with-distribution=<distro> (  
 <distro>"               see below).                                            
@@ -212,10 +213,16 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
                           installed during make install. You can change this   
                           any time in your config file.                        
                                                                                
-                          Specify debugging level. Debug output will only be   
---with-debug=level        generated if you turn on special switches; it might  
-                          be useful for debugginh your config files, so I      
-                          recommend using the default (9).                     
+                          Specify debugging level. Normally you can safely     
+                          switch debugging off by setting the level to 0. This 
+                          will increase speed (although only marginally) and   
+                          save space in the executable (only about 5kB).       
+--with-debug=level        Presently the only defined debug levels are 0 (off)  
+                          and 1 (on). Setting the level higher than 1 does no  
+                          harm. Debug output will only be generated if you turn
+                          on special switches; it might be useful for debugging
+                          your config files, so I recommend using the default  
+                          (9).                                                 
                                                                                
 --with-verbosity=level    Specify default message verbosity. The default should
                           be ok.                                               
@@ -493,7 +500,7 @@ default.
                                                                                
 cache_dir=string;                                                              
 Set the directory you want to keep the cache in. The default is "/var/cache/   
-pdnsd".                                                                        
+pdnsd" (unless pdnsd was compiled with a different default).                   
                                                                                
 server_port=number;                                                            
 Set the server port. This is especially useful when you want to start the      
@@ -758,6 +765,13 @@ of your internet provider or even one of the root servers using server records.
 The supported options in this section are:
 
 
+label=string;                                                                  
+Specify a label for the server section. This can be used to refer to this      
+section when using pdnsd-ctl, the pdnsd control utility.                       
+You can give several server sections the same label, but if you want to change 
+the addresses of a server section (see ip option below) during run-time with   
+pdnsd-ctl server label up dns1,dns2,..., the label must be unique.             
+                                                                               
 ip=string;                                                                     
 Give the IP (the IP, not the hostname) of the server.                          
 Multiple IP addresses can be given per server section. This can be done by     
@@ -941,7 +955,7 @@ This options adds an entry to the exclusion/inclusion list. If a domain matches
 the name given as string, the server is queried if this was the first matching 
 rule (see also the entry for policy).                                          
 If the given name starts with a dot, the whole subdomain of the given name     
-including the one of that name is matched, e.g. "foo.bar." will match the      
+including the one of that name is matched, e.g. ".foo.bar." will match the     
 domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.                           
 If it does not start in a dot, only exactly the given name (ignoring the case, 
 of course) will be matched (hint: if you want to include all subdomains, but   
@@ -960,7 +974,7 @@ This options adds an entry to the exclusion/inclusion list. If a domain matches
 the name given as string, the server is not queried if this was the first      
 matching rule (see also the entry for policy).                                 
 If the given name starts with a dot, the whole subdomain of the given name     
-including the one of that name is matched, e.g. "foo.bar." will match the      
+including the one of that name is matched, e.g. ".foo.bar." will match the     
 domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.                           
 If it does not start in a dot, only exactly the given name (ignoring the case, 
 of course) will be matched (hint: if you want to exclude all subdomains, but   
@@ -976,7 +990,7 @@ entries in one line, e.g.:
 
 Every rr section specifies a dns resource record that is stored locally. It
 allows you to specify own dns records that are served by pdnsd in a limited
-way. Only PTR, A and SOA records are implemented.
+way. Only A, PTR, MX, CNAME and SOA records are implemented.
 This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
 and localhost. (and perhaps even one or two hosts) without having to start an
 extra named if your cached name servers do not serve those records. It is NOT
@@ -1017,28 +1031,28 @@ options!
                                                                                
 a=string;                                                                      
 Defines an A (host address) record. The argument is an IP in dotted notation.  
-pdnsd will serve this adrress for the hostname given in the name option.       
+pdnsd will serve this address for the hostname given in the name option.       
                                                                                
 ptr=string;                                                                    
 Defines a PTR (domain name pointer) record. The argument is a host name in     
 dotted notation (see name). The ptr record is for resolving adresses into      
 names. For example, if you want to have the adress 127.0.0.1 into localhost,   
 and localhost into 127.0.0.1, you need something like the following sections:  
-rr {                                                                           
-owner="localhost.";                                                            
-name="localhost.";                                                             
-a="127.0.0.1";                                                                 
-soa="localhost.","root.localhost.",42,86400,900,86400,86400;                   
-}                                                                              
-rr {                                                                           
-owner="localhost.";                                                            
-name="1.0.0.127.in-addr.arpa.";                                                
-ptr="localhost.";                                                              
-soa="localhost.","root.localhost.",42,86400,900,86400,86400;                   
-}                                                                              
+    rr {                                                                       
+        owner="localhost.";                                                    
+        name="localhost.";                                                     
+        a="127.0.0.1";                                                         
+        soa="localhost.","root.localhost.",42,86400,900,86400,86400;           
+    }                                                                          
+    rr {                                                                       
+        owner="localhost.";                                                    
+        name="1.0.0.127.in-addr.arpa.";                                        
+        ptr="localhost.";                                                      
+        soa="localhost.","root.localhost.",42,86400,900,86400,86400;           
+    }                                                                          
 The second section is for reverse resolving and uses the ptr option. There is  
 something special about the name in the second section: when a resolver wants  
-to get a hostname from an internet address, it composes an adress that is build
+to get a hostname from an internet address, it composes an adress that is built
 of the IP address in reverse byte order (1.0.0.127 instead of 127.0.0.1) where 
 each byte of the adress written as number constitutes a sub-domain under the   
 domain in-addr.arpa.                                                           
@@ -1046,6 +1060,39 @@ So, if you want to compose an adress for reverse resolving, take your ip in
 dotted notation (eg 1.2.3.4), reverse the byte order (4.3.2.1) and append      
 in-addr.arpa. (4.3.2.1.in-addr.arpa.) Then, define an rr section giving this   
 address as name and the domain name corresponding to that ip in the ptr option.
+                                                                               
+cname=string;                                                                  
+Defines a CNAME (canonical name) record. The argument should be a              
+fully-qualified host name in dotted notation (see name). A CNAME is the DNS    
+equivalent of an alias or symbolic link.                                       
+A useful application for CNAMEs is giving short, easy to remember nicknames to 
+hosts with complicated names. For example, you might want the name "news" to   
+refer to your ISP's newsserver "nntp2.myisp.com". Instead of adding an A record
+for "news" with the same address as "nntp2.myisp.com", you could put in a CNAME
+pointing to "nntp2.myisp.com", so that if the IP address of the newsserver     
+changed, you there is no need to update the record for "news".                 
+To implement this with pdnsd, you could add the following section to your      
+configuration file:                                                            
+    rr {                                                                       
+        owner="localhost";                                                     
+        name="news";                                                           
+        cname="nntp2.myisp.com";                                               
+    }                                                                          
+                                                                               
+mx=string,number;                                                              
+Defines an MX (mail exchange) record. The string is the host name of the mail  
+server in dotted notation (see name). The number specifies the preference      
+level.                                                                         
+When you send mail to someone, your mail typically goes from your E-mail client
+to an SMTP server. The SMTP server then checks for the MX record of the domain 
+in the E-mail address. For example, with joe@example.com, it would look for the
+MX record for example.com and find that the name of mail server for that domain
+is, say, mail.example.com. The SMTP server then gets the A record for          
+mail.example.com, and connects to the mail server.                             
+If there are multiple MX records, the SMTP server will pick one based on the   
+preference level (starting with the lowest preference number, working its way  
+up).                                                                           
+Don't define MX records with pdnsd unless you know what you're doing.          
                                                                                
 soa=string,string,number,number,number,number,number;                          
 This defines a soa (record source information) record. The first string is the 
@@ -1081,14 +1128,14 @@ or RR types and you do not want a query to go out every time the cached record
 has timed out. Example: Netscape Communicator will ask for the servers news and
 mail on startup if unconfigured. If you do not have a dns search list for your
 network, you can inhibit outgoing queries for these by specifying
-neg {
-name="news.";
-types=domain;
-}
-neg {
-name="mail.";
-types=domain;
-}
+    neg {
+        name="news.";
+        types=domain;
+    }
+    neg {
+        name="mail.";
+        types=domain;
+    }
 in your config file. If you have a search list, you have to repeat that for any
 entry in your search list in addition to the entries given above!
 
@@ -1114,7 +1161,7 @@ domain and the RR types are mutually exclusive.
 The RR types are specified using their official names from the RFC's in        
 capitals, e.g. A, CNAME, NS, PTR, MX, AAAA, ...                                
 The command pdnsd-ctl list-rrtypes will give you a complete list of those      
-types. pdnsd-ctl is build along with pdnsd and will be installed in the same   
+types. pdnsd-ctl is built along with pdnsd and will be installed in the same   
 directory as the pdnsd binary during make install.                             
 
 
@@ -1191,119 +1238,126 @@ In the following table, keywords are in a normal font, while placeholders are
 in italics.
 Alternatives are specified like (alt1|alt2|alt3).
 
-Command   Options                                              Description                             
-                                                                                                       
-help                                                           print a command summary.                
-                                                                                                       
-version                                                        print version info                      
-                                                                                                       
-                                                               Set the status of the server with the   
-                                                               given index or label (where the given   
-                                                               label matches the one given with the    
-                                                               label option in the respective server   
-                                                               section in the config file) to up or    
-                                                               down, or force a retest. The index is   
-                                                               assigned in the order of definition in  
-                                                               pdnsd.cache starting with 0. Use the    
-                                                               status command to view the indices and  
-                                                               labels. You can specify all instead of  
-                                                               an index or label to perform the action 
-                                                               for all servers registered with pdnsd.  
-                                                               Example:                                
-                                                               pdnsd-ctl server 0 retest               
-          (index                 [dns1                         An optional third argument consisting of
-server    |        (up|down|     [,dns2                        a list of IP addresses (separated by    
-          label)   retest)       [,...]]]                      commas or spaces) can be given. This    
-                                                               list will replace the previous list of  
-                                                               addresses of name servers used by pdnsd 
-                                                               in the specified section of the config  
-                                                               file. For example in the /etc/ppp/ip-up 
-                                                               script called by pppd you could place   
-                                                               the following line:                     
-                                                               pdnsd-ctl server isplabel up $DNS1,$DNS2
-                                                               If spaces are used to separate addresses
-                                                               the list will have to be quoted.        
-                                                               Spurious commas and spaces are ignored. 
-                                                               The last argument may also be an empty  
-                                                               string, in which case the existing IP   
-                                                               addresses are removed and the           
-                                                               corresponding server section becomes    
-                                                               inactive.                               
-                                                                                                       
-                                                               Delete or invalidate the record of the  
-                                                               given domain name if it is in the cache.
-                                                               Invalidation means that the record is   
-                                                               marked as timed out, and such is        
-                                                               reloaded if possible (if purge_cache is 
-                                                               set to on, it will be deleted in any    
-record    name     (delete|                                    case).                                  
-                   invalidate)                                 For local records (i.e., records that   
-                                                               were given in the config file using a rr
-                                                               section, records read from a hosts-style
-                                                               file and records added using pdnsd-ctl),
-                                                               invalidation has no effect. Deletion    
-                                                               will work, though. Example:             
-                                                               pdnsd-ctl record localhost. delete      
-                                                                                                       
-                                                               Load a hosts-style file. Works like     
-                                                               using the pdnsd source option. owner and
-                                                               ttl are used as in the source section.  
-                                                               ttl has a default of 900 (it does not   
-                                                               need to be specified). The next to last 
-                                                               option corresponds to the serve_aliases 
-                                                               option, and is off by default (i.e. if  
-source    fn       owner         [ttl]      [(on|   [noauth]   it is not specified). noauth is used to 
-                                            off)]              make the domains non-authoritative -    
-                                                               please see the description of the       
-                                                               authrec config file options for a       
-                                                               description of what that means. fn is   
-                                                               the filename. The file must be readable 
-                                                               by pdnsd! Example:                      
-                                                               pdnsd-ctl source /etc/                  
-                                                               hosts localhost. 900 off                
-                                                                                                       
-                                                               Add a record of the given type to the   
-                                                               pdnsd cache, replacing existing records 
-add       a        addr          name       [ttl]   [noauth]   for the same name and type. The 2nd     
-                                                               argument corresponds to the argument of 
-                                                               the option in the rr section that is    
-                                                               named like the first option: a is a     
-                                                               record for hostname-to-address mapping, 
-                                                               aaaa is the same thing for IPv6         
-add       aaaa     addr          name       [ttl]   [noauth]   addresses, and ptr is for               
-                                                               address-to-hostname mapping. See the    
-                                                               documentation for the rr section for    
-                                                               more details. The ttl is optional, the  
-                                                               default is 900 seconds. noauth is used  
-                                                               to make the domains non-authoritative - 
-add       ptr      host          name       [ttl]   [noauth]   please see the description of the       
-                                                               authrec config file options for a       
-                                                               description of what that means. If you  
-                                                               want no other record than the newly     
-                                                               added in the cache, do                  
-                                                               pdnsdctl record name delete before      
-add       cname    host          name       [ttl]   [noauth]   adding records. This is also better when
-                                                               overwriting local records. Example:     
-                                                               pdnsd-ctl add a 127.0.0.1 localhost. 900
-                                                                                                       
-                                                                                                       
-                                                               Add a negative cached record to pdnsd's 
-neg       name     [type]        [ttl]                         cache, replacing existing records for   
-                                                               the same name and type. If no type is   
-                                                               given, the whole domain is cached       
-                                                               negative. For negative cached records,  
-                                                               errors are immediately returned on a    
-                                                               query, without querying other servers   
-                                                               first. The ttl is optional, the default 
-                                                               is 900 seconds.                         
-                                                               You can get a list of all types you can 
-                                                               pass to this command using pdnsd-ctl    
-                                                               list-rrtypes. The type is treated       
-                                                               case-sensitive! Example:                
-                                                               pdnsd-ctl neg foo.bar A 900             
-                                                               pdnsd-ctl neg foo.baz 900               
-                                                                                                       
-                                                                                                       
+Command        Options                                              Description                                           
+                                                                                                                          
+help                                                                              print a command summary.                
+                                                                                                                          
+version                                                                           print version info                      
+                                                                                                                          
+                                                                                  Print a description of pdnsd's cache    
+status                                                                            status and configuration. Also shows    
+                                                                                  which remote name servers are assumed to
+                                                                                  be available.                           
+                                                                                                                          
+                                                                                  Set the status of the server with the   
+                                                                                  given index or label (where the given   
+                                                                                  label matches the one given with the    
+                                                                                  label option in the respective server   
+                                                                                  section in the config file) to up or    
+                                                                                  down, or force a retest. The index is   
+                                                                                  assigned in the order of definition in  
+                                                                                  pdnsd.conf starting with 0. Use the     
+                                                                                  status command to view the indices and  
+                                                                                  labels. You can specify all instead of  
+                                                                                  an index or label to perform the action 
+                                                                                  for all servers registered with pdnsd.  
+                                                                                  Example:                                
+                                                                                  pdnsd-ctl server 0 retest               
+               (index                 [dns1                                       An optional third argument consisting of
+server         |        (up|down|     [,dns2                                      a list of IP addresses (separated by    
+               label)   retest)       [,...]]]                                    commas or spaces) can be given. This    
+                                                                                  list will replace the previous list of  
+                                                                                  addresses of name servers used by pdnsd 
+                                                                                  in the specified section of the config  
+                                                                                  file. For example in the /etc/ppp/ip-up 
+                                                                                  script called by pppd you could place   
+                                                                                  the following line:                     
+                                                                                  pdnsd-ctl server isplabel up $DNS1,$DNS2
+                                                                                  If spaces are used to separate addresses
+                                                                                  the list will have to be quoted.        
+                                                                                  Spurious commas and spaces are ignored. 
+                                                                                  The last argument may also be an empty  
+                                                                                  string, in which case the existing IP   
+                                                                                  addresses are removed and the           
+                                                                                  corresponding server section becomes    
+                                                                                  inactive.                               
+                                                                                                                          
+                                                                                  Delete or invalidate the record of the  
+                                                                                  given domain name if it is in the cache.
+                                                                                  Invalidation means that the record is   
+                                                                                  marked as timed out, and such is        
+                                                                                  reloaded if possible (if purge_cache is 
+                                                                                  set to on, it will be deleted in any    
+record         name     (delete|                                                  case).                                  
+                        invalidate)                                               For local records (i.e., records that   
+                                                                                  were given in the config file using a rr
+                                                                                  section, records read from a hosts-style
+                                                                                  file and records added using pdnsd-ctl),
+                                                                                  invalidation has no effect. Deletion    
+                                                                                  will work, though. Example:             
+                                                                                  pdnsd-ctl record localhost. delete      
+                                                                                                                          
+                                                                                  Load a hosts-style file. Works like     
+                                                                                  using the pdnsd source option. owner and
+                                                                                  ttl are used as in the source section.  
+                                                                                  ttl has a default of 900 (it does not   
+                                                                                  need to be specified). The next to last 
+                                                                                  option corresponds to the serve_aliases 
+                                                                                  option, and is off by default (i.e. if  
+source         fn       owner         [ttl]      [(on|   [noauth]                 it is not specified). noauth is used to 
+                                                 off)]                            make the domains non-authoritative -    
+                                                                                  please see the description of the       
+                                                                                  authrec config file options for a       
+                                                                                  description of what that means. fn is   
+                                                                                  the filename. The file must be readable 
+                                                                                  by pdnsd! Example:                      
+                                                                                  pdnsd-ctl source /etc/                  
+                                                                                  hosts localhost. 900 off                
+                                                                                                                          
+                                                                                  Add a record of the given type to the   
+add            a        addr          name       [ttl]   [noauth]                 pdnsd cache, replacing existing records 
+                                                                                  for the same name and type. The 2nd     
+                                                                                  argument corresponds to the argument of 
+                                                                                  the option in the rr section that is    
+                                                                                  named like the first option: a is a     
+add            aaaa     addr          name       [ttl]   [noauth]                 record for hostname-to-address mapping, 
+                                                                                  aaaa is the same thing for IPv6         
+                                                                                  addresses, and ptr is for               
+                                                                                  address-to-hostname mapping. See the    
+                                                                                  documentation for the rr section for    
+add            ptr      host          name       [ttl]   [noauth]                 more details. The ttl is optional, the  
+                                                                                  default is 900 seconds. noauth is used  
+                                                                                  to make the domains non-authoritative - 
+                                                                                  please see the description of the       
+                                                                                  authrec config file options for a       
+add            cname    host          name       [ttl]   [noauth]                 description of what that means. If you  
+                                                                                  want no other record than the newly     
+                                                                                  added in the cache, do                  
+                                                                                  pdnsd-ctl record name delete before     
+                                                                                  adding records. This is also better when
+add            mx       host          name       pref    [ttl]      [noauth]      overwriting local records. Example:     
+                                                                                  pdnsd-ctl add a 127.0.0.1 localhost. 900
+                                                                                                                          
+                                                                                                                          
+                                                                                  Add a negative cached record to pdnsd's 
+                                                                                  cache, replacing existing records for   
+                                                                                  the same name and type. If no type is   
+                                                                                  given, the whole domain is cached       
+                                                                                  negative. For negative cached records,  
+                                                                                  errors are immediately returned on a    
+                                                                                  query, without querying other servers   
+neg            name     [type]        [ttl]                                       first. The ttl is optional, the default 
+                                                                                  is 900 seconds.                         
+                                                                                  You can get a list of all types you can 
+                                                                                  pass to this command using pdnsd-ctl    
+                                                                                  list-rrtypes. The type is treated       
+                                                                                  case-sensitive! Example:                
+                                                                                  pdnsd-ctl neg foo.bar A 900             
+                                                                                  pdnsd-ctl neg foo.baz 900               
+                                                                                                                          
+                                                                                  List available rr types for the neg     
+list-rrtypes                                                                      command. Note that those are only used  
+                                                                                  for the neg command, not for add!       
 
 
 
@@ -1411,5 +1465,5 @@ src/status.h     pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 09 Oct 2003 by Paul Rombouts
+Last revised: 08 Jan 2004 by Paul Rombouts
 

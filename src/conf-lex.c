@@ -693,6 +693,8 @@ char *yytext;
 /* conf.l - Lexer for pdnsd config files
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -736,7 +738,7 @@ int br_level=0;
  * you won't get line numbers in the output.*/
 #define comment 1
 
-#line 740 "lex.yy.c"
+#line 742 "lex.yy.c"
 
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -887,10 +889,10 @@ YY_DECL
 	register char *yy_cp = NULL, *yy_bp = NULL;
 	register int yy_act;
 
-#line 55 "conf-lex.l"
+#line 57 "conf-lex.l"
 
 
-#line 894 "lex.yy.c"
+#line 896 "lex.yy.c"
 
 	if ( yy_init )
 		{
@@ -983,357 +985,357 @@ do_action:	/* This label is used only to access EOF actions. */
 	{ /* beginning of action switch */
 case 1:
 YY_RULE_SETUP
-#line 57 "conf-lex.l"
+#line 59 "conf-lex.l"
 {sscanf(yytext,"%li",&yylval.num); return NUMBER;}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 58 "conf-lex.l"
+#line 60 "conf-lex.l"
 {return GLOBAL;}
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 59 "conf-lex.l"
+#line 61 "conf-lex.l"
 {return SERVER;}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 60 "conf-lex.l"
+#line 62 "conf-lex.l"
 {return RR;}
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 61 "conf-lex.l"
+#line 63 "conf-lex.l"
 {return NEG;}
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 62 "conf-lex.l"
+#line 64 "conf-lex.l"
 {return SOURCE;}
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 64 "conf-lex.l"
+#line 66 "conf-lex.l"
 {return PERM_CACHE;}
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 65 "conf-lex.l"
+#line 67 "conf-lex.l"
 {return CACHE_DIR;}
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 66 "conf-lex.l"
+#line 68 "conf-lex.l"
 {return SERVER_PORT;}
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 67 "conf-lex.l"
+#line 69 "conf-lex.l"
 {return SERVER_IP;}
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 68 "conf-lex.l"
+#line 70 "conf-lex.l"
 {return SCHEME_FILE;}
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 69 "conf-lex.l"
+#line 71 "conf-lex.l"
 {return LINKDOWN_KLUGE;}
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 70 "conf-lex.l"
+#line 72 "conf-lex.l"
 {return MAX_TTL;}
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 71 "conf-lex.l"
+#line 73 "conf-lex.l"
 {return MIN_TTL;}
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 72 "conf-lex.l"
+#line 74 "conf-lex.l"
 {return RUN_AS;}
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 73 "conf-lex.l"
+#line 75 "conf-lex.l"
 {return STRICT_SETUID;}
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 74 "conf-lex.l"
+#line 76 "conf-lex.l"
 {return PARANOID;}
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 75 "conf-lex.l"
+#line 77 "conf-lex.l"
 {return STATUS_CTL;}
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 76 "conf-lex.l"
+#line 78 "conf-lex.l"
 {return DAEMON;}
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 77 "conf-lex.l"
+#line 79 "conf-lex.l"
 {return C_TCP_SERVER;}
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 78 "conf-lex.l"
+#line 80 "conf-lex.l"
 {return PID_FILE;}
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 79 "conf-lex.l"
+#line 81 "conf-lex.l"
 {return C_VERBOSITY;}
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 80 "conf-lex.l"
+#line 82 "conf-lex.l"
 {return C_QUERY_METHOD;}
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 81 "conf-lex.l"
+#line 83 "conf-lex.l"
 {return RUN_IPV4;}
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 82 "conf-lex.l"
+#line 84 "conf-lex.l"
 {return C_DEBUG;}
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 83 "conf-lex.l"
+#line 85 "conf-lex.l"
 {return C_CTL_PERMS;}
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 84 "conf-lex.l"
+#line 86 "conf-lex.l"
 {return C_PROC_LIMIT;}
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 85 "conf-lex.l"
+#line 87 "conf-lex.l"
 {return C_PROCQ_LIMIT;}
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 86 "conf-lex.l"
+#line 88 "conf-lex.l"
 {return TCP_QTIMEOUT;}
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 87 "conf-lex.l"
+#line 89 "conf-lex.l"
 {return C_PAR_QUERIES;}
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 88 "conf-lex.l"
+#line 90 "conf-lex.l"
 {return C_RAND_RECS;}
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 89 "conf-lex.l"
+#line 91 "conf-lex.l"
 {return NEG_TTL;}
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 90 "conf-lex.l"
+#line 92 "conf-lex.l"
 {return NEG_RRS_POL;}
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 91 "conf-lex.l"
+#line 93 "conf-lex.l"
 {return NEG_DOMAIN_POL;}
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 92 "conf-lex.l"
+#line 94 "conf-lex.l"
 {return QUERY_PORT_START;}
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 93 "conf-lex.l"
+#line 95 "conf-lex.l"
 {return QUERY_PORT_END;}
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 94 "conf-lex.l"
+#line 96 "conf-lex.l"
 {return DELEGATION_ONLY;}
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 96 "conf-lex.l"
+#line 98 "conf-lex.l"
 {return IP;}
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 97 "conf-lex.l"
+#line 99 "conf-lex.l"
 {return PORT;}
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 98 "conf-lex.l"
+#line 100 "conf-lex.l"
 {return SCHEME;}
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 99 "conf-lex.l"
+#line 101 "conf-lex.l"
 {return UPTEST;}
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 100 "conf-lex.l"
+#line 102 "conf-lex.l"
 {return TIMEOUT;}
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 101 "conf-lex.l"
+#line 103 "conf-lex.l"
 {return PING_TIMEOUT;}
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 102 "conf-lex.l"
+#line 104 "conf-lex.l"
 {return PING_IP;}
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 103 "conf-lex.l"
+#line 105 "conf-lex.l"
 {return UPTEST_CMD;}
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 104 "conf-lex.l"
+#line 106 "conf-lex.l"
 {return INTERVAL;}
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 105 "conf-lex.l"
+#line 107 "conf-lex.l"
 {return INTERFACE;}
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 106 "conf-lex.l"
+#line 108 "conf-lex.l"
 {return DEVICE;}
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 107 "conf-lex.l"
+#line 109 "conf-lex.l"
 {return PURGE_CACHE;}
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 108 "conf-lex.l"
+#line 110 "conf-lex.l"
 {return CACHING;}
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 109 "conf-lex.l"
+#line 111 "conf-lex.l"
 {return LEAN_QUERY;}
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 110 "conf-lex.l"
+#line 112 "conf-lex.l"
 {return PRESET;}
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 111 "conf-lex.l"
+#line 113 "conf-lex.l"
 {return PROXY_ONLY;}
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 112 "conf-lex.l"
+#line 114 "conf-lex.l"
 {return INCLUDE;}
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 113 "conf-lex.l"
+#line 115 "conf-lex.l"
 {return EXCLUDE;}
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 114 "conf-lex.l"
+#line 116 "conf-lex.l"
 {return POLICY;}
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 115 "conf-lex.l"
+#line 117 "conf-lex.l"
 {return LABEL;}
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 117 "conf-lex.l"
+#line 119 "conf-lex.l"
 {return A;}
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 118 "conf-lex.l"
+#line 120 "conf-lex.l"
 {return PTR;}
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 119 "conf-lex.l"
+#line 121 "conf-lex.l"
 {return MX;}
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 120 "conf-lex.l"
+#line 122 "conf-lex.l"
 {return CNAME;}
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 121 "conf-lex.l"
+#line 123 "conf-lex.l"
 {return SOA;}
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 122 "conf-lex.l"
+#line 124 "conf-lex.l"
 {return NAME;}
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 123 "conf-lex.l"
+#line 125 "conf-lex.l"
 {return OWNER;}
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 124 "conf-lex.l"
+#line 126 "conf-lex.l"
 {return TTL;}
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 125 "conf-lex.l"
+#line 127 "conf-lex.l"
 {return TYPES;}
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 126 "conf-lex.l"
+#line 128 "conf-lex.l"
 {return FILET;}
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 127 "conf-lex.l"
+#line 129 "conf-lex.l"
 {return SERVE_ALIASES;}
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 128 "conf-lex.l"
+#line 130 "conf-lex.l"
 {return AUTHREC;}
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 130 "conf-lex.l"
+#line 132 "conf-lex.l"
 {return NDOMAIN;}
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 132 "conf-lex.l"
+#line 134 "conf-lex.l"
 {if ((yylval.num=lookup_const(yytext))!=-1)
 						 return CONST; 
 					 else if ((yylval.num=rr_tp_byname(yytext))!=-1)
@@ -1344,7 +1346,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 140 "conf-lex.l"
+#line 142 "conf-lex.l"
 {char *yytxt1=yytext+1;
 					 if ((yylval.nm=strndup(yytxt1,strlen(yytxt1)-1)) == NULL) {
 						fprintf(stderr,"Out of memory.\n");
@@ -1354,17 +1356,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 146 "conf-lex.l"
+#line 148 "conf-lex.l"
 {return yytext[0];}
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 147 "conf-lex.l"
+#line 149 "conf-lex.l"
 /*munch munch*/
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 149 "conf-lex.l"
+#line 151 "conf-lex.l"
 {
 						br_level++;
 						BEGIN(comment);
@@ -1372,7 +1374,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 153 "conf-lex.l"
+#line 155 "conf-lex.l"
 {
 						br_level--;
 						if (br_level<0)
@@ -1383,30 +1385,30 @@ YY_RULE_SETUP
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 160 "conf-lex.l"
+#line 162 "conf-lex.l"
 /* Delete text in comments, */
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 161 "conf-lex.l"
+#line 163 "conf-lex.l"
 /* white space, */
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 162 "conf-lex.l"
+#line 164 "conf-lex.l"
 /* new lines. */
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 163 "conf-lex.l"
+#line 165 "conf-lex.l"
 {return ERROR;}
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 165 "conf-lex.l"
+#line 167 "conf-lex.l"
 ECHO;
 	YY_BREAK
-#line 1410 "lex.yy.c"
+#line 1412 "lex.yy.c"
 			case YY_STATE_EOF(INITIAL):
 			case YY_STATE_EOF(comment):
 				yyterminate();
@@ -2287,7 +2289,7 @@ int main()
 	return 0;
 	}
 #endif
-#line 165 "conf-lex.l"
+#line 167 "conf-lex.l"
 
 
 void lex_set_io(FILE *in, FILE *out)

@@ -1,3 +1,85 @@
+2003-01-06  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/main.c,src/thread.c,src/thread.h,src/server.c,src/status.c,src/dns_answer.c
+	Initialize a global thread attribute object in main.c and use it to create all the detached
+	threads, instead of initializing a separate attribute object for each new thread.
+
+2003-01-06  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Check the return value of pthread_create() in udp_server_thread()
+	and tcp_server_thread() to ensure that a new answer thread has actually
+	been created and free resources if not.
+
+2003-01-04  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.c,src/cache.c,src/conff.c,src/status.c
+	Stop writing to control socket after an error has been detected.
+
+2003-01-03  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c
+	Tried to make the error messages of pdnsd-ctl more helpful.
+	The complete usage description is now only printed if the 'help' command
+	is used. For problems with other commands a much shorter message is generated
+	specific for that command.
+
+2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/helpers.h
+	Changed the definition of rhnlen(). For valid data this will make no difference,
+	but it may change the behaviour of pdnsd in certain error situations.
+
+2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns.c
+	Optimized compress_name() some more.
+
+2003-01-02  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Additional code cleanup in compose_answer().
+
+2003-01-01  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* doc/pdnsd-ctl.8
+	Updated the pdnsd-ctl man page.
+
+2003-12-31  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c
+	Cleaned up some code.
+
+2003-12-31  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/status.c,src/conff.h,src/conff.c
+	Some further code cleanup in status.c.
+	Labels for server sections are no longer limited to 32 chars,
+	but can have arbitrary length. The string that is used to specify
+	new DNS-addresses with the "pdnsd-ctl server" command can now also
+	have arbitrary length.
+
+2003-12-30  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* doc/html/doc.html
+	Added information about CNAME and MX resource records, that were
+	previously undocumented.
+
+2003-12-26  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Removed the function p_dns_resolve_from(). This function was essentially
+	a call to p_recursive_query() with a dummy nocache argument.
+	p_recursive_query() can now be called with nocache=NULL instead.
+
+2003-12-26  Paul Rombouts <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Using a variable length array instead of an malloced buffer to hold the struct pollfd array
+	in p_recursive_query(). This has the potential for causing portability problems, but I
+	think that's unlikely because almost all the major C compilers I work with support variable
+	length arrays nowadays.
+
 2003-10-18  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/helpers.h,src/helpers.c

@@ -1,6 +1,8 @@
 /* cache.c - Keep the dns caches.
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -1410,11 +1412,12 @@ int add_cache_rr_add(unsigned char *name,time_t ttl, time_t ts, short flags,int 
 
 
 /* Report the cache status to the file descriptor f, for the status fifo (see status.c) */
-void report_cache_stat(int f)
+int report_cache_stat(int f)
 {
 	long mc=(long)global.perm_cache*1024+MCSZ;
 	double csz=(((double)cache_size)/mc)*100;
-	fsprintf(f,"\nCache status:\n=============\n");
-	fsprintf(f,"%ld kB maximum disk cache size.\n",global.perm_cache);
-	fsprintf(f,"%ld of %ld bytes (%.3g%%) memory cache used in %ld entries.\n",cache_size,mc,csz,ent_num);
+	fsprintf_or_return(f,"\nCache status:\n=============\n");
+	fsprintf_or_return(f,"%ld kB maximum disk cache size.\n",global.perm_cache);
+	fsprintf_or_return(f,"%ld of %ld bytes (%.3g%%) memory cache used in %ld entries.\n",cache_size,mc,csz,ent_num);
+	return 0;
 }

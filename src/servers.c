@@ -1,6 +1,8 @@
 /* servers.c - manage a set of dns servers
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -232,7 +234,7 @@ static void retest(int i, int j)
  */
 void *servstat_thread(void *p)
 {
-	int i,all_none=1;
+	int i,test_interval=0;
 	servparm_t *sp;
 
 	/* (void)p; */  /* To inhibit "unused variable" warning */
@@ -243,53 +245,53 @@ void *servstat_thread(void *p)
 	for (i=0;i<DA_NEL(servers);++i) {
 		sp=&DA_INDEX(servers,i);
 		if (sp->interval>0 && (sp->uptest!=C_NONE || sp->scheme[0])) {
-			all_none=0;
+			test_interval=1;
 		}
 		retest(i,-1);
 	}
-	if (all_none) {
-	  pthread_mutex_unlock(&servers_lock);
-	  return NULL; /* we need no server status thread. */
-	}
-	for(;;) {
-		{
-		  int minwait=3600;
-		  time_t now=time(NULL);
+	if (test_interval) {
+		for(;;) {
+			{
+				int minwait=3600;
+				time_t now=time(NULL);
 
-		  for (i=0;i<DA_NEL(servers);++i) {
-		    sp=&DA_INDEX(servers,i);
-		    if(sp->interval>0) {
-		      int j;
+				for (i=0;i<DA_NEL(servers);++i) {
+					sp=&DA_INDEX(servers,i);
+					if(sp->interval>0) {
+						int j;
 
-		      for(j=0;j<DA_NEL(sp->atup_a);++j) {
-			int wait= DA_INDEX(sp->atup_a,j).i_ts + sp->interval - now;
-			if(wait < minwait) minwait=wait;
-		      }
-		    }
-		  }
-		  pthread_mutex_unlock(&servers_lock);
-		  if(minwait>0) sleep_r(minwait);
-		  else usleep_r(500000);
-		}
-		pthread_mutex_lock(&servers_lock);
-		schm[0] = '\0';
-		for (i=0;i<DA_NEL(servers);++i) {
-			sp=&DA_INDEX(servers,i);
-			if(sp->interval>0) {
-			  int j;
+						for(j=0;j<DA_NEL(sp->atup_a);++j) {
+							int wait= DA_INDEX(sp->atup_a,j).i_ts + sp->interval - now;
+							if(wait < minwait) minwait=wait;
+						}
+					}
+				}
+				pthread_mutex_unlock(&servers_lock);
+				if(minwait>0) sleep_r(minwait);
+				else usleep_r(500000);
+			}
+			pthread_mutex_lock(&servers_lock);
+			schm[0] = '\0';
+			for (i=0;i<DA_NEL(servers);++i) {
+				sp=&DA_INDEX(servers,i);
+				if(sp->interval>0) {
+					int j;
 
-			  for(j=0;j<DA_NEL(sp->atup_a);++j) {
-			    time_t tj=DA_INDEX(sp->atup_a,j).i_ts;
-			    time_t now=time(NULL);
-			    if (now-tj>sp->interval ||
-				tj>now) { /* kluge for clock skew */
-			      retest(i,j);
-			    }
-			  }
+					for(j=0;j<DA_NEL(sp->atup_a);++j) {
+						time_t tj=DA_INDEX(sp->atup_a,j).i_ts;
+						time_t now=time(NULL);
+						if (now-tj>sp->interval ||
+						    tj>now) { /* kluge for clock skew */
+							retest(i,j);
+						}
+					}
+				}
 			}
 		}
 	}
-	return NULL;
+
+	pthread_mutex_unlock(&servers_lock);
+	return NULL; /* server status thread no longer needed. */
 }
 
 /*
@@ -297,15 +299,10 @@ void *servstat_thread(void *p)
  */
 void start_servstat_thread()
 {
-	pthread_attr_t attr;
-
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-	if (pthread_create(&stt,&attr,servstat_thread,NULL))
+	if (pthread_create(&stt,&attr_detached,servstat_thread,NULL))
 		log_warn("Failed to start server status thread. Assuming all servers to be up all time.");
 	else
 		log_info(2,"Server status thread started.");
-	pthread_attr_destroy(&attr);
 }
 
 /*

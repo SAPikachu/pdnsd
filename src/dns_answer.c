@@ -1,6 +1,8 @@
 /* dns_answer.c - Receive and process incoming dns queries.
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -170,8 +172,8 @@ int sva_add(sva_array *sva, unsigned char *name, unsigned char *rhn, int tp, rr_
  * belongs logically. Note that you still have to add the rrs in the right order (answer rrs first,
  * then authority and last additional).
  */
-static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, compel_array *cb, char udp, time_t queryts,
-    unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
+static int add_rr(dns_hdr_t **ans, long *sz, rr_bucket_t *rr, unsigned short type, char section, compel_array *cb,
+		  char udp, time_t queryts, unsigned char *rrn, time_t ts, time_t ttl, unsigned short flags)
 {
 	time_t tleft;
 	unsigned char nbuf[256];
@@ -483,8 +485,8 @@ static int add_rrset(dns_cent_t *cached, int tp, dns_hdr_t **ans, long *sz, comp
  * the first time. It gets filled with a pointer to compression information that can be
  * reused in subsequent calls to add_to_response.
  */
-static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent_t *cached, compel_array *cb, char udp, unsigned char *rrn, time_t queryts,
-    sva_array *sva, rr_ext_array *ar)
+static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent_t *cached, compel_array *cb,
+			   char udp, unsigned char *rrn, time_t queryts, sva_array *sva, rr_ext_array *ar)
 {
 	int i;
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
@@ -539,36 +541,31 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, long *sz, dns_cent
 /*
  * Add an additional
  */
-static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_array *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, compel_array *cb,
-    int tp, rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
+static int add_additional_rr(unsigned char *rhn, unsigned char *buf, sva_array *sva, dns_hdr_t **ans,
+			     long *rlen, char udp, time_t queryts, compel_array *cb, int tp,
+			     rr_bucket_t *rr, time_t ts, time_t ttl, int flags, int sect)
 {
-	int rc;
 	int j;
-	sva_t *st;
 
 	if (!rr)
 		return 1;
 
 	/* Check if already added; no double additionals */
-	rc=1;
 	/* We do NOT look at the data field for addresses, because I feel one address is enough. */
 	for (j=0;j<DA_NEL(*sva);j++) {
-		st=&DA_INDEX(*sva,j);
+		sva_t *st=&DA_INDEX(*sva,j);
 		if (st->tp==tp && stricomp((char *)st->nm,(char *)buf) && 
-		    (memcmp(st->data,(unsigned char *)(rr+1), rr->rdlen)==0)) {
-			rc=0;
-			break;
+		    (memcmp(st->data,(unsigned char *)(rr+1), rr->rdlen)==0))
+		{
+			return 1;
 		}
 	}
-	if (rc) {
-		/* add_rr will do nothing when sz>512 bytes. */
-		add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn,
-		       ts,ttl,flags); 
-		/* mark it as added */
-		if (!sva_add(sva,buf,NULL,tp,rr)) {
-			pdnsd_free(*ans);
-			return 0;
-		}
+	/* add_rr will do nothing when sz>512 bytes. */
+	add_rr(ans, rlen, rr, tp, sect, cb, udp,queryts,rhn, ts,ttl,flags); 
+	/* mark it as added */
+	if (!sva_add(sva,buf,NULL,tp,rr)) {
+		pdnsd_free(*ans);
+		return 0;
 	}
 	return 1;
 }
@@ -609,21 +606,15 @@ static int add_additional_a(unsigned char *rhn, sva_array *sva, dns_hdr_t **ans,
  */
 static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *rlen, char udp) 
 {
-	int aa=1;
-	unsigned char buf[256],bufr[256];
+	int aa=1,i;
 	sva_array sva=NULL;
-	int i,rc,hops,cont,cnc=0;
-	time_t queryts=time(NULL);
-	rr_bucket_t *rr;
 	rr_ext_array ar=NULL;
-	rr_ext_t *rre;
 	compel_array cb=NULL;
-	dns_hdr_t *ans, *nans;
-	dns_queryel_t *qe;
+	time_t queryts=time(NULL);
+	dns_hdr_t *ans;
 	dns_cent_t *cached;
-	std_query_t temp_q;
 
-	ans=(dns_hdr_t *)pdnsd_calloc(1,sizeof(dns_hdr_t));
+	ans=(dns_hdr_t *)pdnsd_malloc(sizeof(dns_hdr_t));
 	if (!ans)
 		return NULL;
 	ans->id=hdr->id;
@@ -645,22 +636,28 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	*rlen=sizeof(dns_hdr_t);
 	/* first, add the query to the response */
 	for (i=0;i<DA_NEL(q);i++) {
-		qe=&DA_INDEX(q,i);
-		if (!(nans=(dns_hdr_t *)pdnsd_realloc(ans,*rlen+rhnlen(qe->query)+4))) {
+		dns_queryel_t *qe=&DA_INDEX(q,i);
+		int qulen=rhnlen(qe->query);
+		dns_hdr_t *nans=(dns_hdr_t *)pdnsd_realloc(ans,*rlen+qulen+4);
+		if (!nans) {
 			pdnsd_free(ans);
 			return NULL;
 		}
 		ans=nans;
-		*rlen+=rhncpy(((unsigned char *)ans)+*rlen,qe->query);
-		temp_q.qtype=htons(qe->qtype);
-		temp_q.qclass=htons(qe->qclass);
-		memcpy(((unsigned char *)ans)+*rlen,&temp_q,sizeof(temp_q));
+		memcpy(((unsigned char *)ans)+*rlen,qe->query,qulen);
+		*rlen+=qulen;
+		{
+			std_query_t temp_q;
+			temp_q.qtype=htons(qe->qtype);
+			temp_q.qclass=htons(qe->qclass);
+			memcpy(((unsigned char *)ans)+*rlen,&temp_q,4);
+		}
 		*rlen+=4;
 	}
 
 	/* Barf if we get a query we cannot answer */
 	for (i=0;i<DA_NEL(q);i++) {
-		qe=&DA_INDEX(q,i);
+		dns_queryel_t *qe=&DA_INDEX(q,i);
 		if ((qe->qtype<T_MIN || qe->qtype>T_MAX) &&
 		    (qe->qtype!=QT_MAILA && qe->qtype!=QT_MAILB && qe->qtype!=QT_ALL)) {
 			ans->rcode=RC_NOTSUPP;
@@ -674,28 +671,32 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 	
 	/* second, the answer section */
 	for (i=0;i<DA_NEL(q);i++) {
-		qe=&DA_INDEX(q,i);
-		rhncpy(bufr,qe->query);
-		rhn2str(qe->query,buf);
+		int hops,cont;
+		dns_queryel_t *qe=&DA_INDEX(q,i);
+		unsigned char qname[256],qrrn[256];
+
+		rhncpy(qrrn,qe->query);
+		rhn2str(qe->query,qname);
 		/* look if we have a cached copy. otherwise, perform a nameserver query. Same with timeout */
 		hops=MAX_HOPS;
 		do {
+			int rc,cnc;
 			cont=0;
-			if ((rc=p_dns_cached_resolve(NULL,buf, bufr, &cached, MAX_HOPS,qe->qtype,queryts))!=RC_OK) {
+			if ((rc=p_dns_cached_resolve(NULL,qname, qrrn, &cached, MAX_HOPS,qe->qtype,queryts))!=RC_OK) {
 				ans->rcode=rc;
 				goto cleanup_return;
 			}
 			aa=0;
-			/* strncp(oname,buf,sizeof(oname)); */
-			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,bufr,queryts,&sva,&ar))
+			/* strncp(oname,qname,sizeof(oname)); */
+			if (!add_to_response(*qe,&ans,rlen,cached,&cb,udp,qrrn,queryts,&sva,&ar))
 				goto error_cached;
-			cnc=follow_cname_chain(cached,buf,bufr);
+			cnc=follow_cname_chain(cached,qname,qrrn);
 			hops--;
 			/* If there is only a cname and rd is set, add the cname to the response (add_to_response
 			 * has already done this) and repeat the inquiry with the c name */
 			if ((qe->qtype>=QT_MIN || !cached->rr[qe->qtype-T_MIN] || !cached->rr[qe->qtype-T_MIN]->rrs) && 
 			     cnc>0 && hdr->rd!=0) {
-				/* We did follow_cname_chain, so bufr and buf must contain the last cname in the chain.*/
+				/* We did follow_cname_chain, so qrrn and qname must contain the last cname in the chain.*/
 				cont=1;
 			}
 			/* maintain a list for authority records: We will add every name server we got an authoritative
@@ -706,9 +707,9 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 			if (!cont) {
 				rr_set_t *rrset=cached->rr[T_NS-T_MIN];
 				if (rrset) {
-					rr=rrset->rrs;
+					rr_bucket_t *rr=rrset->rrs;
 					while (rr) {
-						if (!add_ar(rr+1,rr->rdlen, &ar, bufr, rrset->ts, rrset->ttl,
+						if (!add_ar(rr+1,rr->rdlen, &ar, qrrn, rrset->ts, rrset->ttl,
 						    rrset->flags,RRETP_AUTH)) {
 							pdnsd_free(ans);
 							goto error_cached;
@@ -725,15 +726,18 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 
         /* Add the authority section */
 	for (i=0;i<DA_NEL(ar);i++) {
-		rre=&DA_INDEX(ar,i);
+		rr_ext_t *rre=&DA_INDEX(ar,i);
 		if (rre->tp == RRETP_AUTH) {
-			if ((rr=create_rr(rre->sz,rre->tnm  DBG1))==NULL) {
+			rr_bucket_t *rr=create_rr(rre->sz,rre->tnm  DBG1);
+			unsigned char buf[256];
+			if (!rr) {
 				pdnsd_free(ans);
 				goto error_ans;
 			}
 			rhn2str(rre->nm,buf);
 			if (!add_additional_rr(rre->nm, buf, &sva, &ans, rlen, udp, queryts, &cb, T_NS, 
-			    rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY)) {
+					       rr, rre->ts, rre->ttl, rre->flags,S_AUTHORITY))
+			{
 				free_rr(*rr);
 				pdnsd_free(rr);
 				goto error_ans;
@@ -745,7 +749,7 @@ static unsigned char *compose_answer(dns_queryel_array q, dns_hdr_t *hdr, long *
 
 	/* now add the name server addresses */
 	for (i=0;i<DA_NEL(ar);i++) {
-		rre=&DA_INDEX(ar,i);
+		rr_ext_t *rre=&DA_INDEX(ar,i);
 		if (!add_additional_a(rre->tnm, &sva, &ans, rlen, udp, queryts, &cb))
 			goto error_ans;
 	}
@@ -986,7 +990,7 @@ static void *udp_answer_thread(void *data)
 	pthread_cleanup_push(udp_answer_thread_cleanup, data);
 	THREAD_SIGINIT;
 
-	if (!global.strict_suid ) {
+	if (!global.strict_suid) {
 		if (!run_as(global.run_as)) {
 			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
 			pdnsd_exit();
@@ -994,18 +998,15 @@ static void *udp_answer_thread(void *data)
 	}
 
 	for(;;) {
-		int i;
 		pthread_mutex_lock(&proc_lock);
-		i=procs;
-		if (i<=global.proc_limit) {
-			procs++;
-			thrid=thrid_cnt++;
-		}
-		pthread_mutex_unlock(&proc_lock);
-		if (i<=global.proc_limit)
+		if (procs<global.proc_limit)
 			break;
+		pthread_mutex_unlock(&proc_lock);
 		usleep_r(50000);
 	}
+	procs++;
+	thrid=thrid_cnt++;
+	pthread_mutex_unlock(&proc_lock);
 
 	if (pthread_setspecific(thrid_key, &thrid) != 0) {
 		log_error("pthread_setspecific failed.");
@@ -1375,19 +1376,16 @@ void *udp_server_thread(void *dummy)
 		if (qlen>=0) {
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
-				pthread_attr_t attr;
-
 				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
 				buf->len=qlen;
-				pthread_attr_init(&attr);
-				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-				pthread_create(&pt,&attr,udp_answer_thread,(void *)buf);
-				pthread_attr_destroy(&attr);
-				continue;
-			} else {
-				pthread_mutex_unlock(&proc_lock);
+				if(pthread_create(&pt,&attr_detached,udp_answer_thread,(void *)buf)==0)
+					continue;
+				/* If thread creation failed, free resources associated with it. */
+				pthread_mutex_lock(&proc_lock);
+				qprocs--;
 			}
+			pthread_mutex_unlock(&proc_lock);
 		}
 	free_buf_continue:
 		pdnsd_free(buf);
@@ -1429,19 +1427,16 @@ static void *tcp_answer_thread(void *csock)
 		}
 	}
 
-	for (;;) {
-		int i;
+	for(;;) {
 		pthread_mutex_lock(&proc_lock);
-		i=procs;
-		if (i<=global.proc_limit) {
-			procs++;
-			thrid=thrid_cnt++;
-		}
-		pthread_mutex_unlock(&proc_lock);
-		if (i<=global.proc_limit)
+		if (procs<global.proc_limit)
 			break;
+		pthread_mutex_unlock(&proc_lock);
 		usleep_r(50000);
 	}
+	procs++;
+	thrid=thrid_cnt++;
+	pthread_mutex_unlock(&proc_lock);
 
 	if (pthread_setspecific(thrid_key, &thrid) != 0) {
 		log_error("pthread_setspecific failed.");
@@ -1652,7 +1647,6 @@ void *tcp_server_thread(void *p)
 				first=0; /* special handling, not da_tcp_errs*/
 				log_error("tcp accept failed: %s",strerror(errno));
 			}
-			usleep_r(50000);
 		} else {
 			/*
 			 * With creating a new thread, we follow recommendations
@@ -1660,21 +1654,19 @@ void *tcp_server_thread(void *p)
 			 */
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
-				pthread_attr_t attr;
-
 				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
-				pthread_attr_init(&attr);
-				pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-				pthread_create(&pt,&attr,tcp_answer_thread,(void *)csock);
-				pthread_attr_destroy(&attr);
-			} else {
-				pthread_mutex_unlock(&proc_lock);
-				close(*csock);
-				pdnsd_free(csock);
-				usleep_r(50000);
+				if(pthread_create(&pt,&attr_detached,tcp_answer_thread,(void *)csock)==0)
+					continue;
+				/* If thread creation failed, free resources associated with it. */
+				pthread_mutex_lock(&proc_lock);
+				qprocs--;
 			}
+			pthread_mutex_unlock(&proc_lock);
+			close(*csock);
+			pdnsd_free(csock);
 		}
+		usleep_r(50000);
 	}
  close_sock_return:
 	tcp_socket=-1;
@@ -1694,27 +1686,19 @@ void start_dns_servers()
 
 #ifndef NO_TCP_SERVER
 	if (tcp_socket!=-1) {
-		pthread_attr_t attrt;
-		pthread_attr_init(&attrt);
-		pthread_attr_setdetachstate(&attrt,PTHREAD_CREATE_DETACHED);
-		if (pthread_create(&tcps,&attrt,tcp_server_thread,NULL)) {
+		if (pthread_create(&tcps,&attr_detached,tcp_server_thread,NULL)) {
 			log_error("Could not create tcp server thread. Exiting.");
 			pdnsd_exit();
 		} else
 			log_info(2,"tcp server thread started.");
-		pthread_attr_destroy(&attrt);
 	}
 #endif
 
 	if (udp_socket!=-1) {
-		pthread_attr_t attru;
-		pthread_attr_init(&attru);
-		pthread_attr_setdetachstate(&attru,PTHREAD_CREATE_DETACHED);
-		if (pthread_create(&udps,&attru,udp_server_thread,NULL)) {
+		if (pthread_create(&udps,&attr_detached,udp_server_thread,NULL)) {
 			log_error("Could not create udp server thread. Exiting.");
 			pdnsd_exit();
 		} else
 			log_info(2,"udp server thread started.");
-		pthread_attr_destroy(&attru);
 	}
 }

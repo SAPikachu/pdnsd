@@ -1,6 +1,8 @@
 /* conff.h - Definiton for configuration management.
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -70,7 +72,7 @@ typedef struct {
 	char             uptest_usr[21];
 	char             interface[IFNAMSIZ];
  	char             device[IFNAMSIZ];
-	char             label[32];
+	char            *label;
 	char             purge_cache;
 	char             nocache;
 	char             lean_query;
@@ -120,5 +122,5 @@ extern servparm_array servers;
 
 void read_config_file(char *nm); /*nm may be NULL*/
 
-void report_conf_stat(int f);
+int report_conf_stat(int f);
 #endif

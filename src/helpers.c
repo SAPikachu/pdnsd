@@ -1,6 +1,8 @@
 /* helpers.c - Various helper functions
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -209,11 +211,21 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 	}
 }
 
-/* Return the length of a rhn. This is for better abstraction and could be a macro */
+/* Return the length of a rhn. The definition has in fact been moved to helpers.h as an inline function.
+   Note added by Paul Rombouts:
+   Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
+   may yield a different result in certain error situations (when a domain name segment contains null byte).
+*/
 /* int rhnlen(unsigned char *rhn)
 {
-	return strlen((char *)rhn)+1;
-} */
+	int i=0;
+	unsigned char lb;
+
+	while((lb=rhn[i]))
+		i+=lb+1;
+	return i+1;
+}
+*/
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).

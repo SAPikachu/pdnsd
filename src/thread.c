@@ -1,6 +1,8 @@
 /* thread.c - Threading helpers
    Copyright (C) 2000 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -37,6 +39,7 @@ static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
 volatile int waiting=0; /* Has the main thread already done sigwait() ? */
+pthread_attr_t attr_detached;
 pthread_key_t thrid_key;
 
 /* This is a handler for signals to the threads. We just hand the sigs on to the main thread.

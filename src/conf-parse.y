@@ -2,6 +2,8 @@
 /* conf.y - Parser for pdnsd config files.
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -491,7 +493,12 @@ glob_el:	PERM_CACHE '=' CONST ';'
 			}
 		| C_PAR_QUERIES '=' NUMBER ';'
 			{
-				global.par_queries=$3;
+				if($3<=0) {
+					yyerror("bad value for par_queries.");
+					YYERROR;
+				} else {
+					global.par_queries=$3;
+				}
 			}
 		| C_RAND_RECS '=' CONST ';'
 			{
@@ -726,8 +733,7 @@ serv_el:	IP '=' ip_list ';'	{}
 		| EXCLUDE '=' {in_or_excluded=C_EXCLUDED;}  inexclude_list ';' {}
 		| LABEL '=' STRING ';'
 			{
-				YSTRNCP(server.label, $3, "label");
-				free($3);
+				YSTRASSIGN(server.label,$3);
 			}
 		;
 
@@ -826,8 +832,8 @@ rr_el:		NAME '=' STRING ';'
 							YYERROR;
 						}
 					} else {
-						tp=T_AAAA;
 						sz=sizeof(struct in6_addr);
+						tp=T_AAAA;
 					}
 #else
 					yyerror("bad ip in a= option.");
@@ -860,9 +866,7 @@ rr_el:		NAME '=' STRING ';'
 		| MX '=' STRING ',' NUMBER ';'
 			{
 				char *e;
-				unsigned char c_ptr[256];
-				unsigned char buf[532];
-				uint16_t ts;
+				unsigned char c_mx[258];
 
 				if (!c_owner[0] || !c_name[0]) {
 					yyerror("you must specify owner and name before mx records.");
@@ -872,21 +876,18 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				} */
-				if ((e=parsestr2rhn($3,c_ptr))!=NULL) {
+				if ((e=parsestr2rhn($3,c_mx+2))!=NULL) {
 					yyerror(e);
 					YYERROR;
 				}
-				memset(buf,0,sizeof(buf));
-				ts=htons($5);
-				memcpy(buf,&ts,2);
-				rhncpy(buf+2,c_ptr);
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr)+2,buf,T_MX  DBG0);
+				{ uint16_t ts=htons($5); memcpy(c_mx,&ts,2); }
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_mx+2)+2,c_mx,T_MX  DBG0);
 				free($3);
 			}
 		| CNAME '=' STRING ';'
 			{
 				char *e;
-				unsigned char c_ptr[256];
+				unsigned char c_cname[256];
 
 				if (!c_owner[0] || !c_name[0]) {
 					yyerror("you must specify owner and name before cname records.");
@@ -896,11 +897,11 @@ rr_el:		NAME '=' STRING ';'
 					yyerror("name too long.");
 					YYERROR;
 				} */
-				if ((e=parsestr2rhn($3,c_ptr))!=NULL) {
+				if ((e=parsestr2rhn($3,c_cname))!=NULL) {
 					yyerror(e);
 					YYERROR;
 				}
-				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_ptr),c_ptr,T_CNAME  DBG0);
+				add_cent_rr(&c_cent,c_ttl,0,CF_LOCAL,rhnlen(c_cname),c_cname,T_CNAME  DBG0);
 				free($3);
 			}
 		| SOA '=' STRING ',' STRING ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ',' NUMBER ';'
@@ -937,7 +938,7 @@ rr_el:		NAME '=' STRING ';'
 				c_soa.retry=htonl($11);
 				c_soa.expire=htonl($13);
 				c_soa.minimum=htonl($15);
-				memset(buf,0,sizeof(buf));
+				/* memset(buf,0,sizeof(buf)); */
 				idx=rhncpy(buf,c_soa_owner);
 				idx+=rhncpy(buf+idx,c_soa_r);
 				memcpy(buf+idx,&c_soa,sizeof(soa_r_t));
@@ -976,11 +977,11 @@ source_el:	OWNER '=' STRING ';'
 					YYERROR;
 				}
 				{
-				  char *errstr;
-				  if (!read_hosts($3, c_owner, c_ttl, c_flags, c_aliases,&errstr)) {
-					fprintf(stderr,"%s\n",errstr?:"Out of memory");
-					if(errstr) free(errstr);
-				  }
+					char *errstr;
+					if (!read_hosts($3, c_owner, c_ttl, c_flags, c_aliases,&errstr)) {
+						fprintf(stderr,"%s\n",errstr?:"Out of memory");
+						if(errstr) free(errstr);
+					}
 				}
 				free($3);
 			}

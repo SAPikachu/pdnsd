@@ -1,6 +1,8 @@
 /* thread.h - Threading helpers
    Copyright (C) 2000 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -107,6 +109,9 @@ inline static int sleep_r (unsigned int seconds)
   return nanosleep(&ts, NULL);
 }
   
+
+/* Used for creating detached threads */
+extern pthread_attr_t attr_detached;
 
 /* Key for storing private thread ID's */
 extern pthread_key_t thrid_key;

@@ -42,9 +42,34 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2004-01-08</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.9-par has been released.</b>
+	Latest "maintenance" release by Paul Rombouts.<br>
+
+	The change of version number is not very significant; the
+	difference between 1.1.9-par and the previous 1.1.8b1-par8 is marginal.
+	However, I felt the need to simplify the numbering, because it was
+	becoming rather baroque.<br>
+
+	I've added some missing pieces to the documentation (the pdnsd <a
+	href="doc.html">manual</a> and the man page for pdnsd-ctl). BTW, did you
+	know that it's possible to define aliases for domain names with pdnsd? I
+	had plans to implement such a feature when I discovered that pdnsd
+	already supports it. It was just poorly documented. (If want to try this
+	for your self, look for the new information about CNAME records under
+	the rr Section in the <a href="doc.html#rrsection">manual</a>.)<br> The
+	changes to the code consist mostly of optimizations, removal of some
+	size limits due to fixed-size buffers, and some cleaning up. I've also
+	tried to make the error responses of <a
+	href="doc.html#pdnsdctl"><code>pdnsd-ctl</code></a> more helpful.<br>
+
+	More details can be found in the <a href="ChangeLog"><code>ChangeLog</code></a>.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2003-10-10</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.8b1-par8 has been released.</b>
-	Latest "maintenance" release by Paul Rombouts.<br>
+	"maintenance" release by Paul Rombouts.<br>
 	This version introduces a "delegation-only" feature that may be useful
 	for blocking Verisign's Sitefinder.<br>
 	The parser for the configuration file now tolerates domain names missing
@@ -415,7 +440,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 09 Oct 2003 by Paul Rombouts</i>
+      <i>Last revised: 08 Jan 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

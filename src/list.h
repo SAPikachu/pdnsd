@@ -1,6 +1,8 @@
 /* list.h - Dynamic array and list handling
  * Copyright (C) 2001 Thomas Moestl
  *
+ * With modifications by Paul Rombouts, 2002, 2003.
+ *
  * This file is part of the pdnsd package.
  *
  * Redistribution and use in source and binary forms, with or without

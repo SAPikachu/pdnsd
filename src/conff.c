@@ -1,6 +1,8 @@
 /* conff.c - Maintain configuration information
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -78,7 +80,7 @@ servparm_t serv_presets={
   uptest_usr:    "",
   interface:     "",
   device:        "",
-  label:         "",
+  label:         NULL,
   purge_cache:   0,
   nocache:       0,
   lean_query:    1,
@@ -98,6 +100,7 @@ servparm_array servers=NULL;
 
 void lex_set_io(FILE *in, FILE *out); /* defined in conf.l */
 int  yyparse (void);                  /* from yacc/bison output */
+static int report_server_stat(int f,int i);
 
 
 /*
@@ -133,91 +136,107 @@ void read_config_file(char *nm)
 	fclose(in);
 }
 
-/* Report the current configuration into the file (for the status fifo, see status.c) */
-void report_conf_stat(int f)
+/* Report the current configuration to the file descriptor f (for the status fifo, see status.c) */
+int report_conf_stat(int f)
 {
-	int i,j;
+	int i,retval=0;
 	
-	fsprintf(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
-	fsprintf(f,"\tCache size: %li kB\n",global.perm_cache);
-	fsprintf(f,"\tServer directory: %s\n",global.cache_dir);
-	fsprintf(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
-	fsprintf(f,"\tServer port: %i\n",global.port);
+	fsprintf_or_return(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
+	fsprintf_or_return(f,"\tCache size: %li kB\n",global.perm_cache);
+	fsprintf_or_return(f,"\tServer directory: %s\n",global.cache_dir);
+	fsprintf_or_return(f,"\tScheme file (for Linux pcmcia support): %s\n",global.scheme_file);
+	fsprintf_or_return(f,"\tServer port: %i\n",global.port);
 	{char buf[ADDRSTR_MAXLEN];
-	 fsprintf(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));}
-	fsprintf(f,"\tIgnore cache when link is down: %s\n",global.lndown_kluge?"on":"off");
-	fsprintf(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
-	fsprintf(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
-	fsprintf(f,"\tNegative ttl: %li\n",(long)global.neg_ttl);
-	fsprintf(f,"\tNegative RRS policy: %s\n",const_name(global.neg_rrs_pol));
-	fsprintf(f,"\tNegative domain policy: %s\n",const_name(global.neg_domain_pol));
-	fsprintf(f,"\tRun as: %s\n",global.run_as);
-	fsprintf(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
-	fsprintf(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
-	fsprintf(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
-	fsprintf(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
-	fsprintf(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
-	fsprintf(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
-	fsprintf(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
-	fsprintf(f,"\tQuery port start: %i\n",global.query_port_start);
-	fsprintf(f,"\tQuery port end: %i\n",global.query_port_end);
-	fsprintf(f,"\tDelegation-only zones: ");
+	 fsprintf_or_return(f,"\tServer ip (0.0.0.0=any available one): %s\n",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));}
+	fsprintf_or_return(f,"\tIgnore cache when link is down: %s\n",global.lndown_kluge?"on":"off");
+	fsprintf_or_return(f,"\tMaximum ttl: %li\n",(long)global.max_ttl);
+	fsprintf_or_return(f,"\tMinimum ttl: %li\n",(long)global.min_ttl);
+	fsprintf_or_return(f,"\tNegative ttl: %li\n",(long)global.neg_ttl);
+	fsprintf_or_return(f,"\tNegative RRS policy: %s\n",const_name(global.neg_rrs_pol));
+	fsprintf_or_return(f,"\tNegative domain policy: %s\n",const_name(global.neg_domain_pol));
+	fsprintf_or_return(f,"\tRun as: %s\n",global.run_as);
+	fsprintf_or_return(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
+	fsprintf_or_return(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
+	fsprintf_or_return(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
+	fsprintf_or_return(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
+	fsprintf_or_return(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
+	fsprintf_or_return(f,"\tMaximum parallel queries done: %i\n",global.par_queries);
+	fsprintf_or_return(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
+	fsprintf_or_return(f,"\tQuery port start: %i\n",global.query_port_start);
+	fsprintf_or_return(f,"\tQuery port end: %i\n",global.query_port_end);
+	fsprintf_or_return(f,"\tDelegation-only zones: ");
 	if(global.deleg_only_zones==NULL) {
-		fsprintf(f,"(none)\n");
+		fsprintf_or_return(f,"(none)\n");
 	}
 	else {
 		for(i=0;i<DA_NEL(global.deleg_only_zones);++i) {
 			unsigned char zstr[256];
 			rhn2str(DA_INDEX(global.deleg_only_zones,i),zstr);
-			fsprintf(f,i==0?"%s":", %s",zstr);
+			fsprintf_or_return(f,i==0?"%s":", %s",zstr);
 		}
-		fsprintf(f,"\n");
+		fsprintf_or_return(f,"\n");
 	}
+
 	lock_server_data();
 	for(i=0;i<DA_NEL(servers);i++) {
-		servparm_t *st=&DA_INDEX(servers,i);
-		fsprintf(f,"Server %i:\n------\n",i);
-		fsprintf(f,"\tlabel: %s\n",st->label);
-		for(j=0;j<DA_NEL(st->atup_a);j++) {
-		  atup_t *at=&DA_INDEX(st->atup_a,j);
-		  {char buf[ADDRSTR_MAXLEN];
-		   fsprintf(f,"\tip: %s\n",pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));}
-		  fsprintf(f,"\tserver assumed available: %s\n",at->is_up?"yes":"no");
-		}		  
-		fsprintf(f,"\tport: %hu\n",st->port);
-		fsprintf(f,"\tuptest: %s\n",const_name(st->uptest));
-		fsprintf(f,"\ttimeout: %li\n",(long)st->timeout);
-		if(st->interval>0)
-		  fsprintf(f,"\tuptest interval: %li\n",(long)st->interval);
-		else
-		  fsprintf(f,"\tuptest interval: %s\n",st->interval?"onquery":"(never retest)");
-		fsprintf(f,"\tping timeout: %li\n",(long)st->ping_timeout);
-		{char buf[ADDRSTR_MAXLEN];
-		 fsprintf(f,"\tping ip: %s\n",is_inaddr_any(&st->ping_a)?"(using server ip)":pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));}
-		fsprintf(f,"\tinterface: %s\n",st->interface);
-		fsprintf(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
-		fsprintf(f,"\tuptest command: %s\n",st->uptest_cmd?:"");
-		fsprintf(f,"\tuptest user: %s\n",st->uptest_usr[0]?st->uptest_usr:"(process owner)");
-		if (st->scheme[0]!='\0')
-			fsprintf(f,"\tscheme: %s\n", st->scheme);
-		fsprintf(f,"\tforce cache purging: %s\n",st->purge_cache?"on":"off");
-		fsprintf(f,"\tserver is cached: %s\n",st->nocache?"off":"on");
-		fsprintf(f,"\tlean query: %s\n",st->lean_query?"on":"off");
-		fsprintf(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
-		fsprintf(f,"\tDefault policy: %s\n",const_name(st->policy));
-		fsprintf(f,"\tPolicies:\n");
-		if (st->alist==NULL) {
-			fsprintf(f,"\t\t(none)\n");
-		} else {
-			for (j=0;j<DA_NEL(st->alist);j++) {
-				slist_t *sl=&DA_INDEX(st->alist,j);
-				fsprintf(f,"\t\t%s: %s\n",sl->rule==C_INCLUDED?"include":"exclude",sl->domain);
-			}
+		int rv=report_server_stat(f,i);
+		if(rv<0) {
+			retval=rv;
+			break;
 		}
 	}
 	unlock_server_data();
+
+	return retval;
 }
 
+/* Report the current status of server i to the file descriptor f.
+   Call with locks applied.
+*/
+static int report_server_stat(int f,int i)
+{
+	servparm_t *st=&DA_INDEX(servers,i);
+	int j;
 
-
-
+	fsprintf_or_return(f,"Server %i:\n------\n",i);
+	fsprintf_or_return(f,"\tlabel: %s\n",st->label?st->label:"(none)");
+	for(j=0;j<DA_NEL(st->atup_a);j++) {
+		atup_t *at=&DA_INDEX(st->atup_a,j);
+		{char buf[ADDRSTR_MAXLEN];
+		 fsprintf_or_return(f,"\tip: %s\n",pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));}
+		fsprintf_or_return(f,"\tserver assumed available: %s\n",at->is_up?"yes":"no");
+	}		  
+	fsprintf_or_return(f,"\tport: %hu\n",st->port);
+	fsprintf_or_return(f,"\tuptest: %s\n",const_name(st->uptest));
+	fsprintf_or_return(f,"\ttimeout: %li\n",(long)st->timeout);
+	if(st->interval>0) {
+		fsprintf_or_return(f,"\tuptest interval: %li\n",(long)st->interval);
+	} else {
+		fsprintf_or_return(f,"\tuptest interval: %s\n",st->interval?"onquery":"(never retest)");
+	}
+	fsprintf_or_return(f,"\tping timeout: %li\n",(long)st->ping_timeout);
+	{char buf[ADDRSTR_MAXLEN];
+	 fsprintf_or_return(f,"\tping ip: %s\n",is_inaddr_any(&st->ping_a)?"(using server ip)":pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));}
+	fsprintf_or_return(f,"\tinterface: %s\n",st->interface);
+	fsprintf_or_return(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
+	fsprintf_or_return(f,"\tuptest command: %s\n",st->uptest_cmd?:"");
+	fsprintf_or_return(f,"\tuptest user: %s\n",st->uptest_usr[0]?st->uptest_usr:"(process owner)");
+	if (st->scheme[0]!='\0') {
+		fsprintf_or_return(f,"\tscheme: %s\n", st->scheme);
+	}
+	fsprintf_or_return(f,"\tforce cache purging: %s\n",st->purge_cache?"on":"off");
+	fsprintf_or_return(f,"\tserver is cached: %s\n",st->nocache?"off":"on");
+	fsprintf_or_return(f,"\tlean query: %s\n",st->lean_query?"on":"off");
+	fsprintf_or_return(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
+	fsprintf_or_return(f,"\tDefault policy: %s\n",const_name(st->policy));
+	fsprintf_or_return(f,"\tPolicies:\n");
+	if (st->alist==NULL) {
+		fsprintf_or_return(f,"\t\t(none)\n");
+	} else {
+		for (j=0;j<DA_NEL(st->alist);j++) {
+			slist_t *sl=&DA_INDEX(st->alist,j);
+			fsprintf_or_return(f,"\t\t%s: %s\n",sl->rule==C_INCLUDED?"include":"exclude",sl->domain);
+		}
+	}
+	return 0;
+}

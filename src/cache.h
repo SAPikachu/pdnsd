@@ -1,6 +1,8 @@
 /* cache.h - Definitions for the dns cache
    Copyright (C) 2000 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2003.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -150,7 +152,7 @@ void destroy_cache(void);
 void read_disk_cache(void);
 void write_disk_cache(void);
 
-void report_cache_stat(int f);
+int report_cache_stat(int f);
 
 /*
  *  add_cache expects the dns_cent_t to be filled.

@@ -1,6 +1,8 @@
 /* main.c - Command line parsing, intialisation and server start
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -73,29 +75,6 @@ int stat_pipe=0;
 int notcp=0;
 int sigr=0;
 
-
-/* These are some init steps we have to call before we get daemon on linux, but need
- * do call after daemonizing on other OSes.
- * Theay are also the last steps before we drop privileges. */
-int final_init()
-{
-#ifndef NO_TCP_SERVER
-	if (!notcp)
-		tcp_socket=init_tcp_socket();
-#endif
-	udp_socket=init_udp_socket();
-	if (tcp_socket==-1 && udp_socket==-1) {
-		log_error("tcp and udp initialization failed. Exiting.");
-		exit(1);
-	}
-	if (global.strict_suid) {
-		if (!run_as(global.run_as)) {
-			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
-			return 0;
-		}
-	}
-	return 1;
-}
 
 /* version and licensing information */
 static const char info_message[] =
@@ -185,6 +164,29 @@ static const char help_message[] =
 	"options (e.g. --notcp) to reverse their effect.\n";
 
 
+/* These are some init steps we have to call before we get daemon on linux, but need
+ * to call after daemonizing on other OSes.
+ * Theay are also the last steps before we drop privileges. */
+int final_init()
+{
+#ifndef NO_TCP_SERVER
+	if (!notcp)
+		tcp_socket=init_tcp_socket();
+#endif
+	udp_socket=init_udp_socket();
+	if (tcp_socket==-1 && udp_socket==-1) {
+		log_error("tcp and udp initialization failed. Exiting.");
+		exit(1);
+	}
+	if (global.strict_suid) {
+		if (!run_as(global.run_as)) {
+			log_error("Could not change user and group id to those of run_as user %s",global.run_as);
+			return 0;
+		}
+	}
+	return 1;
+}
+
 /*
  * Argument parsing, init, server startup
  */
@@ -202,19 +204,30 @@ int main(int argc,char *argv[])
 	/* We parse the command line two times, because the command-line options shall override the ones
 	 * given in the config file */
 	for (i=1;i<argc;i++) {
-		if (strcmp(argv[i],"-h")==0 || strcmp(argv[i],"--help")==0) {
+		char *arg=argv[i];
+		if (strcmp(arg,"-h")==0 || strcmp(arg,"--help")==0) {
 			fputs(info_message,stdout);
 			fputs(help_message,stdout);
 			exit(1);
-		} else if (strcmp(argv[i],"-V")==0 || strcmp(argv[i],"--version")==0) {
+		} else if (strcmp(arg,"-V")==0 || strcmp(arg,"--version")==0) {
 			fputs(info_message,stdout);
 			exit(1);
-		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
+		} else if (strcmp(arg,"-c")==0 || strcmp(arg,"--config-file")==0) {
 			if (++i<argc) {
 				conf_file=argv[i];
 			} else {
 				fprintf(stderr,"Error: file name expected after -c option.\n");
 				exit(1);
+			}
+		} else {
+			char *equ=strchr(arg,'=');
+			if(equ) {
+				int plen=equ-arg;
+#       			define arg_isparam(strlit) (!strncmp(arg,strlit,strlitlen(strlit)) && plen==strlitlen(strlit))
+
+				if(arg_isparam("--config-file")) {
+					conf_file=equ+1;
+				}
 			}
 		}
 	}
@@ -223,56 +236,57 @@ int main(int argc,char *argv[])
 	read_config_file(conf_file);
 
 	for (i=1;i<argc;i++) {
-		if (strcmp(argv[i],"-s")==0 || strcmp(argv[i],"--status")==0) {
+		char *arg=argv[i];
+		if (strcmp(arg,"-s")==0 || strcmp(arg,"--status")==0) {
 			stat_pipe=1;
-		} else if (strcmp(argv[i],"--nostatus")==0) {
+		} else if (strcmp(arg,"--nostatus")==0) {
 			stat_pipe=0;
-		} else if (strcmp(argv[i],"-d")==0 || strcmp(argv[i],"--daemon")==0) {
+		} else if (strcmp(arg,"-d")==0 || strcmp(arg,"--daemon")==0) {
 			daemon_p=1;
-		} else if (strcmp(argv[i],"--nodaemon")==0) {
+		} else if (strcmp(arg,"--nodaemon")==0) {
 			daemon_p=0;
-		} else if (strcmp(argv[i],"-t")==0 || strcmp(argv[i],"--tcp")==0) {
+		} else if (strcmp(arg,"-t")==0 || strcmp(arg,"--tcp")==0) {
 			notcp=0;
-		} else if (strcmp(argv[i],"--notcp")==0) {
+		} else if (strcmp(arg,"--notcp")==0) {
 			notcp=1;
-		} else if (strcmp(argv[i],"-p")==0) {
+		} else if (strcmp(arg,"-p")==0) {
 			if (++i<argc) {
 				if(pidfile) free(pidfile);
 				pidfile=strdup(argv[i]);
 				if(!pidfile) {
-				  fprintf(stderr,"Error: out of memory.\n");
-				  exit(1);
+					fprintf(stderr,"Error: out of memory.\n");
+					exit(1);
 				}
 			} else {
 				fprintf(stderr,"Error: file name expected after -p option.\n");
 				exit(1);
 			}
-		} else if (strncmp(argv[i],"-v",2)==0) {
-			if (strlen(argv[i])!=3 || !isdigit(argv[i][2])) {
+		} else if (strncmp(arg,"-v",2)==0) {
+			if (strlen(arg)!=3 || !isdigit(arg[2])) {
 				fprintf(stderr,"Error: one digit expected after -v option (like -v2).\n");
 				exit(1);
 			}
-			verbosity=argv[i][2]-'0';
-		} else if (strncmp(argv[i],"-m",2)==0) {
-			if (strlen(argv[i])!=4) {
+			verbosity=arg[2]-'0';
+		} else if (strncmp(arg,"-m",2)==0) {
+			if (strlen(arg)!=4) {
 				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
 				exit(1);
 			}
-			if (strcmp(&argv[i][2],"uo")==0) {
+			if (strcmp(&arg[2],"uo")==0) {
 #ifdef NO_UDP_QUERIES
 				fprintf(stderr,"Error: pdnsd was compiled without UDP support.\n");
 				exit(1);
 #else
 				query_method=UDP_ONLY;
 #endif
-			} else if (strcmp(&argv[i][2],"to")==0) {
+			} else if (strcmp(&arg[2],"to")==0) {
 #ifdef NO_TCP_QUERIES
 				fprintf(stderr,"Error: pdnsd was compiled without TCP support.\n");
 				exit(1);
 #else
 				query_method=TCP_ONLY;
 #endif
-			} else if (strcmp(&argv[i][2],"tu")==0) {
+			} else if (strcmp(&arg[2],"tu")==0) {
 #if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
 				fprintf(stderr,"Error: pdnsd was not compiled with UDP  and TCP support.\n");
 				exit(1);
@@ -283,7 +297,7 @@ int main(int argc,char *argv[])
 				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
 				exit(1);
 			}
-		} else if (strcmp(argv[i],"-4")==0) {
+		} else if (strcmp(arg,"-4")==0) {
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
 			run_ipv4=1;
@@ -293,7 +307,7 @@ int main(int argc,char *argv[])
 			fprintf(stderr,"Error: -4: pdnsd was compiled without IPv4 support.\n");
 			exit(1);
 #endif
-		} else if (strcmp(argv[i],"-6")==0) {
+		} else if (strcmp(arg,"-6")==0) {
 #ifdef ENABLE_IPV6
 			run_ipv6=1;
 # ifdef ENABLE_IPV4
@@ -303,15 +317,15 @@ int main(int argc,char *argv[])
 			fprintf(stderr,"Error: -6: pdnsd was compiled without IPv6 support.\n");
 			exit(1);
 #endif
-		} else if (strcmp(argv[i],"-g")==0 || strcmp(argv[i],"--debug")==0) {
+		} else if (strcmp(arg,"-g")==0 || strcmp(arg,"--debug")==0) {
 #if DEBUG>0
 			debug_p=1;
 #else
 			fprintf(stderr,"pdnsd was compiled without debugging support. -g has no effect.\n");
 #endif
-		} else if (strcmp(argv[i],"--nodebug")==0) {
+		} else if (strcmp(arg,"--nodebug")==0) {
 			debug_p=0;
-		} else if (strcmp(argv[i],"--pdnsd-user")==0) {
+		} else if (strcmp(arg,"--pdnsd-user")==0) {
 			if (global.run_as[0]) {
 				printf("%s\n",global.run_as);
 			} else {
@@ -323,12 +337,26 @@ int main(int argc,char *argv[])
 					printf("%i\n",uid);
 			}
 			exit(0);
-		} else if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")==0) {
+		} else if (strcmp(arg,"-c")==0 || strcmp(arg,"--config-file")==0) {
 			/* at this point, it is already checked that a file name arg follows. */
 			i++;
 		} else {
-			fprintf(stderr,"Error: unknown option: %s\n",argv[i]);
-			exit(1);
+			char *equ=strchr(arg,'=');
+			if(equ) {
+				int plen=equ-arg;
+				if(arg_isparam("--config-file")) {
+					/* at this point, the file name has already been processed. */
+				}
+				else {
+					fputs("Error: unknown option: ",stderr);
+					fwrite(arg,1,plen,stderr);
+					fputc('\n',stderr);
+					exit(1);
+				}
+			} else {
+				fprintf(stderr,"Error: unknown option: %s\n",arg);
+				exit(1);
+			}
 		}
 	}
 	
@@ -471,6 +499,11 @@ int main(int argc,char *argv[])
 	if (run_ipv6)
 		DEBUG_MSGC("Using IPv6.\n");
 #endif
+
+	/* initialize attribute for creating detached threads */
+	pthread_attr_init(&attr_detached);
+	pthread_attr_setdetachstate(&attr_detached,PTHREAD_CREATE_DETACHED);
+
 	init_log();
 
 	/* Before this point, cache accesses are not locked because we are single-threaded. */

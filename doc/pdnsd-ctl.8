@@ -4,16 +4,25 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD-CTL" "8" "28 July 2003" "" ""
+.TH "PDNSD-CTL" "8" "01 Jan 2004" "" ""
 .SH NAME
 pdnsd-ctl \- controls pdnsd
 .SH SYNOPSIS
 .sp
-\fBpdnsd-ctl\fR [ \fBcommands\fR ] 
+\fBpdnsd-ctl\fR [\fB-c\fR cachedir] [\fB-q\fR] command [options]
 .SH "DESCRIPTION"
 .PP
 \fBpdnsd-ctl\fR controls pdnsd, a proxy dns server 
 with permanent caching.
+.PP
+.TP
+\fB-c\fR cachedir
+set the cache directory to cachedir (must match pdnsd setting).
+This is only necessary if the directory differs from the default specified
+at compile time.
+.TP
+\fB-q\fR
+be quiet unless output is specified by command or something goes wrong.
 .SH "COMMANDS"
 .TP
 \fBhelp\fR
@@ -32,10 +41,10 @@ print version info
 print pdnsd's status
 .TP
 \fBserver\fR
-(index|label) (up|down|retest) [dns1[,dns2[,...]]]
+(index|label) (\fBup\fR|\fBdown\fR|\fBretest\fR) [dns1[,dns2[,...]]]
 
 Set the status of the servers with the given index or label to up or down, or
-force a retest. The index is assigned in the order of definition in pdnsd.cache
+force a retest. The index is assigned in the order of definition in pdnsd.conf
 starting with 0. Use the status command to view the indexes. You can specify all
 instead of an index to perform the action for all servers registered with pdnsd.
 .IP
@@ -48,43 +57,46 @@ existing IP addresses to be removed and the corresponding server section to
 become inactive.
 .TP
 \fBrecord\fR
-name (delete|invalidate)
+name (\fBdelete\fR|\fBinvalidate\fR)
 
 Delete or invalidate the record of the given domain if it is 
 in the cache.
 .TP
 \fBsource\fR
-fn owner [ttl] [(on|off)]
+fn owner [ttl] [(\fBon\fR|\fBoff\fR)] [\fBnoauth\fR]
 
 Load a hosts-style file. Works like using the pdnsd source option.
 Owner and ttl are used as in the source section. ttl has a default
-of 900 (it does not need to be specified). The last option corresponds
-to the serve_aliases option, and is off by default. fn is the filename.
+of 900 (it does not need to be specified). The next to last option corresponds
+to the serve_aliases option, and is off by default.
+\fBnoauth\fR is used to make the domains non-authoritative (please
+consult the pdnsd manual for what that means).
+fn is the name of the file, which must be readable by pdnsd.
 .TP
 \fBadd\fR
-a addr name [ttl]
+\fBa\fR addr name [ttl] [\fBnoauth\fR]
 .TP
 \fBadd\fR
-aaaa addr name [ttl]
+\fBaaaa\fR addr name [ttl] [\fBnoauth\fR]
 .TP
 \fBadd\fR
-ptr host name [ttl]
+\fBptr\fR host name [ttl] [\fBnoauth\fR]
 .TP
 \fBadd\fR
-cname host name [ttl]
+\fBcname\fR host name [ttl] [\fBnoauth\fR]
+.TP
+\fBadd\fR
+\fBmx\fR host name pref [ttl] [\fBnoauth\fR]
 
 Add a record of the given type to the pdnsd cache, replacing existing
 records for the same name and type. The 2nd argument corresponds
 to the argument of the option in the rr section that is named like
 the first option. The ttl is optional, the default is 900 seconds.
+\fBnoauth\fR is used to make the domains non-authoritative (please
+consult the pdnsd manual for what that means).
 If you want no other record than the newly added in the cache, do
-pdnsd-ctl record <name> delete
+\fBpdnsd-ctl\fR \fBrecord\fR \fIname\fR \fBdelete\fR
 before adding records.
-.TP
-\fBstatus\fR
-[no options]
-
-print pdnsd's status
 .TP
 \fBneg\fR
 name [type] [ttl]

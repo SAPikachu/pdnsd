@@ -1,6 +1,8 @@
 /* dns.c - Declarations for dns handling and generic dns functions
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -180,16 +182,15 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 {
 	int i;
 	int add=1;
-	int coffs=-1;
-	int rv,rl;
-	int longest=0;
-	long ilen;
-	unsigned char brest[256];
-	rl=0;
-	ilen = rhnlen(in);
+	int longest=0,lrem=0,coffs=0;
+	int rl=0;
+	int ilen = rhnlen(in);
+
+	PDNSD_ASSERT(ilen<=256, "compress_name: name too long");
+
 	/* part 1: compression */
 	for (i=0;i<DA_NEL(*cb);i++) {
-		int rem,to;
+		int rv,rem,to;
 		if ((rv=domain_match(in, DA_INDEX(*cb,i).s, &rem,&to))>longest) {
 			/*
 			 * This has some not obvious implications that should be noted: If a 
@@ -198,30 +199,30 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, compel_array 
 			 * can't be compressed. So we take the first occurence of a given length.
 			 * This works perfectly, but watch it if you change something.
 			 */
-			PDNSD_ASSERT(rem<256,"compress_name: name too long");
-			memcpy(brest,in,rem);
-			brest[rem]=0;
 			longest=rv;
+			lrem=rem;
 			coffs=DA_INDEX(*cb,i).index+to;
-		} 
+		}
 	}
-	if (coffs>=0) {
-		PDNSD_ASSERT(rhnlen(brest) + 1 <= ilen, "compress_name: length increased");
-		rl=rhncpy(out, brest)-1; /* omit the length byte, because it needs to be frobbed */
-		PDNSD_ASSERT(rl <= 254, "compress_name: name too long");
-		out[rl]=192|((coffs&0x3f00)>>8);
-		out[rl+1]=coffs&0xff;
-		rl+=2;
-		add= brest[0]!='\0';
-	} else
-		rl=rhncpy(out,in);
+	if (longest>0) {
+		PDNSD_ASSERT(lrem+2 <= ilen, "compress_name: length increased");
+		memcpy(out, in,lrem);
+		out[lrem]=0xc0|((coffs&0x3f00)>>8);
+		out[lrem+1]=coffs&0xff;
+		rl=lrem+2;
+		add= lrem!=0;
+	}
+	else {
+		memcpy(out,in,ilen);
+		rl=ilen;
+	}
 
 	/* part 2: addition to the cache structure */
 	if (add) {
 		if (!(*cb=DA_GROW1(*cb)))
 			return 0;
 		DA_LAST(*cb).index=offs;
-		rhncpy(DA_LAST(*cb).s,in);
+		memcpy(DA_LAST(*cb).s,in,ilen);
 	}
 	return rl;
 }

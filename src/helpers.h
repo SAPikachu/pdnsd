@@ -1,6 +1,8 @@
 /* helpers.h - Various helper functions
    Copyright (C) 2000, 2001 Thomas Moestl
 
+   With modifications by Paul Rombouts, 2002, 2003, 2004.
+
 This file is part of the pdnsd package.
 
 pdnsd is free software; you can redistribute it and/or modify
@@ -49,10 +51,21 @@ inline static int isdchar (unsigned char c)
 void rhn2str(unsigned char *rhn, unsigned char *str);
 int  str2rhn(unsigned char *str, unsigned char *rhn);
 char *parsestr2rhn(unsigned char *str, unsigned char *rhn);
+
+/* Note added by Paul Rombouts:
+   Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
+   may yield a different result in certain error situations (when a domain name segment contains null byte).
+*/
 inline static int rhnlen(unsigned char *rhn)
 {
-	return strlen(rhn)+1;
+	int i=0;
+	unsigned char lb;
+
+	while((lb=rhn[i]))
+		i+=lb+1;
+	return i+1;
 }
+
 int rhncpy(unsigned char *dst, unsigned char *src);
 
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn);
@@ -108,6 +121,12 @@ extern FILE *rand_file;
 unsigned short get_rand16(void);
 
 int fsprintf(int fd, const char *format, ...) printfunc(2, 3);
+#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
+# define fsprintf_or_return(args...) {int _retval; if((_retval=fsprintf(args))<0) return _retval;}
+#else
+/* ANSI style variadic macro. */
+# define fsprintf_or_return(...) {int _retval; if((_retval=fsprintf(__VA_ARGS__))<0) return _retval;}
+#endif
 
 /* Added by Paul Rombouts */
 inline static int write_all(int fd,const void *data,int n)
@@ -212,5 +231,7 @@ int getline(char **lineptr, size_t *n, FILE *stream);
 #ifndef HAVE_ASPRINTF
 int asprintf (char **lineptr, const char *format, ...);
 #endif
+
+#define strlitlen(strlit) (sizeof(strlit)-1)
 
 #endif /* HELPERS_H */
