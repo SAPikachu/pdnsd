@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.10 2000/10/17 20:34:44 thomas Exp $ */
+/* $Id: acconfig.h,v 1.11 2000/11/01 23:09:34 thomas Exp $ */
 
 /* ONLY EDIT config.h.in, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
@@ -163,7 +163,7 @@
 #undef NO_IN_PKTINFO
 
 /* Lock the UDP socket before using it? */
-#define SOCKET_LOCKING
+#undef SOCKET_LOCKING
 
 /* Default TCP timeout when receiving queries */
 #define TCP_TIMEOUT 30

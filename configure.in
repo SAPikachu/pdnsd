@@ -1,4 +1,4 @@
-dnl $Id: configure.in,v 1.14 2000/11/01 21:24:23 thomas Exp $
+dnl $Id: configure.in,v 1.15 2000/11/01 23:09:34 thomas Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
@@ -18,7 +18,7 @@ have_ipv4="yes"
 query_m="udponly"
 have_tcp_server="no"
 adisc="yes";
-slock="yes";
+slock="no";
 def_id="nobody"
 have_rcsids="no"
 udp_queries="yes"
@@ -183,7 +183,7 @@ AC_ARG_ENABLE(src-addr-disc,
 test $adisc = "yes" && AC_DEFINE(SRC_ADDR_DISC)
 
 AC_ARG_ENABLE(socket-locking,
-[  --disable-socket-locking     Disable the UDP socket locking],
+[  --enable-socket-locking     Enable the UDP socket locking],
     slock=$enableval)
 
 test $slock = "yes" && AC_DEFINE(SOCKET_LOCKING)
