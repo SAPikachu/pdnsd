@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.26 2000/11/07 12:49:53 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.27 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 /*
@@ -452,6 +452,12 @@ static int add_to_response(dns_queryel_t qe, dns_hdr_t **ans, unsigned long *sz,
 		if (!add_rrset(cached, qe.qtype , ans, sz, cb, udp, queryts, rrn, sva, svan))
 			return 0;
 	}
+	if (ntohs((*ans)->ancount)) {
+		/* Add a SOA if we have one and no other records are present in the answer.
+		 * This is to aid caches so that they have a ttl. */
+		if (!add_rrset(cached, T_SOA , ans, sz, cb, udp, queryts, rrn, sva, svan))
+			return 0;
+	}
 	return 1;
 }
 
@@ -655,7 +661,8 @@ static unsigned char *compose_answer(dns_query_t *q, dns_hdr_t *hdr, unsigned lo
 			hops--;
 			/* If there is only a cname and rd is set, add the cname to the response (add_to_response
 			 * has already done this) and repeat the inquiry with the c name */
-			if ((qe->qtype>=QT_MIN || !cached->rr[qe->qtype-T_MIN]) && cnc>0 && hdr->rd!=0) {
+			if ((qe->qtype>=QT_MIN || !cached->rr[qe->qtype-T_MIN] || !cached->rr[qe->qtype-T_MIN]->rrs) && 
+			     cnc>0 && hdr->rd!=0) {
 				/* We did follow_cname_chain, so bufr and buf must contain the last cname in the chain.*/
 				cont=1;
 			}

@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.8 2000/11/01 19:05:31 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.9 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 /*
@@ -183,7 +183,7 @@ void rhn2str(unsigned char *rhn, unsigned char *str)
 int follow_cname_chain(dns_cent_t *c, unsigned char *name, unsigned char *rrn)
 {
 	rr_bucket_t *rr;
-	if (!c->rr[T_CNAME-T_MIN])
+	if (!(c->rr[T_CNAME-T_MIN] && c->rr[T_CNAME-T_MIN]->rrs))
 		return 0;
 	rr=c->rr[T_CNAME-T_MIN]->rrs;
 	memcpy(rrn,rr+1,rr->rdlen);

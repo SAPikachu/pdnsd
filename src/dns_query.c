@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.27 2000/11/07 12:49:53 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.28 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -745,7 +745,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 	long lcnt;
 	time_t ttl;
 	unsigned char *rrp;
+#ifdef notdef
 	unsigned char *soa;
+#endif
 	unsigned char nbuf[256];
 #if DEBUG>0
 	char buf[ADDRSTR_MAXLEN];
@@ -985,8 +987,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		/* We did not get what we wanted. Cache accoding to policy */
 		if (global.neg_rrs_pol==C_ON || (global.neg_rrs_pol==C_AUTH && st->recvbuf->aa)) {
 			ttl=global.neg_ttl;
-			/* If we received a SOA, we should take the ttl that is in there. */
+			/* If we received a SOA, we should take the ttl of that record. */
 			if ((*ent)->rr[T_SOA-T_MIN] && (*ent)->rr[T_SOA-T_MIN]->rrs) {
+#ifdef notdef
 				soa=(char *)((*ent)->rr[T_SOA-T_MIN]->rrs+1);
 				/* Skip owner and maintainer. Lengths are validated in cache */
 				while (*soa)
@@ -996,6 +999,9 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 					soa+=*soa+1;
 				soa++;
 				ttl=((soa_r_t *)soa)->expire;
+#endif
+				ttl=(*ent)->rr[T_SOA-T_MIN]->ttl+(*ent)->rr[T_SOA-T_MIN]->ts-time(NULL);
+				ttl=ttl<0?0:ttl;
 			}
 			ttl=ttl<global.min_ttl?global.min_ttl:(ttl>global.max_ttl?global.max_ttl:ttl);
 			DEBUG_MSG4("Cacheing type %s for domain %s negative with ttl %li\n",get_tname(st->qt),name,ttl);
@@ -1254,7 +1260,6 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 							/* We have timed out. cancel this, and see whether we need to mark
 							 * a server down. */
 							p_cancel_query(&q->qs[global.par_queries*j+i]);
-							DEBUG_MSG1("timeout\n");
 							if (q->qs[global.par_queries*j+i].si>=0)
 								mark_server_down(q->qs[global.par_queries*j+i].si);
 							/* set rv, we might be the last! */
@@ -1365,18 +1370,18 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 				if (p_dns_cached_resolve(NULL,nsname,nsbuf, &servent, hops-1, T_A,time(NULL))==RC_OK) {
 #ifdef ENABLE_IPV4
 					if (run_ipv4) {
-						if (servent->rr[T_A-T_MIN])
+						if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs)
 							memcpy(&serva.ipv4,(unsigned char *)(servent->rr[T_A-T_MIN]->rrs+1),sizeof(serva.ipv4));
 					}
 #endif
 #ifdef ENABLE_IPV6
 					if (run_ipv6) {
 # ifdef DNS_NEW_RRS
-						if (servent->rr[T_AAAA-T_MIN])
+						if (servent->rr[T_AAAA-T_MIN] && servent->rr[T_AAAA-T_MIN]->rrs)
 							memcpy(&serva.ipv6,(unsigned char *)(servent->rr[T_AAAA-T_MIN]->rrs+1),sizeof(serva.ipv6));
 						else
 # endif
-							if (servent->rr[T_A-T_MIN])
+							if (servent->rr[T_A-T_MIN] && servent->rr[T_A-T_MIN]->rrs)
 								IPV6_MAPIPV4((struct in_addr *)(servent->rr[T_A-T_MIN]->rrs+1),&serva.ipv6);
 						
 					}
@@ -1430,7 +1435,7 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 		}
 		del_qserv(&serv);
 		/*
-		 * If we didn't get rrs from any of the authoritative servers, take the one we had. However, set its timeout to 0,
+		 * If we didn't get rrs from any of the authoritative servers, take the one we had. However, set its ttl to 0,
 		 * so that it won't be used again unless it is necessary.
 		 */
 		for (j=0;j<T_NUM;j++) {
@@ -1486,6 +1491,7 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 	int i,rc;
 	int one_up=0;
 	query_serv_t serv;
+	dns_cent_t *tc;
 	/* try the servers in the order of their definition */
 	init_qserv(&serv);
 	for (i=0;i<serv_num;i++) {
@@ -1502,8 +1508,16 @@ static int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **
 
 
 	if ((rc=p_recursive_query(&serv, rrn, name,cached,&i, hops, thint))==RC_OK) {
-		if (!servers[i].nocache)
+		if (!servers[i].nocache) {
 			add_cache(**cached);
+			if ((tc=lookup_cache(name))) {
+				/* The cache may hold more information  than the recent query yielded.
+				 * try to get the merged record. If that fails, revert to the new one. */
+				free_cent(**cached);
+				free(*cached);
+				*cached=tc;
+			}
+		}
 		del_qserv(&serv);
 		return RC_OK;
 	}
@@ -1599,7 +1613,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 				need_req=!(flags&CF_LOCAL);
 			else {
 				/*A CNAME as answer is also correct. */
-/*			if (ttl==0 && !(*cached)->rr[T_CNAME-T_MIN])
+/*			if (ttl==0 && !((*cached)->rr[T_CNAME-T_MIN] && (*cached)->rr[T_CNAME-T_MIN]->rrs))
 			need_req=!auth;
 			else {*/
 				if (ttl-queryts+CACHE_LAT<0)
@@ -1623,7 +1637,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			return RC_SERVFAIL;
 		}
 	}
-	if (!(*cached) || !neg && (need_req || (timed && !(flags&CF_LOCAL)))) {
+	if (!(*cached) || (!neg && (need_req || (timed && !(flags&CF_LOCAL))))) {
 		bcached=*cached;
 		DEBUG_MSG1("Trying name servers.\n");
 		if (q) 
@@ -1653,7 +1667,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	} else {
 		DEBUG_MSG1("Using cached record.\n");
 	}
-	if ((*cached)->flags&DF_NEGATIVE)
+	if (*cached && (*cached)->flags&DF_NEGATIVE)
 		return RC_NAMEERR;
 	return RC_OK;
 }

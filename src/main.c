@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.21 2000/11/04 00:08:04 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.22 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY
@@ -308,7 +308,10 @@ int main(int argc,char *argv[])
 				}
 			}
 			exit(0);
-		} else  if (strcmp(argv[i],"-c")==0 || strcmp(argv[i],"--config-file")!=0) {
+		} else if (strcmp(argv[i],"-c")!=0 || strcmp(argv[i],"--config-file")!=0) {
+			/* at this point, it is already checked that a file name arg follows. */
+			i++;
+		} else {
 			fprintf(stderr,"Error: unknown option: %s\n",argv[i]);
 			exit(1);
 		}

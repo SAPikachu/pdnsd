@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.  */
 #include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-lex.l.in,v 1.12 2000/11/05 14:59:43 thomas Exp $";
+static char rcsid[]="$Id: conf-lex.l.in,v 1.13 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 extern YYSTYPE yylval;
@@ -113,21 +113,7 @@ C_CLOSE \*\/
 <INITIAL>"file"			        {return FILET;}
 <INITIAL>"serve_aliases"	        {return SERVE_ALIASES;}
 
-<INITIAL>"on"				{yylval.num=C_ON;return CONST;}
-<INITIAL>"off"				{yylval.num=C_OFF;return CONST;}
-<INITIAL>"ping"				{yylval.num=C_PING;return CONST;}
-<INITIAL>"none"				{yylval.num=C_NONE;return CONST;}
-<INITIAL>"if"				{yylval.num=C_IF;return CONST;}
-<INITIAL>"dev"				{yylval.num=C_DEV;return CONST;}
-<INITIAL>"diald"			{yylval.num=C_DIALD;return CONST;}
-<INITIAL>"exec"				{yylval.num=C_EXEC;return CONST;}
-<INITIAL>"onquery"			{yylval.num=C_ONQUERY;return CONST;}
-<INITIAL>"udp_only"			{yylval.num=UDP_ONLY;return CONST;}
-<INITIAL>"tcp_only"			{yylval.num=TCP_ONLY;return CONST;}
-<INITIAL>"tcp_udp"			{yylval.num=TCP_UDP;return CONST;}
-<INITIAL>"included"			{yylval.num=C_INCLUDED;return CONST;}
-<INITIAL>"excluded"			{yylval.num=C_EXCLUDED;return CONST;}
-<INITIAL>"auth"				{yylval.num=C_AUTH;return CONST;}
+<INITIAL>[a-zA-Z]+			{yylval.num=lookup_const(yytext); return CONST;}
 
 <INITIAL>\"[^\"]*\"			{yylval.nm=(unsigned char *)yytext+1;yylval.nm[strlen((char *)yylval.nm)-1]=(unsigned char)'\0';return STRING;}
 <INITIAL>[=;\,\{\}]			{return yytext[0];}

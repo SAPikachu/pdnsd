@@ -1,4 +1,4 @@
-/* consts.h - Common config constants
+/* consts.h - Common config constants & handling
    Copyright (C) 2000 Thomas Moestl
 
 This file is part of the pdnsd package.
@@ -18,12 +18,15 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: consts.h,v 1.5 2000/11/05 14:59:44 thomas Exp $ */
+/* $Id: consts.h,v 1.6 2000/11/11 14:24:48 thomas Exp $ */
 
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
 
 #include "config.h"
+
+#define C_ERR      -1
+#define C_RRTOFFS  64
 
 #define C_ON        0
 #define C_OFF       1
@@ -40,5 +43,7 @@ Boston, MA 02111-1307, USA.  */
 #define C_INCLUDED 12
 #define C_EXCLUDED 13
 #define C_AUTH     14
+
+int lookup_const(char *name);
 
 #endif

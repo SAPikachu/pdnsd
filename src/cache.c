@@ -34,10 +34,11 @@ Boston, MA 02111-1307, USA.  */
 #include "../../helpers.h"
 #include "../../dns.h"
 #include "../../error.h"
+#include "../../thread.h"
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.10 2000/11/06 21:19:15 thomas Exp $";
+static char rcsid[]="$Id: cache.c,v 1.11 2000/11/11 14:24:51 thomas Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -153,7 +154,7 @@ static void lock_cache_r(void)
 		}
 		pthread_mutex_unlock(&lock_mutex);
 		if (!lk)
-			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
 	}
 }
 
@@ -186,7 +187,7 @@ static void lock_cache_rw(void)
 		}
 		pthread_mutex_unlock(&lock_mutex);
 		if (!lk)
-			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
 	}
 }
 
@@ -217,7 +218,7 @@ static int softlock_cache_r(void)
 		}
 		pthread_mutex_unlock(&lock_mutex);
 		if (!lk)
-			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
 		if (tr++>SOFTLOCK_MAXTRIES)
 			return 0;
 	}
@@ -251,7 +252,7 @@ static int softlock_cache_rw(void)
 		}
 		pthread_mutex_unlock(&lock_mutex);
 		if (!lk)
-			usleep(1000); /*give contol back to the scheduler instead of hammering the lock close*/
+			usleep_r(1000); /*give contol back to the scheduler instead of hammering the lock close*/
 		if (tr++>SOFTLOCK_MAXTRIES)
 			return 0;
 	}
@@ -316,11 +317,12 @@ void destroy_cache()
 	softlock_cache_rw();
 	ce=fetch_first(&dns_hash, &pos);
 	while (ce) {
-		del_cache_int(ce);
+		del_cache_int_rrl(ce);
 		ce=fetch_next(&dns_hash,&pos);
 	}
 	free_dns_hash(&dns_hash);
-#if TARGET!=TARGET_LINUX
+#if 0
+TARGET!=TARGET_LINUX
 	/* under Linux, this frees no resources but may hang on a crash */
 	pthread_mutex_destroy(&lock_mutex);
 #endif
@@ -814,7 +816,9 @@ void read_disk_cache()
 					fclose(f);
 					return;
 				}
-				for (;num_rr>0;num_rr--) {
+				/* Add the rrset header in any case (needed for negative cacheing */
+				add_cent_rrset(&ce, i+T_MIN, sh.ttl, sh.ts, sh.flags, 0);
+				for (;num_rr>1;num_rr--) {
 					if (!read_rr(&rr,&data,&dtsz,f))
 						return;
 					if (!add_cent_rr(&ce,sh.ttl,sh.ts,sh.flags,rr.rdlen,data,i+T_MIN)) {
@@ -839,7 +843,7 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	rr_bucket_t *rr;
 	rr_fset_t sh;
 	rr_fbucket_t rf;
-	unsigned char num_rr=0;
+	unsigned char num_rr=0;  /* 0 means nothing, 1 means header only, 1 means header + 1 records ... */
 	long nump,oldp;
 	
  	nump=ftell(f);
@@ -855,6 +859,7 @@ static void write_rrset(rr_set_t *rrs, FILE *f)
 	/* We only write a maximum of 256 of a kind (type) for one domain. This would be already overkill and probably does not happen.
 	 * we want to get along with only one char, because most rr rows are empty (even more with DNS_NEW_RRS), and so the usage
 	 * of greater data types would have significant impact on the cache file size. */
+	num_rr=1;
 	while (rr && num_rr<255) {
 		num_rr++;
 		rf.rdlen=rr->rdlen;
@@ -949,7 +954,7 @@ void write_disk_cache()
 }
 
 /*
- * Add a ready build dns_cent_t to the hashes, purge if necessary to no exceed cache size
+ * Add a ready build dns_cent_t to the hashes, purge if necessary to not exceed cache size
  * limits, and add the entries to the hashes.
  * As memory is already reserved for the rrs, we only need to wrap up the dns_cent_t and
  * alloc memory for it.
@@ -965,7 +970,7 @@ void write_disk_cache()
 void add_cache(dns_cent_t cent)
 {
 	dns_cent_t *ce;
-	int i;
+	int i, local=0;
 	rr_bucket_t *rr,*rrb;
 
 	lock_cache_rw();
@@ -1004,15 +1009,24 @@ void add_cache(dns_cent_t cent)
 		if (cent.flags&DF_NEGATIVE) {
 			/* the new entry is negative. So, we need to delete the whole cent,
 			 * and then generate a new one. */
-			del_cache_int_rrl(ce);
-			unlock_cache_rw();
-			add_cache(cent);
+			for (i=0;i<T_MAX;i++) {
+				if (ce->rr[i] && ce->rr[i]->flags&CF_LOCAL) {
+					local=1;
+					break;
+				}
+			}
+			/* Do not clobber local records */
+			if (!local) {
+				del_cache_int_rrl(ce);
+				unlock_cache_rw();
+				add_cache(cent);
+			}
 			return;
 		}
 		/* We have a record; add the rrsets replacing old ones */
 		cache_size-=ce->cs;
 		for (i=0;i<T_NUM;i++) {
-			if (cent.rr[i]) {
+			if (cent.rr[i] && !(ce->rr[i] && ce->rr[i]->flags&CF_LOCAL)) {
 				if (ce->rr[i]) {
 					remove_rrl(ce->rr[i]->lent);
 					del_cent_rrset(ce,i+T_MIN);
@@ -1098,7 +1112,7 @@ void del_cache(unsigned char *name)
 
 
 /* Invalidate a record by resetting the fetch time to 0. This means that it will be refreshed
- * if possible (and will only be server when purge_cache=off; */
+ * if possible (and will only be served when purge_cache=off; */
 void invalidate_record(unsigned char *name)
 {
 	dns_cent_t *ce;

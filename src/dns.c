@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.10 2000/11/04 23:14:57 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.11 2000/11/11 14:24:48 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
@@ -420,13 +420,6 @@ int read_hosts(char *fn, unsigned char *rns, time_t ttl, int aliases, char *errb
  * Const decoders for debugging display
  */
 char *c_names[C_NUM] = {"IN","CS","CH","HS"};
-#ifdef DNS_NEW_RRS
-char *t_names[T_NUM] = {"A","NS","MD","MF","CNAME","SOA","MB","MG","MR","NULL","WKS","PTR","HINFO","MINFO","MX","TXT","RP","AFSDB","X25",
-                        "ISDN","RT","NSAP","NSAP-PTR","SIG","KEY","PX","GPOS","AAAA (IPv6 A)","LOC","NXT","EID","NIMLOC","SRV","ATMA",
-                        "NAPTR","KX"};
-#else
-char *t_names[T_NUM] = {"A","NS","MD","MF","CNAME","SOA","MB","MG","MR","NULL","WKS","PTR","HINFO","MINFO","MX","TXT"};
-#endif
 char *qt_names[QT_NUM]={"IXFR","AXFR","MAILA","MAILB","*"};
 
 char *get_cname(int id)
@@ -441,7 +434,7 @@ char *get_cname(int id)
 char *get_tname(int id)
 {
 	if (id>=T_MIN && id<=T_MAX)
-		return t_names[id-T_MIN];
+		return rr_info[id-T_MIN];
         else if (id>=QT_MIN && id<=QT_MAX)
 		return qt_names[id-QT_MIN];
 	return "[unknown]";
