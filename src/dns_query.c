@@ -39,7 +39,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.14 2000/10/19 16:18:08 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.15 2000/10/19 16:38:15 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -1219,13 +1219,16 @@ static int p_recursive_query(query_serv_t *q, unsigned char *rrn, unsigned char 
 #endif
 							if (srv) {
 								qo=0;
-								if ((rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial))==RC_OK) {
+								rv=p_exec_query(ent, rrn, name, &aa, &q->qs[global.par_queries*j+i],&ns,serial);
+								if (rv==RC_OK || rv==RC_NAMEERR) {
 									for (k=0;k<mc;k++) {
 										p_cancel_query(&q->qs[global.par_queries*j+k]);
 									}
-									se=global.par_queries*j+i;
-									*sv=q->qs[global.par_queries*j+i].si;
-									DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+									if (rv==RC_OK) {
+										se=global.par_queries*j+i;
+										*sv=q->qs[global.par_queries*j+i].si;
+										DEBUG_MSG2("Query to %s succeeded.\n",socka2str(q->qs[global.par_queries*j+i].sin,buf,ADDRSTR_MAXLEN));
+									}
 									done=1;
 									break;
 								}
