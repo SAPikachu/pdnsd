@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.7 2000/08/07 19:00:53 thomas Exp $
+# $Id: Makefile.am,v 1.8 2000/08/26 11:41:27 thomas Exp $
 
 SUBDIRS = src
 
@@ -17,6 +17,8 @@ install-data-hook:
 	else \
 	  touch $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	fi
+	chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache
+	chmod 0640 $(DESTDIR)$(cachedir)/pdnsd.cache
 
 dist-hook: $(PACKAGE).spec
 	cp $(PACKAGE).spec $(distdir)
