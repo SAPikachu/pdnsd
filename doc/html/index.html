@@ -42,6 +42,26 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2004-10-10</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2-par has been released.</b>
+	Latest release by Paul Rombouts.<br>
+	pdnsd is new and improved! Most of the changes effect the internal workings
+	of pdnsd, but there also a number of interesting new features (well, I think they are interesting).<br>
+	Amongs the bugs fixed are two rather nasty ones which involve the handling of NXT and NAPTR records
+	and which can cause pdnsd to crash or abort.<br>
+	The new features include a new server availability test which can be specified with <code>uptest=query</code>,
+	support for reading the DNS configuration from resolv.conf files,
+	a new option for optimizing the use of root servers,
+	a new option that makes defining local records for reverse resolving easier,
+	support for defining wildcard records,
+	a new pdnsd-ctl command for reloading the config file without restarting pdnsd, and
+	a new pdnsd-ctl command for dumping information about the names stored in the cache.
+	The documentation has also been updated: there is now a <code>pdnsd.conf</code> man page.<br>
+	For a more complete list of the changes I'll have to refer you to <a href="README.par"><code>README.par</code></a> and the <a
+	href="ChangeLog"><code>ChangeLog</code></a>.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-05-22</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.11a-par has been released.</b>
 	This release contains a fix for FreeBSD users that bypasses a problem
@@ -52,7 +72,6 @@
       <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-05-10</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.1.11-par has been released.</b>
-	Latest "maintenance" release by Paul Rombouts (although a few new features have crept in).<br>
 	This version has a rather large number of small changes, which are rather difficult to summarize.
 	Among the bugs fixed are a race condition in the cache lookup code, a
 	flaw in the code that caused a busy spin when a remote server answered
@@ -484,7 +503,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 22 May 2004 by Paul Rombouts</i>
+      <i>Last revised: 10 Oct 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

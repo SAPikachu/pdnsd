@@ -407,7 +407,7 @@
 	<td>
           Specify debugging level. Normally you can safely switch debugging off
 	  by setting the level to 0. This will increase speed (although only
-	  marginally) and save space in the executable (only about 5kB).
+	  marginally) and save space in the executable (only about 12kB).
 	  Presently the only defined debug levels are 0 (off) and 1 (on).
 	  Setting the level higher than 1 does no harm. Debug output will only
 	  be generated if you turn on special switches; it might be useful for
@@ -794,9 +794,10 @@
 	  If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
 	  it will automatically be mapped to an IPv6 address.<br>
 	  <em>New in version 1.2:</em> You may also give the name of an interface
-	  such as <code>"lo"</code> or <code>"eth0"</code> here, instead of an IP address.
+	  such as <code>"lo"</code> or <code>"eth0"</code> here, instead of an IP address
+	  (Linux only).
 	  pdnsd will not bind to the interface name, but will look up the address of the
-	  interface at start up and listen on that address. If the address of the interface
+	  interface at start-up and listen on that address. If the address of the interface
 	  changes while pdnsd is running, pdnsd will not notice that. You will need to
 	  restart pdnsd in that case.
 	</td>
@@ -859,7 +860,7 @@
       <tr>
 	<td>
 	  <b><code>neg_domain_pol=(on|off|auth);</code></b><br>
-	  This is analogue to <code>neg_rrs_pol</code> for whole domain negative caching. It should be
+	  This is analogue to <code>neg_rrs_pol</code> for whole domain negative caching. It should be safe
 	  to set this <code>on</code>, because I have not seen a caching server that will falsely claim that a
 	  domain does not exist.<br>
 	  The default is <code>auth</code>.
@@ -947,16 +948,16 @@
       <tr>
 	<td>
 	  <b><code>daemon=(on|off);</code></b><br>
-	  This has the same effect as the <code>-d</code> command line option: the daemon mode enabled when
+	  This has the same effect as the <code>-d</code> command line option: the daemon mode is enabled when
 	  <code>on</code> is specified.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>tcp_server=(on|off);</code></b><br>
-	  <code>tcp_server=on</code> has the same effect as the <code>--t</code> or <code>--tcp</code>
+	  <code>tcp_server=on</code> has the same effect as the <code>-t</code> or <code>--tcp</code>
 	  command-line option: it enables TCP serving.
-	  Similarly, <code>tcp_server=off</code> is like the <code>--notcp</code> command-line option.
+	  Similarly, <code>tcp_server=off</code> is like the <code>--notcp</code> command-line option.<br>
 	  Default is on.
 	</td>
       </tr>
@@ -1020,18 +1021,20 @@
 	  With this option, you can set a limit on the pdnsd threads that will be active simultaneously. If
 	  this number is exceeded, queries are queued and may be delayed some time.
 	  See also the <code>procq_limit</code> option.<br>
-	  The default for this option are 40 query threads will be active (plus 3 to 6 threads that will always
-	  be present depending on your configuration).
+	  The default for this option is 40.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>procq_limit=<i>number</i>;</code></b><br>
-	  When the query thread limit is exceeded, connection attempts to pdnsd will be queued. With this option,
-	  you can set the maximum queue length. If this length is also exceeded, the incoming queries will
-	  be dropped. That means that tcp connections will be closed and udp queries will just be dropped, which
+	  When the query thread limit <code>proc_limit</code> is exceeded, connection attempts to pdnsd will be queued.
+	  With this option, you can set the maximum queue length.
+	  If this length is also exceeded, the incoming queries will be dropped.
+	  That means that tcp connections will be closed and udp queries will just be dropped, which
 	  will probably cause the querying resolver to wait for an answer until it times out.<br>
-	  See also the <code>proc_limit</code> option.<br>
+	  See also the <code>proc_limit</code> option. A maximum of <code>proc_limit+procq_limit</code>
+	  query threads will exist at any one time (plus 3 to 6 threads that will always
+	  be present depending on your configuration).<br>
 	  The default for this option is 60.
 	</td>
       </tr>
@@ -1064,7 +1067,7 @@
 	  After all, if we wait longer anyway, why not for more servers.<br>
 	  See also the explanation of the global timeout option below.<br>
 	  1 or 2 are good values for this option.
-	  The default is set using the <code>--with-par-queries</code> option to <code>configure</code>.
+	  The default is set at compile time using the <code>--with-par-queries</code> option to <code>configure</code>.
 	</td>
       </tr>
       <tr>
@@ -1089,7 +1092,7 @@
 	  <b><code>randomize_recs=(on|off);</code></b><br>
 	  If this option is turned on, pdnsd will randomly reorder the cached records of one type
 	  when creating an answer. This supports round-robin DNS schemes and increases fail
-	  safety for hosts with multiple IP addresses, so this is usually a good idea,<br>
+	  safety for hosts with multiple IP addresses, so this is usually a good idea.<br>
 	  On by default.
 	</td>
       </tr>
@@ -1155,12 +1158,12 @@
 
     <br>
     <h3>2.1.2 <a name="serversection"><code>server</code> Section</a></h3>
-    Each server section specifies a name server (or a set of name servers) that pdnsd should try to get 
-    resource records or authoritative name server information from. The servers a 
+    Each server section specifies a set of name servers that pdnsd should try to get 
+    resource records or authoritative name server information from. The servers are
     queried in the order of their appearance (or parallel to a limited extend). 
     If one fails, the next one is taken and so on.<br>
-    You probably want to specify  the dns server in your LAN, the caching dns server
-    of your internet provider or even one of the root servers using server records.<br>
+    You probably want to specify  the dns server in your LAN, the caching dns servers
+    of your internet provider or even a list of root servers in one or more server sections.<br>
     The supported options in this section are:<br><br>
 
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
@@ -1178,7 +1181,7 @@
       <tr>
 	<td>
 	  <b><code>ip=<i>string</i>;</code></b><br>
-	  Give the IP (the IP, <em>not</em> the hostname) of the server.<br>
+	  Give the IP (the IP, <em>not</em> the host name) of the server.<br>
 	  Multiple IP addresses can be given per server section.
 	  This can be done by entering multiple lines of the form <code>ip=<i>string</i>;</code>
 	  or a single line like this:
@@ -1190,7 +1193,7 @@
 	  If pdnsd has been compiled with both IPv4 and IPv6 support, any IPv6 addresses you specify
 	  here will be skipped with a warning message, unless pdnsd is running in IPv6 mode.
 	  Thus, unless pdnsd was compiled to startup in IPv6 mode by default, you need to use the
-	  commmand-line option <code>-6</code> or set <code>run_ipv4=off</code>
+	  command-line option <code>-6</code> or set <code>run_ipv4=off</code>
 	  first (see <a href="#runipv4"><code>global</code></a> section) in order to ensure
 	  that IPv6 addresses are parsed correctly.<br>
 	  If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
@@ -1200,8 +1203,8 @@
       <tr>
 	<td>
 	  <b><code>file=<i>string</i>;</code></b><br>
-	  <em>New in version 1.2:</em> This option allows you to give the name of a <code>resolv.conf</code> style file.
-	  Of the lines beginning with the <code>nameserver</code> keyword the second field will be parsed as an
+	  <em>New in version 1.2:</em> This option allows you to give the name of a <code>resolv.conf</code>-style file.
+	  Of the lines beginning with the <code>nameserver</code> keyword, the second field will be parsed as an
 	  IP address, as if it were specified with the <code>ip=</code> option. The remaining lines will be ignored.
 	  If the contents of the file changes while pdnsd is running, you can make pdnsd aware of the changes through the
 	  use of <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>, the pdnsd control utility.
@@ -1233,7 +1236,7 @@
 	    <li><b><code>none</code></b>: The availability status is not changed, only the time stamp is updated.
 	    <li><b><code>if</code></b>: Check whether the interface (specified in the <code>interface=</code> option) is
 	      existent, up and running. This currently works for all &quot;ordinary&quot;
-	      network interfaces, interfaces that disappear when down (eg ppp?),
+	      network interfaces, interfaces that disappear when down (e.g. ppp?),
 	      and additionally for Linux isdn interfaces (as of kernel 2.2). Note that
 	      you need a <code>/dev/isdninfo</code> device file (major#45, minor#255), or the
 	      isdn uptest will always fail.
@@ -1254,7 +1257,7 @@
 	      <code>uptest_sh</code>. The command is given with the <code>uptest_cmd</code> option (see below).
 	      For secuity issues, also see that entry.
 	    <li><b><code>query</code></b>: <em>New in version 1.2:</em>
-	      This works like the ping test, except it sends an empty dns query to the remote server.
+	      This works like the ping test, except it sends an empty DNS query to the remote server.
 	      If the server sends valid response back within the timeout period (except SERVFAIL),
 	      it will be regarded as available.
 	      This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
@@ -1274,7 +1277,7 @@
       <tr>
 	<td>
 	  <b><code>ping_timeout=<i>number</i>;</code></b><br>
-	  Sets the timeout for the ping test in tenth of seconds. The default is 600.
+	  Sets the timeout for the ping test in tenth of seconds. The default is 600 (one minute).
 	</td>
       </tr>
       <tr>
@@ -1307,29 +1310,30 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>interval=<i>number</i>;</code></b><br>
-	  Sets the interval for the server-up-test in seconds. The default is 
+	  <b><code>interval=(<i>number</i>|onquery);</code></b><br>
+	  Sets the interval for the server up-test in seconds. The default is 
 	  900; however, a test is forced when a query times out. The interval
 	  timeout is reset then.<br>
-	  If you specify onquery instead of a timeout, the interface will be
+	  If you specify <code>onquery</code> instead of a timeout, the interface will be
 	  tested before every query. This is to prevent automatically dialling
 	  interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
-	  used in connection with a interface testing uptest ;-) <br>
+	  used in connection with an interface-testing uptest ;-) <br>
 	  Note that using uptest=exec, you might run into performance problems
 	  on slow machines when you use that option.
-	  DON'T use this option with ping, as it may cause delays if the server
-	  does not answer (btw, it doesn't make sense anyway).
-	  Note also that using that option is no guarantee that the interface
+	  DON'T use <code>onquery</code> with <code>uptest=ping</code> or
+	  <code>uptest=query</code>, as it may cause delays if the server does not answer
+	  (btw, it doesn't make sense anyway).
+	  Note also that using <code>onquery</code> is no guarantee that the interface
 	  will not be used. When another (reachable) dns server tells pdnsd
 	  to query a third dns server for data, pdnsd will do that and has 
 	  no means of checking whether this will dial up the interface or not.
-	  This however should be a rare configuration.
+	  This however should be a rare situation.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>interface=<i>string</i>;</code></b><br>
-	  The network interface (or network device, eg <code>&quot;eth0&quot;</code>) for the <code>uptest=if</code> option.
+	  The network interface (or network device, e.g. <code>&quot;eth0&quot;</code>) for the <code>uptest=if</code> option.
 	  Must be specified if <code>uptest=if</code> is given.
 	</td>
       </tr>
@@ -1349,7 +1353,7 @@
 	  Timeouts specified in the configuration file are only treated as the
 	  minimum period of time to wait for a reply. A queries to a remote
 	  server are not canceled until a useful reply has been received, or all
-	  the other queries have timed out out or failed.<br>
+	  the other queries have timed out or failed.<br>
 	  If you have also set the global timeout option, you may consider setting a fairly small value here.
 	  See the explanation of the timeout option in the <a href="#globaltimeout"><code>global</code></a>
 	  section for what that means.
@@ -1363,7 +1367,7 @@
 	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the cached records are not purged 
 	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
 	  Instead, they are still served if they cannot succesfully be
-	  updated (eg. because all servers are down).       
+	  updated (e.g. because all servers are down).       
 	</td>
       </tr>
       <tr>
@@ -1387,7 +1391,7 @@
 	  Negative caching is only effective with lean_query activated. <br>
 	  Some buggy name servers may not deliver CNAME records when not asked for
 	  all records. I do not know if such servers are around, but if you have
-	  trouble resolving certain hostnames, try turning this option off.<br>
+	  trouble resolving certain host names, try turning this option off.<br>
 	  A last note: If you use multiple pdnsd's that access each other, turning
 	  this option on is probably a big win.<br>
 	  This on by default.
@@ -1432,7 +1436,9 @@
 	  specified in a section are root servers. A root server will typically only give
 	  the name servers for the top-level domain in its reply. Setting <code>root_server=on</code>
 	  will cause pdnsd to try to use cached information about top-level domains to reduce to number
-	  of queries to root servers, making the resolving of new names more efficient.<br>
+	  of queries to root servers, making the resolving of new names more efficient.
+	  You can get a list of available root servers by running the command
+	  <code>"dig&nbsp;-t&nbsp;ns&nbsp;."</code>.<br>
 	  This option is also necessary if you use the <a href="#delegationonly"><code>delegation_only</code></a> option.<br>
 	  Default is off.
 	</td>
@@ -1453,7 +1459,7 @@
 	   will be used only  for fully qualified domain names
 	   (i.e. the name has at least one dot in-between).<br>
 	   If no server is available for a queried domain, pdnsd will return an error message
-	   to the client that usually will stop the clients attempts to resolve a specific
+	   to the client that usually will stop the client's attempts to resolve a specific
 	   domain from this server (the libc resolver will e.g. return an error to the application that
 	   tried to resolve the domain if no other servers are available in the <code>resolv.conf</code>). 
 	   This may be of use sometimes.<br>
@@ -1507,7 +1513,7 @@
     <h3>2.1.3 <a name="rrsection"><code>rr</code> Section</a></h3>
     Every rr section specifies a dns resource record that is stored locally. It
     allows you to specify own dns records that are served by pdnsd in a limited way.
-    Only A, PTR, MX, CNAME, NS and SOA records are implemented.<br>
+    Only A, PTR, CNAME, MX, NS and SOA records are implemented.<br>
     This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
     and localhost. (and perhaps even one or two hosts) without having to start an
     extra named if your cached name servers do not serve those records.
@@ -1582,15 +1588,16 @@
 	  <b><code>reverse=(on|off);</code></b><br>
 	  <em>New in version 1.2:</em> If you want a locally defined name to resolve to a numeric address
 	  and vice versa, you can achieve this by setting reverse=on before defining the A record
-	  (see below). The alternative is to define a seperate PTR record, but you will
-	  probably find this option much more convenient.
+	  (see below). The alternative is to define a separate PTR record, but you will
+	  probably find this option much more convenient.<br>
+	  The default is off.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>a=<i>string</i>;</code></b><br>
 	  Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
-	  this address for the hostname given in the name option.
+	  this address for the host name given in the name option.
 	</td>
       </tr>
       <tr>
@@ -1598,7 +1605,7 @@
 	  <b><code>ptr=<i>string</i>;</code></b><br>
 	  Defines a PTR (domain name pointer) record. The argument is a host name in 
 	  dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
-	  you want to resolve the adress 127.0.0.1 into localhost, and localhost into 127.0.0.1, you need something 
+	  you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something 
 	  like the following sections:<br>
 	  <pre>
     rr {
@@ -1617,11 +1624,11 @@
 	  Note that you can get the same effect by specifying only the first <code>rr</code> section
 	  with <code>reverse=on</code>.<br>
 	  There is something special about the name in the second section:
-	  when a resolver wants to get a hostname from an internet address,
-	  it composes an adress that is built of the IP address in reverse byte order 
+	  when a resolver wants to get a host name from an internet address,
+	  it composes an address that is built of the IP address in reverse byte order 
 	  (<code>1.0.0.127</code> instead of <code>127.0.0.1</code>) where each byte of the adress written 
 	  as number constitutes a sub-domain under the domain <code>in-addr.arpa.</code> <br>
-	  So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (eg <code>1.2.3.4</code>),
+	  So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (e.g. <code>1.2.3.4</code>),
 	  reverse the byte order (<code>4.3.2.1</code>) and append in-addr.arpa. (<code>4.3.2.1.in-addr.arpa.</code>) 
 	  Then, define an <code>rr</code> section giving this address as <code>name</code> and the domain name corresponding to
 	  that ip in the <code>ptr</code> option.
@@ -1681,7 +1688,7 @@
       <tr>
 	<td>
 	  <b><code>soa=<i>string</i>,<i>string</i>,<i>number</i>,<i>number</i>,<i>number</i>,<i>number</i>,<i>number</i>;</code></b><br>
-	  This defines a soa (record source information) record. The first string is the 
+	  This defines a soa (start of authority) record. The first string is the 
 	  domain name of the server and should be equal to the name you specified as 
 	  owner. <br>
 	  The second string specifies the email address of the maintainer of the name 
@@ -1763,7 +1770,7 @@
 	  The RR types are specified using their official names from the RFC's in capitals,
 	  e.g. <code>A</code>, <code>CNAME</code>, <code>NS</code>, <code>PTR</code>, <code>MX</code>, 
 	  <code>AAAA</code>, ...<br>
-	  The command <code>pdnsd-ctl list-rrtypes</code> will give you a complete list
+	  The command <code>pdnsd-ctl&nbsp;list-rrtypes</code> will give you a complete list
 	  of those types. <a href="#pdnsdctl"><code>pdnsd-ctl</code></a> is built along with pdnsd
 	  and will be installed in the same directory as the pdnsd binary during <code>make install</code>.
 	</td>
@@ -1859,12 +1866,12 @@
       <tr>
 	<td>help</td>
 	<td></td>
-	<td>print a command summary.</td>
+	<td>Print a command summary.</td>
       </tr>
       <tr>
 	<td>version</td>
 	<td></td>
-	<td>print version info</td>
+	<td>Print version info.</td>
       </tr>
       <tr>
 	<td>status</td>
@@ -1987,7 +1994,7 @@
 	  Reload pdnsd's configuration file.<br>
 	  The config file must be owned by the uid that pdnsd had when it was
 	  started, and be readable by pdnsd's <code>run_as</code> uid. If no file name is
-	  specified, the config file used at start up is reloaded.<br>
+	  specified, the config file used at start-up is reloaded.<br>
 	  Note that some configuration changes, like the port or IP address pdnsd listens on,
 	  cannot be made this way and you will receive an error message.
 	  In these cases, you will have to restart pdnsd instead.
@@ -2013,7 +2020,7 @@
 	  If <i>name</i> is not specified, information about all the names in the cache will
 	  be printed.<br>
 	  For each RR record the time and date that this record has been added to the cache
-	  will be printed in the form mm/dd HH:MM:SS (locally defined records are printed without a timestamp).
+	  will be printed in the form mm/dd HH:MM:SS (locally defined records are printed without a time stamp).
 	  After that the type of record is printed with the data. For the more common types
 	  of RR records the data will be printed in human readable form, the remaining ones in a
 	  hexadecimal representation.<br>
@@ -2021,7 +2028,7 @@
 	  Note that if you pipe the output of this command through an application that
 	  reads only part of the output and then blocks (such as <code>more</code> or <code>less</code>),
 	  pdnsd will not be able to add new entries to the cache until the pipe is closed.
-	  It is preferable to capture the output in a file in that case.
+	  It is preferable to capture the output in a file in such a case.
 	</td>
       </tr>
       <tr>
@@ -2216,7 +2223,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 03 Oct 2004 by Paul Rombouts</i>
+      <i>Last revised: 10 Oct 2004 by Paul Rombouts</i>
     </p>
   </body>
 </html>

@@ -76,7 +76,7 @@
 2004-08-10  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/hash.c,src/cache.c,src/dns_query.c,src/dns_answer.c
-	Sampo Lehtinen has remarked that pdnsd sometimes fails to resolve classless
+	Sampo Lehtinen has remarked that pdnsd sometimes failed to resolve classless
 	reversed-delegated IP addresses, and that this has something to do with the fact
 	that pdnsd did not accept '/' characters in domain names. After reading Sampo's
 	and Thomas' remarks, and also rfc2317 and some of the rfc's referenced in rfc2317,
@@ -127,8 +127,8 @@
 	* src/cache.h,src/cache.c,src/dns_query.c,src/conf-parser.c
 	New option for "server" sections in the config file: root_server=on/off.
 	In case a server section contains only addresses of root servers, which
-	only give the nameservers of top level domains in their reply, setting
-	root_server=on will enable certain optimizations. This involves using
+	usually only give the nameservers of top level domains in their reply,
+	setting root_server=on will enable certain optimizations. This involves using
 	cached information to reduce queries to the root servers, thus speeding up
 	the resolving of new names. This option is also necessary to make the
 	delegation_only option work in combination with root servers.

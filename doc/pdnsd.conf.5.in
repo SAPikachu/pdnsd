@@ -15,6 +15,7 @@
 .TH PDNSD.CONF 5 "Oct 2004" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
+.hw config
 .SH DESCRIPTION
 .PP
 This manual page describes the layout of the
@@ -100,9 +101,10 @@ If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
 it will automatically be mapped to an IPv6 address.
 .br
 \fINew in version 1.2:\fP You may also give the name of an interface
-such as "lo" or "eth0" here, instead of an IP address.
+such as "lo" or "eth0" here, instead of an IP address
+(Linux only).
 pdnsd will not bind to the interface name, but will look up the address of the
-interface at start up and listen on that address. If the address of the interface
+interface at start-up and listen on that address. If the address of the interface
 changes while pdnsd is running, pdnsd will not notice that. You will need to
 restart pdnsd in that case.
 .TP
@@ -147,7 +149,7 @@ domain. The preset is auth. This is normally the right thing, as some caching se
 behave strangely.
 .TP
 .B neg_domain_pol=(on|off|auth);
-This is analogue to neg_rrs_pol for whole domain negative caching. It should be
+This is analogue to neg_rrs_pol for whole domain negative caching. It should be safe
 to set this on, because I have not seen a caching server that will falsely claim that a
 domain does not exist.
 .br
@@ -228,13 +230,14 @@ even the IP addesses of the name servers can be changed. If you're not using pdn
 you want maximum security, you should not enable this option. It is disabled by default.
 .TP
 .B daemon=(on|off);
-This has the same effect as the -d command line option: the daemon mode enabled when
+This has the same effect as the -d command line option: the daemon mode is enabled when
 on is specified.
 .TP
 .B tcp_server=(on|off);
-tcp_server=on has the same effect as the --t or --tcp
+tcp_server=on has the same effect as the -t or --tcp
 command-line option: it enables TCP serving.
 Similarly, tcp_server=off is like the --notcp command-line option.
+.br
 Default is on.
 .TP
 .B pid_file=\fIstring\fP;
@@ -279,16 +282,18 @@ With this option, you can set a limit on the pdnsd threads that will be active s
 this number is exceeded, queries are queued and may be delayed some time.
 See also the procq_limit option.
 .br
-The default for this option are 40 query threads will be active (plus 3 to 6 threads that will always
-be present depending on your configuration).
+The default for this option is 40.
 .TP
 .B procq_limit=\fInumber\fP;
-When the query thread limit is exceeded, connection attempts to pdnsd will be queued. With this option,
-you can set the maximum queue length. If this length is also exceeded, the incoming queries will
-be dropped. That means that tcp connections will be closed and udp queries will just be dropped, which
+When the query thread limit proc_limit is exceeded, connection attempts to pdnsd will be queued.
+With this option, you can set the maximum queue length.
+If this length is also exceeded, the incoming queries will be dropped.
+That means that tcp connections will be closed and udp queries will just be dropped, which
 will probably cause the querying resolver to wait for an answer until it times out.
 .br
-See also the proc_limit option.
+See also the proc_limit option. A maximum of proc_limit+procq_limit
+query threads will exist at any one time (plus 3 to 6 threads that will always
+be present depending on your configuration).
 .br
 The default for this option is 60.
 .TP
@@ -321,7 +326,7 @@ After all, if we wait longer anyway, why not for more servers.
 See also the explanation of the global timeout option below.
 .br
 1 or 2 are good values for this option.
-The default is set using the --with-par-queries option to configure.
+The default is set at compile time using the --with-par-queries option to configure.
 .TP
 .B timeout=\fInumber\fP;
 This is the global timeout parameter (in seconds) for dns queries.
@@ -341,7 +346,7 @@ Default value is 0.
 .B randomize_recs=(on|off);
 If this option is turned on, pdnsd will randomly reorder the cached records of one type
 when creating an answer. This supports round-robin DNS schemes and increases fail
-safety for hosts with multiple IP addresses, so this is usually a good idea,
+safety for hosts with multiple IP addresses, so this is usually a good idea.
 .br
 On by default.
 .TP
@@ -397,13 +402,13 @@ Note that this only effects the parsing of IPv4 addresses listed after this opti
 The default is "::ffff.0.0.0.0".
 
 .SS server Section
-Each server section specifies a name server (or a set of name servers) that pdnsd should try to get 
-resource records or authoritative name server information from. The servers a 
+Each server section specifies a set of name servers that pdnsd should try to get 
+resource records or authoritative name server information from. The servers are
 queried in the order of their appearance (or parallel to a limited extend). 
 If one fails, the next one is taken and so on.
 .br
-You probably want to specify  the dns server in your LAN, the caching dns server
-of your internet provider or even one of the root servers using server records.
+You probably want to specify  the dns server in your LAN, the caching dns servers
+of your internet provider or even a list of root servers in one or more server sections.
 .br
 The supported options in this section are:
 
@@ -418,7 +423,7 @@ of a server section (see \fBip\fP option below) during run-time with
 the label must be unique.
 .TP
 .B ip=\fIstring\fP;
-Give the IP (the IP, \fInot\fP the hostname) of the server.
+Give the IP (the IP, \fInot\fP the host name) of the server.
 .br
 Multiple IP addresses can be given per server section.
 This can be done by entering multiple lines of the form ip=\fIstring\fP;
@@ -434,7 +439,7 @@ the pdnsd control utility.
 If pdnsd has been compiled with both IPv4 and IPv6 support, any IPv6 addresses you specify
 here will be skipped with a warning message, unless pdnsd is running in IPv6 mode.
 Thus, unless pdnsd was compiled to startup in IPv6 mode by default, you need to use the
-commmand-line option -6 or set run_ipv4=off
+command-line option -6 or set run_ipv4=off
 first (see global section) in order to ensure
 that IPv6 addresses are parsed correctly.
 .br
@@ -442,8 +447,8 @@ If pdnsd is running in IPv6 mode and you specify an IPv4 address here,
 it will automatically be mapped to an IPv6 address.
 .TP
 .B file=\fIstring\fP;
-\fINew in version 1.2:\fP This option allows you to give the name of a resolv.conf style file.
-Of the lines beginning with the nameserver keyword the second field will be parsed as an
+\fINew in version 1.2:\fP This option allows you to give the name of a resolv.conf-style file.
+Of the lines beginning with the nameserver keyword, the second field will be parsed as an
 IP address, as if it were specified with the ip= option. The remaining lines will be ignored.
 If the contents of the file changes while pdnsd is running, you can make pdnsd aware of the changes through the
 use of pdnsd\-ctl, the pdnsd control utility.
@@ -471,7 +476,7 @@ within the timeout, it is regarded to be unavailable until the next probe.
 .IP
 \(bu \fBif\fP: Check whether the interface (specified in the interface= option) is
 existent, up and running. This currently works for all "ordinary"
-network interfaces, interfaces that disappear when down (eg ppp?),
+network interfaces, interfaces that disappear when down (e.g. ppp?),
 and additionally for Linux isdn interfaces (as of kernel 2.2). Note that
 you need a /dev/isdninfo device file (major#45, minor#255), or the
 isdn uptest will always fail.
@@ -496,7 +501,7 @@ uptest_sh. The command is given with the uptest_cmd option (see below).
 For secuity issues, also see that entry.
 .IP
 \(bu \fBquery\fP: \fINew in version 1.2:\fP
-This works like the ping test, except it sends an empty dns query to the remote server.
+This works like the ping test, except it sends an empty DNS query to the remote server.
 If the server sends valid response back within the timeout period (except SERVFAIL),
 it will be regarded as available.
 This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
@@ -512,7 +517,7 @@ since ping or query will send packets
 in the specified interval and the interface will thus frequently dial!
 .TP
 .B ping_timeout=\fInumber\fP;
-Sets the timeout for the ping test in tenth of seconds. The default is 600.
+Sets the timeout for the ping test in tenth of seconds. The default is 600 (one minute).
 .TP
 .B ping_ip=\fIstring\fP;
 The ip for the ping test. The default is the ip of the name server.
@@ -542,28 +547,29 @@ be installed as setuid or setgid.\fP
 The command is executed using /bin/sh, so you should be able to use
 shell builtin commands.
 .TP
-.B interval=\fInumber\fP;
-Sets the interval for the server-up-test in seconds. The default is 
+.B interval=(\fInumber\fP|onquery);
+Sets the interval for the server up-test in seconds. The default is 
 900; however, a test is forced when a query times out. The interval
 timeout is reset then.
 .br
 If you specify onquery instead of a timeout, the interface will be
 tested before every query. This is to prevent automatically dialling
 interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
-used in connection with a interface testing uptest ;-) 
+used in connection with an interface-testing uptest ;-) 
 .br
 Note that using uptest=exec, you might run into performance problems
 on slow machines when you use that option.
-DON'T use this option with ping, as it may cause delays if the server
-does not answer (btw, it doesn't make sense anyway).
-Note also that using that option is no guarantee that the interface
+DON'T use onquery with uptest=ping or
+uptest=query, as it may cause delays if the server does not answer
+(btw, it doesn't make sense anyway).
+Note also that using onquery is no guarantee that the interface
 will not be used. When another (reachable) dns server tells pdnsd
 to query a third dns server for data, pdnsd will do that and has 
 no means of checking whether this will dial up the interface or not.
-This however should be a rare configuration.
+This however should be a rare situation.
 .TP
 .B interface=\fIstring\fP;
-The network interface (or network device, eg "eth0") for the uptest=if option.
+The network interface (or network device, e.g. "eth0") for the uptest=if option.
 Must be specified if uptest=if is given.
 .TP
 .B device=\fIstring\fP;
@@ -579,7 +585,7 @@ Set the timeout for the dns query in seconds. The default is 120. You probably w
 Timeouts specified in the configuration file are only treated as the
 minimum period of time to wait for a reply. A queries to a remote
 server are not canceled until a useful reply has been received, or all
-the other queries have timed out out or failed.
+the other queries have timed out or failed.
 .br
 If you have also set the global timeout option, you may consider setting a fairly small value here.
 See the explanation of the timeout option in the global
@@ -591,7 +597,7 @@ specifies how long the fetched data may be cached until it needs to be
 reloaded. If purge_cache is set to off, the cached records are not purged 
 (unless the cache size would be exceeded, in this case the oldest records are purged). 
 Instead, they are still served if they cannot succesfully be
-updated (eg. because all servers are down).       
+updated (e.g. because all servers are down).       
 .TP
 .B caching=(on|off);
 Specifies if caching shall be performed for this server at all. Default is
@@ -611,7 +617,7 @@ Negative caching is only effective with lean_query activated.
 .br
 Some buggy name servers may not deliver CNAME records when not asked for
 all records. I do not know if such servers are around, but if you have
-trouble resolving certain hostnames, try turning this option off.
+trouble resolving certain host names, try turning this option off.
 .br
 A last note: If you use multiple pdnsd's that access each other, turning
 this option on is probably a big win.
@@ -650,6 +656,8 @@ specified in a section are root servers. A root server will typically only give
 the name servers for the top-level domain in its reply. Setting root_server=on
 will cause pdnsd to try to use cached information about top-level domains to reduce to number
 of queries to root servers, making the resolving of new names more efficient.
+You can get a list of available root servers by running the command
+"dig\ -t\ ns\ .".
 .br
 This option is also necessary if you use the delegation_only option.
 .br
@@ -670,7 +678,7 @@ will be used only  for fully qualified domain names
 (i.e. the name has at least one dot in-between).
 .br
 If no server is available for a queried domain, pdnsd will return an error message
-to the client that usually will stop the clients attempts to resolve a specific
+to the client that usually will stop the client's attempts to resolve a specific
 domain from this server (the libc resolver will e.g. return an error to the application that
 tried to resolve the domain if no other servers are available in the resolv.conf). 
 This may be of use sometimes.
@@ -728,7 +736,7 @@ exclude=".foo",".bar",".my.dom";
 .SS rr Section
 Every rr section specifies a dns resource record that is stored locally. It
 allows you to specify own dns records that are served by pdnsd in a limited way.
-Only A, PTR, MX, CNAME, NS and SOA records are implemented.
+Only A, PTR, CNAME, MX, NS and SOA records are implemented.
 .br
 This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
 and localhost. (and perhaps even one or two hosts) without having to start an
@@ -802,17 +810,19 @@ Please note that this only has an effect if it precedes the name option!
 .B reverse=(on|off);
 \fINew in version 1.2:\fP If you want a locally defined name to resolve to a numeric address
 and vice versa, you can achieve this by setting reverse=on before defining the A record
-(see below). The alternative is to define a seperate PTR record, but you will
+(see below). The alternative is to define a separate PTR record, but you will
 probably find this option much more convenient.
+.br
+The default is off.
 .TP
 .B a=\fIstring\fP;
 Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
-this address for the hostname given in the name option.
+this address for the host name given in the name option.
 .TP
 .B ptr=\fIstring\fP;
 Defines a PTR (domain name pointer) record. The argument is a host name in 
 dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
-you want to resolve the adress 127.0.0.1 into localhost, and localhost into 127.0.0.1, you need something 
+you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something 
 like the following sections:
 .br
 .DS L
@@ -836,12 +846,12 @@ Note that you can get the same effect by specifying only the first rr section
 with reverse=on.
 .br
 There is something special about the name in the second section:
-when a resolver wants to get a hostname from an internet address,
-it composes an adress that is built of the IP address in reverse byte order 
+when a resolver wants to get a host name from an internet address,
+it composes an address that is built of the IP address in reverse byte order 
 (1.0.0.127 instead of 127.0.0.1) where each byte of the adress written 
 as number constitutes a sub-domain under the domain in-addr.arpa. 
 .br
-So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (eg 1.2.3.4),
+So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (e.g. 1.2.3.4),
 reverse the byte order (4.3.2.1) and append in-addr.arpa. (4.3.2.1.in-addr.arpa.) 
 Then, define an rr section giving this address as name and the domain name corresponding to
 that ip in the ptr option.
@@ -902,7 +912,7 @@ before name= (sorry about that).
 Apart from greater consistency, the advantage is that you can now specify as many NS records as you like (including zero).
 .TP
 .B soa=\fIstring\fP,\fIstring\fP,\fInumber\fP,\fInumber\fP,\fInumber\fP,\fInumber\fP,\fInumber\fP;
-This defines a soa (record source information) record. The first string is the 
+This defines a soa (start of authority) record. The first string is the 
 domain name of the server and should be equal to the name you specified as 
 owner. 
 .br
@@ -989,7 +999,7 @@ The RR types are specified using their official names from the RFC's in capitals
 e.g. A, CNAME, NS, PTR, MX, 
 AAAA, ...
 .br
-The command pdnsd\-ctl list-rrtypes will give you a complete list
+The command pdnsd\-ctl\ list\-rrtypes will give you a complete list
 of those types. pdnsd\-ctl is built along with pdnsd
 and will be installed in the same directory as the pdnsd binary during make install.
 
@@ -1079,4 +1089,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 03 Oct 2004 by Paul Rombouts
+Last revised: 10 Oct 2004 by Paul Rombouts

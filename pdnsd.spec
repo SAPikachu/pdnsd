@@ -23,12 +23,12 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.1.12
+Version: 1.2
 Release: par
 License: GPL
 Group:  Daemons
-Source: %{name}-%{version}-%{release}.tar.gz
-URL: http://home.t-online.de/home/Moestl/
+Source: http://www.phys.uu.nl/~rombouts/pdnsd/releases/%{name}-%{version}-%{release}.tar.gz
+URL: http://www.phys.uu.nl/~rombouts/pdnsd.html
 Vendor: Thomas Moestl
 Packager:  Paul A. Rombouts <p.a.rombouts@home.nl>
 Prefix: %{_prefix} 
@@ -39,7 +39,8 @@ pdnsd is a proxy DNS daemon with permanent (disk-)cache and the ability
 to serve local records. It is designed to detect network outages or hangups
 and to prevent DNS-dependent applications like Netscape Navigator from hanging.
 
-This is a customized version with modifications made by Paul A. Rombouts.
+The original author of pdnsd is Thomas Moestl, but pdnsd is no longer maintained
+by him. This is an extensively revised version by Paul A. Rombouts.
 For a description of the changes see http://www.phys.uu.nl/~rombouts/pdnsd.html
 and the file README.par in %{_docdir}/%{name}-%{version}
 

@@ -1,4 +1,4 @@
-.TH PDNSD 8 "May 2004" "pdnsd @VERSION@" "System Administration Commands"
+.TH PDNSD 8 "Oct 2004" "pdnsd @VERSION@" "System Administration Commands"
 
 .SH NAME
 \fBpdnsd\fP \- dns proxy daemon
@@ -16,7 +16,7 @@ source or in a standard documentation directory, typically
 .SH DESCRIPTION
 .PP
 \fBpdnsd\fP is a IPv6 capable proxy domain name server (DNS) which
-saves contents of its DNS cache to the disk on exit.
+saves the contents of its DNS cache to the disk on exit.
 
 .SH OPTIONS
 
@@ -114,8 +114,8 @@ modifying \fB/etc/resolv.conf\fP.
 
 .IP
 2. Tell \fBpdnsd\fP to use an authentic source for DNS records, by
-including the IP address of a DNS server, usually your ISP's DNS
-server, in \fB@sysconfdir@/pdnsd.conf\fP.
+including the IP addresses of one or more DNS servers, usually your
+ISP's DNS servers, in \fB@sysconfdir@/pdnsd.conf\fP.
 .PP
 For this, put the following line in your \fB/etc/resolv.conf\fP
 .PP
@@ -156,7 +156,7 @@ man page for all the possible options and their exact meaning.
 .PP
 If you use a dial up connection, remember that ppp scripts usually
 replace \fB/etc/resolv.conf\fP when connection with the ISP is
-established.  So, you need to configure ppp (or whatever you use to
+established.  You need to configure ppp (or whatever you use to
 establish a connection) so that \fB/etc/resolv.conf\fP is not replaced
 every time a connection is established. Read the documentation for the
 scripts run when your network comes up.
@@ -300,7 +300,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too. 
 .PP
-Last revised: 2 Oct 2004 by Paul Rombouts.
+Last revised: 10 Oct 2004 by Paul Rombouts.
 
 .SH COPYRIGHT
 

@@ -24,7 +24,7 @@ This is only necessary if the directory differs from the default specified
 at compile time.
 .TP
 \fB\-q\fP
-Be quiet unless output is specified by command or something goes wrong.
+Be quiet unless output is specified by the command or something goes wrong.
 .SH "COMMANDS"
 .TP
 \fBhelp\fP
@@ -127,7 +127,7 @@ Reload pdnsd's configuration file.
 .br
 The config file must be owned by the uid that pdnsd had when it was started,
 and be readable by pdnsd's run_as uid.
-If no file name is specified, the config file used at start up is reloaded.
+If no file name is specified, the config file used at start-up is reloaded.
 Note that some configuration changes, like the port or IP address pdnsd listens on,
 cannot be made this way and you will receive an error message.
 In these cases, you will have to restart pdnsd instead.
@@ -157,7 +157,7 @@ If you pipe the output of \fBdump\fP command through an application that
 reads only part of the output and then blocks (such as more or less),
 pdnsd threads trying to add new entries to the cache will be suspended
 until the pipe is closed.
-It is preferable to capture the output in a file in that case.
+It is preferable to capture the output in a file in such a case.
 .br
 Report any remaining bugs to the authors.
 .SH "AUTHORS"
@@ -173,7 +173,7 @@ Paul Rombouts
 .UE
 (for versions 1.1.8b1\-par and later)
 .PP
-Last revised: 3 Oct 2004 by Paul Rombouts.
+Last revised: 10 Oct 2004 by Paul Rombouts.
 .SH "SEE ALSO"
 .PP
 .BR pdnsd (8),

@@ -9,7 +9,7 @@ has a rather large number of internal changes and also some new features, which
 I am rather pleased with, even if I say so myself. I think the changes are
 significant enough to warrant increasing the minor version number from 1.1 to
 1.2. The differences between my previous "official" release 1.1.11 and Thomas'
-last release 1.1.7a are described in my previous REAME, which I have renamed
+last release 1.1.7a are described in my previous README, which I have renamed
 REAME.par.old. In this README I restrict myself to describing changes between
 1.1.11 and 1.2.
 
@@ -19,7 +19,7 @@ version because the (compressed) patch file is barely smaller than the
 (compressed) tar archive.
 
 Here follows a list of some of changes in version 1.2 from a user's perspective.
-For a more technical description of some the changes in the code see the ChangeLog.
+For a more technical description of some of the changes in the code see the ChangeLog.
 For a short history about recent releases have a look at doc/html/index.html.
 
 - First of all, two potentially rather nasty bugs have been fixed in the code
@@ -29,14 +29,73 @@ For a short history about recent releases have a look at doc/html/index.html.
   statements, which could cause pdnsd to abort in a controlled fashion, but
   completely unnecessarily.
 
-- Sampo Lehtinen has remarked that pdnsd sometimes fails to resolve classless
+- Sampo Lehtinen has remarked that pdnsd sometimes failed to resolve classless
   reversed-delegated IP addresses, and that this has something to do with the
   fact that pdnsd didn't accept '/' characters in domain names. After reading
-  some of the relevant RFC's I decided to remove all restrictions on the types
+  some of the relevant RFCs I decided to remove all restrictions on the types
   of characters that pdnsd accepts in domain names. Of course for most
-  applications, many characters don't make sense in domain names, but I feel
-  that it is the responsibility of the client applicaton to reject these, not
-  the proxy server.
+  applications, there are many characters which don't make sense in domain
+  names, but I feel that it is the responsibility of the client application to
+  reject these, not the proxy server.
+
+- At the suggestion of Dan Tihelka, I have expanded to the server_ip= option
+  to allow the name of an interface to be specified instead of an IP address.
+  Presently this works for Linux only. Can someone running pdnsd on *BSD
+  tell me if the code for getting the address of an interface is different
+  for Linux and BSD-type systems?
+
+- At the suggestion of Juliusz Chroboczek I've added an new server availability
+  test which can be specified with uptest=query. This can be useful as an
+  alternative to "uptest=ping" in case the remote server does not respond to
+  ICMP_ECHO requests at all, which unfortunately is quite common these days.
+  "uptest=query" causes pdnsd to send an empty query to remote name servers. Any
+  well-formed response (apart from SERVFAIL) within the timeout period will be
+  interpreted as a sign that the server is "up".
+
+- Instead of specifying the IP addresses of the name servers that pdnsd should
+  query in a server section of the config file, you may also specify a
+  resolv.conf-style file. Preferably this should not be /etc/resolv.conf. If the
+  contents of the resolv.conf type file changes while pdnsd is running, you can
+  make pdnsd aware of the changes with the "pdnsd-ctl config" command, see
+  below. Example:
+
+    server {
+	label=myisp;
+	file=/etc/ppp/resolv.conf;
+	timeout=10;
+    }
+
+- There is a new option for "server" sections in the config file:
+  root_server=on/off.
+  In case a server section contains only addresses of root servers, which
+  usually only give the name servers of top level domains in their reply,
+  setting root_server=on will enable certain optimizations. This involves using
+  cached information to reduce queries to the root servers, thus speeding up the
+  resolving of new names.
+
+- New option for "rr" sections in the config file: reverse=on/off.
+  If you want a locally defined name to resolve to a numeric address and vice
+  versa, you can now achieve this by setting reverse=on before defining the A
+  record, making it unnecessary to define a separate PTR record for the reverse
+  resolving.
+  Example:
+
+    rr {
+	name = localhost;
+	reverse = on;
+	a = 127.0.0.1;
+    }
+
+  has the same effect as:
+
+    rr {
+	name = localhost;
+	a = 127.0.0.1;
+    }
+    rr {
+	name = 1.0.0.127.in-addr.arpa;
+	ptr = localhost;
+    }
 
 - In rr sections it is now possible to specify a wildcard name, i.e. a name
   starting with the label *. The * in a wildcard can match one or more labels in
@@ -56,23 +115,16 @@ For a short history about recent releases have a look at doc/html/index.html.
 	a = 192.168.1.10;
     }
 
-- Instead of specifying the IP addresses of the name servers that pdnsd should
-  query in a server section of the config file, you may also specify a
-  resolv.conf type file. Preferably this should not be /etc/resolv.conf. If the
-  contents of the resolv.conf type file changes while pdnsd is running, you can
-  make pdnsd aware of the changes with the "pdnsd-ctl config" command, see
-  below. Example:
-
-    server {
-	label=myisp;
-	file=/etc/ppp/resolv.conf;
-	timeout=10;
-    }
+- There is a slight backwards compatibility problem which involves the name= and
+  owner= options in rr sections. The new version does not allow you to place
+  owner= before name=. On the other hand, you may now freely mix the owner
+  option with the a,ptr,cname,mx and soa options and define as many records of
+  this type as you like (including zero).
 
 - pdnsd-ctl has three new commands:
 
   config: Reloads pdnsd's configuration file. This is more efficient than
-  restarting pdnsd, and should not cause only noticable interuption in DNS
+  restarting pdnsd, and should not cause only noticeable interruption in DNS
   service. However, some types of configuration changes cannot be put into
   effect this way, and you will be prompted to restart pdnsd instead.
 
@@ -82,3 +134,17 @@ For a short history about recent releases have a look at doc/html/index.html.
 
   dump: Prints information about all the names stored in the cached. This is
   mainly useful for diagnostic purposes.
+
+- There is now a pdnsd.conf(5) man page, describing pdnsd's configuration file.
+  The man page has been generated from the html documentation using a customized
+  Perl script.
+
+
+The new features are described in greater detail in the manual doc/html/doc.html
+or doc/txt/manual.txt.
+
+Enjoy!
+
+If you have any questions about my version of pdnsd, you can send these
+to <p.a.rombouts@home.nl>. Questions about the original (unmaintained) pdnsd
+version should be sent to <tmoestl@gmx.net> or <t.moestl@tu-bs.de>.
