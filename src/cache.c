@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "../../ipvers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: cache.c,v 1.18 2001/03/13 00:26:28 tmm Exp $";
+static char rcsid[]="$Id: cache.c,v 1.19 2001/03/25 19:18:56 tmm Exp $";
 #endif
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
@@ -133,7 +133,7 @@ volatile int r_susp=0;
 
 /* This threshold is used to temporarily suspend r locking to give rw locking
  * a chance. */
-#define SUSP_THRESH (r_pend*0.5+2)
+#define SUSP_THRESH(r_pend) (r_pend*0.5+2)
 
 /*
  * This is set to 1 once the lock is intialized. This must happen before we get
@@ -169,7 +169,7 @@ static void lock_cache_r(void)
 	pthread_mutex_lock(&lock_mutex);
 	r_pend++;
 	do {
-		if (rw_pend>SUSP_THRESH)
+		if (rw_pend>SUSP_THRESH(r_pend))
 			r_susp=1;
 		if (!cache_w_lock && !r_susp) {
 			cache_r_lock++;
@@ -214,7 +214,7 @@ static void lock_cache_rw(void)
 			break;
 		}
 		/* This will unlock the mutex while sleeping and relock it before exit */
-		pthread_cond_wait(&r_cond, &lock_mutex);
+		pthread_cond_wait(&rw_cond, &lock_mutex);
 	} while (1);
 	pthread_mutex_unlock(&lock_mutex);
 }
@@ -225,10 +225,10 @@ static void unlock_cache_rw(void)
 		return;
 	pthread_mutex_lock(&lock_mutex);
 	cache_w_lock=0;
-	/* always reset r suspension (r locking code will set it again */
+	/* always reset r suspension (r locking code will set it again) */
 	r_susp=0;
 	/* wakeup threads waiting to read or write */
-	if (rw_pend>SUSP_THRESH)
+	if (rw_pend>SUSP_THRESH(r_pend))
 		pthread_cond_signal(&rw_cond); /* schedule another rw proc */
 	else
 		pthread_cond_broadcast(&r_cond); /* let 'em all read */
