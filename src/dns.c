@@ -1,5 +1,5 @@
 /* dns.c - Declarations for dns handling and generic dns functions
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
 #include "dns.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.12 2001/01/24 18:39:10 thomas Exp $";
+static char rcsid[]="$Id: dns.c,v 1.13 2001/01/24 19:47:01 thomas Exp $";
 #endif
 
 /* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),

@@ -1,5 +1,5 @@
 /* icmp.c - Server response tests using ICMP echo requests
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -54,7 +54,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.13 2001/01/16 22:30:00 thomas Exp $";
+static char rcsid[]="$Id: icmp.c,v 1.14 2001/01/24 19:47:01 thomas Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 5

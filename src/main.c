@@ -1,5 +1,5 @@
 /* main.c - Command line parsing, intialisation and server start
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -44,7 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.25 2001/01/15 22:52:55 thomas Exp $";
+static char rcsid[]="$Id: main.c,v 1.26 2001/01/24 19:47:01 thomas Exp $";
 #endif
 
 #ifdef DEBUG_YY

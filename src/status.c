@@ -1,5 +1,5 @@
 /* status.c - Allow control of a running server using a pipe
-   Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2000, 2001 Thomas Moestl
 
 This file is part of the pdnsd package.
 
@@ -38,7 +38,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.12 2001/01/24 18:39:10 thomas Exp $";
+static char rcsid[]="$Id: status.c,v 1.13 2001/01/24 19:47:01 thomas Exp $";
 #endif
 
 char sock_path[1024];
