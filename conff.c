@@ -129,7 +129,7 @@ void report_conf_stat(FILE *f)
 		}
 		fprintf(f,"\tforce cache purging: %i\n",servers[i].purge_cache);
 		fprintf(f,"\tserver is cached: %i\n",!servers[i].nocache);
-		fprintf(f,"\tlean query: %i\n",!servers[i].nocache);
+		fprintf(f,"\tlean query: %i\n",!servers[i].lean_query);
 		fprintf(f,"\tserver assumed available: %i\n",servers[i].is_up);
 	}
 }
