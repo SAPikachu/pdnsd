@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.29 2001/05/30 21:13:59 tmm Exp $";
+static char rcsid[]="$Id: status.c,v 1.30 2001/06/02 18:07:15 tmm Exp $";
 #endif
 
 char sock_path[MAXPATH];
@@ -55,7 +55,7 @@ void print_serr(int rs, char *msg)
 
 	cmd=htons(1);
 	write(rs,&cmd,sizeof(cmd));
-	fsprintf(rs,msg);
+	fsprintf(rs,"%s",msg);
 }
 
 /* Print an success msg socket */
@@ -251,7 +251,7 @@ void *status_thread (void *p)
 					break;
 				if ((cmd2=read_short(rs))<-1)	/* caching flags */
 					break;
-				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd2, cmd,errbuf,256))
+				if (read_hosts(fn,(unsigned char *)owner,ttl,cmd2, cmd,errbuf,sizeof(errbuf)))
 					print_succ(rs);
 				else
 					print_serr(rs,errbuf);

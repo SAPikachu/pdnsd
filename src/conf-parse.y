@@ -35,7 +35,7 @@ Boston, MA 02111-1307, USA.  */
 #include "helpers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conf-parse.y,v 1.34 2001/05/09 17:51:52 tmm Exp $";
+static char rcsid[]="$Id: conf-parse.y,v 1.35 2001/06/02 18:07:15 tmm Exp $";
 #endif
 
 dns_cent_t c_cent;
@@ -793,7 +793,7 @@ source_el:	OWNER '=' STRING ';'
 					YYERROR;
 				}
 				if (!read_hosts((char *)$3, c_owner, c_ttl, c_flags, c_aliases,errbuf,sizeof(errbuf)))
-					fprintf(stderr,errbuf);
+					fprintf(stderr,"%s\n",errbuf);
 			}
 		| SERVE_ALIASES '=' CONST ';'
 			{

@@ -56,7 +56,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.51 2001/05/30 21:04:15 tmm Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.52 2001/06/02 18:07:15 tmm Exp $";
 #endif
 
 /*
@@ -1070,7 +1070,7 @@ void *udp_answer_thread(void *data)
 		DEBUG_MSGC(", source address: %s\n", inet_ntoa(((udp_buf_t *)data)->pi.ai4));
 #  endif
 # else
-		DEBUG_MSGC("");
+		DEBUG_MSGC("\n");
 # endif
 	}
 #endif
@@ -1092,7 +1092,7 @@ void *udp_answer_thread(void *data)
 # if defined(SRC_ADDR_DISC)
 		DEBUG_MSGC(", source address: %s\n", inet_ntop(AF_INET6,&((udp_buf_t *)data)->pi.pi6.ipi6_addr,buf,ADDRSTR_MAXLEN));
 # else
-		DEBUG_MSG("");
+		DEBUG_MSGC("\n");
 # endif
 	}
 #endif
