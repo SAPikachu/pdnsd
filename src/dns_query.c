@@ -41,7 +41,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.24 2000/11/04 23:14:57 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.25 2000/11/05 23:08:35 thomas Exp $";
 #endif
 
 #if defined(NO_TCP_QUERIES) && M_PRESET!=UDP_ONLY
@@ -83,7 +83,7 @@ static int rr_to_cache(dns_cent_t *cent, time_t ttl, unsigned char *oname, int d
 			if (have_cached(buf)) {
 				return add_cache_rr_add(buf,ttl,queryts,flags,dlen,data,tp,serial);
 			} else {
-				if (init_cent(&ce, buf, 0, time(NULL), 0)) {
+				if (init_cent(&ce, buf, 0, queryts, 0)) {
 					if (add_cent_rr(&ce, ttl, queryts,flags, dlen, data, tp)) {
 						add_cache(ce);
 						free_cent(ce);
@@ -821,7 +821,8 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		    st->recvbuf->qr!=QR_RESP || 
 		    st->recvbuf->opcode!=OP_QUERY ||
 		    st->recvbuf->z1 || st->recvbuf->z2 ||
-		    (st->recvbuf->rcode!=RC_OK && !(st->hdr->rd && st->recvbuf->rcode==RC_NOTSUPP))) {
+		    (st->recvbuf->rcode!=RC_OK && st->recvbuf->rcode!=RC_NAMEERR && 
+		     !(st->hdr->rd && st->recvbuf->rcode==RC_NOTSUPP))) {
 			free(st->hdr);
 			rv=st->recvbuf->rcode;
 			free(st->recvbuf);
@@ -916,10 +917,30 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 		free(st->recvbuf);
 		return RC_SERVFAIL; /* mock error code */
 	}
-	if (!init_cent(*ent,name, 0, time(NULL), 0)) {
+
+	/* negative cacheing for domains */
+	if (st->recvbuf->rcode==RC_NAMEERR) {
+		DEBUG_MSG3("Server %s returned error code: %s\n", socka2str(st->sin,buf,ADDRSTR_MAXLEN),get_ename(rv));
+		/* We did not get what we wanted. Cache accoding to policy */
+		if (global.neg_domain_pol==C_ON || (global.neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
+			if (!init_cent(*ent,name, DF_NEGATIVE, queryts, global.neg_ttl)) {
+				free(*ent);
+				return RC_SERVFAIL; /* mock error code */
+			}
+			free(st->recvbuf);
+			return RC_OK;
+		} else {
+			free(st->recvbuf);
+			return RC_NAMEERR;
+		}
+	}
+
+	if (!init_cent(*ent,name, 0, queryts, 0)) {
+		free(*ent);
 		free(st->recvbuf);
 		return RC_SERVFAIL; /* mock error code */
 	}
+
 	/* By marking aa, we mean authoritative AND complete. */
 	if (st->qt==QT_ALL)
 		*aa=st->recvbuf->aa;
@@ -955,6 +976,20 @@ static int p_exec_query(dns_cent_t **ent, unsigned char *rrn, unsigned char *nam
 			return RC_SERVFAIL;
 		}
 	}
+
+	/* Negative cacheing of rr sets */
+	if (st->qt>=T_MIN && st->qt<=T_MAX && !(*ent)->rr[st->qt-T_MIN]) {
+		/* We did not get what we wanted. Cache accoding to policy */
+		if (global.neg_rrs_pol==C_ON || (global.neg_rrs_pol==C_AUTH && st->recvbuf->aa)) {
+			if (!add_cent_rrset(*ent,  st->qt, global.neg_ttl, queryts, CF_NEGATIVE|st->flags, serial)) {
+			    free_cent(**ent);
+			    free(*ent);
+			    free(st->recvbuf);
+			    return RC_SERVFAIL;
+			}
+		}
+	}
+
 	free(st->recvbuf);
 	return RC_OK;
 }
@@ -1469,6 +1504,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	int timed=0;
 	time_t ttl=0;
 	int auth=0;
+	int neg=0;
 	int i,nopurge=0;
 	short flags=0;
 
@@ -1477,72 +1513,82 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		DEBUG_MSG1("Record found in cache.\n");
 		auth=0;
 		nopurge=0;
-		for (i=0;i<T_MAX;i++) {
-			if ((*cached)->rr[i]) {
-				if (!((*cached)->rr[i]->flags&CF_NOAUTH) && !((*cached)->rr[i]->flags&CF_ADDITIONAL)) {
-					auth=1;
-				}
-				if ((*cached)->rr[i]->flags&CF_NOPURGE) {
-					nopurge=1;
-				}
-				if (auth && nopurge)
-					break;
+		if ((*cached)->flags&DF_NEGATIVE) {
+			if ((*cached)->ts+(*cached)->ttl<=queryts+CACHE_LAT) {
+				neg=1;
+			} else {
+				need_req=1;
 			}
-		}
-		if ((*cached)->rr[T_CNAME-T_MIN]) {
-			flags=(*cached)->rr[T_CNAME-T_MIN]->flags;
-			ttl=(*cached)->rr[T_CNAME-T_MIN]->ts+(*cached)->rr[T_CNAME-T_MIN]->ttl;
-		} else if (thint==QT_ALL) {
-			for (i=0;i<T_NUM;i++) {
+		} else {
+			for (i=0;i<T_MAX;i++) {
 				if ((*cached)->rr[i]) {
-					flags|=(*cached)->rr[i]->flags;
-					if (ttl<(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl )
-						ttl=(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl;
+					if (!((*cached)->rr[i]->flags&CF_NOAUTH) && !((*cached)->rr[i]->flags&CF_ADDITIONAL)) {
+						auth=1;
+					}
+					if ((*cached)->rr[i]->flags&CF_NOPURGE) {
+						nopurge=1;
+				}
+					if (auth && nopurge)
+						break;
 				}
 			}
-		} else if (thint==QT_MAILA) {
-			if ((*cached)->rr[T_MD-T_MIN]) {
-				flags|=(*cached)->rr[T_MD-T_MIN]->flags;
-				if (ttl<(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl )
-					ttl=(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl;
-			}
-			if ((*cached)->rr[T_MF-T_MIN]) {
-				flags|=(*cached)->rr[T_MF-T_MIN]->flags;
-				if (ttl<(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl )
-					ttl=(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl;
-			}
-		} else if (thint==QT_MAILB) {
-			if ((*cached)->rr[T_MG-T_MIN]) {
-				flags|=(*cached)->rr[T_MG-T_MIN]->flags;
-				if (ttl<(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl )
-					ttl=(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl;
-			}
-			if ((*cached)->rr[T_MB-T_MIN]) {
-				flags|=(*cached)->rr[T_MB-T_MIN]->flags;
-				if (ttl<(*cached)->rr[T_MB-T_MIN]->ts+(*cached)->rr[T_MB-T_MIN]->ttl )
+			if ((*cached)->rr[T_CNAME-T_MIN]) {
+				flags=(*cached)->rr[T_CNAME-T_MIN]->flags;
+				ttl=(*cached)->rr[T_CNAME-T_MIN]->ts+(*cached)->rr[T_CNAME-T_MIN]->ttl;
+			} else if (thint==QT_ALL) {
+				for (i=0;i<T_NUM;i++) {
+					if ((*cached)->rr[i]) {
+						flags|=(*cached)->rr[i]->flags;
+						if (ttl<(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl )
+							ttl=(*cached)->rr[i]->ts+(*cached)->rr[i]->ttl;
+					}
+				}
+			} else if (thint==QT_MAILA) {
+				if ((*cached)->rr[T_MD-T_MIN]) {
+					flags|=(*cached)->rr[T_MD-T_MIN]->flags;
+					if (ttl<(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl )
+						ttl=(*cached)->rr[T_MD-T_MIN]->ts+(*cached)->rr[T_MD-T_MIN]->ttl;
+				}
+				if ((*cached)->rr[T_MF-T_MIN]) {
+					flags|=(*cached)->rr[T_MF-T_MIN]->flags;
+					if (ttl<(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl )
+						ttl=(*cached)->rr[T_MF-T_MIN]->ts+(*cached)->rr[T_MF-T_MIN]->ttl;
+				}
+			} else if (thint==QT_MAILB) {
+				if ((*cached)->rr[T_MG-T_MIN]) {
+					flags|=(*cached)->rr[T_MG-T_MIN]->flags;
+					if (ttl<(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl )
+						ttl=(*cached)->rr[T_MG-T_MIN]->ts+(*cached)->rr[T_MG-T_MIN]->ttl;
+				}
+				if ((*cached)->rr[T_MB-T_MIN]) {
+					flags|=(*cached)->rr[T_MB-T_MIN]->flags;
+					if (ttl<(*cached)->rr[T_MB-T_MIN]->ts+(*cached)->rr[T_MB-T_MIN]->ttl )
 					ttl=(*cached)->rr[T_MB-T_MIN]->ts+(*cached)->rr[T_MB-T_MIN]->ttl;
-			}
-			if ((*cached)->rr[T_MR-T_MIN]) {
-				flags|=(*cached)->rr[T_MR-T_MIN]->flags;
-				if (ttl<(*cached)->rr[T_MR-T_MIN]->ts+(*cached)->rr[T_MR-T_MIN]->ttl )
+				}
+				if ((*cached)->rr[T_MR-T_MIN]) {
+					flags|=(*cached)->rr[T_MR-T_MIN]->flags;
+					if (ttl<(*cached)->rr[T_MR-T_MIN]->ts+(*cached)->rr[T_MR-T_MIN]->ttl )
 					ttl=(*cached)->rr[T_MR-T_MIN]->ts+(*cached)->rr[T_MR-T_MIN]->ttl;
+				}
+			} else if (thint>=T_MIN && thint<=T_MAX && (*cached)->rr[thint-T_MIN]) {
+				flags=(*cached)->rr[thint-T_MIN]->flags;
+				ttl=(*cached)->rr[thint-T_MIN]->ts+(*cached)->rr[thint-T_MIN]->ttl;
+				neg=(*cached)->rr[thint-T_MIN]->flags&CF_NEGATIVE && ttl-queryts+CACHE_LAT>=0;
 			}
-		} else if (thint>=T_MIN && thint<=T_MAX && (*cached)->rr[thint-T_MIN]) {
-			flags=(*cached)->rr[thint-T_MIN]->flags;
-			ttl=(*cached)->rr[thint-T_MIN]->ts+(*cached)->rr[thint-T_MIN]->ttl;
-		}
-		if (thint>=QT_MIN && thint<=QT_MAX  && !auth)
-			need_req=!(flags&CF_LOCAL);
-		else {
-			/*A CNAME as answer is also correct. */
+			if (thint>=QT_MIN && thint<=QT_MAX  && !auth)
+				need_req=!(flags&CF_LOCAL);
+			else {
+				/*A CNAME as answer is also correct. */
 /*			if (ttl==0 && !(*cached)->rr[T_CNAME-T_MIN])
-				need_req=!auth;
+			need_req=!auth;
 			else {*/
-				if (ttl-queryts+CACHE_LAT<=0)
+				if (ttl-queryts+CACHE_LAT<0)
 					timed=1;
 /*			}*/
+			}
 		}
-		DEBUG_MSG5("Requery decision: req=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,timed,flags,ttl-queryts);
+		DEBUG_MSG6("Requery decision: req=%i, neg=%i, timed=%i, flags=%i, ttl=%li\n",need_req!=0,
+			   neg,timed,flags,ttl-queryts);
 	}
 	/* update server records set onquery */
 	test_onquery();
@@ -1557,7 +1603,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 			return RC_SERVFAIL;
 		}
 	}
-	if (!(*cached) || need_req || (timed && !(flags&CF_LOCAL))) {
+	if (!(*cached) || need_req || neg || (timed && !(flags&CF_LOCAL))) {
 		bcached=*cached;
 		DEBUG_MSG1("Trying name servers.\n");
 		if (q) 
@@ -1587,5 +1633,7 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 	} else {
 		DEBUG_MSG1("Using cached record.\n");
 	}
+	if ((*cached)->flags&DF_NEGATIVE)
+		return RC_NAMEERR;
 	return RC_OK;
 }
