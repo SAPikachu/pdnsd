@@ -34,13 +34,17 @@ stop() {
 	echo -n 'Shutting down pdnsd: '
 	killproc pdnsd
 	local RETVAL=$?
-	# Wait until all threads have terminated.
-	local -i count=20
-	while [[ count -gt 0 ]] && pidof pdnsd > /dev/null
-	do
-	  usleep 200000
-	  let --count
-	done
+	case @threadlib@ in
+	    [Ll]inux[Tt]hreads*|lt*)
+		# Wait until all threads have terminated.
+		local -i count=20
+		while [[ count -gt 0 ]] && pidof pdnsd > /dev/null
+		do
+		  usleep 200000
+		  let --count
+		done
+		;;
+	esac
 	echo
 	if [ $RETVAL -eq 0 ]; then rm -f /var/lock/subsys/pdnsd; fi
 	return $RETVAL

@@ -305,7 +305,7 @@ int is_local_addr(pdnsd_a *a)
 	char *ad;
 	  
 
-	ifc.ifc_len=2048;
+	ifc.ifc_len=sizeof(buf);
 	ifc.ifc_buf=buf;
 	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
 		return 0;

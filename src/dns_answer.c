@@ -1,7 +1,7 @@
 /* dns_answer.c - Receive and process incoming dns queries.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -36,7 +36,9 @@ Boston, MA 02111-1307, USA.  */
 #include <pthread.h>
 #include <sys/uio.h>
 #include <sys/types.h>
+#ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
+#endif
 #include <sys/param.h>
 #include <netdb.h>
 #include <signal.h>
@@ -66,19 +68,21 @@ static char rcsid[]="$Id: dns_answer.c,v 1.60 2002/08/07 08:55:33 tmm Exp $";
  * Maximums of different message types are set.
  * Races do not really matter here, so no locks.
  */
-#define TCP_MAX_ERRS 5
-#define UDP_MAX_ERRS 5
-#define MEM_MAX_ERRS 5
-#define MISC_MAX_ERRS 5
+#define TCP_MAX_ERRS 10
+#define UDP_MAX_ERRS 10
+#define MEM_MAX_ERRS 10
+#define THRD_MAX_ERRS 10
+#define MISC_MAX_ERRS 10
 volatile unsigned long da_tcp_errs=0;
 volatile unsigned long da_udp_errs=0;
 volatile unsigned long da_mem_errs=0;
+volatile unsigned long da_thrd_errs=0;
 volatile unsigned long da_misc_errs=0;
 pthread_t tcps;
 pthread_t udps;
 volatile int procs=0;   /* active query processes */
 volatile int qprocs=0;  /* queued query processes */
-volatile int thrid_cnt=0;
+volatile unsigned thrid_cnt=0;
 pthread_mutex_t proc_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef SOCKET_LOCKING
@@ -646,6 +650,7 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 		     (qe->qtype!=QT_MAILB && qe->qtype!=QT_MAILA && qe->qtype!=QT_ALL)) ||
 		    (qe->qclass!=C_IN && qe->qclass!=QC_ALL))
 		{
+			DEBUG_MSG("Unsupported QTYPE or QCLASS.\n");
 			ans->rcode=RC_NOTSUPP;
 			return (unsigned char *)ans;
 		}
@@ -812,9 +817,6 @@ static int decode_query(unsigned char *data, long rlen, dlist *qp)
 	dlist q;
 	uint16_t qdcount=ntohs(hdr->qdcount);
 	
-	if (qdcount==0) 
-		return RC_FORMAT;
-	
 	q=NULL;
 	for (i=0;i<qdcount;i++) {
 		dns_queryel_t *qe;
@@ -910,22 +912,22 @@ static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 		res=RC_FORMAT;
 		goto error_reply;
 	}
-	if (hdr->qr==QR_RESP) {
-		DEBUG_MSG("Response, not query.\n");
+	if (hdr->qr!=QR_QUERY) {
+		DEBUG_MSG("The QR bit indicates this is a response, not a query.\n");
 		return NULL; /* RFC says: discard */
 	}
 	if (hdr->opcode!=OP_QUERY) {
-		DEBUG_MSG("No query.\n");
+		DEBUG_MSG("Not a standard query (opcode=%u).\n",hdr->opcode);
 		res=RC_NOTSUPP;
 		goto error_reply;
 	}
 	if (hdr->z1!=0 || hdr->z2!=0) {
-		DEBUG_MSG("Malformed query.\n");
+		DEBUG_MSG("Malformed query (nonzero Z bits).\n");
 		res=RC_FORMAT;
 		goto error_reply;
 	}
 	if (hdr->rcode!=RC_OK) {
-		DEBUG_MSG("Bad rcode.\n");
+		DEBUG_MSG("Bad rcode(%u).\n",hdr->rcode);
 		return NULL; /* discard (may cause error storms) */
 	}
 
@@ -936,14 +938,23 @@ static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 
 #if DEBUG>0
 	if (debug_p) {
-		dns_queryel_t *qe;
-		DEBUG_MSG("Questions are:\n");
-		for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
-			DEBUG_RHN_MSG("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
+		if(q) {
+			dns_queryel_t *qe;
+			DEBUG_MSG("Questions are:\n");
+			for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
+				DEBUG_RHN_MSG("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
+			}
+		}
+		else {
+			DEBUG_MSG("Query contains no questions.\n");
 		}
 	}
 #endif
 
+	if (!q) {
+		res=RC_FORMAT;
+		goto error_reply;
+	}
 	if (!(ans=(dns_hdr_t *)compose_answer(q, hdr, rlenp, udp))) {
 		/* An out of memory condition or similar could cause NULL output. Send failure notification */
 		dlist_free(q);
@@ -1003,7 +1014,7 @@ static void *udp_answer_thread(void *data)
 	long rlen=((udp_buf_t *)data)->len;
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
 	unsigned char *resp;
-	int thrid;
+	unsigned thrid;
 	pthread_cleanup_push(udp_answer_thread_cleanup, data);
 	THREAD_SIGINIT;
 
@@ -1021,13 +1032,19 @@ static void *udp_answer_thread(void *data)
 		usleep_r(50000);
 	}
 	procs++;
-	thrid=thrid_cnt++;
+	thrid= ++thrid_cnt;
 	pthread_mutex_unlock(&proc_lock);
 
-	if (pthread_setspecific(thrid_key, &thrid) != 0) {
-		log_error("pthread_setspecific failed.");
-		pdnsd_exit();
+#if DEBUG>0
+	if(debug_p) {
+		int err;
+		if ((err=pthread_setspecific(thrid_key, &thrid)) != 0) {
+			if(++da_misc_errs<=MISC_MAX_ERRS)
+				log_error("pthread_setspecific failed: %s",strerror(err));
+			/* pdnsd_exit(); */
+		}
 	}
+#endif
 
 	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
 		/*
@@ -1391,11 +1408,15 @@ void *udp_server_thread(void *dummy)
 		if (qlen>=0) {
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
+				int err;
 				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
 				buf->len=qlen;
-				if(pthread_create(&pt,&attr_detached,udp_answer_thread,(void *)buf)==0)
+				err=pthread_create(&pt,&attr_detached,udp_answer_thread,(void *)buf);
+				if(err==0)
 					continue;
+				if(++da_thrd_errs<=THRD_MAX_ERRS)
+					log_warn("pthread_create failed: %s",strerror(err));
 				/* If thread creation failed, free resources associated with it. */
 				pthread_mutex_lock(&proc_lock);
 				qprocs--;
@@ -1430,7 +1451,7 @@ static void *tcp_answer_thread(void *csock)
 {
 	/* XXX: This should be OK, the original must be (and is) aligned */
 	int sock=*((int *)csock);
-	int thrid;
+	unsigned thrid;
 
 	pthread_cleanup_push(tcp_answer_thread_cleanup, csock);
 	THREAD_SIGINIT;
@@ -1449,13 +1470,19 @@ static void *tcp_answer_thread(void *csock)
 		usleep_r(50000);
 	}
 	procs++;
-	thrid=thrid_cnt++;
+	thrid= ++thrid_cnt;
 	pthread_mutex_unlock(&proc_lock);
 
-	if (pthread_setspecific(thrid_key, &thrid) != 0) {
-		log_error("pthread_setspecific failed.");
-		pdnsd_exit();
+#if DEBUG>0
+	if(debug_p) {
+		int err;
+		if ((err=pthread_setspecific(thrid_key, &thrid)) != 0) {
+			if(++da_misc_errs<=MISC_MAX_ERRS)
+				log_error("pthread_setspecific failed: %s",strerror(err));
+			/* pdnsd_exit(); */
+		}
 	}
+#endif
 
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
 	 * the socket is closed by the other side or by tcp timeout. 
@@ -1686,10 +1713,14 @@ void *tcp_server_thread(void *p)
 			 */
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
+				int err;
 				qprocs++;
 				pthread_mutex_unlock(&proc_lock);
-				if(pthread_create(&pt,&attr_detached,tcp_answer_thread,(void *)csock)==0)
+				err=pthread_create(&pt,&attr_detached,tcp_answer_thread,(void *)csock);
+				if(err==0)
 					continue;
+				if(++da_thrd_errs<=THRD_MAX_ERRS)
+					log_warn("pthread_create failed: %s",strerror(err));
 				/* If thread creation failed, free resources associated with it. */
 				pthread_mutex_lock(&proc_lock);
 				qprocs--;

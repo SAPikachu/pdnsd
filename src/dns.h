@@ -27,6 +27,7 @@ Boston, MA 02111-1307, USA.  */
 
 #include <config.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <net/if.h>
 #include <sys/types.h>
 #include <inttypes.h>
@@ -35,14 +36,26 @@ Boston, MA 02111-1307, USA.  */
 #include "ipvers.h"
 
 #if (TARGET==TARGET_BSD)
-# if defined(_BIG_ENDIAN) && !defined(__BIG_ENDIAN)
-#  define __BIG_ENDIAN _BIG_ENDIAN
+# if !defined(__BIG_ENDIAN)
+#  if defined(_BIG_ENDIAN)
+#   define __BIG_ENDIAN _BIG_ENDIAN
+#  elif defined(BIG_ENDIAN)
+#   define __BIG_ENDIAN BIG_ENDIAN
+#  endif
 # endif
-# if defined(_LITTLE_ENDIAN) && !defined(__LITTLE_ENDIAN)
-#  define __LITTLE_ENDIAN _LITTLE_ENDIAN
+# if !defined(__LITTLE_ENDIAN)
+#  if defined(_LITTLE_ENDIAN)
+#   define __LITTLE_ENDIAN _LITTLE_ENDIAN
+#  elif defined(LITTLE_ENDIAN)
+#   define __LITTLE_ENDIAN LITTLE_ENDIAN
+#  endif
 # endif
-# if defined(_BYTE_ORDER) && !defined(__BYTE_ORDER)
-#  define __BYTE_ORDER _BYTE_ORDER
+# if !defined(__BYTE_ORDER)
+#  if defined(_BYTE_ORDER)
+#   define __BYTE_ORDER _BYTE_ORDER
+#  elif defined(BYTE_ORDER)
+#   define __BYTE_ORDER BYTE_ORDER
+#  endif
 # endif
 #endif
 
@@ -239,7 +252,7 @@ char *get_ename(int id);
 #endif
 
 #if DEBUG>=9
-void debug_dump_dns_msg(pdnsd_a *a, void *data, unsigned long len);
+void debug_dump_dns_msg(pdnsd_a *a, void *data, size_t len);
 #define DEBUG_DUMP_DNS_MSG(a,d,l) {if(debug_p && global.verbosity>=9) debug_dump_dns_msg(a,d,l);}
 #else
 #define DEBUG_DUMP_DNS_MSG(a,d,l)

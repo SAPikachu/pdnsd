@@ -1,7 +1,7 @@
 /* dns.c - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004,2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -45,33 +45,31 @@ static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
  */
 int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *sz, unsigned char *tgt, int *len)
 {
-	unsigned char lb;
-	unsigned offs;
-	unsigned char *lptr;
-	int hops=0;
-	int tpos=0;
+	int lb,offs;
+	int hops=0,tpos=0;
+	unsigned char *lptr=*src;
 	long osz=*sz;
 
-	lptr=*src;
+	if (*sz<=0)
+		goto name_outside_data;
+	if (lptr-msg>=msgsz)
+		goto name_outside_msg;
+
 	for(;;) {
-		if (*sz<=0)
-			return RC_TRUNC;
-		if (lptr-msg>=msgsz)
-			return RC_FORMAT;
 		(*sz)--;
 		lb=*lptr++;
 
 		if(lb>0x3f) {
  			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
-				return RC_FORMAT;
+				goto unsupported_lbl_bits;
 			if (*sz<=0)
-				return RC_TRUNC;
+				goto name_outside_data;
 			if (lptr-msg>=msgsz)
-				return RC_FORMAT;
+				goto name_outside_msg;
 			(*sz)--;
-			offs=(((unsigned int)lb&0x3f)<<8)|(*lptr);
+			offs=((lb&0x3f)<<8)|(*lptr);
 			if (offs>=msgsz) 
-				return RC_FORMAT;
+				goto offset_outside_msg;
 			lptr=msg+offs;
 			goto jumped;
 		}
@@ -79,16 +77,16 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 		if (lb==0)
 			break;
 
+		if (*sz<=lb)
+			goto name_outside_data;
+		if (lptr+lb-msg>=msgsz)
+			goto name_outside_msg;
 		if (tpos+lb>255) /* terminating null byte has to follow */
-			return RC_FORMAT;
+			goto name_buf_full;
+		(*sz) -= lb;
 		do {
-			if (*sz<=0)
-				return RC_TRUNC;
-			if (lptr-msg>=msgsz)
-				return RC_FORMAT;
 			/* if (!*lptr || *lptr=='.')
 				return RC_FORMAT; */
-			(*sz)--;
 			tgt[tpos++]=*lptr++;
 		} while(--lb);
 	}
@@ -101,14 +99,14 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 
 		while(lb>0x3f) {
  			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
-				return RC_FORMAT;
+				goto unsupported_lbl_bits;
 			if (lptr-msg>=msgsz)
-				return RC_FORMAT;
+				goto name_outside_msg;
 			if (++hops>255)
-				return RC_FORMAT;
-			offs=(((unsigned int)lb&0x3f)<<8)|(*lptr);
+				goto too_many_hops;
+			offs=((lb&0x3f)<<8)|(*lptr);
 			if (offs>=msgsz) 
-				return RC_FORMAT;
+				goto offset_outside_msg;
 			lptr=msg+offs;
 			lb=*lptr++;
 		}
@@ -116,8 +114,10 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 		if (lb==0)
 			break;
 
-		if (lptr+lb-msg>=msgsz || tpos+lb>255) /* terminating null byte has to follow */
-			return RC_FORMAT;
+		if (lptr+lb-msg>=msgsz)
+			goto name_outside_msg;
+		if(tpos+lb>255) /* terminating null byte has to follow */
+			goto name_buf_full;
 		do {
 			/* if (!*lptr || *lptr=='.')
 				return RC_FORMAT; */
@@ -128,6 +128,31 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 	*src+=osz-*sz;
 	if(len) *len=tpos;
 	return RC_OK;
+
+ name_outside_data:
+	DEBUG_MSG("decompress_name: compressed name extends outside data field.\n");
+	return RC_TRUNC;
+
+ name_outside_msg:
+	DEBUG_MSG("decompress_name: compressed name extends outside message.\n");
+	return RC_FORMAT;
+
+ unsupported_lbl_bits:
+	DEBUG_MSG(lb==0x41?"decompress_name: Bit-string labels not supported.\n":
+		  "decompress_name: unsupported label type.\n");
+	return RC_FORMAT;
+
+ offset_outside_msg:
+	DEBUG_MSG("decompress_name: offset points outside message.\n");
+	return RC_FORMAT;
+
+ name_buf_full:
+	DEBUG_MSG("decompress_name: decompressed name larger that 256 bytes.\n");
+	return RC_FORMAT;
+
+ too_many_hops:
+	DEBUG_MSG("decompress_name: too many offsets in compressed name.\n");
+	return RC_FORMAT;
 }
 
 #if 0
@@ -294,7 +319,7 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 			offs+=n;
 			if(offs>=256) return 0;
 		}
-		if(!strncp(buf+offs,"ip6.int.",256-offs))
+		if(!strncp(buf+offs,"ip6.arpa.",256-offs))
 			return 0;
 	}
 	else
@@ -488,17 +513,17 @@ char *get_ename(int id)
 #if DEBUG>=9
 /* Based on debug code contributed by Kiyo Kelvin Lee. */
 
-void debug_dump_dns_msg(pdnsd_a *a, void *data, unsigned long len)
+void debug_dump_dns_msg(pdnsd_a *a, void *data, size_t len)
 {
 	unsigned char *udata = (unsigned char *)data;
 #       define dmpchksz 16
 	char buf[dmpchksz*4+2];
-	unsigned long i, j, k, l;
+	size_t i, j, k, l;
 
 	if(a) {
 		DEBUG_PDNSDA_MSG("received data from %s\n", PDNSDA2STR(a));
 	}
-	DEBUG_MSG("pointer=%p len=%lu\n", udata, len);
+	DEBUG_MSG("pointer=%p len=%lu\n", udata, (unsigned long)len);
 
 	for (i = 0; i < len; i += dmpchksz) {
 		char *cp = buf;

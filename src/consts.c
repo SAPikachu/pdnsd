@@ -85,7 +85,7 @@ inline static int keyncmp(const char *key1, int len, const char *key2)
 {
 	int cmp=strncmp(key1,key2,len);
 	if(cmp) return cmp;
-	return len-strlen(key2);
+	return len-(int)(strlen(key2));
 }
 
 int binsearch_keyword(const char *name, int len, const namevalue_t dic[], int range)

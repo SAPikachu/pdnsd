@@ -308,7 +308,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE distribution cachedir def_id specbuild CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE RANLIB ac_ct_RANLIB CPP EGREP ALLOCA LIB@&t@OBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE distribution cachedir def_id specbuild threadlib CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE RANLIB ac_ct_RANLIB CPP EGREP ALLOCA LIB@&t@OBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -861,14 +861,14 @@ Optional Features:
   --disable-poll              Disable poll(2) and use select(2)
                               (default=enabled)
   --disable-new-rrs           Disable new DNS RR types, may cause problems
-			      with some resolvers
+                              with some resolvers
   --enable-strict-rfc2181     Enforce strict RFC 2181 compliance
   --enable-underscores        Allow _ in domain names
   --enable-hash-debug         Debug hash tables (warning: massive output)
   --enable-yy-debug           Debug config file parser
   --enable-rcsids             Enable RCS IDs in executables (default=disabled)
   --enable-tcp-subseq         Enable multiple dns querys using one
-			      tcp connection
+                              tcp connection
   --enable-specbuild          Only used when build pdnsd from spec files
   --disable-dependency-tracking Speeds up one-time builds
   --enable-dependency-tracking  Do not reject slow dependency extractors
@@ -879,25 +879,28 @@ Optional Packages:
   --with-distribution=distro  Specify target distribution (default=Generic;
                               others: RedHat, SuSE, Debian)
   --with-target=platform      Change compilation target platform (default: 
-			      autodetect; others: Linux, BSD, Cygwin)
+                              autodetect; others: Linux, BSD, Cygwin)
   --with-cachedir=dir         Default directory for pdnsd cache 
                               (default=/var/cache/pdnsd)
   --with-query-method=qm      Specify the query method (default=udponly;
                               others: tcpudp, tcponly)
   --with-random-device=device Specify random device other than 
                               /dev/random; default: C Library random() PRNG;
-			      special value arc4random for BSD C Library
-			      arc4random function (default on FreeBSD)
+                              special value arc4random for BSD C Library
+                              arc4random function (default on FreeBSD)
   --with-default-id=id        Specify default uid/gid for pdnsd 
                               (default=nobody)
   --with-debug=level          Specify debugging level
   --with-verbosity=level      Specify default message verbosity
+  --with-hash-buckets=num     Number of hash buckets to use (default=1024).
+                              The number actually used is the smallest power of two
+                              greater or equal to the number specified here.
   --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30)
   --with-par-queries=num      Specify default parallel query number (default=2)
-  --with-thread-lib=lib       Specify thread library (for Linux only).
-			      Possible values: LinuxThreads (default),
-			      LinuxThreads2 (implements a fix for newer glibcs)
-			      or NPTL (Native POSIX Thread Library)
+  --with-thread-lib=lib       Specify thread library, overriding automatic detection (for Linux only).
+                              Possible values: LinuxThreads,
+                              LinuxThreads2 (implements a fix for newer glibcs)
+                              or NPTL (Native POSIX Thread Library)
 
 Some influential environment variables:
   CC          C compiler command
@@ -1340,7 +1343,7 @@ tempdir="/tmp"
 randomdev=default
 freebsd_pthread="4"
 specbuild=no
-threadlib=linuxthreads
+threadlib=default
 
 am__api_version="1.6"
 ac_aux_dir=
@@ -1745,11 +1748,11 @@ if test "${with_target+set}" = set; then
   target=$withval
 fi; 
 case $target in
-  Linux|linux) 
+  Linux|linux)
     cat >>confdefs.h <<\_ACEOF
 @%:@define TARGET TARGET_LINUX
 _ACEOF
- 
+
     target="Linux"
     ;;
   BSD| bsd)
@@ -1816,11 +1819,11 @@ if test "${enable_ipv6+set}" = set; then
 _ACEOF
 
     if test $have_ipv4 != "yes" ; then
-      ipv4_default=0	
+      ipv4_default=0
     fi
   fi
 fi; 
-  
+
 # Check whether --enable-ipv4-startup or --disable-ipv4-startup was given.
 if test "${enable_ipv4_startup+set}" = set; then
   enableval="$enable_ipv4_startup"
@@ -1836,7 +1839,7 @@ if test "${enable_ipv6_startup+set}" = set; then
   enableval="$enable_ipv6_startup"
    if test $enableval = "yes" ; then
     ipv4_default=0
-  else 
+  else
     ipv4_default=1
   fi
 fi; 
@@ -1845,7 +1848,7 @@ cat >>confdefs.h <<_ACEOF
 @%:@define DEFAULT_IPV4 $ipv4_default
 _ACEOF
 
- 
+
 # Check whether --enable-udp-queries or --disable-udp-queries was given.
 if test "${enable_udp_queries+set}" = set; then
   enableval="$enable_udp_queries"
@@ -1865,25 +1868,25 @@ if test "${with_query_method+set}" = set; then
   query_m=$withval
 fi; 
 case $query_m in
-  udponly|UDPonly) 
+  udponly|UDPonly)
     cat >>confdefs.h <<\_ACEOF
 @%:@define M_PRESET UDP_ONLY
 _ACEOF
 
     udp_queries=yes;
     ;;
-  tcponly|TCPonly) 
+  tcponly|TCPonly)
     cat >>confdefs.h <<\_ACEOF
 @%:@define M_PRESET TCP_ONLY
 _ACEOF
- 
+
     tcp_queries=yes;
     ;;
-  tcpudp|TCPUDP) 
+  tcpudp|TCPUDP)
     cat >>confdefs.h <<\_ACEOF
 @%:@define M_PRESET TCP_UDP
 _ACEOF
- 
+
     udp_queries=yes;
     tcp_queries=yes;
     ;;
@@ -1939,13 +1942,13 @@ if test "${enable_poll+set}" = set; then
 _ACEOF
 
 fi; 
-  
+
 # Check whether --enable-new-rrs or --disable-new-rrs was given.
 if test "${enable_new_rrs+set}" = set; then
   enableval="$enable_new_rrs"
   newrr=$enableval
 fi; 
-  
+
 test $newrr = "yes" && cat >>confdefs.h <<\_ACEOF
 @%:@define DNS_NEW_RRS 1
 _ACEOF
@@ -1959,7 +1962,7 @@ if test "${enable_strict_rfc2181+set}" = set; then
 _ACEOF
 
 fi; 
-  
+
 
 # Check whether --with-random-device or --without-random-device was given.
 if test "${with_random_device+set}" = set; then
@@ -1971,7 +1974,7 @@ if test "$randomdev" = arc4random ; then
 	cat >>confdefs.h <<\_ACEOF
 @%:@define R_ARC4RANDOM 1
 _ACEOF
-  
+
 elif test "$randomdev" = random ; then
 	cat >>confdefs.h <<\_ACEOF
 @%:@define R_RANDOM 1
@@ -1986,7 +1989,7 @@ else
 	cat >>confdefs.h <<_ACEOF
 @%:@define RANDOM_DEVICE "$randomdev"
 _ACEOF
-  
+
 fi
 
 # Check whether --enable-underscores or --disable-underscores was given.
@@ -2005,7 +2008,7 @@ if test "${with_default_id+set}" = set; then
   def_id=$withval
 fi; 
 
-  
+
 
 # Check whether --with-debug or --without-debug was given.
 if test "${with_debug+set}" = set; then
@@ -2015,7 +2018,7 @@ if test "${with_debug+set}" = set; then
 _ACEOF
 
 fi; 
-  
+
 
 # Check whether --with-verbosity or --without-verbosity was given.
 if test "${with_verbosity+set}" = set; then
@@ -2025,7 +2028,26 @@ if test "${with_verbosity+set}" = set; then
 _ACEOF
 
 fi; 
-  
+
+
+# Check whether --with-hash-buckets or --without-hash-buckets was given.
+if test "${with_hash_buckets+set}" = set; then
+  withval="$with_hash_buckets"
+  powof2=1
+  hashsz=0
+
+  while test $powof2 -lt "$withval"
+  do
+    powof2=`expr 2 '*' $powof2`
+    hashsz=`expr $hashsz '+' 1`
+  done
+  cat >>confdefs.h <<_ACEOF
+@%:@define HASH_SZ $hashsz
+_ACEOF
+
+
+fi; 
+
 # Check whether --enable-hash-debug or --disable-hash-debug was given.
 if test "${enable_hash_debug+set}" = set; then
   enableval="$enable_hash_debug"
@@ -2034,7 +2056,7 @@ if test "${enable_hash_debug+set}" = set; then
 _ACEOF
 
 fi; 
-  
+
 # Check whether --enable-yy-debug or --disable-yy-debug was given.
 if test "${enable_yy_debug+set}" = set; then
   enableval="$enable_yy_debug"
@@ -2099,17 +2121,6 @@ if test "${with_thread_lib+set}" = set; then
   threadlib=$withval
 fi; 
 
-if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
-	cat >>confdefs.h <<\_ACEOF
-@%:@define THREADLIB_NPTL 1
-_ACEOF
-  
-elif test "$threadlib" = linuxthreads2 -o "$threadlib" = LinuxThreads2 -o "$threadlib" = lt2; then
-	cat >>confdefs.h <<\_ACEOF
-@%:@define THREADLIB_LINUXTHREADS2 1
-_ACEOF
-  
-fi
 
 
 ac_ext=c
@@ -3405,7 +3416,7 @@ _ACEOF
 
       target="Linux"
       ;;
-    FreeBSD|NetBSD|OpenBSD)
+    FreeBSD|NetBSD|OpenBSD|Darwin)
       echo "$as_me:$LINENO: result: \"${uname_sys}\"" >&5
 echo "${ECHO_T}\"${uname_sys}\"" >&6
       cat >>confdefs.h <<\_ACEOF
@@ -3432,7 +3443,7 @@ echo "$as_me: error: Your system type could not be identified. Try setting it ma
 --with-target" >&2;}
    { (exit 1); exit 1; }; }
       ;;
-    esac	
+    esac
   fi
 fi
 
@@ -3449,7 +3460,7 @@ fi
 #      freebsd_pthread="4"
 #    fi
 #  fi
-#fi	
+#fi
 
 if test "$adisc" = "default"; then
   if test "$target" = "cygwin" ; then
@@ -3457,7 +3468,7 @@ if test "$adisc" = "default"; then
     adisc="no"
   else
     adisc="yes"
-  fi  
+  fi
 fi
 
 test "$adisc" = "yes" && cat >>confdefs.h <<\_ACEOF
@@ -3532,7 +3543,7 @@ _ACEOF
 fi
 
 fi
-if test "$target" = "BSD" ; then
+if test "$target" = "BSD" -a `uname` != Darwin ; then
 #  if test $freebsd_pthread = 4 ; then
     CFLAGS="$CFLAGS -pthread"
     
@@ -3540,6 +3551,103 @@ if test "$target" = "BSD" ; then
 #    AC_CHECK_LIB(c_r, pthread_kill, , 
 #      AC_MSG_ERROR([You must have libc_r installed to build/run pdnsd!]))
 #  fi;
+fi
+
+if test "$target" = "Linux" -a "$threadlib" = default; then
+echo "$as_me:$LINENO: checking if this is an NPTL-based system" >&5
+echo $ECHO_N "checking if this is an NPTL-based system... $ECHO_C" >&6
+old_LIBS="$LIBS"
+LIBS="$LIBS -lpthread"
+if test "$cross_compiling" = yes; then
+  
+  echo "$as_me:$LINENO: result: couldn't run test program" >&5
+echo "${ECHO_T}couldn't run test program" >&6
+  threadlib=linuxthreads
+
+else
+  cat >conftest.$ac_ext <<_ACEOF
+
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <pthread.h>
+
+/* All this function does is return its PID (in a roundabout way). */
+void *thread_func(void *data)
+{
+	*((int *)data)=getpid();
+	return data;
+}
+
+int main()
+{
+	pthread_t thread;
+	void *retval;
+	int err,mainpid,thrdpid;
+
+	err=pthread_create(&thread, NULL, thread_func, &thrdpid);
+	if(err) {
+		fprintf(stderr,"pthread_create failed: %s\n",strerror(err));
+		return 1;
+	}
+	err=pthread_join(thread,&retval);
+	if(err) {
+		fprintf(stderr,"pthread_join failed: %s\n",strerror(err));
+		return 1;
+	}
+	mainpid=getpid();
+	/* In LinuxThreads implementations, the pids of the threads will usually differ
+	   in a non Posix-compliant way. */
+	fprintf(stderr,"main pid=%d, thread pid=%d\n",mainpid,*((int *)retval));
+	return (*((int *)retval)!=mainpid);
+}
+
+_ACEOF
+rm -f conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  
+  echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+  threadlib=nptl
+
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+  threadlib=linuxthreads
+
+fi
+rm -f core core.* *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+LIBS="$old_LIBS"
+fi
+
+if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
+	cat >>confdefs.h <<\_ACEOF
+@%:@define THREADLIB_NPTL 1
+_ACEOF
+
+elif test "$threadlib" = linuxthreads2 -o "$threadlib" = LinuxThreads2 -o "$threadlib" = lt2; then
+	cat >>confdefs.h <<\_ACEOF
+@%:@define THREADLIB_LINUXTHREADS2 1
+_ACEOF
+
 fi
 
 ac_ext=c
@@ -4083,8 +4191,153 @@ done
 
 
 
+for ac_header in fcntl.h malloc.h sys/ioctl.h sys/time.h syslog.h unistd.h
+do
+as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
+else
+  # Is the header compilable?
+echo "$as_me:$LINENO: checking $ac_header usability" >&5
+echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+@%:@include <$ac_header>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_header_compiler=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
 
-for ac_header in fcntl.h malloc.h sys/ioctl.h sys/time.h syslog.h unistd.h netinet/in.h
+ac_header_compiler=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6
+
+# Is the header present?
+echo "$as_me:$LINENO: checking $ac_header presence" >&5
+echo $ECHO_N "checking $ac_header presence... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+@%:@include <$ac_header>
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_header_preproc=no
+fi
+rm -f conftest.err conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc in
+  yes:no )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
+    (
+      cat <<\_ASBOX
+@%:@@%:@ ------------------------------------ @%:@@%:@
+@%:@@%:@ Report this to bug-autoconf@gnu.org. @%:@@%:@
+@%:@@%:@ ------------------------------------ @%:@@%:@
+_ASBOX
+    ) |
+      sed "s/^/$as_me: WARNING:     /" >&2
+    ;;
+  no:yes )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
+echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: $ac_header: check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
+    (
+      cat <<\_ASBOX
+@%:@@%:@ ------------------------------------ @%:@@%:@
+@%:@@%:@ Report this to bug-autoconf@gnu.org. @%:@@%:@
+@%:@@%:@ ------------------------------------ @%:@@%:@
+_ASBOX
+    ) |
+      sed "s/^/$as_me: WARNING:     /" >&2
+    ;;
+esac
+echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  eval "$as_ac_Header=$ac_header_preproc"
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
+
+fi
+if test `eval echo '${'$as_ac_Header'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+@%:@define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+ 
+fi
+
+done
+
+
+
+
+
+
+for ac_header in sys/types.h net/if.h netinet/in.h sys/poll.h sys/socket.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -4548,22 +4801,26 @@ _ACEOF
 
 fi
 
-
-echo "$as_me:$LINENO: checking for structure in_pktinfo" >&5
-echo $ECHO_N "checking for structure in_pktinfo... $ECHO_C" >&6
-pktinfo_struct="no"
-cat >conftest.$ac_ext <<_ACEOF
+echo "$as_me:$LINENO: checking for socklen_t" >&5
+echo $ECHO_N "checking for socklen_t... $ECHO_C" >&6
+if test "${ac_cv_type_socklen_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
 #line $LINENO "configure"
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-#include <netinet/in.h>
+$ac_includes_default
 int
 main ()
 {
-struct in_pktinfo pi;
+if ((socklen_t *) 0)
+  return 0;
+if (sizeof (socklen_t))
+  return 0;
   ;
   return 0;
 }
@@ -4580,26 +4837,201 @@ if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
-  pktinfo_struct="yes"
+  ac_cv_type_socklen_t=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-cat >>confdefs.h <<\_ACEOF
-@%:@define NO_IN_PKTINFO 1
+ac_cv_type_socklen_t=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_socklen_t" >&5
+echo "${ECHO_T}$ac_cv_type_socklen_t" >&6
+if test $ac_cv_type_socklen_t = yes; then
+  
+cat >>confdefs.h <<_ACEOF
+@%:@define HAVE_SOCKLEN_T 1
+_ACEOF
+
+
+else
+  cat >>confdefs.h <<\_ACEOF
+@%:@define socklen_t int
 _ACEOF
 
 fi
-rm -f conftest.$ac_objext conftest.$ac_ext
 
-if test  "$pktinfo_struct" = "yes" ; then
-  echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
+echo "$as_me:$LINENO: checking for struct in_pktinfo" >&5
+echo $ECHO_N "checking for struct in_pktinfo... $ECHO_C" >&6
+if test "${ac_cv_type_struct_in_pktinfo+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+
+int
+main ()
+{
+if ((struct in_pktinfo *) 0)
+  return 0;
+if (sizeof (struct in_pktinfo))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_struct_in_pktinfo=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_struct_in_pktinfo=no
 fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_struct_in_pktinfo" >&5
+echo "${ECHO_T}$ac_cv_type_struct_in_pktinfo" >&6
+if test $ac_cv_type_struct_in_pktinfo = yes; then
   
+cat >>confdefs.h <<_ACEOF
+@%:@define HAVE_STRUCT_IN_PKTINFO 1
+_ACEOF
+
+
+fi
+echo "$as_me:$LINENO: checking for struct ifreq" >&5
+echo $ECHO_N "checking for struct ifreq... $ECHO_C" >&6
+if test "${ac_cv_type_struct_ifreq+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+
+int
+main ()
+{
+if ((struct ifreq *) 0)
+  return 0;
+if (sizeof (struct ifreq))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_struct_ifreq=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_struct_ifreq=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_struct_ifreq" >&5
+echo "${ECHO_T}$ac_cv_type_struct_ifreq" >&6
+if test $ac_cv_type_struct_ifreq = yes; then
+  
+cat >>confdefs.h <<_ACEOF
+@%:@define HAVE_STRUCT_IFREQ 1
+_ACEOF
+
+
+fi
+
+
+echo "$as_me:$LINENO: checking for CPP C99 Variadic macro support" >&5
+echo $ECHO_N "checking for CPP C99 Variadic macro support... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+
+#define a(...) junk(0,__VA_ARGS__)
+extern void junk(int i,...);
+int main()
+{
+  a(0);
+  a("a");
+  a(0, "a", 1);
+  return 0;
+}
+
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  cpp_c99_variadic="yes"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+cpp_c99_variadic="no"
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+echo "$as_me:$LINENO: result: $cpp_c99_variadic" >&5
+echo "${ECHO_T}$cpp_c99_variadic" >&6
+if test $cpp_c99_variadic = yes; then
+  cat >>confdefs.h <<\_ACEOF
+@%:@define CPP_C99_VARIADIC_MACROS 1
+_ACEOF
+
+else
+  if test "$GCC" != yes; then
+    { { echo "$as_me:$LINENO: error: Compiler must support C99 or gcc variadic macros" >&5
+echo "$as_me: error: Compiler must support C99 or gcc variadic macros" >&2;}
+   { (exit 1); exit 1; }; }
+  fi;
+fi
+
 # The Ultrix 4.2 mips builtin alloca declared by alloca.h only works
 # for constant arguments.  Useless!
 echo "$as_me:$LINENO: checking for working alloca.h" >&5
@@ -5275,6 +5707,324 @@ fi
 done
 
 
+echo "$as_me:$LINENO: checking for library containing nanosleep" >&5
+echo $ECHO_N "checking for library containing nanosleep... $ECHO_C" >&6
+if test "${ac_cv_search_nanosleep+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_nanosleep=no
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char nanosleep ();
+int
+main ()
+{
+nanosleep ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_nanosleep="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_nanosleep" = no; then
+  for ac_lib in rt; do
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char nanosleep ();
+int
+main ()
+{
+nanosleep ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_nanosleep="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_nanosleep" >&5
+echo "${ECHO_T}$ac_cv_search_nanosleep" >&6
+if test "$ac_cv_search_nanosleep" != no; then
+  test "$ac_cv_search_nanosleep" = "none required" || LIBS="$ac_cv_search_nanosleep $LIBS"
+  
+fi
+
+echo "$as_me:$LINENO: checking for library containing socket" >&5
+echo $ECHO_N "checking for library containing socket... $ECHO_C" >&6
+if test "${ac_cv_search_socket+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_socket=no
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char socket ();
+int
+main ()
+{
+socket ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_socket="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_socket" = no; then
+  for ac_lib in socket; do
+    LIBS="-l$ac_lib -lnsl $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char socket ();
+int
+main ()
+{
+socket ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_socket="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_socket" >&5
+echo "${ECHO_T}$ac_cv_search_socket" >&6
+if test "$ac_cv_search_socket" != no; then
+  test "$ac_cv_search_socket" = "none required" || LIBS="$ac_cv_search_socket $LIBS"
+  
+fi
+
+echo "$as_me:$LINENO: checking for library containing inet_aton" >&5
+echo $ECHO_N "checking for library containing inet_aton... $ECHO_C" >&6
+if test "${ac_cv_search_inet_aton+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_inet_aton=no
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char inet_aton ();
+int
+main ()
+{
+inet_aton ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_inet_aton="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_inet_aton" = no; then
+  for ac_lib in resolv; do
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char inet_aton ();
+int
+main ()
+{
+inet_aton ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_inet_aton="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_inet_aton" >&5
+echo "${ECHO_T}$ac_cv_search_inet_aton" >&6
+if test "$ac_cv_search_inet_aton" != no; then
+  test "$ac_cv_search_inet_aton" = "none required" || LIBS="$ac_cv_search_inet_aton $LIBS"
+  
+fi
+
 
 
 
@@ -5555,7 +6305,7 @@ fi
 done
 
 
-                                                                                                                                                                                              ac_config_files="$ac_config_files pdnsd.spec Makefile file-list.base contrib/Makefile doc/Makefile doc/pdnsd.8 doc/pdnsd.conf.5 doc/pdnsd.conf src/Makefile src/pdnsd-ctl/Makefile src/rc/Makefile src/rc/RedHat/Makefile src/rc/RedHat/pdnsd src/rc/SuSE/Makefile src/rc/SuSE/pdnsd src/rc/Debian/Makefile src/rc/Debian/pdnsd src/rc/Slackware/rc.pdnsd src/test/Makefile"
+                                                                                                                                                                                                        ac_config_files="$ac_config_files pdnsd.spec Makefile file-list.base contrib/Makefile doc/Makefile doc/pdnsd.8 doc/pdnsd.conf.5 doc/pdnsd.conf src/Makefile src/pdnsd-ctl/Makefile src/rc/Makefile src/rc/RedHat/Makefile src/rc/RedHat/pdnsd src/rc/SuSE/Makefile src/rc/SuSE/pdnsd src/rc/Debian/Makefile src/rc/Debian/pdnsd src/rc/Slackware/Makefile src/rc/Slackware/rc.pdnsd src/test/Makefile"
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -6114,6 +6864,7 @@ do
   "src/rc/SuSE/pdnsd" ) CONFIG_FILES="$CONFIG_FILES src/rc/SuSE/pdnsd" ;;
   "src/rc/Debian/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/rc/Debian/Makefile" ;;
   "src/rc/Debian/pdnsd" ) CONFIG_FILES="$CONFIG_FILES src/rc/Debian/pdnsd" ;;
+  "src/rc/Slackware/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/rc/Slackware/Makefile" ;;
   "src/rc/Slackware/rc.pdnsd" ) CONFIG_FILES="$CONFIG_FILES src/rc/Slackware/rc.pdnsd" ;;
   "src/test/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/test/Makefile" ;;
   "depfiles" ) CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
@@ -6224,6 +6975,7 @@ s,@distribution@,$distribution,;t t
 s,@cachedir@,$cachedir,;t t
 s,@def_id@,$def_id,;t t
 s,@specbuild@,$specbuild,;t t
+s,@threadlib@,$threadlib,;t t
 s,@CC@,$CC,;t t
 s,@CFLAGS@,$CFLAGS,;t t
 s,@LDFLAGS@,$LDFLAGS,;t t

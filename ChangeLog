@@ -1,3 +1,60 @@
+2005-03-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in, src/hash.h
+	I have added a new configure option --with-hash-buckets=...
+	This makes it possible to specify a different number of
+	hash buckets without editing the source files.
+
+2005-03-17  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/error.c
+	When running in both daemon and debug mode, print warning and
+	error messages to debug file as well as the syslog.
+
+2005-03-15  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Only call pthread_setspecific() in debug mode, because
+	pthread_getspecific() is also only used in debug mode.
+	If pthread_setspecific() fails, treat this as a non-fatal error.
+
+2005-03-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in
+	On Linux systems the configure script will now try to detect automatically
+	whether the system implements the Native POSIX Thread Library, but
+	the method is not necessarily foolproof.
+
+	* src/dns.c
+	Local PTR records generated for resolving numeric IPv6 addresses back into
+	names, are now based on ip6.arpa instead of ip6.int, because the latter domain
+	will be phased out eventually.
+	
+2005-03-06  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* Makefile.am,src/cache.c
+	Create an empty cache-file at install time and don't complain about empty
+	cache files at start up.
+
+2005-02-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* acconfig.h,configure.in,src/conf-parser.c,src/conff.h,src/dns.h,
+	  src/dns_answer.c,src/dns_query.c,src/error.h,src/helpers.h,src/icmp.c,
+	  src/ipvers.h
+
+	I have applied some changes to the code proposed by Rodney Brown to improve
+	portability. In particular, pdnsd should now compile on the Darwin platform
+	(Apple Mac OS X).
+	To support some of these changes, the source package is now built with a
+	slightly more modern version of autoconf (2.57) and automake (1.6.3).
+
+2005-01-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.c,src/dns_answer.c,src/dns_query.c
+
+	I have added some extra debug code to make it easier to discover the
+	reason that pdnsd considers a query or reply malformed (format error).
+
 2005-01-12  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns.c,src/dns_answer.c,src/dns_query.c

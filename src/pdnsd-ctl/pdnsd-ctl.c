@@ -23,6 +23,9 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -38,6 +41,11 @@ Boston, MA 02111-1307, USA.  */
 #include "../dns.h"
 #include "../rr_types.h"
 #include "../cache.h"
+
+#if !defined(HAVE_ALLOCA) && !defined(alloca)
+#define alloca malloc
+#endif
+
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: pdnsd-ctl.c,v 1.19 2001/12/30 15:29:43 tmm Exp $";

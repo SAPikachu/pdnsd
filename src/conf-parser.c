@@ -1,5 +1,5 @@
 /* conf-parser.c - Parser for pdnsd config files.
-   Copyright (C) 2004 Paul A. Rombouts.
+   Copyright (C) 2004, 2005 Paul A. Rombouts.
 
    Based on the files conf-lex.l and conf-parse.y written by 
    Thomas Moestl.
@@ -34,7 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include <stdlib.h>
 #include <errno.h>
 #include <stdarg.h>
-#if (TARGET==TARGET_LINUX)
+#if defined(HAVE_STRUCT_IFREQ)
 #include <sys/ioctl.h>
 #endif
 #include "conff.h"
@@ -229,7 +229,7 @@ static void freestring(void *ptr);
 {						\
   for(;;) {					\
     char *_strbeg; const char *_err;		\
-    unsigned int _len;				\
+    size_t _len;				\
     SCAN_STRING(_strbeg,cur,_len);		\
     if((_err=addfunc(dst,_strbeg,_len))) {	\
       REPORT_ERROR(_err);			\
@@ -246,7 +246,7 @@ static void freestring(void *ptr);
 {						\
   if(isalpha(*(cur))) {				\
     char *_str;					\
-    unsigned int _len;				\
+    size_t _len;				\
     int _cnst;					\
     SCAN_ALPHANUM(_str,cur,_len);		\
     _cnst=lookup_const(_str,_len);		\
@@ -268,7 +268,7 @@ static void freestring(void *ptr);
 {						\
   if(isalpha(*(cur))) {				\
     char *_str;					\
-    unsigned int _len;				\
+    size_t _len;				\
     SCAN_ALPHANUM(_str,cur,_len);		\
     (dst)=lookup_const(_str,_len);		\
     if(!(test)) {				\
@@ -416,7 +416,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    {
 	      const char *err;
 	      if ((err=parse_ip(ps,len,&global->a))) {
-#if (TARGET==TARGET_LINUX)
+#if defined(HAVE_STRUCT_IFREQ) && defined(IFNAMSIZ) && defined(SIOCGIFADDR)
 		if(!strcmp(err,"bad IP address") && len<IFNAMSIZ) {
 		  /* Treat the string argument as the name of an interface
 		     and try to find its IP address.
@@ -1501,7 +1501,7 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
     goto fclose_return;
   }
   while(getline(&buf,&buflen,f)>=0) {
-    unsigned int len;
+    size_t len;
     char *p,*ps;
     ++linenr;
     p=buf;

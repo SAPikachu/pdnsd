@@ -27,7 +27,9 @@ Boston, MA 02111-1307, USA.  */
  */
 
 #include <config.h>
+#ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
+#endif
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -135,7 +137,7 @@ void init_ping_socket()
 #endif
 }
 
-/* Takes a packet as send out and a recieved ICMP packet and looks whether the ICMP packet is 
+/* Takes a packet as send out and a received ICMP packet and looks whether the ICMP packet is 
  * an error reply on the sent-out one. packet is only the packet (without IP header).
  * errmsg includes an IP header.
  * to is the destination address of the original packet (the only thing that is actually
@@ -307,7 +309,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 #ifdef ENABLE_IPV6
 
-/* Takes a packet as send out and a recieved ICMPv6 packet and looks whether the ICMPv6 packet is 
+/* Takes a packet as send out and a received ICMPv6 packet and looks whether the ICMPv6 packet is 
  * an error reply on the sent-out one. packet is only the packet (without IPv6 header).
  * errmsg does not include an IPv6 header. to is the address the sent packet went to.
  * This is specialized for icmpv6: It zeros out the checksum field, which is filled in

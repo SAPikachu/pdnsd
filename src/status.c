@@ -23,6 +23,9 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -42,6 +45,11 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 #include "servers.h"
 #include "helpers.h"
+
+#if !defined(HAVE_ALLOCA) && !defined(alloca)
+#define alloca malloc
+#endif
+
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: status.c,v 1.34 2002/07/12 14:32:28 tmm Exp $";

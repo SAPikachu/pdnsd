@@ -1,7 +1,7 @@
 /* error.c - Error handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -66,23 +66,46 @@ void log_message(int prior, const char *s, ...)
 {
 	int ul=0;
 	va_list va;
+	FILE *f;
 	if (use_log_lock)
 		ul=softlock_mutex(&loglock);
-	va_start(va,s);
 	if (global.daemon) {
 		openlog("pdnsd",LOG_PID,LOG_DAEMON);
+		va_start(va,s);
 		vsyslog(prior,s,va);
+		va_end(va);
 		closelog();
-	} else {
-		fprintf(stderr,"pdnsd: %s: ",
-			prior<=LOG_CRIT?"critical":
-			prior==LOG_ERR?"error":
-			prior==LOG_WARNING?"warning":
-			"info");
-		vfprintf(stderr,s,va);
-		fprintf(stderr,"\n");
 	}
-	va_end(va);
+	else {
+		f=stderr;
+#if DEBUG > 0
+		goto printtofile;
+	}
+	if(debug_p) {
+		f=dbg_file;
+	printtofile:
+#endif
+		{
+			char ts[sizeof "* 12/31 23:59:59| "];
+			time_t tt = time(NULL);
+			struct tm tm;
+			const char *p;
+			localtime_r(&tt, &tm);
+			if(strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <=0)
+				ts[0]=0;
+			fprintf(f,"%spdnsd: %s: ", ts,
+				prior<=LOG_CRIT?"critical":
+				prior==LOG_ERR?"error":
+				prior==LOG_WARNING?"warning":
+				"info");
+			va_start(va,s);
+			vfprintf(f,s,va);
+			va_end(va);
+			p=strchr(s,0);
+			if(!p || p==s || *(p-1)!='\n')
+				fprintf(f,"\n");
+		}
+	}
 	if (ul)
 		pthread_mutex_unlock(&loglock);
 }
@@ -94,21 +117,44 @@ void log_info(int level, const char *s, ...)
 {
 	if (level<=global.verbosity) {
 		va_list va;
+		FILE *f;
 		if (use_log_lock)
 			if (!softlock_mutex(&loglock)) {
 				return;
 			}
-		va_start(va,s);
 		if (global.daemon) {
 			openlog("pdnsd",LOG_PID,LOG_DAEMON);
+			va_start(va,s);
 			vsyslog(LOG_INFO,s,va);
+			va_end(va);
 			closelog();
-		} else {
-			fprintf(stderr,"pdnsd: info: ");
-			vfprintf(stderr,s,va);
-			fprintf(stderr,"\n");
 		}
-		va_end(va);
+		else {
+			f=stderr;
+#if DEBUG > 0
+			goto printtofile;
+		}
+		if(debug_p) {
+			f=dbg_file;
+		printtofile:
+#endif
+			{
+				char ts[sizeof "* 12/31 23:59:59| "];
+				time_t tt = time(NULL);
+				struct tm tm;
+				const char *p;
+				localtime_r(&tt, &tm);
+				if(strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <= 0)
+					ts[0]=0;
+				fprintf(f,"%spdnsd: info: ",ts);
+				va_start(va,s);
+				vfprintf(f,s,va);
+				va_end(va);
+				p=strchr(s,0);
+				if(!p || p==s || *(p-1)!='\n')
+					fprintf(f,"\n");
+			}
+		}
 		if (use_log_lock)
 			pthread_mutex_unlock(&loglock);
 	}
@@ -121,16 +167,16 @@ void debug_msg(int c, const char *fmt, ...)
 	va_list va;
 
 	if (!c) {
-		char DM_ts[sizeof "12/31 23:59:59"];
-		time_t DM_tt = time(NULL);
-		struct tm DM_tm;
-		int *DM_id;
-		localtime_r(&DM_tt, &DM_tm);
-		if(strftime(DM_ts, sizeof(DM_ts), "%m/%d %T", &DM_tm) > 0) {
-			if((DM_id = (int *)pthread_getspecific(thrid_key)))
-				fprintf(dbg_file,"%d %s| ", *DM_id, DM_ts);
+		char ts[sizeof "12/31 23:59:59"];
+		time_t tt = time(NULL);
+		struct tm tm;
+		int *id;
+		localtime_r(&tt, &tm);
+		if(strftime(ts, sizeof(ts), "%m/%d %T", &tm) > 0) {
+			if((id = (unsigned *)pthread_getspecific(thrid_key)))
+				fprintf(dbg_file,"%u %s| ", *id, ts);
 			else
-				fprintf(dbg_file,"- %s| ", DM_ts);
+				fprintf(dbg_file,"- %s| ", ts);
 		}
 	}
 	va_start(va,fmt);

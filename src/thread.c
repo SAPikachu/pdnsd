@@ -40,7 +40,9 @@ static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 
 volatile short int waiting=0; /* Has the main thread already done sigwait() ? */
 pthread_attr_t attr_detached;
+#if DEBUG>0
 pthread_key_t thrid_key;
+#endif
 
 /* This is a handler for signals to the threads. We just hand the sigs on to the main thread.
  * Note that this may result in blocked locks. We have no means to open the locks here, because in LinuxThreads

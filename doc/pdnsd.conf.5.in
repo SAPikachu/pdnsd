@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Oct 2004" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Apr 2005" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -61,7 +61,7 @@ These are the possible options:
 .TP
 .B perm_cache=(\fInumber\fP|off);
 Switch the disk cache off or supply a maximum cache size in kB. If the disk 
-cache is switched off, 4 bytes will still be written to disk.
+cache is switched off, 8 bytes will still be written to disk.
 The memory cache is always 10kB larger than the file cache.
 This value is 2048 (2 MB) by default.
 .TP
@@ -82,12 +82,21 @@ on the basis of an NS record, since the A record that supplies the address for
 (among others) name servers does not have a port number specification.
 .TP
 .B server_ip=\fIstring\fP;
+or
+.PD 0
+.TP
+.PD
+.B interface=\fIstring\fP;
 Set the IP address pdnsd listens on for requests. This can be useful
 when the host has several interfaces and you want pdnsd not to listen on
-all interfaces. Addtionally, it is possible to bind pdnsd to listen on
+all interfaces. For example, it is possible to bind pdnsd to listen on
 127.0.0.2 to allow pdnsd to be a forwarder for BIND.
 The default setting for this option is server_ip=any, which means that
 pdnsd will listen on all of your local interfaces.
+Presently you can only specify one address here; if you want pdnsd to listen on multiple
+interfaces but not all you will have to specify server_ip=any
+and use firewall rules to restrict access.
+.br
 The IP address used to need quotation marks around it, but since version 1.1.10
 this is no longer necessary.
 .br
@@ -102,7 +111,7 @@ it will automatically be mapped to an IPv6 address.
 .br
 \fINew in version 1.2:\fP You may also give the name of an interface
 such as "lo" or "eth0" here, instead of an IP address
-(Linux only).
+(this has been tested on Linux, and may or may not work on other platforms).
 pdnsd will not bind to the interface name, but will look up the address of the
 interface at start-up and listen on that address. If the address of the interface
 changes while pdnsd is running, pdnsd will not notice that. You will need to
@@ -502,7 +511,7 @@ For secuity issues, also see that entry.
 .IP
 \(bu \fBquery\fP: \fINew in version 1.2:\fP
 This works like the ping test, except it sends an empty DNS query to the remote server.
-If the server sends valid response back within the timeout period (except SERVFAIL),
+If the server sends a well-formed response back within the timeout period (except SERVFAIL),
 it will be regarded as available.
 This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
 which unfortunately is quite common these days.
@@ -1059,6 +1068,8 @@ If this is turned on, pdnsd will create authoritative local records with the dat
 Please see the description of the option of the same name in the rr section for a closer description of
 what this means. Please note that this only has an effect for files sourced with file options
 subsequent to this option.
+.br
+This is on by default.
 
 .SH "VERSION"
 .PP
@@ -1089,4 +1100,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 20 Oct 2004 by Paul Rombouts
+Last revised: 03 Apr 2005 by Paul Rombouts

@@ -35,9 +35,6 @@ and the file README.par in %{_docdir}/%{name}-%{version}
 %{!?distro:You can specify the target distribution when you build the source RPM. For instance, if you're building for a Red Hat system call rpmbuild with:}
 %{!?distro:  --define "distro RedHat"}
 %{?distro:This package was built for a %{distro} distribution.}
-%{!?_with_nptl:If your system has an implementation of the Native POSIX Thread Library (NPTL), it is recommended that you build the source RPM with the rpmbuild option:}
-%{!?_with_nptl:  --with nptl}
-%{?_with_nptl:This package was built for systems that have an implementation of the Native POSIX Thread Library (NPTL).}
 %{!?_with_isdn:It's possible to rebuild the source RPM with isdn support using the rpmbuild option:}
 %{!?_with_isdn:  --with isdn}
 %{?_with_isdn:This package was built with isdn support enabled.}
@@ -57,7 +54,7 @@ CFLAGS="${CFLAGS:-$RPM_OPT_FLAGS -Wall}" ./configure \
 	--with-default-id=%{run_as_user} \
 	%{?_with_isdn:--enable-isdn} \
 	%{?_without_poll:--disable-poll} \
-	%{?_with_nptl:--with-thread-lib=nptl} \
+	%{?_without_nptl:--with-thread-lib=linuxthreads} \
 	%{?_with_ipv6:--enable-ipv6} \
 	%{?_with_tcpqueries:--enable-tcp-queries} \
 	%{?_without_debug:--with-debug=0}

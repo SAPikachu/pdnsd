@@ -83,6 +83,7 @@ def_id = @def_id@
 distribution = @distribution@
 install_sh = @install_sh@
 specbuild = @specbuild@
+threadlib = @threadlib@
 
 DISTRO = @distribution@
 subdir = src/rc/SuSE

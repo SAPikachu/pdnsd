@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -538,9 +538,6 @@ int main(int argc,char *argv[])
 		dup2(fd,1);
 		dup2(fd,2);
 		close(fd);
-		openlog("pdnsd",LOG_PID,LOG_DAEMON);
-		syslog(LOG_INFO,"pdnsd-%s starting.",VERSION);
-		closelog();
 #if DEBUG>0
 		if (debug_p) {
 		  char dbgdir[strlen(global.cache_dir)+sizeof("/pdnsd.debug")];
@@ -553,21 +550,22 @@ int main(int argc,char *argv[])
 #if DEBUG>0
 		dbg_file=stdout;
 #endif
-		printf("pdnsd-%s starting.\n",VERSION);
-		DEBUG_MSGC("Debug messages activated\n");
 	}
+	log_info(0,"pdnsd-%s starting.\n",VERSION);
+	DEBUG_MSG("Debug messages activated\n");
+
 #if (TARGET!=TARGET_LINUX)
 	if (!final_init())
 		_exit(1);
 #endif
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		DEBUG_MSGC("Using IPv4.\n");
+		DEBUG_MSG("Using IPv4.\n");
 	}
 #endif
 #ifdef ENABLE_IPV6
 	ELSE_IPV6 {
-		DEBUG_MSGC("Using IPv6.\n");
+		DEBUG_MSG("Using IPv6.\n");
 	}
 #endif
 
@@ -605,11 +603,16 @@ int main(int argc,char *argv[])
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 #endif
 
-	/* Generate a key for storing our thread id's */
-	if (pthread_key_create(&thrid_key, NULL) != 0) {
-		log_error("pthread_key_create failed.");
-		_exit(1);
+#if DEBUG>0
+	{
+		int err;
+		/* Generate a key for storing our thread id's */
+		if ((err=pthread_key_create(&thrid_key, NULL)) != 0) {
+			log_error("pthread_key_create failed: %s",strerror(err));
+			_exit(1);
+		}
 	}
+#endif
 
 	{
 #if DEBUG>0
@@ -636,7 +639,7 @@ int main(int argc,char *argv[])
 
 #if DEBUG>0
 		if(thrdsucc) {
-			DEBUG_MSGC("All threads started successfully.\n");
+			DEBUG_MSG("All threads started successfully.\n");
 		}
 #endif
 #undef thrdfail
@@ -647,7 +650,7 @@ int main(int argc,char *argv[])
 #endif
 	waiting=1;
 	sigwait(&sigs_msk,&sig);
-	DEBUG_MSGC("Signal %i caught.\n",sig);
+	DEBUG_MSG("Signal %i caught.\n",sig);
 	write_disk_cache();
 	destroy_cache();
 	log_warn("Caught signal %i. Exiting.",sig);

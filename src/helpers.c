@@ -696,6 +696,7 @@ int getline(char **lineptr, size_t *n, FILE *stream)
 # ifdef __va_copy
 #  define va_copy __va_copy
 # else
+#  warning "No va_copy or __va_copy macro found, trying simple assignment."
 #  define va_copy(dst,src) ((dst)=(src))
 # endif
 #endif
@@ -716,14 +717,13 @@ int vasprintf (char **lineptr, const char *format, va_list va)
 		sz=n+1;
 		{
 			char *tmp=realloc(line,sz);
-			if(!tmp) {
-				free(line);
-				return -1;
+			if(tmp) {
+				line=tmp;
+				n=vsnprintf(line,sz,format,vasave);
 			}
-			line=tmp;
+			else
+				n= -1;
 		}
-
-		n=vsnprintf(line,sz,format,vasave);
 	}
 	va_end(vasave);
 

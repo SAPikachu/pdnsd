@@ -115,7 +115,9 @@ inline static int sleep_r (unsigned int seconds)
 /* Used for creating detached threads */
 extern pthread_attr_t attr_detached;
 
+#if DEBUG>0
 /* Key for storing private thread ID's */
 extern pthread_key_t thrid_key;
+#endif
 
 #endif

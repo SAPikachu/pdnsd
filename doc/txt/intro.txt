@@ -2,9 +2,9 @@
 
 About pdnsd
 
-pdnsd is a proxy dns server with permanent caching (the cache contents are
-written to hard disk on exit) that is designed to cope with unreacheable or
-down dns servers (for example in dial-in networking).
+pdnsd is a proxy DNS server with permanent caching (the cache contents are
+written to hard disk on exit) that is designed to cope with unreachable or down
+DNS servers (for example in dial-in networking).
 Since version 1.1.0, pdnsd supports negative caching.
 
 It is licensed under the GNU General Public License (GPL). This, in short,
@@ -14,9 +14,9 @@ license them under the GPL. You do not need to pay anything for pdnsd. It also
 means that there is ABSOLUTELY NO WARRANTY for pdnsd or any part of it. For
 details, please read the GPL.
 
-pdnsd can be used with applications that do dns lookups, eg on startup, and
+pdnsd can be used with applications that do DNS lookups, e.g. on startup, and
 can't be configured to change that behaviour, to prevent the often minute-long
-hangs (or even crashes) that result from stalled dns queries. Some Netscape
+hangs (or even crashes) that result from stalled DNS queries. Some Netscape
 Navigator versions for Unix, for example, expose this behaviour.
 
 pdnsd is configurable via a file and supports run-time configuration using the
@@ -36,10 +36,10 @@ or do not serve these records. pdnsd may also read your /etc/hosts file (this
 file is normally used by your local resolver and usually contains information
 for localhost as well as for your machines FQDN) and serve its contents.
 
-pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin).
-90% of the source code should be easily portable to POSIX- and BSD-compatible
-systems, provided that those systems support the POSIX threads (pthreads). The
-rest might need OS-specific rewrites.
+pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin
+and Darwin). 90% of the source code should be easily portable to POSIX- and
+BSD-compatible systems, provided that those systems support the POSIX threads
+(pthreads). The rest might need OS-specific rewrites.
 
 Currently, pdnsd is only compileable by gcc. This should be easy to fix, but I
 just do not have documentation for other compilers. If you are not able or do
@@ -51,7 +51,7 @@ echoes for the option uptest=ping, and the default port is 53, this must be >
 it's user and group id to those of a non-privileged user after opening the
 sockets needed for this.
 
-The server should support the full standard dns queries following the rfcs 1034
+The server should support the full standard DNS queries following the rfcs 1034
 and 1035. As of version 1.0.0, the rfc compliance has been improved again, and
 pdnsd is now believed (or hoped?) to be fully rfc-compatible. It completely
 follows rfc 2181 (except for one minor issue in the FreeBSD port, see the
@@ -90,7 +90,8 @@ executable space):
 There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for
 both). Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for
 the OpenBSD one! Thanks to Kiyo Kelvin Lee now also runs on the Cygwin
-platform!
+platform! Thanks goes to Rodney Brown for extending portability to the Darwin
+(Apple Mac OS X) platform!
 
 If you have questions left, you should take a look into the FAQ.
 Bugfixes, patches and compatability fixes for other OSs are very welcome!
@@ -104,15 +105,15 @@ the documenation page.
 
 Uptests
 
-pdnsd provides several methods to test whether a remote dns server should be
-regarded available (so that pdnsd can query it), in addition to the obvious
-"p.d." definition (the server is always regarded available). These tests are:
+pdnsd provides several methods to test whether a remote DNS server should be
+regarded as available (so that pdnsd can query it), in addition to the obvious
+"none" test (the server is always regarded as available, or availability is set
+on or off using the pdnsd-ctl utility). These tests are:
 
   * ping: a given adress is ping'ed in a given interval. If it there is no
-    response or the host is unreacheable, the server is seen to be not
-    available (for those who don't know: pinging is sending a certain Internet
-    packet type to a host to which any standard-conformant host is required to
-    reply).
+    response or the host is unreachable, the server is seen to be not available
+    (for those who don't know: pinging is sending a certain Internet packet
+    type to a host to which any standard-conformant host is required to reply).
   * if: a given network interface is tested whether it is existent, up and
     running. If it is not, the server is regarded to be not available. This is
     especially useful for ppp and similar interfaces. A special case test for
@@ -127,6 +128,13 @@ regarded available (so that pdnsd can query it), in addition to the obvious
     is evaluated. If it is not zero, the server is regarded to be not
     available. This is a very flexible testing method with which it should be
     able to perform virtually any needed test.
+  * query: New in version 1.2: This works like the ping test, except it sends
+    an empty DNS query to the remote server. If the server sends a well-formed
+    response back within the timeout period (except SERVFAIL), it will be
+    regarded as available. This test is useful if a remote server does not
+    respond to ICMP_ECHO requests at all, which unfortunately is quite common
+    these days. In many cases this test will be a more reliable indicator of
+    availability than the ones mentioned above.
 
 
 Local Records ("Zones")
@@ -162,7 +170,8 @@ flavours may or may not work (feedback is very welcome!). The system and
 software requirements under Linux are:
 
   * Kernel version >2.2.0
-  * glibc version >2.0.1 (aka libc6) with LinuxThreads (normally included)
+  * glibc version >2.0.1 (aka libc6) with LinuxThreads (normally included) or
+    NPTL (Native Posix Thread Library, recommended).
     Due to a bug, pdnsd 0.9.8 does not run with glibc2.1.1. This behaviour was
     fixed in pdnsd 0.9.9.
   * For IPv6: glibc>=2.1
@@ -175,18 +184,9 @@ The system requirements under FreeBSD are:
 
 The common software requirements for all supported systems are:
 
-  * GCC, preferably egcs-2.* (other compilers are currently not supported; the
-    needed patch for another compiler should not be difficult, however)
-  * lex/flex (not needed to build pdnsd, only for hacking) pdnsd comes with the
-    C files output by flex for the lex input file conf.l, so you don't have to
-    have flex/lex to build pdnsd. If you plan hacking on pdnsd, you should use
-    flex or a lex implementation that has yylineno (others will work, but the
-    config file parser won't output any line number information on errors
-    then).
-  * yacc/bison (not needed to build pdnsd, only for hacking) pdnsd comes with
-    the C files output by bison for the yacc input file conf.y, so you don't
-    have to have bison/yacc to build pdnsd. If you plan hacking on pdnsd, bison
-    is recommended.
+  * GCC, preferably egcs-2.* or 3.* (other compilers are currently not
+    supported; the needed patch for another compiler should not be difficult,
+    however)
   * GNU or BSD make
   * the standard commands install, grep, sed, awk, touch and which (along with
     the REALLY standard ones mv, cp, ln, rm, pwd, test, echo, cat, mkdir,
@@ -202,14 +202,16 @@ If you want to download pdnsd, please visit the download page.
 
 Authors
 
-pdnsd was written by Thomas Moestl <tmoestl@gmx.net>
-Note added by Paul Rombouts: I have revised the code and added a few new
-features. See README.par and the ChangeLog in the source directory (or /usr/
-share/doc/pdnsd-<version> if you have installed an RPM) for more details. If
-you have questions about my modifications, you can find my email address at the
+pdnsd was originally written by Thomas Moestl, but is no longer maintained by
+him. Paul Rombouts has revised large portions of the code and has added a
+number of new features. See README.par and the ChangeLog in the source
+directory (or /usr/share/doc/pdnsd-<version> if you have installed a binary
+package) for more details. If you have questions about the recent
+modifications, you can find the email address of the current maintainer at the
 end of README.par.
 
-Daniel Smolik has contributed RedHat RPM's.
+Daniel Smolik has contributed RedHat RPMs (the most recent RPMs are available
+here).
 Torben Janssen contributed start scripts for Red Hat Linux.
 Soenke J. Peters contributed patches and suggestions for Red Hat compatability.
 Wolfgang Ocker has contributed the code and documentation for the server_ip
@@ -248,6 +250,7 @@ options.
 Mahesh T. Pai contributed the pdnsd.8 man page.
 Nikola Kotur contributed the Slackware start-up script.
 Kiyo Kelvin Lee contributed a patch for Cygwin support.
+Rodney Brown contributed a patch for Darwin (Apple Mac OS X) support.
 
 Special thanks to Bert Frederiks for letting me do a late-night debugging run
 on his machine to spot obscure bugs!
@@ -284,5 +287,5 @@ Eelco Vriezekolk
 Thomas Moestl
 
 
-Last revised: 07 Nov 2004 by Paul Rombouts
+Last revised: 03 Apr 2005 by Paul Rombouts
 

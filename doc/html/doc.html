@@ -23,7 +23,7 @@
 	    <a href="doc.html">Documentation</a>
 	  </span></td>
 	<td> <span id="small">
-	    <a href="COPYING">GNU GPL (pdnsd's License)</a>
+	    <a href="../../COPYING">GNU GPL (pdnsd's License)</a>
 	  </span> </td>
 	<td><span id="small">
 	    <a href="dl.html">Download Section</a>
@@ -39,7 +39,7 @@
     License,  as  published by the Free Software Foundation; either version
     2, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.1-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.2-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -86,10 +86,10 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with&nbsp;nptl</code>
+	  <code>--without&nbsp;nptl</code>
 	</td>
 	<td>
-	  Has the same effect as <code>--with-thread-lib=nptl</code> (<a href="#threadlib">see below</a>).
+	  Has the same effect as <code>--with-thread-lib=linuxthreads</code> (<a href="#threadlib">see below</a>).
 	</td>
       </tr>
       <tr>
@@ -180,7 +180,7 @@
     <table bgcolor="#CCCCCC" cellpadding=10>
       <tr>
 	<td>
-	  <code>--prefix=dir</code>
+	  <code>--prefix=<i>dir</i></code>
 	</td>
 	<td>
 	  Specify the prefix directory. The pdnsd files are installed in subdirectories
@@ -191,7 +191,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--sysconfdir=dir</code>
+	  <code>--sysconfdir=<i>dir</i></code>
 	</td>
 	<td>
 	  Specify the config directory. pdnsd expects its pdnsd.conf file to reside
@@ -202,7 +202,7 @@
       </tr>
       <tr>
 	<td>
-	  <code><a name="withdistro">--with-distribution=distro</a></code>
+	  <code><a name="withdistro">--with-distribution=<i>distro</i></a></code>
 	</td>
 	<td>
 	  Specify target distribution (default=Generic; others: RedHat, SuSE, Debian)<br>
@@ -211,22 +211,35 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-target=platform</code>
+	  <code>--with-target=<i>platform</i></code>
 	</td>
 	<td>
 	  Change compilation target platform (default: autodetect; others: Linux, BSD, Cygwin).<br>
 	  autodetect will attempt to detect whether you are using Linux, *BSD or Cygwin and
 	  should normally be sufficient. If this does not work, try specifying
-	  your system manually.
+	  your system manually (for the Darwin platform (Apple Mac OS X) specify BSD here). 
 	</td>
       </tr>
       <tr>
 	<td>
-	  <code><a name="withcachedir">--with-cachedir=dir</a></code>
+	  <code><a name="withcachedir">--with-cachedir=<i>dir</i></a></code>
 	</td>
 	<td>
 	  Default directory for pdnsd cache (default=/var/cache/pdnsd)<br>
 	  This setting can be changed via config file settings when pdnsd was built.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <code>--with-hash-buckets=<i>num</i></a></code>
+	</td>
+	<td>
+	  Number of hash buckets to use (default=1024). The default should be
+	  sufficient for most purposes, but if you want to store a large number of names
+	  in the cache, cache lookups may be faster if the number of hash buckets
+	  is comparable to the numbers of names stored in the cache.
+	  The number actually used is the smallest power of two
+	  greater or equal to the number specified here.
 	</td>
       </tr>
       <tr>
@@ -298,7 +311,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-query-method=qm</code>
+	  <code>--with-query-method=<i>qm</i></code>
 	</td>
 	<td>
 	  Specify the query method (default=udponly, others: tcpudp, tcponly)
@@ -371,7 +384,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-random-device=device</code>
+	  <code>--with-random-device=<i>device</i></code>
 	</td>
 	<td>
 	  Specify random device; default: C Library <code>random()</code> PRNG<br>
@@ -392,7 +405,7 @@
       </tr>
       <tr>
 	<td>
-	  <code><a name="defaultid">--with-default-id=user</a></code>
+	  <code><a name="defaultid">--with-default-id=<i>user</i></a></code>
 	</td>
 	<td>
 	  Specify default user for pdnsd (default=nobody).
@@ -403,21 +416,22 @@
       </tr>
       <tr>
 	<td>
-	  <code><a name="withdebug">--with-debug=level</a></code>
+	  <code><a name="withdebug">--with-debug=<i>level</i></a></code>
 	</td>
 	<td>
           Specify debugging level. Normally you can safely switch debugging off
 	  by setting the level to 0. This will increase speed (although only
 	  marginally) and save space in the executable (only about 12kB).
-	  Presently the only defined debug levels are 0 (off) and 1 (on).
-	  Setting the level higher than 1 does no harm. Debug output will only
+	  Presently the only defined debug levels are in the range 0 - 9.
+	  Setting the level to 9 enables hex dumps of the queries and replies
+	  pdnsd receives and should normally not be needed. Debug output will only
 	  be generated if you turn on special switches; it might be useful for
-	  debugging your config files, so I recommend using the default (9).
+	  debugging your config files, so I recommend using the default (1).
 	</td>
       </tr>
       <tr>
 	<td>
-	  <code>--with-verbosity=level</code>
+	  <code>--with-verbosity=<i>level</i></code>
 	</td>
 	<td>
 	  Specify default message verbosity. The default should be ok.
@@ -425,7 +439,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--enable-rcsids    </code>
+	  <code>--enable-rcsids</code>
 	</td>
 	<td>
 	  Enable RCS IDs in executables (default=disabled).<br>
@@ -451,7 +465,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-tcp-qtimeout</code>
+	  <code>--with-tcp-qtimeout=<i>secs</i></code>
 	</td>
 	<td>
 	  Specify default tcp query timeout after which the connection is closed
@@ -463,7 +477,7 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-par-queries</code>
+	  <code>--with-par-queries=<i>num</i></code>
 	</td>
 	<td>
 	  Specify the default number of queries that can be executed in parallel.
@@ -475,7 +489,7 @@
       </tr>
       <tr>
 	<td>
-	  <code><a name="threadlib">--with-thread-lib=&lt;<i>lib</i>&gt;</a></code>
+	  <code><a name="threadlib">--with-thread-lib=<i>lib</i></a></code>
 	</td>
 	<td>
 	  <em>Added by Paul Rombouts</em>: Use this option if you experience problems with
@@ -483,14 +497,17 @@
 	  the cache to disk, and <code>/var/cache/pdnsd/pdnsd.cache</code> remains empty.
 	  If you experience this kind of trouble, try reconfiguring with different values
 	  for the <code>--with-thread-lib</code> option. The allowable values are
-	  <code>linuxthreads</code> (the default), <code>linuxthreads2</code>
+	  <code>linuxthreads</code> (or <code>lt</code> for short), <code>linuxthreads2</code>
 	  (or <code>lt2</code> for short), and <code>nptl</code>.
-	  I recommend that you first configure and compile without the
-	  <code>--with-thread-lib</code> option, then if you experience trouble try again
-	  with <code>--with-thread-lib=lt2</code> and recompile.
-	  If your Linux system has an implementation of the Native POSIX Thread Library,
-	  which is the case with Red Hat 9 for instance, you should use
-	  <code>--with-thread-lib=nptl</code> .
+	  By default the configure script tries to detect automatically whether
+	  <code>linuxthreads</code> or <code>nptl</code> is more appropriate for your system,
+	  but the method used is not foolproof. Look for the line:
+	  <code>checking if this is an NPTL-based system...</code><br>
+	  If the automatic test mistakenly indentifies the thread library on your system as
+	  NPTL based, you should reconfigure with <code>--with-thread-lib=lt</code> and recompile.
+	  If the result of the automatic test is "<code>no</code>" or if
+	  <code>--with-thread-lib=lt</code> does not have the desired effect, try again using
+	  <code>--with-thread-lib=lt2</code> .
 	</td>
       </tr>
     </table>
@@ -507,7 +524,7 @@
     If you choose <code>Generic</code>, no rc script is installled, and a generic spec
     file is generated.<br>
 
-    Further instructions are in the INSTALL document in the pdsd source directory.
+    Further instructions are in the INSTALL document in the pdnsd source directory.
     <code>./configure --help</code> will give you a list of all supported command line
     options.<br><br>
     <em>Note added by Paul Rombouts</em>: Some people may want change the compiler optimization flag.
@@ -594,7 +611,7 @@
     </p>
     This start script was created from <code>/sbin/init.d/skeleton</code> by me, so the
     most is copyrighted by SuSE. They put it under the GPL, however, so
-    the license stated in <a href="COPYING">COPYING</a> also applies to this script.
+    the license stated in <a href="../../COPYING">COPYING</a> also applies to this script.
     There is NO WARRANTY OF ANY KIND on these scripts.
     This is no official SuSE script, and SuSE naturally does NO support 
     for it.
@@ -626,7 +643,7 @@
 	</td>
       </tr>
     </table>
-    This script is also covered by license stated in <a href="COPYING">COPYING</a>.
+    This script is also covered by license stated in <a href="../../COPYING">COPYING</a>.
     Again, there is NO WARRANTY OF ANY KIND on these scripts.
     This is no offical Redhat script, and Redhat naturally does NO support
     for it
@@ -750,7 +767,7 @@
 	<td>
 	  <b><code>perm_cache=(<i>number</i>|off);</code></b><br>
 	  Switch the disk cache off or supply a maximum cache size in kB. If the disk 
-	  cache is switched off, 4 bytes will still be written to disk.
+	  cache is switched off, 8 bytes will still be written to disk.
 	  The memory cache is always 10kB larger than the file cache.
 	  This value is 2048 (2 MB) by default.
 	</td>
@@ -779,12 +796,17 @@
       <tr>
  	<td>
 	  <b><code>server_ip=<i>string</i>;</code></b><br>
+	  or<br>
+	  <b><code>interface=<i>string</i>;</code></b><br>
 	  Set the IP address pdnsd listens on for requests. This can be useful
           when the host has several interfaces and you want pdnsd not to listen on
-          all interfaces. Addtionally, it is possible to bind pdnsd to listen on
+          all interfaces. For example, it is possible to bind pdnsd to listen on
           127.0.0.2 to allow pdnsd to be a forwarder for BIND.
 	  The default setting for this option is <code>server_ip=any</code>, which means that
 	  pdnsd will listen on all of your local interfaces.
+	  Presently you can only specify one address here; if you want pdnsd to listen on multiple
+	  interfaces but not all you will have to specify <code>server_ip=any</code>
+	  and use firewall rules to restrict access.<br>
 	  The IP address used to need quotation marks around it, but since version 1.1.10
 	  this is no longer necessary.<br>
 	  If pdnsd has been compiled with both IPv4 and IPv6 support, and you want to
@@ -796,7 +818,7 @@
 	  it will automatically be mapped to an IPv6 address.<br>
 	  <em>New in version 1.2:</em> You may also give the name of an interface
 	  such as <code>"lo"</code> or <code>"eth0"</code> here, instead of an IP address
-	  (Linux only).
+	  (this has been tested on Linux, and may or may not work on other platforms).
 	  pdnsd will not bind to the interface name, but will look up the address of the
 	  interface at start-up and listen on that address. If the address of the interface
 	  changes while pdnsd is running, pdnsd will not notice that. You will need to
@@ -1259,7 +1281,7 @@
 	      For secuity issues, also see that entry.
 	    <li><b><code>query</code></b>: <em>New in version 1.2:</em>
 	      This works like the ping test, except it sends an empty DNS query to the remote server.
-	      If the server sends valid response back within the timeout period (except SERVFAIL),
+	      If the server sends a well-formed response back within the timeout period (except SERVFAIL),
 	      it will be regarded as available.
 	      This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
 	      which unfortunately is quite common these days.
@@ -1841,7 +1863,8 @@
 	  If this is turned on, pdnsd will create authoritative local records with the data from the hosts file.
 	  Please see the description of the option of the same name in the rr section for a closer description of
 	  what this means. Please note that this only has an effect for files sourced with <code>file</code> options
-	  subsequent to this option.
+	  subsequent to this option.<br>
+	  This is on by default.
 	</td>
       </tr>
     </table>
@@ -2224,7 +2247,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 20 Oct 2004 by Paul Rombouts</i>
+      <i>Last revised: 03 Apr 2005 by Paul Rombouts</i>
     </p>
   </body>
 </html>

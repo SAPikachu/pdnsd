@@ -27,7 +27,7 @@ tempdir="/tmp"
 randomdev=default
 freebsd_pthread="4"
 specbuild=no
-threadlib=linuxthreads
+threadlib=default
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
@@ -41,11 +41,11 @@ AC_SUBST(distribution)
 
 AC_ARG_WITH(target,
 [  --with-target=platform      Change compilation target platform (default: 
-			      autodetect; others: Linux, BSD, Cygwin)],
+                              autodetect; others: Linux, BSD, Cygwin)],
   target=$withval)
 case $target in
-  Linux|linux) 
-    AC_DEFINE(TARGET, TARGET_LINUX) 
+  Linux|linux)
+    AC_DEFINE(TARGET, TARGET_LINUX)
     target="Linux"
     ;;
   BSD| bsd)
@@ -87,10 +87,10 @@ AC_ARG_ENABLE(ipv6,
 [ if test $enableval = "yes" ; then
     AC_DEFINE(ENABLE_IPV6)
     if test $have_ipv4 != "yes" ; then
-      ipv4_default=0	
+      ipv4_default=0
     fi
   fi])
-  
+
 AC_ARG_ENABLE(ipv4-startup,
 [  --disable-ipv4-startup      Disable IPv4 on pdnsd startup by default
                               (default=enabled)],
@@ -105,12 +105,12 @@ AC_ARG_ENABLE(ipv6-startup,
                               (default=IPv4)],
 [ if test $enableval = "yes" ; then
     ipv4_default=0
-  else 
+  else
     ipv4_default=1
   fi])
 
 AC_DEFINE_UNQUOTED(DEFAULT_IPV4, $ipv4_default)
- 
+
 AC_ARG_ENABLE(udp-queries,
 [  --disable-udp-queries       Disable udp as query method.],
   udp_queries=$enableval)
@@ -124,16 +124,16 @@ AC_ARG_WITH(query-method,
                               others: tcpudp, tcponly)],
   query_m=$withval)
 case $query_m in
-  udponly|UDPonly) 
+  udponly|UDPonly)
     AC_DEFINE(M_PRESET, UDP_ONLY)
     udp_queries=yes;
     ;;
-  tcponly|TCPonly) 
-    AC_DEFINE(M_PRESET, TCP_ONLY) 
+  tcponly|TCPonly)
+    AC_DEFINE(M_PRESET, TCP_ONLY)
     tcp_queries=yes;
     ;;
-  tcpudp|TCPUDP) 
-    AC_DEFINE(M_PRESET, TCP_UDP) 
+  tcpudp|TCPUDP)
+    AC_DEFINE(M_PRESET, TCP_UDP)
     udp_queries=yes;
     tcp_queries=yes;
     ;;
@@ -165,33 +165,33 @@ AC_ARG_ENABLE(poll,
 [  --disable-poll              Disable poll(2) and use select(2)
                               (default=enabled)],
    test $enableval != "yes" && AC_DEFINE(NO_POLL))
-  
+
 AC_ARG_ENABLE(new-rrs,
 [  --disable-new-rrs           Disable new DNS RR types, may cause problems
-			      with some resolvers],
+                              with some resolvers],
    newrr=$enableval)
-  
+
 test $newrr = "yes" && AC_DEFINE(DNS_NEW_RRS)
 
 AC_ARG_ENABLE(strict-rfc2181,
 [  --enable-strict-rfc2181     Enforce strict RFC 2181 compliance],
    test $enableval = "yes" && AC_DEFINE(RFC2181_ME_HARDER))
-  
+
 AC_ARG_WITH(random-device,
 [  --with-random-device=device Specify random device other than 
                               /dev/random; default: C Library random() PRNG;
-			      special value arc4random for BSD C Library
-			      arc4random function (default on FreeBSD)],
+                              special value arc4random for BSD C Library
+                              arc4random function (default on FreeBSD)],
    randomdev=$withval)
 
 if test "$randomdev" = arc4random ; then
-	AC_DEFINE(R_ARC4RANDOM)  
+	AC_DEFINE(R_ARC4RANDOM)
 elif test "$randomdev" = random ; then
 	AC_DEFINE(R_RANDOM)
 elif test "$randomdev" = default ; then
 	AC_DEFINE(R_DEFAULT)
 else
-	AC_DEFINE_UNQUOTED(RANDOM_DEVICE, "$randomdev")  
+	AC_DEFINE_UNQUOTED(RANDOM_DEVICE, "$randomdev")
 fi
 
 AC_ARG_ENABLE(underscores,
@@ -203,19 +203,34 @@ AC_ARG_WITH(default-id,
                               (default=nobody)],
   def_id=$withval)
 AC_SUBST(def_id)
-  
+
 AC_ARG_WITH(debug,
 [  --with-debug=level          Specify debugging level],
   AC_DEFINE_UNQUOTED(DEBUG, $withval))
-  
+
 AC_ARG_WITH(verbosity,
 [  --with-verbosity=level      Specify default message verbosity],
   AC_DEFINE_UNQUOTED(VERBOSITY, $withval))
-  
+
+AC_ARG_WITH(hash-buckets,
+[  --with-hash-buckets=num     Number of hash buckets to use (default=1024).
+                              The number actually used is the smallest power of two
+                              greater or equal to the number specified here.],
+  powof2=1
+  hashsz=0
+
+  while test $powof2 -lt "$withval"
+  do
+    powof2=`expr 2 '*' $powof2`
+    hashsz=`expr $hashsz '+' 1`
+  done
+  AC_DEFINE_UNQUOTED(HASH_SZ, $hashsz)
+)
+
 AC_ARG_ENABLE(hash-debug,
 [  --enable-hash-debug         Debug hash tables (warning: massive output)],
   test $enableval = "yes" && AC_DEFINE(DEBUG_HASH))
-  
+
 AC_ARG_ENABLE(yy-debug,
 [  --enable-yy-debug           Debug config file parser],
   test $enableval = "yes" && AC_DEFINE(DEBUG_YY))
@@ -232,7 +247,7 @@ AC_ARG_WITH(tcp-qtimeout,
 
 AC_ARG_ENABLE(tcp-subseq,
 [  --enable-tcp-subseq         Enable multiple dns querys using one
-			      tcp connection],
+                              tcp connection],
   test $enableval = "yes" && AC_DEFINE(TCP_SUBSEQ))
 
 AC_ARG_WITH(par-queries,
@@ -246,18 +261,13 @@ AC_ARG_ENABLE(specbuild,
 AC_SUBST(specbuild)
 
 AC_ARG_WITH(thread-lib,
-[  --with-thread-lib=lib       Specify thread library (for Linux only).
-			      Possible values: LinuxThreads (default),
-			      LinuxThreads2 (implements a fix for newer glibcs)
-			      or NPTL (Native POSIX Thread Library)],
+[  --with-thread-lib=lib       Specify thread library, overriding automatic detection (for Linux only).
+                              Possible values: LinuxThreads,
+                              LinuxThreads2 (implements a fix for newer glibcs)
+                              or NPTL (Native POSIX Thread Library)],
   threadlib=$withval)
 
-if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
-	AC_DEFINE(THREADLIB_NPTL)  
-elif test "$threadlib" = linuxthreads2 -o "$threadlib" = LinuxThreads2 -o "$threadlib" = lt2; then
-	AC_DEFINE(THREADLIB_LINUXTHREADS2)  
-fi
-
+AC_SUBST(threadlib)
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -280,7 +290,7 @@ if test "$target" = "autodetect" ; then
       AC_DEFINE(TARGET, TARGET_LINUX)
       target="Linux"
       ;;
-    FreeBSD|NetBSD|OpenBSD)
+    FreeBSD|NetBSD|OpenBSD|Darwin)
       AC_MSG_RESULT("${uname_sys}")
       AC_DEFINE(TARGET, TARGET_BSD)
       target="BSD"
@@ -296,7 +306,7 @@ if test "$target" = "autodetect" ; then
 [Your system type could not be identified. Try setting it manually using 
 --with-target])
       ;;
-    esac	
+    esac
   fi
 fi
 
@@ -313,7 +323,7 @@ fi
 #      freebsd_pthread="4"
 #    fi
 #  fi
-#fi	
+#fi
 
 if test "$adisc" = "default"; then
   if test "$target" = "cygwin" ; then
@@ -321,7 +331,7 @@ if test "$adisc" = "default"; then
     adisc="no"
   else
     adisc="yes"
-  fi  
+  fi
 fi
 
 test "$adisc" = "yes" && AC_DEFINE(SRC_ADDR_DISC)
@@ -331,7 +341,7 @@ dnl Checks for libraries.
 if test "$target" = "Linux"; then
   AC_CHECK_LIB(pthread, pthread_kill)
 fi
-if test "$target" = "BSD" ; then
+if test "$target" = "BSD" -a `uname` != Darwin ; then
 #  if test $freebsd_pthread = 4 ; then
     CFLAGS="$CFLAGS -pthread"
     AC_SUBST(CFLAGS)
@@ -341,10 +351,74 @@ if test "$target" = "BSD" ; then
 #  fi;
 fi
 
+if test "$target" = "Linux" -a "$threadlib" = default; then
+AC_MSG_CHECKING([if this is an NPTL-based system])
+old_LIBS="$LIBS"
+LIBS="$LIBS -lpthread"
+AC_RUN_IFELSE([
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <pthread.h>
+
+/* All this function does is return its PID (in a roundabout way). */
+void *thread_func(void *data)
+{
+	*((int *)data)=getpid();
+	return data;
+}
+
+int main()
+{
+	pthread_t thread;
+	void *retval;
+	int err,mainpid,thrdpid;
+
+	err=pthread_create(&thread, NULL, thread_func, &thrdpid);
+	if(err) {
+		fprintf(stderr,"pthread_create failed: %s\n",strerror(err));
+		return 1;
+	}
+	err=pthread_join(thread,&retval);
+	if(err) {
+		fprintf(stderr,"pthread_join failed: %s\n",strerror(err));
+		return 1;
+	}
+	mainpid=getpid();
+	/* In LinuxThreads implementations, the pids of the threads will usually differ
+	   in a non Posix-compliant way. */
+	fprintf(stderr,"main pid=%d, thread pid=%d\n",mainpid,*((int *)retval));
+	return (*((int *)retval)!=mainpid);
+}
+],
+[
+  AC_MSG_RESULT([yes])
+  threadlib=nptl
+],
+[
+  AC_MSG_RESULT([no])
+  threadlib=linuxthreads
+],
+[
+  AC_MSG_RESULT([couldn't run test program])
+  threadlib=linuxthreads
+])
+LIBS="$old_LIBS"
+fi
+
+if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
+	AC_DEFINE(THREADLIB_NPTL)
+elif test "$threadlib" = linuxthreads2 -o "$threadlib" = LinuxThreads2 -o "$threadlib" = lt2; then
+	AC_DEFINE(THREADLIB_LINUXTHREADS2)
+fi
+
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h malloc.h sys/ioctl.h sys/time.h syslog.h unistd.h netinet/in.h)
+AC_CHECK_HEADERS(fcntl.h malloc.h sys/ioctl.h sys/time.h syslog.h unistd.h)
+AC_CHECK_HEADERS(sys/types.h net/if.h netinet/in.h sys/poll.h sys/socket.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -352,25 +426,43 @@ AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+AC_CHECK_TYPES(socklen_t,, AC_DEFINE(socklen_t,int))
+AC_CHECK_TYPES([struct in_pktinfo, struct ifreq],,,[#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>])
 
-AC_MSG_CHECKING([for structure in_pktinfo])
-pktinfo_struct="no"
-AC_TRY_COMPILE([#include <netinet/in.h>], [struct in_pktinfo pi;], 
-  pktinfo_struct="yes", 
-  AC_DEFINE(NO_IN_PKTINFO))
-
-if test [ "$pktinfo_struct" = "yes" ]; then
-  AC_MSG_RESULT(yes)
+AC_MSG_CHECKING([for CPP C99 Variadic macro support])
+AC_COMPILE_IFELSE([
+#define a(...) junk(0,__VA_ARGS__)
+extern void junk(int i,...);
+int main()
+{
+  a(0);
+  a("a");
+  a(0, "a", 1);
+  return 0;
+}
+],
+  cpp_c99_variadic="yes", cpp_c99_variadic="no")
+AC_MSG_RESULT([$cpp_c99_variadic])
+if test $cpp_c99_variadic = yes; then
+  AC_DEFINE(CPP_C99_VARIADIC_MACROS)
 else
-  AC_MSG_RESULT(no)
+  if test "$GCC" != yes; then
+    AC_MSG_ERROR([Compiler must support C99 or gcc variadic macros])
+  fi;
 fi
-  
+
 dnl Checks for library functions.
 AC_FUNC_ALLOCA
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
+AC_SEARCH_LIBS(nanosleep, rt)
+AC_SEARCH_LIBS(socket, socket,,,-lnsl)
+AC_SEARCH_LIBS(inet_aton, resolv)
 AC_CHECK_FUNCS(nanosleep gettimeofday mkfifo select socket strerror uname snprintf vsnprintf, true, 
 		AC_MSG_ERROR([One of the functions required for pdnsd were not found.]))
 AC_CHECK_FUNCS(poll, true, AC_DEFINE(NO_POLL))
@@ -394,6 +486,7 @@ src/rc/SuSE/Makefile
 src/rc/SuSE/pdnsd
 src/rc/Debian/Makefile
 src/rc/Debian/pdnsd
+src/rc/Slackware/Makefile
 src/rc/Slackware/rc.pdnsd
 src/test/Makefile
 ])

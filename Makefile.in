@@ -82,18 +82,19 @@ def_id = @def_id@
 distribution = @distribution@
 install_sh = @install_sh@
 specbuild = @specbuild@
+threadlib = @threadlib@
 
 SUBDIRS = src doc contrib
 
 #GZIP_ENV=
 EXTRA_DIST = @PACKAGE@.spec.in config.h.in version \
-file-list.base.in ChangeLog.old COPYING.BSD
+file-list.base.in ChangeLog.old COPYING.BSD README.par README.par.old
 
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = config.h
-CONFIG_CLEAN_FILES = pdnsd.spec file-list.base src/rc/Slackware/rc.pdnsd
+CONFIG_CLEAN_FILES = pdnsd.spec file-list.base
 DIST_SOURCES =
 
 RECURSIVE_TARGETS = info-recursive dvi-recursive install-info-recursive \
@@ -145,8 +146,6 @@ distclean-hdr:
 pdnsd.spec: $(top_builddir)/config.status pdnsd.spec.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 file-list.base: $(top_builddir)/config.status file-list.base.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
-src/rc/Slackware/rc.pdnsd: $(top_builddir)/config.status $(top_srcdir)/src/rc/Slackware/rc.pdnsd.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 uninstall-info-am:
 
@@ -441,8 +440,8 @@ uninstall-info: uninstall-info-recursive
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(cachedir)
-	[ -f $(DESTDIR)$(cachedir)/pdnsd.cache ] || \
-	  echo -n -e "pd12\0\0\0\0" > $(DESTDIR)$(cachedir)/pdnsd.cache
+	test -f $(DESTDIR)$(cachedir)/pdnsd.cache || \
+	  touch $(DESTDIR)$(cachedir)/pdnsd.cache
 	if test `whoami` = "root"; then \
 	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
 	  chown $(def_id) $(DESTDIR)$(cachedir); \

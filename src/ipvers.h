@@ -67,7 +67,7 @@ extern short int cmdlineipv;
 extern short int cmdlineprefix;
 #endif
 
-#if (TARGET==TARGET_LINUX) && defined(NO_IN_PKTINFO)
+#if (TARGET==TARGET_LINUX) && !defined(HAVE_STRUCT_IN_PKTINFO)
 struct in_pktinfo
 {
 	int		ipi_ifindex;

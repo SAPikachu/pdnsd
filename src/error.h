@@ -49,11 +49,12 @@ inline static void init_log_lock(void)
 }
 
 void log_message(int prior,const char *s, ...) printfunc(2, 3);
-#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
+#if !defined(CPP_C99_VARIADIC_MACROS)
+/* GNU C Macro Varargs style. */
 #define log_error(args...) log_message(LOG_ERR,args)
 #define log_warn(args...) log_message(LOG_WARNING,args)
 #else
-/* ANSI style. */
+/* ANSI C99 style. */
 #define log_error(...) log_message(LOG_ERR,__VA_ARGS__)
 #define log_warn(...) log_message(LOG_WARNING,__VA_ARGS__)
 #endif
@@ -76,12 +77,8 @@ void debug_msg(int c, const char *fmt, ...) printfunc(2, 3);
 extern FILE *dbg_file;
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
-/*
- * Older GCC versions do not know about the new ANSI variadic macros, so use the
- * old GCC style. I suspect the first version to support the ANSI variant was
- * egcs 2.95, but I could be wrong, corrections welcome.
- */
+#if !defined(CPP_C99_VARIADIC_MACROS)
+/* GNU C Macro Varargs style. */
 # if DEBUG > 0
 #  define DEBUG_MSG(args...)	{if (debug_p) debug_msg(0,args);}
 #  define DEBUG_MSGC(args...)	{if (debug_p) debug_msg(1,args);}
@@ -96,7 +93,7 @@ extern FILE *dbg_file;
 #  define DEBUG_RHN_MSG(args...)
 # endif	/* DEBUG > 0 */
 #else
-/* ANSI style. */
+/* ANSI C99 style. */
 # if DEBUG > 0
 /*
  * XXX: The ANSI and GCC variadic macros should be merged as far as possible, but that

@@ -142,6 +142,7 @@ server {
 .br
         label= "myisp";
         ip=123.456.789.001,123.456.789.002;
+        proxy_only=on;
         timeout=10;
 .br
 }
@@ -181,7 +182,7 @@ man page for details.
 
 \fB@sysconfdir@/pdnsd.conf\fP is the pdnsd configuration file.
 The file format and configuration options are described in the
-.BR pdnsd.config (5)
+.BR pdnsd.conf (5)
 man page.
 .PP
 \fB@cachedir@/pdnsd.cache\fP
@@ -300,7 +301,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too. 
 .PP
-Last revised: 10 Oct 2004 by Paul Rombouts.
+Last revised: 03 Apr 2005 by Paul Rombouts.
 
 .SH COPYRIGHT
 

@@ -154,10 +154,11 @@ extern FILE *rand_file;
 unsigned short get_rand16(void);
 
 int fsprintf(int fd, const char *format, ...) printfunc(2, 3);
-#if defined(__GNUC__) && (__GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 95))
+#if !defined(CPP_C99_VARIADIC_MACROS)
+/* GNU C Macro Varargs style. */
 # define fsprintf_or_return(args...) {int _retval; if((_retval=fsprintf(args))<0) return _retval;}
 #else
-/* ANSI style variadic macro. */
+/* ANSI C99 style variadic macro. */
 # define fsprintf_or_return(...) {int _retval; if((_retval=fsprintf(__VA_ARGS__))<0) return _retval;}
 #endif
 
@@ -282,6 +283,7 @@ int asprintf (char **lineptr, const char *format, ...);
 #endif
 
 #ifndef HAVE_VASPRINTF
+#include <stdarg.h>
 int vasprintf (char **lineptr, const char *format, va_list va);
 #endif
 

@@ -80,6 +80,7 @@ def_id = @def_id@
 distribution = @distribution@
 install_sh = @install_sh@
 specbuild = @specbuild@
+threadlib = @threadlib@
 
 noinst_PROGRAMS = if_up is_local_addr tping random
 

@@ -8,7 +8,7 @@ the Free Software Foundation; either version 2, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.1-par. For older documentation,
+This manual is up-to-date for version 1.2.2-par. For older documentation,
 please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
@@ -47,8 +47,8 @@ Several pdnsd-specific options are available when building RPM packages:
 
 --without poll          Has the same effect as --disable-poll (see below).
 
---with nptl             Has the same effect as --with-thread-lib=nptl (see
-                        below).
+--without nptl          Has the same effect as --with-thread-lib=linuxthreads (
+                        see below).
 
 --with ipv6             Has the same effect as --enable-ipv6 (see below).
 
@@ -120,15 +120,25 @@ distro                    RedHat, SuSE, Debian)
 
                           Change compilation target platform (default:
                           autodetect; others: Linux, BSD, Cygwin).
---with-target=platform    autodetect will attempt to detect whether you are
-                          using Linux, *BSD or Cygwin and should normally be
+                          autodetect will attempt to detect whether you are
+--with-target=platform    using Linux, *BSD or Cygwin and should normally be
                           sufficient. If this does not work, try specifying
-                          your system manually.
+                          your system manually (for the Darwin platform (Apple
+                          Mac OS X) specify BSD here).
 
                           Default directory for pdnsd cache (default=/var/cache
 --with-cachedir=dir       /pdnsd)
                           This setting can be changed via config file settings
                           when pdnsd was built.
+
+                          Number of hash buckets to use (default=1024). The
+                          default should be sufficient for most purposes, but
+                          if you want to store a large number of names in the
+--with-hash-buckets=num   cache, cache lookups may be faster if the number of
+                          hash buckets is comparable to the numbers of names
+                          stored in the cache. The number actually used is the
+                          smallest power of two greater or equal to the number
+                          specified here.
 
                           Enable ISDN support
                           This option will work only on Linux and may cause
@@ -223,12 +233,13 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
                           switch debugging off by setting the level to 0. This
                           will increase speed (although only marginally) and
                           save space in the executable (only about 12kB).
---with-debug=level        Presently the only defined debug levels are 0 (off)
-                          and 1 (on). Setting the level higher than 1 does no
-                          harm. Debug output will only be generated if you turn
-                          on special switches; it might be useful for debugging
-                          your config files, so I recommend using the default
-                          (9).
+                          Presently the only defined debug levels are in the
+--with-debug=level        range 0 - 9. Setting the level to 9 enables hex dumps
+                          of the queries and replies pdnsd receives and should
+                          normally not be needed. Debug output will only be
+                          generated if you turn on special switches; it might
+                          be useful for debugging your config files, so I
+                          recommend using the default (1).
 
 --with-verbosity=level    Specify default message verbosity. The default should
                           be ok.
@@ -252,14 +263,14 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
 
                           Specify default tcp query timeout after which the
                           connection is closed if no full query has been
---with-tcp-qtimeout       received. The default is 30s. You can also change
-                          this option at run time using the tcp_qtimeout config
+--with-tcp-qtimeout=      received. The default is 30s. You can also change
+secs                      this option at run time using the tcp_qtimeout config
                           file option. If you do not use --enable-tcp-server,
                           is option is not honored.
 
                           Specify the default number of queries that can be
                           executed in parallel. You can also change this option
---with-par-queries        at run time using the par_queries config file option.
+--with-par-queries=num    at run time using the par_queries config file option.
                           See the description of that option for an explanation
                           of what it really does.
                           The default for this option is 2.
@@ -271,14 +282,20 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
                           remains empty. If you experience this kind of
                           trouble, try reconfiguring with different values for
                           the --with-thread-lib option. The allowable values
---with-thread-lib=<lib>   are linuxthreads (the default), linuxthreads2 (or lt2
-                          for short), and nptl. I recommend that you first
-                          configure and compile without the --with-thread-lib
-                          option, then if you experience trouble try again with
-                          --with-thread-lib=lt2 and recompile. If your Linux
-                          system has an implementation of the Native POSIX
-                          Thread Library, which is the case with Red Hat 9 for
-                          instance, you should use --with-thread-lib=nptl .
+                          are linuxthreads (or lt for short), linuxthreads2 (or
+                          lt2 for short), and nptl. By default the configure
+                          script tries to detect automatically whether
+--with-thread-lib=lib     linuxthreads or nptl is more appropriate for your
+                          system, but the method used is not foolproof. Look
+                          for the line: checking if this is an NPTL-based
+                          system...
+                          If the automatic test mistakenly indentifies the
+                          thread library on your system as NPTL based, you
+                          should reconfigure with --with-thread-lib=lt and
+                          recompile. If the result of the automatic test is
+                          "no" or if --with-thread-lib=lt does not have the
+                          desired effect, try again using --with-thread-lib=lt2
+                          .
 
 Normally, you will need only --prefix, --sysconfdir and --with-distribution. If
 you specify your distribution using --with-distribution, this has the following
@@ -292,7 +309,7 @@ effects:
 
 If you choose Generic, no rc script is installled, and a generic spec file is
 generated.
-Further instructions are in the INSTALL document in the pdsd source directory.
+Further instructions are in the INSTALL document in the pdnsd source directory.
 ./configure --help will give you a list of all supported command line options.
 
 Note added by Paul Rombouts: Some people may want change the compiler
@@ -519,7 +536,7 @@ These are the possible options:
 
 perm_cache=(number|off);
 Switch the disk cache off or supply a maximum cache size in kB. If the disk
-cache is switched off, 4 bytes will still be written to disk. The memory cache
+cache is switched off, 8 bytes will still be written to disk. The memory cache
 is always 10kB larger than the file cache. This value is 2048 (2 MB) by
 default.
 
@@ -538,13 +555,18 @@ the basis of an NS record, since the A record that supplies the address for
 (among others) name servers does not have a port number specification.
 
 server_ip=string;
+or
+interface=string;
 Set the IP address pdnsd listens on for requests. This can be useful when the
 host has several interfaces and you want pdnsd not to listen on all interfaces.
-Addtionally, it is possible to bind pdnsd to listen on 127.0.0.2 to allow pdnsd
+For example, it is possible to bind pdnsd to listen on 127.0.0.2 to allow pdnsd
 to be a forwarder for BIND. The default setting for this option is server_ip=
-any, which means that pdnsd will listen on all of your local interfaces. The IP
-address used to need quotation marks around it, but since version 1.1.10 this
-is no longer necessary.
+any, which means that pdnsd will listen on all of your local interfaces.
+Presently you can only specify one address here; if you want pdnsd to listen on
+multiple interfaces but not all you will have to specify server_ip=any and use
+firewall rules to restrict access.
+The IP address used to need quotation marks around it, but since version 1.1.10
+this is no longer necessary.
 If pdnsd has been compiled with both IPv4 and IPv6 support, and you want to
 specify an IPv6 address here, then unless pdnsd was compiled to start up in
 IPv6 mode by default, you will need to use the -6 command-line option or set
@@ -553,11 +575,11 @@ parsed correctly.
 If pdnsd is running in IPv6 mode and you specify an IPv4 address here, it will
 automatically be mapped to an IPv6 address.
 New in version 1.2: You may also give the name of an interface such as "lo" or
-"eth0" here, instead of an IP address (Linux only). pdnsd will not bind to the
-interface name, but will look up the address of the interface at start-up and
-listen on that address. If the address of the interface changes while pdnsd is
-running, pdnsd will not notice that. You will need to restart pdnsd in that
-case.
+"eth0" here, instead of an IP address (this has been tested on Linux, and may
+or may not work on other platforms). pdnsd will not bind to the interface name,
+but will look up the address of the interface at start-up and listen on that
+address. If the address of the interface changes while pdnsd is running, pdnsd
+will not notice that. You will need to restart pdnsd in that case.
 
 linkdown_kluge=(on|off);
 This option enables a kluge that some people might need: when all servers are
@@ -931,12 +953,12 @@ defined methods are:
     command is given with the uptest_cmd option (see below). For secuity
     issues, also see that entry.
   * query: New in version 1.2: This works like the ping test, except it sends
-    an empty DNS query to the remote server. If the server sends valid response
-    back within the timeout period (except SERVFAIL), it will be regarded as
-    available. This test is useful if a remote server does not respond to
-    ICMP_ECHO requests at all, which unfortunately is quite common these days.
-    In many cases this test will be a more reliable indicator of availability
-    than the ones mentioned before.
+    an empty DNS query to the remote server. If the server sends a well-formed
+    response back within the timeout period (except SERVFAIL), it will be
+    regarded as available. This test is useful if a remote server does not
+    respond to ICMP_ECHO requests at all, which unfortunately is quite common
+    these days. In many cases this test will be a more reliable indicator of
+    availability than the ones mentioned before.
 
 The default value is none.
 
@@ -1399,6 +1421,7 @@ data from the hosts file. Please see the description of the option of the same
 name in the rr section for a closer description of what this means. Please note
 that this only has an effect for files sourced with file options subsequent to
 this option.
+This is on by default.
 
 
 3 pdnsd-ctl
@@ -1707,5 +1730,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl
 
-Last revised: 20 Oct 2004 by Paul Rombouts
+Last revised: 03 Apr 2005 by Paul Rombouts
 

@@ -3,7 +3,8 @@
 man_MANS = pdnsd.8 pdnsd-ctl.8 pdnsd.conf.5
 
 EXTRA_DIST = pdnsd.conf.in html/dl.html html/doc.html html/faq.html \
-html/index.html txt/faq.txt txt/intro.txt txt/manual.txt $(man_MANS)
+html/index.html txt/faq.txt txt/intro.txt txt/manual.txt \
+pdnsd.8.in pdnsd-ctl.8 pdnsd.conf.5.in
 
 # XXX: Do not insist to set the config file owner to root to avoid breaking RPM
 # builds

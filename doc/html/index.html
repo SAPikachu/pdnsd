@@ -31,7 +31,7 @@
 	    <a href="doc.html">Documentation</a>
 	  </span></td>
 	<td> <span id="small">
-	    <a href="COPYING">GNU GPL (pdnsd's License)</a>
+	    <a href="../../COPYING">GNU GPL (pdnsd's License)</a>
 	  </span> </td>
 	<td><span id="small">
 	    <a href="dl.html">Download Section</a>
@@ -41,6 +41,20 @@
     <center><h1>The pdnsd Homepage</h1></center>
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
+      <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2005-04-03</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.2-par has been released.</b>
+	The main emphasis of this release is improved portability.
+	A bug has been fixed that prevented pdnsd from compiling successfully on some
+	64 bit architectures.
+	This release has (experimental) support for the Darwin (Apple Mac OS X) platform.
+	On Linux systems, the configure script will now try to detect automatically whether
+	the system implements the Native POSIX Thread Library, but the method used may not
+	necessarily be foolproof.
+	In addition, the debug features have been improved and should make it easier to find out
+	why pdnsd considers some queries or replies malformed.
+	</td>
+      </tr>
       <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2004-11-07</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.1-par has been released.</b>
@@ -54,7 +68,7 @@
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2-par has been released.</b>
 	pdnsd is new and improved! Most of the changes effect the internal workings
 	of pdnsd, but there also a number of interesting new features (well, I think they are interesting).<br>
-	Amongs the bugs fixed are two rather nasty ones which involve the handling of NXT and NAPTR records
+	Among the bugs fixed are two rather nasty ones which involve the handling of NXT and NAPTR records
 	and which can cause pdnsd to crash or abort.<br>
 	The new features include a new server availability test which can be specified with <code>uptest=query</code>,
 	support for reading the DNS configuration from resolv.conf files,
@@ -64,8 +78,8 @@
 	a new pdnsd-ctl command for reloading the config file without restarting pdnsd, and
 	a new pdnsd-ctl command for dumping information about the names stored in the cache.
 	The documentation has also been updated: there is now a <code>pdnsd.conf</code> man page.<br>
-	For a more complete list of the changes I'll have to refer you to <a href="README.par"><code>README.par</code></a> and the <a
-	href="ChangeLog"><code>ChangeLog</code></a>.
+	For a more complete list of the changes I'll have to refer you to <a href="../../README.par"><code>README.par</code></a> and the <a
+	href="../../ChangeLog"><code>ChangeLog</code></a>.
 	</td>
       </tr>
       <tr>
@@ -90,8 +104,8 @@
 	the replies and changes in the parallel querying algorithm that should
 	improve the chances of catching a reply from a remote server.<br>
 
-	For a more complete list of the changes I'll have to refer you to <a href="README.par"><code>README.par</code></a> and the <a
-	href="ChangeLog"><code>ChangeLog</code></a>.
+	For a more complete list of the changes I'll have to refer you to <a href="../../README.par"><code>README.par</code></a> and the <a
+	href="../../ChangeLog"><code>ChangeLog</code></a>.
 	</td>
       </tr>
       <tr>
@@ -108,7 +122,7 @@
 	<code>/etc/hosts</code> like files.<br>
 
 	There have been other small changes, more details can be found in the <a
-	href="ChangeLog"><code>ChangeLog</code></a>.
+	href="../../ChangeLog"><code>ChangeLog</code></a>.
 	</td>
       </tr>
       <tr>
@@ -133,7 +147,7 @@
 	tried to make the error responses of <a
 	href="doc.html#pdnsdctl"><code>pdnsd-ctl</code></a> more helpful.<br>
 
-	More details can be found in the <a href="ChangeLog"><code>ChangeLog</code></a>.
+	More details can be found in the <a href="../../ChangeLog"><code>ChangeLog</code></a>.
 	</td>
       </tr>
       <tr>
@@ -147,7 +161,7 @@
 	I have provided alternative implementations for some GNU extensions that I
 	used in an effort to make the code more portable. In particular, the
 	code should build on FreeBSD again.<br>
-	More details can be found in the <a href="README.par"><code>README.par</code></a> file.
+	More details can be found in the <a href="../../README.par"><code>README.par</code></a> file.
 	</td>
       </tr>
       <tr>
@@ -156,7 +170,7 @@
 	"maintenance" release by Paul Rombouts. Besides fixing a number of bugs I have
 	reworked some of the code for adding and removing entries in the cache in an
 	effort to improve efficiency and stability.<br>
-	More details can be found in the <a href="ChangeLog"><code>ChangeLog</code></a>.
+	More details can be found in the <a href="../../ChangeLog"><code>ChangeLog</code></a>.
 	</td>
       </tr>
       <tr>
@@ -229,23 +243,23 @@
     <!--)notext-->
     <hr>
     <h2>About pdnsd</h2>
-    pdnsd is a  proxy dns server with permanent caching (the cache contents
-    are written to hard disk on exit) that is designed to cope with unreacheable
-    or down dns servers (for example in dial-in networking).<br>
+    pdnsd is a  proxy DNS server with permanent caching (the cache contents
+    are written to hard disk on exit) that is designed to cope with unreachable
+    or down DNS servers (for example in dial-in networking).<br>
     Since version 1.1.0, pdnsd supports negative caching.<br>
     <br>
-    It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="COPYING">GPL</A><!--notext(-->, 
+    It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="../../COPYING">GPL</A><!--notext(-->, 
     <a HREF="http://www.gnu.org/copyleft/gpl.html">also available in html</A> and 
     <a HREF="http://www.gnu.org/copyleft/copyleft.html#translations">translated into various languages</A>.<!--)notext-->).
     This, in short, means that the sources are distributed togehter with the program, and
     that you are free to modify the sources and redistribute them as long as you
     also license them under the GPL. You do not need to pay anything for pdnsd.
     It also means that there is <b>ABSOLUTELY NO WARRANTY</b> for pdnsd or any part
-    of it. For details, please <a href="COPYING">read the GPL</a>.
+    of it. For details, please <a href="../../COPYING">read the GPL</a>.
     <p>
-      pdnsd can be used with applications that do dns lookups, eg on startup, and 
+      pdnsd can be used with applications that do DNS lookups, e.g. on startup, and 
       can't be configured to change that behaviour, to prevent the often minute-long
-      hangs (or even crashes) that result from stalled dns queries. Some Netscape Navigator 
+      hangs (or even crashes) that result from stalled DNS queries. Some Netscape Navigator 
       versions for Unix, for example, expose this behaviour.
     </p>
     pdnsd is configurable via a file and supports run-time configuration using the program pdnsd-ctl that comes
@@ -266,7 +280,7 @@
       information for localhost as well as for your machines FQDN) and serve its
       contents.
     </p> <p>
-      pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin).
+      pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin and Darwin).
       90% of the source code should be easily portable to POSIX- 
       and BSD-compatible systems, provided that those systems support the POSIX threads (pthreads).
       The rest might need OS-specific rewrites.
@@ -281,7 +295,7 @@
       &gt;1024 to allow non-root execution). However, pdnsd can be configured to change it's user
       and group id to those of a non-privileged user after opening the sockets needed for this.
     </p> <p>
-      The server should support the full standard dns queries following the rfcs 1034
+      The server should support the full standard DNS queries following the rfcs 1034
       and 1035. As of version 1.0.0, the rfc compliance has been improved again, and pdnsd is now
       believed (or hoped?) to be fully rfc-compatible. It completely follows rfc 2181 (except
       for one minor issue in the FreeBSD port, see the <a href="doc.html">documentation</a>).
@@ -319,6 +333,7 @@
     There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for both).
     Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for the OpenBSD one!
     Thanks to Kiyo Kelvin Lee now also runs on the Cygwin platform!
+    Thanks goes to Rodney Brown for extending portability to the Darwin (Apple Mac OS X) platform!
     <p>
       If you have questions left, you should take a look into the <a HREF="faq.html">FAQ</a>.
       <br>
@@ -332,13 +347,14 @@
     </p><br>
       
     <h3>Uptests</h3>
-    pdnsd provides several methods to test whether a remote dns server should be regarded available (so that
-    pdnsd can query it), in
-    addition to the obvious &quot;p.d.&quot; definition (the server is always regarded available).
+    pdnsd provides several methods to test whether a remote DNS server should be regarded as available
+    (so that pdnsd can query it), in
+    addition to the obvious &quot;none&quot; test (the server is always regarded as available,
+    or availability is set on or off using the <a href="doc.html#pdnsdctl"><code>pdnsd-ctl</code></a> utility).
     These tests are:
     <ul>
       <li><b>ping:</b> a given adress is ping'ed in a given interval. If it there is no response
-	  or the host is unreacheable, the server is seen to be not available (for those who don't know:
+	  or the host is unreachable, the server is seen to be not available (for those who don't know:
 	  pinging is sending a certain Internet packet type to a host to which any standard-conformant
 	  host is required to reply).
       <li><b>if:</b> a given network interface is tested whether it is existent, up and running. If
@@ -352,6 +368,14 @@
 	  is normally the exit status of the last command) is evaluated. If it is not zero, the server is regarded
 	  to be not available. This is a very flexible testing method with which it should be able to perform
 	  virtually any needed test.
+      <li><b>query:</b> <em>New in version 1.2:</em>
+          This works like the ping test, except it sends an empty DNS query to the remote server.
+	  If the server sends a well-formed response back within the timeout period (except SERVFAIL),
+	  it will be regarded as available.
+	  This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
+	  which unfortunately is quite common these days.
+	  In many cases this test will be a more reliable indicator of availability
+	  than the ones mentioned above.
     </ul>
     <br>
     <h3>Local Records (&quot;Zones&quot;)</h3>
@@ -382,7 +406,8 @@
     The system and software requirements under Linux are:
     <ul>
       <li> Kernel version &gt;2.2.0 
-      <li> glibc version &gt;2.0.1 (aka libc6) with LinuxThreads (normally included)<br>
+      <li> glibc version &gt;2.0.1 (aka libc6) with LinuxThreads (normally included)
+        or NPTL (Native Posix Thread Library, recommended).<br>
 	Due to a bug, pdnsd 0.9.8 does not run with glibc2.1.1. This behaviour was
 	fixed in pdnsd 0.9.9.
       <li> For IPv6: glibc&gt;=2.1
@@ -395,18 +420,8 @@
 
     The common software requirements for all supported systems are:
     <ul>
-      <li> GCC, preferably egcs-2.* (other compilers are currently not supported; the needed patch for another compiler 
+      <li> GCC, preferably egcs-2.* or 3.* (other compilers are currently not supported; the needed patch for another compiler 
 	should not be difficult, however)
-      <li> lex/flex (not needed to build pdnsd, only for hacking)
-	pdnsd comes with the C files output by flex for the lex input file conf.l, so
-	you don't have to have flex/lex to build pdnsd. If you plan hacking on pdnsd,
-	you should use flex or a lex implementation that has yylineno (others will 
-	work, but the config file parser won't output any line number information on
-	errors then).
-      <li> yacc/bison (not needed to build pdnsd, only for hacking)
-	pdnsd comes with the C files output by bison for the yacc input file conf.y, 
-	so you don't have to have bison/yacc to build pdnsd. If you plan hacking on 
-	pdnsd, bison is recommended.
       <li> GNU or BSD make
       <li> the standard commands install, grep, sed, awk, touch and which (along with the REALLY 
 	standard ones mv, cp, ln, rm, pwd, test, echo, cat, mkdir, chown, chmod, tar). In
@@ -419,13 +434,17 @@
     <br>
     <h1>Authors</h1>
     <p>
-      pdnsd was written by Thomas Moestl <a href="mailto:tmoestl@gmx.net">&lt;tmoestl@gmx.net&gt;</a><br>
-      <em>Note added by Paul Rombouts</em>: I have revised the code and added a few new features.
-      See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed an RPM) for more details.
-      If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
+      pdnsd was originally written by <a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>,
+      but is no longer maintained by him. Paul Rombouts has revised large portions of the code
+      and has added a number of new features.
+      See <a href="../../README.par"><code>README.par</code></a> and the <a href="../../ChangeLog"><code>ChangeLog</code></a>
+      in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code>
+      if you have installed a binary package) for more details.
+      If you have questions about the recent modifications, you can find the email address of the current maintainer
+      at the end of <a href="../../README.par"><code>README.par</code></a>.
     </p>
     <p>
-      Daniel Smolik has contributed RedHat RPM's.<br>
+      Daniel Smolik has contributed RedHat RPMs (the most recent RPMs are available <a href="dl.html">here</a>).<br>
       Torben Janssen contributed start scripts for Red Hat Linux. <br>
       Soenke J. Peters contributed patches and suggestions for Red Hat compatability.<br>
       Wolfgang Ocker has contributed the code and documentation for the <code>server_ip</code> option.<br>
@@ -453,7 +472,8 @@
       Andreas Steinmetz contributed the code for query_port_start and query_port_end options.<br>
       Mahesh T. Pai contributed the pdnsd.8 man page.<br>
       Nikola Kotur contributed the Slackware start-up script.<br>
-      Kiyo Kelvin Lee contributed a patch for Cygwin support.
+      Kiyo Kelvin Lee contributed a patch for Cygwin support.<br>
+      Rodney Brown contributed a patch for Darwin (Apple Mac OS X) support.
     </p>
     <p>
       Special thanks to Bert Frederiks for letting me do a late-night debugging run on his machine to
@@ -520,7 +540,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 07 Nov 2004 by Paul Rombouts</i>
+      <i>Last revised: 03 Apr 2005 by Paul Rombouts</i>
     </p>
   </body>
 </html>

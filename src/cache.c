@@ -1,7 +1,7 @@
 /* cache.c - Keep the dns caches.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -1063,17 +1063,23 @@ void read_disk_cache()
 	}
 
 	/* Don't use insertion sort while reading caches entries from disk, because this can be
-	   noticably inefficient with large cache files.
+	   noticeably inefficient with large cache files.
 	   Entries are simply appended at the end of the rr_l list.
 	   The rr_l list is sorted using a more efficient merge sort after we are done reading.
 	*/
 	insert_sort=0;
 
 	{
-		/* check cache version identifier */
+		unsigned nb;
 		char buf[sizeof(cachverid)];
-		if (fread(buf,sizeof(cachverid),1,f)!=1) {
-			log_warn_read_error(f,"cache version identifier");
+
+		/* check cache version identifier */
+		nb=fread(buf,1,sizeof(cachverid),f);
+		if (nb!=sizeof(cachverid)) {
+			/* Don't complain about empty files */
+			if(nb!=0 || !feof(f)) {
+				log_warn_read_error(f,"cache version identifier");
+			}
 			goto free_data_fclose;
 		}
 		if(memcmp(buf,cachverid,sizeof(cachverid))) {
@@ -1262,7 +1268,7 @@ void write_disk_cache()
 
 	stpcpy(stpcpy(path,global.cache_dir),"/pdnsd.cache");
 
-	DEBUG_MSGC("Writing cache to %s\n",path);
+	DEBUG_MSG("Writing cache to %s\n",path);
 
 	if (!softlock_cache_rw()) {
 		goto lock_failed;
@@ -1361,7 +1367,7 @@ void write_disk_cache()
 		log_error("Could not close cache file %s after writing cache: %s", path,strerror(errno));
 	}
 	softunlock_cache_r();
-	DEBUG_MSGC("Finished writing cache to disk.\n");
+	DEBUG_MSG("Finished writing cache to disk.\n");
 	return;
 
  fclose_unlock:

@@ -124,10 +124,11 @@
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG
  * to 0. This will increase speed (although only marginally) and save space 
- * in the executable (only about 5kB).
+ * in the executable (only about 12kB).
  * However, it may be an aid when debugging config files. 
- * The only defined debug levels by now are 0 (off) and 1 (on).
- * Defining this larger than 1 does no harm.
+ * The only defined debug levels by now are in the range 0 - 9.
+ * Define this to 9 if you want hex dumps of all the queries and replies pdnsd
+ * receives (you must also call pdnsd with -v9 to actually see the hex dumps).
  * When in doubt, leave it defined to 1. */
 #define DEBUG 1
 
@@ -136,6 +137,13 @@
    option. 0 is for normal operation, up to 3 for debugging.
    Unlike the debug messages, these messages will also be written to the syslog.*/
 #define VERBOSITY 0
+
+/* Redefine this if you want another hash size.
+ * The number of hash buckets is computed as power of two (1<<HASH_SZ);
+ * so e.g. HASH_SZ set to 10 yields 1024 hash rows.
+ * HASH_SZ may not be bigger than 32 (if you set it even close to that value,
+ * you are nuts.) */
+#define HASH_SZ 10
 
 /* Set this to debug the hash tables. Turn this off normally, or you will get
  * flooded with diagnostic messages */
@@ -151,9 +159,11 @@
  * distributions as it makes error-tracking easier. */
 #undef NO_RCSIDS
 
-/* Define if system has not packet info structure
- * (previously done by a-conf.sh/a-conf.h) */
-#undef NO_IN_PKTINFO
+/* Define if you have working C99 Variadic macro support */
+#undef CPP_C99_VARIADIC_MACROS
+
+/* Define to int socklen_t typedef is missing */
+#undef socklen_t
 
 /* Lock the UDP socket before using it? */
 #undef SOCKET_LOCKING

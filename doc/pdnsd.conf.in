@@ -1,57 +1,96 @@
-// $Id: pdnsd.conf.in,v 1.4 2000/11/11 20:32:58 thomas Exp $
+// Sample pdnsd configuration file. Must be customized to obtain a working pdnsd setup!
+// Read the pdnsd.conf(5) manpage for an explanation of the options.
 
 global {
-	perm_cache=512;
+	perm_cache=1024;
 	cache_dir="@cachedir@";
-	max_ttl=604800;
+#	pid_file = /var/run/pdnsd.pid;
 	run_as="@def_id@";
-	paranoid=on;
-#	server_port=53;
-#	server_ip="127.0.0.1";
+	server_ip = 127.0.0.1;
+	status_ctl = on;
+#	paranoid=on;
+	max_ttl=604800;	   # One week
+	timeout=10;        # Global timeout option.
 }
 
 server {
-	ip="192.168.0.1";
-	timeout=30;
-	interval=30;
-	uptest=ping;
-	ping_timeout=50;
+	label= "myisp";
+	ip = 192.168.0.1;  # Put your ISP's DNS-server address(es) here.
+	proxy_only=on;
+	timeout=4;
+	uptest=query;
+	interval=600;
+	ping_timeout=200;
 	purge_cache=off;
 }
 
+/*
+server {
+	label= "dialup";
+	file = "/etc/ppp/resolv.conf";  # Preferably do not use /etc/resolv.conf
+	proxy_only=on;
+	timeout=4;
+	uptest=if;
+	interval=10;
+	interface = ppp0;
+	purge_cache=off;
+	preset=off;
+}
+*/
+
+/*
+server {
+	label = "root-servers";
+	root_server=on;
+	ip = 	198.41.0.4
+	,	192.228.79.201
+	,	192.33.4.12
+	,	128.8.10.90
+	,	192.203.230.10
+	,	192.5.5.241
+	,	192.112.36.4
+	,	128.63.2.53
+#	,	192.36.148.17
+#	,	192.58.128.30
+#	,	193.0.14.129
+#	,	198.32.64.12
+#	,	202.12.27.33
+	;
+	timeout = 5;
+	uptest = query;
+	interval = 900;
+	ping_timeout = 300;
+	purge_cache = off;
+	exclude = .localdomain;
+	policy = included;
+	preset = off;
+}
+*/
+
 source {
-	ttl=86400;
-	owner="localhost.";
+	owner=localhost;
 #	serve_aliases=on;
 	file="/etc/hosts";
 }
 
-/*
-neg {
-	ttl=86400;
-	name="foo.bar.";
-	types=domain;
+rr {
+	name=localhost;
+	reverse=on;
+	a=127.0.0.1;
+	owner=localhost;
+	soa=localhost,root.localhost,42,86400,900,86400,86400;
 }
 
+/*
 neg {
-	ttl=86400;
-	name="foo.baz.";
+	name=doubleclick.net;
+	types=domain;   # This will also block xxx.doubleclick.net, etc.
+}
+*/
+
+/*
+neg {
+	name=foo.bar;
 	types=A,AAAA, MX;
 }
 */
-/*
-rr {
-	ttl=86400;
-	owner="localhost.";
-	name="localhost.";
-	a="127.0.0.1";
-	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
-}
-
-rr {
-	ttl=86400;
-	owner="localhost.";
-	name="1.0.0.127.in-addr.arpa.";
-	ptr="localhost.";
-	soa="localhost.","root.localhost.",42,86400,900,86400,86400;
-} */
