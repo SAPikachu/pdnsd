@@ -50,7 +50,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.12 2000/06/06 14:31:16 thomas Exp $";
+static char rcsid[]="$Id: dns_answer.c,v 1.13 2000/06/10 12:50:03 thomas Exp $";
 #endif
 
 /*
@@ -980,9 +980,6 @@ static unsigned char *process_query(unsigned char *data, unsigned long *rlen, ch
  */
 void *udp_answer_thread(void *data)
 {
-#if DEBUG>0
-	char buf[50];
-#endif
 	struct msghdr msg;
 	struct iovec v;
 	struct cmsghdr *cmsg;

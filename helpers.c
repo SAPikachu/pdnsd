@@ -31,7 +31,7 @@ Boston, MA 02111-1307, USA.  */
 #include "conff.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.7 2000/06/04 17:55:16 thomas Exp $";
+static char rcsid[]="$Id: helpers.c,v 1.8 2000/06/10 12:50:03 thomas Exp $";
 #endif
 
 /*
@@ -40,18 +40,6 @@ static char rcsid[]="$Id: helpers.c,v 1.7 2000/06/04 17:55:16 thomas Exp $";
 void pdnsd_exit()
 {
 	pthread_kill(main_thread,SIGTERM);
-}
-
-/*
- * Takes a string and returns it in lower case using tolower(). Since in
- * dns names there are no special characters allowed anyway, this is sufficient
- */
-void strtolower(unsigned char *a)
-{
-	unsigned int i;
-	for (i=0;i<strlen((char *)a);i++) {
-		a[i]=tolower(a[i]);
-	}
 }
 
 /*

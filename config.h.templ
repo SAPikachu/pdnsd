@@ -1,25 +1,25 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: config.h.templ,v 1.6 2000/06/10 10:36:49 thomas Exp $ */
+/* $Id: config.h.templ,v 1.7 2000/06/10 12:50:03 thomas Exp $ */
 
 /* ONLY EDIT config.h.templ, NEVER config.h!
  * config.h MAY BE OVERWRITTEN BY make! */
 
-/* -- Target Selection ------------------------------------------------------- */
+/* -- Target Selection ------------------------------------------------------ */
 
-/* Define your Target here. Currently defined are TARGET_LINUX (any architecture)
- * and TARGET_BSD (experimental; tested on FreeBSD, hopefully works for other BSD 
- * variants) */
+/* Define your Target here. Currently defined are TARGET_LINUX (any 
+ * architecture) and TARGET_BSD (experimental; tested on FreeBSD, hopefully 
+ * works for other BSD variants) */
 #define TARGET TARGET_LINUX 
 
 /* -- Feature Options -------------------------------------------------------- */
 
 /* change the #undef to #define if you do not want to compile with special ISDN 
- * support for Linux. Note that the ISDN support will not compile ok on unpatched 
- * kernerls earlier than 2.2.12 (if you did apply newer isdn patches, it may work 
- * fine). This is not on by default because it will cause compile problems on some
- * systems */
+ * support for Linux. Note that the ISDN support will not compile ok on 
+ * unpatched kernerls earlier than 2.2.12 (if you did apply newer isdn patches,
+ * it may work fine). This is not on by default because it will cause compile 
+ * problems on some systems */
 #undef ISDN_SUPPORT
 
 /* The following regulates the IP Protocol support. Supported types are IPv4
@@ -120,7 +120,7 @@
  * if your compiler does that, too, add a directive for it. In other cases, 
  * this should be safe and you should not need to change it */
 #if defined(__GNUC__)
-# define INLINE inline
+# define INLINE inline 
 #else
 # define INLINE 
 #endif

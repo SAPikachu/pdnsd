@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: hash.h,v 1.2 2000/06/03 19:59:35 thomas Exp $ */
+/* $Id: hash.h,v 1.3 2000/06/10 12:50:03 thomas Exp $ */
 
 #ifndef _HASH_H_
 #define _HASH_H_
@@ -58,7 +58,6 @@ void mk_hash_ctable(void);
 void mk_dns_hash(dns_hash_t *hash);
 void add_dns_hash(dns_hash_t *hash,unsigned char *key, dns_cent_t *data);
 dns_cent_t *del_dns_hash(dns_hash_t *hash, unsigned char *key);
-void del_dns_hash_by_data(dns_hash_t *hash, unsigned char *key, dns_cent_t *data);
 dns_cent_t *dns_lookup(dns_hash_t *hash, unsigned char *key);
 void free_dns_hash(dns_hash_t *hash);
 

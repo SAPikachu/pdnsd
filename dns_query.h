@@ -18,7 +18,7 @@ along with pdsnd; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-/* $Id: dns_query.h,v 1.3 2000/06/06 11:57:01 thomas Exp $ */
+/* $Id: dns_query.h,v 1.4 2000/06/10 12:50:03 thomas Exp $ */
 
 #ifndef _DNS_QUERY_H_
 #define _DNS_QUERY_H_
@@ -94,6 +94,6 @@ typedef struct {
 
 /* --- parallel query */
 int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint);
-int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, unsigned long queryts);
+int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts);
 
 #endif

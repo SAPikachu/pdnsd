@@ -37,7 +37,7 @@ Boston, MA 02111-1307, USA.  */
 #include "error.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_query.c,v 1.7 2000/06/06 12:16:24 thomas Exp $";
+static char rcsid[]="$Id: dns_query.c,v 1.8 2000/06/10 12:50:03 thomas Exp $";
 #endif
 
 unsigned short rid=0; /* rid is the value we fill into the id field. It does not need to be thread-safe. 
@@ -1169,7 +1169,7 @@ int p_dns_resolve(unsigned char *name, unsigned char *rrn , dns_cent_t **cached,
  * q is the set of servers to query from. Set q to NULL if you want to ask the servers registered with pdnsd.
  */
 
-int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, unsigned long queryts)
+int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rrn , dns_cent_t **cached, int hops, int thint, time_t queryts)
 {
 	dns_cent_t *bcached;
 	int rc;
@@ -1186,8 +1186,8 @@ int p_dns_cached_resolve(query_serv_t *q, unsigned char *name, unsigned char *rr
 		auth=0;
 		nopurge=0;
 		for (i=0;i<T_MAX;i++) {
-			if ((*cached)->rr[i] && ((*cached)->rr[i]->flags&CF_LOCAL || 
-						 (*cached)->rr[i]->ttl>=time(NULL)-(*cached)->rr[i]->ts)) {
+			if ((*cached)->rr[i] /* && ((*cached)->rr[i]->flags&CF_LOCAL || 
+						(*cached)->rr[i]->ttl>=time(NULL)-(*cached)->rr[i]->ts)*/) {
 				if (!((*cached)->rr[i]->flags&CF_NOAUTH)) {
 					auth=1;
 				}
