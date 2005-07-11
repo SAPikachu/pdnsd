@@ -57,6 +57,20 @@ static char rcsid[]="$Id: dns_query.c,v 1.59 2002/08/07 08:55:33 tmm Exp $";
 # error "You may not define NO_UDP_QUERIES when M_PRESET is not set to TCP_ONLY"
 #endif
 
+typedef struct {
+#ifndef NO_TCP_QUERIES
+	uint16_t len        __attribute__((packed));
+#endif
+	dns_hdr_t hdr       __attribute__((packed));
+} dns_msg_t;
+
+#ifdef NO_TCP_QUERIES
+# define hdroffset 0
+#else
+# define hdroffset 2
+#endif
+
+
 /* --- structures and state constants for parallel query */
 typedef struct {
 	union {
@@ -85,7 +99,7 @@ typedef struct {
 #ifndef NO_TCP_QUERIES
 	int                 iolen;  /* number of bytes written or read up to now */
 #endif
-	dns_hdr_t           *hdr;
+	dns_msg_t           *msg;
 	dns_hdr_t           *recvbuf;
 	unsigned short      myrid;
 	unsigned short      qt;
@@ -118,7 +132,7 @@ typedef DYNAMIC_ARRAY(query_stat_t) *query_stat_array;
  * Races do not really matter here, so no locks.
  */
 #define MAXPOLLERRS 10
-volatile unsigned long poll_errs=0;
+static volatile unsigned long poll_errs=0;
 
 #define SOCK_ADDR(p) ((struct sockaddr *) &(p)->a)
 
@@ -237,7 +251,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, len, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_MINFO:
@@ -261,7 +275,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_MX:
@@ -287,7 +301,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_SOA:
@@ -314,7 +328,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 #ifdef DNS_NEW_RRS
@@ -341,7 +355,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_SRV:
@@ -362,7 +376,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_NXT:
@@ -379,7 +393,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 					goto buffer_overflow;
 				memcpy(nptr,bptr,blcnt);
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 			case T_NAPTR:
@@ -419,7 +433,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (blcnt!=0)
 					goto trailing_junk;
 				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 				break;
 #endif
@@ -432,7 +446,7 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 					goto invalid_length;
 #endif
 				if (!rr_to_cache(centa, ttl, oname, rdlength, *ptr, type,flags,queryts))
-					return RC_SERVFAIL;
+					return RC_FATALERR;
 			}
 		}
 		*lcnt-=rdlength;
@@ -525,6 +539,30 @@ static int bind_socket(int s)
 	return 1;
 }
 
+
+inline static void *realloc_or_cleanup(void *ptr,size_t size)
+{
+	void *retval=pdnsd_realloc(ptr,size);
+	if(!retval)
+		pdnsd_free(ptr);
+	return retval;
+}
+
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+/* These functions will be used in case a TCP query might fail and we want to try again using UDP. */
+
+# define tentative_tcp_query(st) ((st)->qm==TCP_UDP && ((st)->state==QS_TCPWRITE || ((st)->state==QS_TCPREAD && (st)->iolen==0)))
+
+inline static void switch_to_udp(query_stat_t *st)
+{
+	st->qm=UDP_ONLY;
+	st->myrid=get_rand16();
+	st->msg->hdr.id=htons(st->myrid);
+	st->state=QS_UDPINITIAL;
+}
+#endif
+
+
 /* ------ following is the parallel query code.
  * It has been observed that a whole lot of name servers are just damn lame, with response time
  * of about 1 min. If that slow one is by chance the first server we try, serializing the tries is quite
@@ -549,8 +587,11 @@ static int bind_socket(int s)
  * have returned -1 (which means "call again") as last step of the last state handling. */
 static int p_query_sm(query_stat_t *st)
 {
-	int rv;
+	int retval=RC_SERVFAIL,rv;
 
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+ tryagain:
+#endif
 	switch (st->state){
 		/* TCP query code */
 #ifndef NO_TCP_QUERIES
@@ -572,8 +613,8 @@ static int p_query_sm(query_stat_t *st)
 		{
 			int oldflags = fcntl(st->sock, F_GETFL, 0);
 			if (oldflags == -1 || fcntl(st->sock,F_SETFL,oldflags|O_NONBLOCK)==-1) {
-				close(st->sock);
 				DEBUG_PDNSDA_MSG("fcntl error while trying to make socket to %s non-blocking: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+				close(st->sock);
 				break;
 			}
  		}
@@ -585,14 +626,14 @@ static int p_query_sm(query_stat_t *st)
 				return -1;
 			} else if (errno==ECONNREFUSED) {
 				st->s_errno=errno;
+				DEBUG_PDNSDA_MSG("TCP connection refused by %s\n", PDNSDA2STR(PDNSD_A(st)));
 				close(st->sock);
-				st->state=QS_DONE;
-				return RC_TCPREFUSED;
+				goto tcp_failed; /* We may want to try again using UDP */
 			} else {
 				/* Since immediate connect() errors do not cost any time, we do not try to switch the
 				 * server status to offline */
-				close(st->sock);
 				DEBUG_PDNSDA_MSG("Error while connecting to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+				close(st->sock);
 				break;
 			}
 		}
@@ -600,38 +641,24 @@ static int p_query_sm(query_stat_t *st)
 		/* st->event=QEV_WRITE; */
 		/* fall through in case of not EINPROGRESS */
 	case QS_TCPWRITE:
-		if(st->iolen==0) {
-			uint16_t transl_net=htons(st->transl);
-			rv=write(st->sock,&transl_net,sizeof(transl_net));
-			if(rv==-1) {
-				if(errno==EWOULDBLOCK)
-					return -1;
-				st->s_errno=errno;
-				if (errno==ECONNREFUSED || errno==EPIPE) {
-					/* This error may be delayed from connect() */
-					close(st->sock);
-					st->state=QS_DONE;
-					return RC_TCPREFUSED;
-				}
-			}
-			if(rv!=sizeof(transl_net)) {
-				close(st->sock);
-				DEBUG_PDNSDA_MSG("Error while sending data to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
-				break;
-			}
-			st->iolen=rv;
-		}
 		{
-			int offset=st->iolen-sizeof(uint16_t);
-			int rem=st->transl-offset;
+			int rem= hdroffset + st->transl - st->iolen;
 			if(rem>0) {
-				rv=write(st->sock,((unsigned char*)st->hdr)+offset,rem);
+				rv=write(st->sock,((unsigned char*)st->msg)+st->iolen,rem);
 				if(rv==-1) {
 					if(errno==EWOULDBLOCK)
 						return -1;
 					st->s_errno=errno;
 					close(st->sock);
-					DEBUG_PDNSDA_MSG("Error while sending data to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+					if (st->iolen==0 &&
+					    (st->s_errno==ECONNREFUSED || st->s_errno==ECONNRESET ||
+					     st->s_errno==EPIPE))
+					{
+						/* This error may be delayed from connect() */
+						DEBUG_PDNSDA_MSG("TCP connection to %s failed: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(st->s_errno));
+						goto tcp_failed; /* We may want to try again using UDP */
+					}
+					DEBUG_PDNSDA_MSG("Error while sending data to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(st->s_errno));
 					break;
 				}
 				st->iolen += rv;
@@ -653,9 +680,10 @@ static int p_query_sm(query_stat_t *st)
 				goto error_receiv_data;
 			st->iolen=rv;
 			st->recvl=ntohs(recvl_net);
-			if(!(st->recvbuf=(dns_hdr_t *)pdnsd_realloc(st->recvbuf,st->recvl))) {
+			if(!(st->recvbuf=(dns_hdr_t *)realloc_or_cleanup(st->recvbuf,st->recvl))) {
 				close(st->sock);
 				DEBUG_MSG("Out of memory in query.\n");
+				retval=RC_FATALERR;
 				break;
 			}
 		}
@@ -681,8 +709,17 @@ static int p_query_sm(query_stat_t *st)
 		return RC_OK;
 	error_receiv_data:
 		if(rv==-1) st->s_errno=errno;
+		DEBUG_PDNSDA_MSG("Error while receiving data from %s: %s\n", PDNSDA2STR(PDNSD_A(st)),
+				 rv==-1?strerror(errno):(rv==0 && st->iolen==0)?"no data":"incomplete data");
 		close(st->sock);
-		DEBUG_PDNSDA_MSG("Error while receiving data from %s: %s\n", PDNSDA2STR(PDNSD_A(st)),rv==-1?strerror(errno):"incomplete data");
+	tcp_failed:
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+		if(st->qm==TCP_UDP) {
+			switch_to_udp(st);
+			DEBUG_PDNSDA_MSG("TCP query to %s failed. Trying to use UDP.\n", PDNSDA2STR(PDNSD_A(st)));
+			goto tryagain;
+		}
+#endif
 		break;
 #endif
 
@@ -703,33 +740,34 @@ static int p_query_sm(query_stat_t *st)
 		/* connect */
 		if (connect(st->sock,SOCK_ADDR(st),SIN_LEN)==-1) {
 			if (errno==ECONNREFUSED) st->s_errno=errno;
-			close(st->sock);
 			DEBUG_PDNSDA_MSG("Error while connecting to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+			close(st->sock);
 			break;
 		}
 
 		/* transmit query by udp*/
 		/* send will hopefully not block on a freshly opened socket (the buffer
 		 * must be empty) */
-		if (send(st->sock,st->hdr,st->transl,0)==-1) {
+		if (send(st->sock,&st->msg->hdr,st->transl,0)==-1) {
 			st->s_errno=errno;
-			close(st->sock);
 			DEBUG_PDNSDA_MSG("Error while sending data to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+			close(st->sock);
 			break;
 		}
 		st->state=QS_UDPRECEIVE;
 		/* st->event=QEV_READ; */
 		return -1;
 	case QS_UDPRECEIVE:
-		if(!(st->recvbuf=(dns_hdr_t *)pdnsd_realloc(st->recvbuf,512))) {
+		if(!(st->recvbuf=(dns_hdr_t *)realloc_or_cleanup(st->recvbuf,512))) {
 			close(st->sock);
 			DEBUG_MSG("Out of memory in query.\n");
+			retval=RC_FATALERR;
 			break;
 		}
 		if ((rv=recv(st->sock,st->recvbuf,512,0))==-1) {
 			st->s_errno=errno;
-			close(st->sock);
 			DEBUG_PDNSDA_MSG("Error while receiving data from %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
+			close(st->sock);
 			break;
 		}
 		st->recvl=rv;
@@ -748,7 +786,7 @@ static int p_query_sm(query_stat_t *st)
 
 	/* If we get here, something has gone wrong */
 	st->state=QS_DONE;
-	return RC_SERVFAIL; /* mock error code */
+	return retval; /* should be either RC_SERVFAIL or RC_FATALERR */
 }
 
 inline static dns_cent_t *lookup_cent_array(dns_cent_array ca, const unsigned char *nm)
@@ -809,30 +847,33 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			rrnlen=rhnlen(name);
 			st->transl += rrnlen+4;
 		}
-		st->hdr=(dns_hdr_t *)pdnsd_malloc(st->transl);
-		if (!st->hdr) {
+		st->msg=(dns_msg_t *)pdnsd_malloc(hdroffset+st->transl);
+		if (!st->msg) {
 			st->state=QS_DONE;
- 			return RC_SERVFAIL; /* mock error code */
+ 			return RC_FATALERR; /* unrecoverable error */
 		}
+#ifndef NO_TCP_QUERIES
+		st->msg->len=htons(st->transl);
+#endif
 		st->myrid=get_rand16();
-		st->hdr->id=htons(st->myrid);
-		st->hdr->qr=QR_QUERY;
-		st->hdr->opcode=OP_QUERY;
-		st->hdr->aa=0;
-		st->hdr->tc=0;
+		st->msg->hdr.id=htons(st->myrid);
+		st->msg->hdr.qr=QR_QUERY;
+		st->msg->hdr.opcode=OP_QUERY;
+		st->msg->hdr.aa=0;
+		st->msg->hdr.tc=0;
 		/* If nsdomain is NULL, it means we trust this nameserver. */
-		st->hdr->rd=(name && !st->nsdomain);
-		st->hdr->ra=0;
-		st->hdr->z1=0;
-		st->hdr->au=0;
-		st->hdr->z2=0;
-		st->hdr->rcode=RC_OK;
-		st->hdr->qdcount=htons(name!=NULL);
-		st->hdr->ancount=0;
-		st->hdr->nscount=0;
-		st->hdr->arcount=0;
+		st->msg->hdr.rd=(name && !st->nsdomain);
+		st->msg->hdr.ra=0;
+		st->msg->hdr.z1=0;
+		st->msg->hdr.au=0;
+		st->msg->hdr.z2=0;
+		st->msg->hdr.rcode=RC_OK;
+		st->msg->hdr.qdcount=htons(name!=NULL);
+		st->msg->hdr.ancount=0;
+		st->msg->hdr.nscount=0;
+		st->msg->hdr.arcount=0;
 		if(name) {
-			unsigned char *p = mempcpy((unsigned char *)(st->hdr+1),name,rrnlen);
+			unsigned char *p = mempcpy((unsigned char *)(&st->msg->hdr+1),name,rrnlen);
 			PUTINT16(st->qt,p);
 			PUTINT16(C_IN,p);
 		}
@@ -847,19 +888,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 			return -1;
 		}
 		if (rv!=RC_OK) {
-			if (rv==RC_TCPREFUSED) {
-				if(st->qm==TCP_UDP) {
-					st->qm=UDP_ONLY;
-					st->myrid=get_rand16();
-					st->hdr->id=htons(st->myrid);
-					st->state=QS_UDPINITIAL;
-					DEBUG_PDNSDA_MSG("TCP connection refused by %s. Trying to use UDP.\n", PDNSDA2STR(PDNSD_A(st)));
-					goto tryagain;
-				}
-				DEBUG_PDNSDA_MSG("TCP connection refused by %s\n", PDNSDA2STR(PDNSD_A(st)));
-				rv=RC_SERVFAIL;
-			}
-			pdnsd_free(st->hdr);
+			pdnsd_free(st->msg);
 			pdnsd_free(st->recvbuf);
 			st->state=QS_DONE;
 			if(st->needs_testing) {
@@ -900,19 +929,19 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 				st->state=QS_DONE;
 				break;
 			}
-			else if (rv==RC_NOTSUPP && st->hdr->rd && !st->recvbuf->ra) {
+			else if ((rv==RC_NOTSUPP || rv==RC_REFUSED) && st->msg->hdr.rd && !st->recvbuf->ra) {
 				/* seems as if we have got no recursion available.
 				   We will have to do it by ourselves (sigh...) */
-				st->hdr->rd=0;
+				st->msg->hdr.rd=0;
 				st->myrid=get_rand16();
-				st->hdr->id=htons(st->myrid);
+				st->msg->hdr.id=htons(st->myrid);
 				st->state=((st->qm==UDP_ONLY)?QS_UDPINITIAL:QS_TCPINITIAL);
 				DEBUG_PDNSDA_MSG("Server %s does not support recursive query. Querying non-recursively.\n", PDNSDA2STR(PDNSD_A(st)));
 				goto tryagain;
 			} 
 		}
 		/* report failure */
-		pdnsd_free(st->hdr);
+		pdnsd_free(st->msg);
 		pdnsd_free(st->recvbuf);
 		/*close(st->sock);*/
 		st->state=QS_DONE;
@@ -933,7 +962,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 	 * conditions.
 	 * So we *should* have a correct dns record in recvbuf by now.
 	 */
-	pdnsd_free(st->hdr);
+	pdnsd_free(st->msg);
 	if(name) {
 		time_t queryts=time(NULL);
 		long lcnt=st->recvl;
@@ -980,13 +1009,13 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 
 		/* Initialize a dns_cent_t in the array for the answer section */
 		if (!(ans_sec=DA_GROW1(ans_sec))) {
-			rv=RC_SERVFAIL; /* mock error code */
+			rv=RC_FATALERR; /* unrecoverable error */
 			goto free_recvbuf_return;
 		}
 		ent=&DA_INDEX(ans_sec,0);
 		/* By marking DF_AUTH, we mean authoritative AND complete. */
 		if (!init_cent(ent,name, 0, queryts, (*aa && st->qt==QT_ALL)?DF_AUTH:0  DBG1)) {
-			rv=RC_SERVFAIL; /* mock error code */
+			rv=RC_FATALERR; /* unrecoverable error */
 			goto free_centarrays_recvbuf_return;
 		}
 
@@ -1017,7 +1046,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 					 rv==RC_TRUNC?"Format error in reply from %s (message unexpectedly truncated).\n":
 					 "Out of memory while processing reply from %s.\n",
 					 PDNSDA2STR(PDNSD_A(st)));
-			rv=RC_SERVFAIL;
+			if(rv!=RC_FATALERR) rv=RC_SERVFAIL;
 			goto free_ent_centarrays_recvbuf_return;
 		}
 
@@ -1195,7 +1224,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 				}
 				DEBUG_RHN_MSG("Caching type %s for domain %s negative with ttl %li\n",get_tname(st->qt),RHN2STR(name),(long)ttl);
 				if (!add_cent_rrset(ent, st->qt, ttl, queryts, CF_NEGATIVE|st->flags  DBG1)) {
-					rv=RC_SERVFAIL;
+					rv=RC_FATALERR;
 					goto free_ent_centarrays_recvbuf_return;
 				}
 			}
@@ -1236,7 +1265,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 									sz1=rhnlen(cent->qname);
 									sz2=rhnlen((unsigned char *)(rr+1));
 									if (!(*ns=dlist_grow(*ns,sz1+sz2))) {
-										rv=RC_SERVFAIL;
+										rv=RC_FATALERR;
 										goto free_ent_centarrays_recvbuf_return;
 									}
 									p=dlist_last(*ns);
@@ -1254,7 +1283,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 		}
 	cleanup_return_OK:
 		if(!(*entp=malloc(sizeof(dns_cent_t)))) {
-			rv=RC_SERVFAIL;
+			rv=RC_FATALERR;
 			goto free_ns_ent_centarrays_recvbuf_return;
 		}
 		**entp=*ent;
@@ -1333,7 +1362,7 @@ static void p_cancel_query(query_stat_t *st)
 	case QS_TCPINITIAL:
 	case QS_UDPINITIAL:
 		pdnsd_free(st->recvbuf);
-		pdnsd_free(st->hdr);
+		pdnsd_free(st->msg);
 	}
 	if(st->state!=QS_INITIAL && st->state!=QS_DONE)
 		st->state=QS_CANCELED;
@@ -1417,6 +1446,9 @@ struct qhintnode_s {
 };
 /* typedef struct qhintnode_s qhintnode_t; */  /* Already defined in dns_query.h */
 
+static int auth_ok(query_stat_array q, unsigned char *name, dns_cent_t *ent,
+		   int hops, qstatnode_t *qslist, qhintnode_t *qhlist, int thint,
+		   query_stat_t *qse, dlist ns, query_stat_array *serv);
 static int p_dns_cached_resolve(query_stat_array q, unsigned char *name, dns_cent_t **cachedp,
 				int hops, qstatnode_t *qslist, qhintnode_t *qhlist, int thint, time_t queryts,
 				unsigned char *c_soa);
@@ -1442,15 +1474,16 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 			     int *nocache, int hops, qstatnode_t *qslist, qhintnode_t *qhlist, int thint,
 			     unsigned char *c_soa)
 {
-	dns_cent_t *ent;
-	int aa=0;
+	dns_cent_t *ent,*entsave=NULL;
 	int i,j,k;
 	int rv=RC_SERVFAIL;
 	query_stat_t *qse=NULL;  /* Initialized to inhibit compiler warning */
 	dlist ns=NULL;
+	query_stat_array serv;
+	init_qserv(&serv);
 	{
 		time_t ts0=time(NULL),global_timeout=global.timeout;
-		int dc=0,mc=0,parqueries=global.par_queries;
+		int aa=0,dc=0,mc=0,parqueries=global.par_queries;
 
 		for (j=0; j<DA_NEL(q); j += parqueries) {
 			mc=j+parqueries;
@@ -1466,11 +1499,35 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 					 * (immediate success) */
 					DEBUG_PDNSDA_MSG("Sending query to %s\n", PDNSDA2STR(PDNSD_A(qs)));
 					rv=p_exec_query(&ent, name, &aa, qs,&ns,c_soa);
-					if (rv==RC_OK || rv==RC_NAMEERR) {
-						qse=qs;
-						for (k=dc;k<mc;k++) {
-							p_cancel_query(&DA_INDEX(q,k));
+					if (rv==RC_OK) {
+						int err=0;
+						DEBUG_PDNSDA_MSG("Query to %s succeeded.\n", PDNSDA2STR(PDNSD_A(qs)));
+						if(aa || (err=auth_ok(q, name, ent, hops, qslist, qhlist, thint, qs, ns, &serv))) {
+							mc=i; /* No need to cancel queries beyond i */
+							if(err>=0) {
+								qse=qs;
+								goto done;
+							}
+							else
+								goto free_ent_return_failed;
 						}
+						/* We do not have a satisfactory answer.
+						   However, we will save a copy in case none of the other
+						   servers in the q list give a satisfactory answer either.
+						 */
+						dlist_free(ns); ns=NULL;
+						if(!entsave) {
+							entsave=ent;
+							qse=qs;
+						}
+						else {
+							/* We already have a copy, free the present one. */
+							free_cent(ent DBG1);
+							pdnsd_free(ent);
+						}
+					}
+					else if (rv==RC_NAMEERR || rv==RC_FATALERR) {
+						mc=i; /* No need to cancel queries beyond i */
 						goto done;
 					}
 				}
@@ -1519,8 +1576,11 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 							if (i>=j && qs->timeout>maxto)
 								maxto=qs->timeout;
 #ifdef NO_POLL
-							if (qs->sock>maxfd)
+							if (qs->sock>maxfd) {
 								maxfd=qs->sock;
+								PDNSD_ASSERT(maxfd<FD_SETSIZE,"socket file descriptor exceeds FD_SETSIZE.");
+							}
+
 							switch (qs->state) {
 							QS_READ_CASES:
 								FD_SET(qs->sock,&reads);
@@ -1548,13 +1608,28 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 					if (pc==0) {
 						/* In this case, ALL are done and we do not need to cancel any
 						 * query. */
+						dc=mc;
 						break;
 					}
 					now=time(NULL);
 					maxto -= now-ts;
 					if (mc==DA_NEL(q)) {
-						time_t globto=global_timeout-(now-ts0);
-						if(globto>maxto) maxto=globto;
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+						/* Don't use the global timeout if there are TCP queries
+						   we might want to retry using UDP. */
+						for (i=j;i<mc;i++) {
+							query_stat_t *qs=&DA_INDEX(q,i);
+							if(tentative_tcp_query(qs))
+								goto skip_globto;
+						}
+#endif
+						{
+							time_t globto=global_timeout-(now-ts0);
+							if(globto>maxto) maxto=globto;
+						}
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+					skip_globto:;
+#endif
 					}
 #ifdef NO_POLL
 					tv.tv_sec=(maxto>0)?maxto:0;
@@ -1567,8 +1642,6 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 						/* if(errno==EINTR)
 							continue; */
 						log_warn("poll/select failed: %s",strerror(errno));
-						for (i=dc;i<mc;i++)
-							p_cancel_query(&DA_INDEX(q,i));
 						goto done;
 					}
 					if (nevents==0) {
@@ -1579,12 +1652,56 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 							query_stat_t *qs=&DA_INDEX(q,i);
 							if (qs->state!=QS_DONE && qs->needs_testing)
 								qs->needs_testing=2;
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
+							if (tentative_tcp_query(qs)) {
+								/* We timed out while waiting for a TCP connection.
+								   Try again using UDP.
+								*/
+								close(qs->sock);
+								switch_to_udp(qs);
+								DEBUG_PDNSDA_MSG("TCP connection to %s timed out. Trying to use UDP.\n",
+										 PDNSDA2STR(PDNSD_A(qs)));
+
+								rv=p_exec_query(&ent, name, &aa, qs,&ns,c_soa);
+								/* In the unlikely case of immediate success */
+								if (rv==RC_OK) {
+									int err=0;
+									DEBUG_PDNSDA_MSG("Query to %s succeeded.\n", PDNSDA2STR(PDNSD_A(qs)));
+									if(aa || (err=auth_ok(q, name, ent, hops, qslist, qhlist, thint, qs, ns, &serv))) {
+										if(err>=0) {
+											qse=qs;
+											goto done;
+										}
+										else
+											goto free_ent_return_failed;
+									}
+									dlist_free(ns); ns=NULL;
+									if(!entsave) {
+										entsave=ent;
+										qse=qs;
+									}
+									else {
+										/* We already have a copy, free the present one. */
+										free_cent(ent DBG1);
+										pdnsd_free(ent);
+									}
+								}
+								else if (rv==RC_NAMEERR || rv==RC_FATALERR) {
+									goto done;
+								}
+								++nevents;
+							}
+#endif
 						}
+#if !defined(NO_TCP_QUERIES) && !defined(NO_UDP_QUERIES)
 						if (mc==DA_NEL(q)) {
-							/* We will not try additional servers. Cancel everything. */
-							for (i=dc;i<mc;i++)
-								p_cancel_query(&DA_INDEX(q,i));
+							/* We will not try additional servers, but we might want to try again
+							   using UDP instead of TCP
+							*/
+							if(nevents && (time(NULL)-ts0)<global_timeout)
+								continue;
 						} 
+#endif
 						break;
 					}
 #ifndef NO_POLL
@@ -1627,11 +1744,29 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 							if (srv_event) {
 								--nevents;
 								rv=p_exec_query(&ent, name, &aa, qs,&ns,c_soa);
-								if (rv==RC_OK || rv==RC_NAMEERR) {
-									qse=qs;
-									for (k=dc;k<mc;k++) {
-										p_cancel_query(&DA_INDEX(q,k));
+								if (rv==RC_OK) {
+									int err=0;
+									DEBUG_PDNSDA_MSG("Query to %s succeeded.\n", PDNSDA2STR(PDNSD_A(qs)));
+									if(aa || (err=auth_ok(q, name, ent, hops, qslist, qhlist, thint, qs, ns, &serv))) {
+										if(err>=0) {
+											qse=qs;
+											goto done;
+										}
+										else
+											goto free_ent_return_failed;
 									}
+									dlist_free(ns); ns=NULL;
+									if(!entsave) {
+										entsave=ent;
+										qse=qs;
+									}
+									else {
+										/* We already have a copy, free the present one. */
+										free_cent(ent DBG1);
+										pdnsd_free(ent);
+									}
+								}
+								else if (rv==RC_NAMEERR || rv==RC_FATALERR) {
 									goto done;
 								}
 							}
@@ -1646,15 +1781,30 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 						*/
 						if(++poll_errs<=MAXPOLLERRS)
 							log_error("%d unhandled poll/select event(s) in p_recursive_query() at %s, line %d.",nevents,__FILE__,__LINE__);
-						for (i=dc;i<mc;i++)
-							p_cancel_query(&DA_INDEX(q,i));
 						rv=RC_SERVFAIL;
 						goto done;
 					}
 				} while (dc<mc);
 			}
 		}
+		goto cancel_queries;
+	free_ent_return_failed:
+		free_cent(ent  DBG1);
+		pdnsd_free(ent);
+		rv=RC_FATALERR;
 	done:
+		if (entsave) {
+			/* We have or will get an authoritative answer, or we have encountered an error.
+			   Free the non-authoritative answer. */
+			free_cent(entsave DBG1);
+			pdnsd_free(entsave);
+			entsave=NULL;
+		}
+	cancel_queries:
+		/* Cancel any remaining queries. */
+		for (i=dc;i<mc;i++)
+			p_cancel_query(&DA_INDEX(q,i));
+
 		{
 			/* See if any servers need to be retested for availability.
 			   We build up a list of addresses rather than call
@@ -1677,31 +1827,84 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 		}
 	}
 
-	if (rv!=RC_OK) {
+	if(entsave) {
+		/*
+		 * If we didn't get rrs from any of the authoritative servers, take the one we had.
+		 * However, raise the CF_NOCACHE flag, so that it won't be used again (outside the
+		 * cache latency period).
+		 */
+		DEBUG_PDNSDA_MSG("Using non-authoritative reply from %s.\n", PDNSDA2STR(PDNSD_A(qse)));
+		ent=entsave;
+		for (j=0;j<T_NUM;j++) {
+			if (ent->rr[j])
+				ent->rr[j]->flags |= CF_NOCACHE;
+		}
+
+		rv=RC_OK;
+	}
+	else if (rv!=RC_OK) {
+		if(rv==RC_FATALERR) {
+			DEBUG_MSG("Unrecoverable error encountered while processing query.\n");
+			rv=RC_SERVFAIL;
+		}
 		DEBUG_MSG("No query succeeded. Returning error code \"%s\"\n",get_ename(rv));
-		return rv;
+		goto clean_up_return;
 	}
 
 	if(nocache) *nocache=qse->nocache;
-	DEBUG_PDNSDA_MSG("Query to %s succeeded.\n", PDNSDA2STR(PDNSD_A(qse)));
+
+	if (DA_NEL(serv)>0) {
+		/* Authority records present. Ask them, because the answer was non-authoritative. */
+		qstatnode_t qsn={q,qslist};
+		unsigned char save_ns=ent->c_ns,save_soa=ent->c_soa;
+		free_cent(ent  DBG1);
+		pdnsd_free(ent);
+		rv=p_dns_cached_resolve(serv,  name, &ent,hops-1,&qsn,qhlist,thint,time(NULL),c_soa);
+		if(rv==RC_OK) {
+			if(save_ns!=cundef && (ent->c_ns==cundef || ent->c_ns<save_ns))
+				ent->c_ns=save_ns;
+			if(save_soa!=cundef && (ent->c_soa==cundef || ent->c_soa<save_soa))
+				ent->c_soa=save_soa;
+		}
+		else if(rv==RC_NAMEERR && c_soa) {
+			if(save_soa!=cundef && (*c_soa==cundef || *c_soa<save_soa))
+				*c_soa=save_soa;
+		}
+		/* return the answer in any case. */
+	}
+
+ clean_up_return:
+	/* Always free the serv array before freeing the ns list,
+	   because the serv array contains references to data within the ns list! */
+	del_qserv(serv);
+	dlist_free(ns);
+
+	if(rv==RC_OK) *entp=ent;
+	return rv;
+}
+
+/* auth_ok returns 1 if we don't need an authoritative answer or
+   if we can find servers to ask for an authoritative answer.
+   In the latter case these servers will be added to the *serv list.
+   A return value of -1 indicates an error.
+*/
+static int auth_ok(query_stat_array q, unsigned char *name, dns_cent_t *ent,
+		   int hops, qstatnode_t *qslist, qhintnode_t *qhlist, int thint,
+		   query_stat_t *qse, dlist ns, query_stat_array *serv)
+{
 	/*
 	 * Look into the query type hint. If it is a wildcard (QT_*), we need an authoritative answer.
-	 * Same if there is no record that answers the query. Mark the cache record if it is not an aa.
+	 * Same if there is no record that answers the query.
 	 */
 
 	/* This test will also fail if we have a negative cached record. This is done purposely. */
 #define aa_needed ((thint>=QT_MIN && thint<=QT_MAX) || \
 	           ((thint>=T_MIN && thint<=T_MAX) && (!ent->rr[thint-T_MIN] && !ent->rr[T_CNAME-T_MIN])))
 
-	if (!aa && qse->auth_serv && aa_needed) {
-		query_stat_array serv;
-		init_qserv(&serv);
-		/* Authority records present. Ask them, because the answer was non-authoritative.
-		 * To do so, we first put the Authority and the additional section into a dns_cent_t
-		 * and look for name servers in the Authority section and their addresses in
-		 * the answer and additional sections. If none are found, we also need to 
-		 * resolve the name servers.*/
+	if (qse->auth_serv && aa_needed) {
+		/* The answer was non-authoritative. Try to build a list of addresses of authoritative servers. */
 		if (hops>0) {
+			int retval=0;
 			unsigned char *nsdomain;
 			for (nsdomain=dlist_first(ns);nsdomain;nsdomain=dlist_next(nsdomain)) {
 				unsigned char *nsname=skiprhn(nsdomain);
@@ -1714,9 +1917,9 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 					if (rem!=0)
 						continue;
 				}
-				/* look it up in the cache or resolve it if needed. The records received should be in the cache now,
-				   so it's ok */
-
+				/* look it up in the cache or resolve it if needed.
+				   The records received should be in the cache now, so it's ok.
+				*/
 #ifdef ENABLE_IPV4
 				if (run_ipv4)
 					serva.ipv4.s_addr=INADDR_ANY;
@@ -1780,7 +1983,8 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 					query_stat_array qa=q;
 					qstatnode_t *ql=qslist;
 					for(;;) {
-						for (i=0;i<DA_NEL(qa);i++) {
+						int i,n=DA_NEL(qa);
+						for (i=0;i<n;i++) {
 							/* If qa[i].state == QS_DONE, then p_exec_query() has been called,
 							   and we should not query this server again */
 							query_stat_t *qs=&DA_INDEX(qa,i);
@@ -1795,61 +1999,28 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, dns_cent_t
 					}
 					/* lean query mode is inherited. CF_AUTH and CF_ADDITIONAL are not (as specified
 					 * in CFF_NOINHERIT). */
-					if (!add_qserv(&serv, &serva, 53, qse->timeout, qse->flags&~CFF_NOINHERIT, 0,thint,
-						       qse->lean_query,2,0,global.paranoid?nsdomain:NULL)) {
-						rv=RC_SERVFAIL;
-						free_cent(ent  DBG1);
-						pdnsd_free(ent);
-						goto free_ns_return;
+					if (!add_qserv(serv, &serva, 53, qse->timeout, qse->flags&~CFF_NOINHERIT, 0,thint,
+						       qse->lean_query,2,0,global.paranoid?nsdomain:NULL))
+					{
+						return -1;
 					}
+					retval=1;
 				}
 			skip_server:;						
 			}
-			if (DA_NEL(serv)>0) {
-				qstatnode_t qsn={q,qslist};
-				unsigned char save_ns=ent->c_ns,save_soa=ent->c_soa;
-				free_cent(ent  DBG1);
-				pdnsd_free(ent);
-				rv=p_dns_cached_resolve(serv,  name, &ent,hops-1,&qsn,qhlist,thint,time(NULL),c_soa);
-				if(rv==RC_OK) {
-					if(save_ns!=cundef && (ent->c_ns==cundef || ent->c_ns<save_ns))
-						ent->c_ns=save_ns;
-					if(save_soa!=cundef && (ent->c_soa==cundef || ent->c_soa<save_soa))
-						ent->c_soa=save_soa;
-				}
-				else if(rv==RC_NAMEERR && c_soa) {
-					if(save_soa!=cundef && (*c_soa==cundef || *c_soa<save_soa))
-						*c_soa=save_soa;
-				}
-				/* return the answer in any case. */
+			if(!retval) {
+				DEBUG_PDNSDA_MSG("No remaining authoritative name servers to try in authority section from %s.\n", PDNSDA2STR(PDNSD_A(qse)));
 			}
-			else {
-				DEBUG_MSG("No remaining authoritative name servers to try.\n");
-				goto reset_ttl;
-			}
+			return retval;
 		}
 		else {
 			DEBUG_MSG("Maximum hops count reached; not trying any more name servers.\n");
-		reset_ttl:
-			/*
-			 * If we didn't get rrs from any of the authoritative servers, take the one we had.
-			 * However, raise the CF_NOCACHE flag, so that it won't be used again (outside the
-			 * cache latency period).
-			 */
-			for (j=0;j<T_NUM;j++) {
-				if (ent->rr[j])
-					ent->rr[j]->flags |= CF_NOCACHE;
-			}
+			return 0;
 		}
-		/* Always free the serv array before freeing the ns list,
-		   because the serv array contains references to data within the ns list! */
-		del_qserv(serv);
 	}
- free_ns_return:
-	dlist_free(ns);
+	else
+		return 1;
 
-	if(rv==RC_OK) *entp=ent;
-	return rv;
 #undef  aa_needed
 }
 
@@ -1954,8 +2125,7 @@ static addr_array lookup_ns(const unsigned char *domain)
 
 static int p_dns_resolve(unsigned char *name, dns_cent_t **cachedp, int hops, qhintnode_t *qhlist, int thint, unsigned char *c_soa)
 {
-	dns_cent_t *cached;
-	int i,rc,nocache;
+	int i,rc;
 	int one_up=0,seenrootserv=0;
 	query_stat_array serv;
 
@@ -2004,7 +2174,7 @@ static int p_dns_resolve(unsigned char *name, dns_cent_t **cachedp, int hops, qh
 					}
 					one_up=add_qserv(&serv, &at->a, sp->port, sp->timeout, mk_flag_val(sp),sp->nocache,
 							 thint,sp->lean_query,sp->rootserver?3:(!sp->is_proxy),
-							 needs_intermittent_testing(sp),NULL);
+							 needs_testing(sp),NULL);
 					if(!one_up)
 						goto done;
 				}
@@ -2014,6 +2184,8 @@ static int p_dns_resolve(unsigned char *name, dns_cent_t **cachedp, int hops, qh
  done:
 	unlock_server_data();
 	if (one_up) {
+		dns_cent_t *cached;
+		int nocache;
 		rc=p_recursive_query(serv, name, &cached, &nocache, hops, NULL, qhlist, thint, c_soa);
 		if (rc==RC_OK) {
 			if (!nocache) {
@@ -2161,8 +2333,8 @@ static int p_dns_cached_resolve(query_stat_array q, unsigned char *name, dns_cen
 		lock_server_data();
 		for(i=0;i<DA_NEL(servers);++i) {
 			servparm_t *sp=&DA_INDEX(servers,i);
-			int j;
-			for(j=0; j<DA_NEL(sp->atup_a);++j) {
+			int j,m=DA_NEL(sp->atup_a);
+			for(j=0;j<m;++j) {
 				if (DA_INDEX(sp->atup_a,j).is_up) {
 					linkdown=0;
 					goto done;
@@ -2216,7 +2388,7 @@ static int p_dns_cached_resolve(query_stat_array q, unsigned char *name, dns_cen
 
 
 /* r_dns_cached_resolve() is like p_dns_cached_resolve(), except that r_dns_cached_resolve()
-   will not returned negatively cached entries, but return RC_NAMEERR instead.
+   will not return negatively cached entries, but return RC_NAMEERR instead.
 */
 int r_dns_cached_resolve(unsigned char *name, dns_cent_t **cachedp,
 			 int hops, qhintnode_t *qhlist, int thint, time_t queryts,
@@ -2244,9 +2416,6 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 {
 	query_stat_t qs;
 	int iter=0,rv;
-#ifdef NO_POLL
-#else
-#endif
 
 #ifdef ENABLE_IPV4
 	if (run_ipv4) {
@@ -2291,6 +2460,7 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 			struct timeval tv;
 			FD_ZERO(&reads);
 			FD_ZERO(&writes);
+			PDNSD_ASSERT(qs.sock<FD_SETSIZE,"socket file descriptor exceeds FD_SETSIZE.");
 			switch (qs.state) {
 			QS_READ_CASES:
 				FD_SET(qs.sock,&reads);
@@ -2301,6 +2471,15 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 			}
 			tv.tv_sec=timeout>tpassed?timeout-tpassed:0;
 			tv.tv_usec=0;
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that doing
+			   this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				p_cancel_query(&qs);
+				return 0;
+			}
 			event=select(qs.sock+1,&reads,&writes,NULL,&tv);
 #else
 			struct pollfd pfd;
@@ -2315,10 +2494,23 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 			default:
 				pfd.events=0;
 			}
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that doing
+			   this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				p_cancel_query(&qs);
+				return 0;
+			}
 			event=poll(&pfd,1,timeout>tpassed?(timeout-tpassed)*1000:0);
 #endif
 			if (event<0) {
-				log_warn("poll/select failed: %s",strerror(errno));
+				if(errno==EINTR && is_interrupted_servstat_thread()) {
+					DEBUG_MSG("poll/select interrupted in server status thread.\n");
+				}
+				else
+					log_warn("poll/select failed: %s",strerror(errno));
 				p_cancel_query(&qs);
 				return 0;
 			}
@@ -2360,5 +2552,5 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 			}
 		}
 	}
-	return rv!=RC_SERVFAIL;
+	return (rv!=RC_SERVFAIL && rv!=RC_FATALERR);
 }

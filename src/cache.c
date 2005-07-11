@@ -102,18 +102,18 @@ static const char cachverid[] = {'p','d','1','2'};
  */
 #define MCSZ 10240
 
-rr_lent_t *rrset_l=NULL;
-rr_lent_t *rrset_l_tail=NULL;
+static rr_lent_t *rrset_l=NULL;
+static rr_lent_t *rrset_l_tail=NULL;
 
 /*
  * We do not count the hash table sizes here. Those are very small compared
  * to the cache entries.
  */
-volatile long cache_size=0;
-volatile long ent_num=0;
+static volatile long cache_size=0;
+static volatile long ent_num=0;
 
-volatile int cache_w_lock=0;
-volatile int cache_r_lock=0;
+static volatile int cache_w_lock=0;
+static volatile int cache_r_lock=0;
 
 pthread_mutex_t lock_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*
@@ -129,9 +129,9 @@ pthread_cond_t  rw_cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t  r_cond = PTHREAD_COND_INITIALIZER;
 
 /* This is to suspend the r lock to avoid lock contention by reading threads */
-volatile int r_pend=0;
-volatile int rw_pend=0;
-volatile int r_susp=0;
+static volatile int r_pend=0;
+static volatile int rw_pend=0;
+static volatile int r_susp=0;
 
 /* This threshold is used to temporarily suspend r locking to give rw locking
  * a chance. */
@@ -275,6 +275,46 @@ static void unlock_cache_rw(void)
 	pthread_mutex_unlock(&lock_mutex);
 }
 
+
+/*
+  If there are other threads waiting to read from or write to
+  the cache, give up the read/write lock on the cache to give another
+  thread a chance; then try to get the lock back again.
+  This can be called regularly during a process that takes
+  a lot of processor time but has low priority, in order to improve
+  overall responsiveness.
+*/
+static void yield_lock_cache_rw()
+{
+	if (!use_cache_lock || (!r_pend && !rw_pend))
+		return;
+
+	/* Give up the lock */
+	pthread_mutex_lock(&lock_mutex);
+	cache_w_lock=0;
+	/* always reset r suspension (r locking code will set it again) */
+	r_susp=0;
+	/* wakeup threads waiting to read or write */
+	if (r_pend==0 || rw_pend>SUSP_THRESH(r_pend))
+		pthread_cond_signal(&rw_cond); /* schedule another rw proc */
+	else
+		pthread_cond_broadcast(&r_cond); /* let 'em all read */
+	pthread_mutex_unlock(&lock_mutex);
+
+	usleep_r(1000); 
+
+	/* Now try to get the lock back again */
+	pthread_mutex_lock(&lock_mutex);
+	rw_pend++;
+	while(cache_w_lock || cache_r_lock) {
+		/* This will unlock the mutex while sleeping and relock it before exit */
+		pthread_cond_wait(&rw_cond, &lock_mutex);
+	}
+	cache_w_lock=1;
+	rw_pend--;
+	pthread_mutex_unlock(&lock_mutex);
+}
+
 /* These are a special version of the ordinary read lock functions. The lock "soft" to avoid deadlocks: they will give up
  * after a certain number of bad trials. You have to check the exit status though.
  * To avoid blocking mutexes, we cannot use condition variables here. Never mind, these are only used on
@@ -393,13 +433,26 @@ void init_cache_lock()
 }
 #endif
 
-/* Empty the cache completely, freeing all entries. */ 
-int empty_cache()
+/* Empty the cache, freeing all entries that match the include/exclude list. */ 
+int empty_cache(slist_array sla)
 {
+	int i;
+
 	/* Wait at most 60 seconds to obtain a lock. */
 	if(!timedlock_cache_rw(60))
 		return 0;
-	free_dns_hash();
+
+	for(i=0; ; ) {
+		if(sla)
+			free_dns_hash_selected(i,sla);
+		else
+			free_dns_hash_bucket(i);
+		if(++i>=HASH_NUM_BUCKETS)
+			break;
+		/* Give another thread a chance */
+		yield_lock_cache_rw();
+	}
+
 	unlock_cache_rw();
 	return 1;
 }
@@ -2152,14 +2205,12 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						}
 						break;
 						case T_LOC:
-						{
 							/* Binary data length has not necessarily been validated */
 							if(rr->rdlen!=16)
 								goto hex_dump;
 							if(!loc2str(rr+1,dbuf,sizeof(dbuf)))
 								goto hex_dump;
-						}
-						break;
+							break;
 #endif
 						case T_A:
 							if (!inet_ntop(AF_INET,rr+1,dbuf,sizeof(dbuf)))
@@ -2192,11 +2243,11 @@ static int dump_cent(int fd, dns_cent_t *cent)
    Returns 1 on success, 0 if the name is not found, -1 is there is an IO error.
    Mainly for debugging purposes.
 */
-int dump_cache(int fd, const unsigned char *name)
+int dump_cache(int fd, const unsigned char *name, int exact)
 {
 	int rv=0;
 	lock_cache_r();
-	if(name) {
+	if(name && exact) {
 		dns_cent_t *cent=dns_lookup(name,NULL);
 		if(cent)
 			rv=dump_cent(fd,cent);
@@ -2205,8 +2256,10 @@ int dump_cache(int fd, const unsigned char *name)
 		dns_cent_t *cent;
 		dns_hash_pos_t pos;
 		for (cent=fetch_first(&pos); cent; cent=fetch_next(&pos)) {
-			if((rv=dump_cent(fd,cent))<0)
-				break;
+			int nrem;
+			if(!name || (domain_match(name,cent->qname,&nrem,NULL),nrem==0))
+				if((rv=dump_cent(fd,cent))<0)
+					break;
 		}
 	}
 	unlock_cache_r();

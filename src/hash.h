@@ -1,7 +1,7 @@
 /* hash.h - Manage hashes for cached dns records
 
    Copyright (C) 2000 Thomas Moestl
-   Copyright (C) 2003 Paul A. Rombouts
+   Copyright (C) 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -69,6 +69,8 @@ dns_cent_t *dns_lookup(const unsigned char *key, dns_hash_loc_t *loc);
 void add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc);
 dns_cent_t *del_dns_hash_ent(dns_hash_loc_t *loc);
 dns_cent_t *del_dns_hash(const unsigned char *key);
+void free_dns_hash_bucket(int i);
+void free_dns_hash_selected(int i, slist_array sla);
 void free_dns_hash();
 
 dns_cent_t *fetch_first(dns_hash_pos_t *pos);

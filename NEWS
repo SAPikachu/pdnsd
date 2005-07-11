@@ -1,3 +1,15 @@
+In version 1.2.3-par the "pdnsd-ctl empty-cache" command can be provided with an
+include/exclude list, allowing the user to specify a selection of names to be
+removed, instead of emptying the cache completely.
+Additional improvements: pdnsd should now remain responsive while executing the
+"pdnsd-ctl empty-cache" command. With the query_method=tcp_udp option pdnsd will
+now also try a UDP query after a TCP connection times out, which should allow
+pdnsd to resolve the same names with query_method=tcp_udp as with
+query_method=udp_only, although perhaps with an occasional delay.
+"pdnsd-ctl config" or "pdnsd-ctl server" commands should now run without delays,
+even if pdnsd is performing ping or query uptests at the time. A problem with
+resolving certain names using root servers has been fixed.
+
 Version 1.2.2-par has a number of important portability improvements. A bug has
 been fixed that prevented pdnsd from compiling successfully on some 64 bit
 architectures. The code for determining endianness (most significant or least

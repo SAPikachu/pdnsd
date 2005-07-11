@@ -109,7 +109,7 @@ void DBGda_free(darray a, size_t sz, char *file, int line)
 #endif
 
 #define DLISTALIGN(len) (((len) + (sizeof(size_t)-1)) & ~(sizeof(size_t)-1))
-#define DLISTCHUNKSIZEMASK 0x3ff
+#define DLISTCHUNKSIZEMASK ((size_t)0x3ff)
 
 /* Add space for a new item of size len to the list a. */
 dlist dlist_grow(dlist a, size_t len)

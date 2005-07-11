@@ -1,7 +1,7 @@
 /* dns.h - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -107,6 +107,7 @@ Boston, MA 02111-1307, USA.  */
 /*
  * special internal retvals
  */
+#define RC_FATALERR   253
 #define RC_TCPREFUSED 254
 #define RC_TRUNC      255
 

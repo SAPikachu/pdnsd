@@ -262,7 +262,7 @@ Kevin A. Burton,
 Juliusz Chroboczek,
 Joachim Dorner,
 Stefan Erhardt,
-Stefan Förster,
+Stefan F?rster,
 Mike Hammer,
 Jonathan Hudson,
 Dan Jacobson,
@@ -270,14 +270,14 @@ Byrial Jensen,
 Patrick Loschmidt,
 James MacLean,
 Fraser McCrossan,
-Michael Müller,
+Michael M?ller,
 Erich Reitz,
 Brian Schroeder,
 Milan P. Stanic,
 Michael Steiner,
 Norbert Steinl,
 Markus Storm,
-Michael Ströder,
+Michael Str?der,
 Alan Swanson,
 Eelco Vriezekolk
 
@@ -287,5 +287,5 @@ Eelco Vriezekolk
 Thomas Moestl
 
 
-Last revised: 03 Apr 2005 by Paul Rombouts
+Last revised: 11 Jul 2005 by Paul Rombouts
 

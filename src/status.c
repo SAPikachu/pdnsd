@@ -1,7 +1,7 @@
 /* status.c - Allow control of a running server using a socket
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -65,12 +65,12 @@ static int print_serr(int rs, const char *msg)
 {
 	uint16_t cmd;
 
+	DEBUG_MSG("Sending error message to control socket: '%s'\n",msg);
 	cmd=htons(1);
 	if(write(rs,&cmd,sizeof(cmd))!=sizeof(cmd) ||
 	   write_all(rs,msg,strlen(msg))<0)
 	{
-		DEBUG_MSG("Error writing to control socket: %s\n"
-			  "Failed to send error message '%s'\n",strerror(errno),msg);
+		DEBUG_MSG("Error writing to control socket: %s\n",strerror(errno));
 		return 0;
 	}
 	return 1;
@@ -122,7 +122,7 @@ static int read_long(int fh, uint32_t *res)
    -1 means the result is undefined (*res is set to NULL),
    0 means read or allocation error.
 */
-static int read_allocstring(int fh, char **res)
+static int read_allocstring(int fh, char **res, unsigned *len)
 {
 	uint16_t count;
 	char *buf;
@@ -139,6 +139,7 @@ static int read_allocstring(int fh, char **res)
 	}
 	buf[count]=0;
 	*res=buf;
+	if(len) *len=count;
 	return 1;
 }
 
@@ -216,7 +217,7 @@ static void *status_thread (void *p)
 				    int indx;
 				    uint16_t cmd2;
 				    DEBUG_MSG("Received SERVER command.\n");
-				    if (read_allocstring(rs,&label)<=0) {
+				    if (read_allocstring(rs,&label,NULL)<=0) {
 					print_serr(rs,"Error reading server label.");
 					break;
 				    }
@@ -224,7 +225,7 @@ static void *status_thread (void *p)
 					print_serr(rs,"Missing up|down|retest.");
 					goto free_label_break;
 				    }
-				    if(!read_allocstring(rs, &dnsaddr)) {
+				    if(!read_allocstring(rs, &dnsaddr,NULL)) {
 					print_serr(rs,"Error reading DNS addresses.");
 					goto free_label_break;
 				    }
@@ -255,29 +256,21 @@ static void *status_thread (void *p)
 				    }
 				    if(cmd2==CTL_S_UP || cmd2==CTL_S_DOWN || cmd2==CTL_S_RETEST) {
 					if(!dnsaddr) {
-					    if (indx<0) {
-						int i,found_label=0;
+					    if (indx==-1) {
+						int i;
 						for (i=0;i<DA_NEL(servers);++i) {
-						    char *servlabel;
-						    if (indx==-2 ||
-							((servlabel=DA_INDEX(servers,i).label) && !strcmp(servlabel,label)))
-						    {
-							found_label=1;
-							if(cmd2==CTL_S_RETEST)
-							    perform_uptest(i,-1);
-							else
-							    mark_server(i,-1,cmd2==CTL_S_UP);
-						    }
+						    char *servlabel=DA_INDEX(servers,i).label;
+						    if (servlabel && !strcmp(servlabel,label))
+							goto found_label;
 						}
-						if(found_label) print_succ(rs);
-						else print_serr(rs,"Bad server label.");
-					    } else {
-						if(cmd2==CTL_S_RETEST)
-						    perform_uptest(indx,-1);
-						else
-						    mark_server(indx,-1,cmd2==CTL_S_UP);
-						print_succ(rs);
+						print_serr(rs,"Bad server label.");
+						goto free_dnsaddr_label_break;
+					    found_label:;
 					    }
+					    if(mark_servers(indx,(indx==-1)?label:NULL,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP))==0)
+						print_succ(rs);
+					    else
+						print_serr(rs,"Could not start up or signal server status thread.");
 					}
 					else { /* Change server addresses */
 					    if(indx==-2) {
@@ -287,8 +280,8 @@ static void *status_thread (void *p)
 					    if(indx==-1) {
 						int i;
 						for(i=0;i<DA_NEL(servers);++i) {
-						    char *servlabel;
-						    if ((servlabel=DA_INDEX(servers,i).label) && !strcmp(servlabel,label)) {
+						    char *servlabel=DA_INDEX(servers,i).label;
+						    if (servlabel && !strcmp(servlabel,label)) {
 							if(indx!=-1) {
 							    print_serr(rs,"server label must be unique to change server addresses.");
 							    goto free_dnsaddr_label_break;
@@ -305,6 +298,7 @@ static void *status_thread (void *p)
 						unsigned char *ipstr,*q=dnsaddr;
 						addr_array ar=NULL;
 						pdnsd_a addr;
+						int err;
 						for(;;) {
 						    for(;;) {
 							if(!*q) goto change_servs;
@@ -328,10 +322,13 @@ static void *status_thread (void *p)
 						    DA_LAST(ar)=addr;
 						}
 					    change_servs:
-						if(change_servers(indx,ar,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP)))
+						err=change_servers(indx,ar,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP));
+						if(err==0)
 						    print_succ(rs);
 						else
-						    print_serr(rs,"Timed out while trying to gain access to server data.");
+						    print_serr(rs,err==ETIMEDOUT?"Timed out while trying to gain access to server data.":
+							          err==ENOMEM?"Out of memory.":
+							          "Could not start up or signal server status thread.");
 					    free_ar:
 						da_free(ar);
 					    }
@@ -377,7 +374,7 @@ static void *status_thread (void *p)
 				    char buf[256],owner[256];
 
 				    DEBUG_MSG("Received SOURCE command.\n");
-				    if (read_allocstring(rs,&fn)<=0) {
+				    if (read_allocstring(rs,&fn,NULL)<=0) {
 					    print_serr(rs,"Bad filename name.");
 					    break;
 				    }
@@ -524,7 +521,7 @@ static void *status_thread (void *p)
 			    case CTL_CONFIG: {
 				    char *fn,*errmsg;
 				    DEBUG_MSG("Received CONFIG command.\n");
-				    if (!read_allocstring(rs,&fn)) {
+				    if (!read_allocstring(rs,&fn,NULL)) {
 					    print_serr(rs,"Bad filename name.");
 					    break;
 				    }
@@ -537,15 +534,71 @@ static void *status_thread (void *p)
 				    free(fn);
 			    }
 				    break;
-			    case CTL_EMPTY:
+			    case CTL_EMPTY: {
+				    slist_array sla=NULL;
+				    char *names; unsigned len;
+
 				    DEBUG_MSG("Received EMPTY command.\n");
-				    if(empty_cache())
+				    if (!read_allocstring(rs,&names,&len)) {
+					    print_serr(rs,"Bad arguments.");
+					    break;
+				    }
+				    if(names) {
+					    char *p=names, *last=names+len;
+					    
+					    while(p<last) {
+						    int tp;
+						    char *q;
+						    slist_t *sl;
+						    unsigned sz;
+						    unsigned char rhn[256];
+
+						    if(*p=='-') {
+							    tp=C_EXCLUDED;
+							    ++p;
+						    }
+						    else {
+							    tp=C_INCLUDED;
+							    if(*p=='+') ++p;
+						    }
+						    /* skip a possible leading dot. */
+						    if(p+1<last && *p=='.' && *(p+1)) ++p;
+						    q=p;
+						    while(q<last && *q) ++q;
+						    if ((errmsg=parsestr2rhn(p,q-p,rhn))!=NULL) {
+							    DEBUG_MSG("EMPTY: received bad domain name: %s\n",p);
+							    print_serr(rs,errmsg);
+							    goto free_sla_names_break;
+						    }
+						    sz=rhnlen(rhn);
+						    if (!(sla=DA_GROW1_F(sla,free_slist_domain))) {
+							    print_serr(rs,"Out of memory.");
+							    goto free_names_break;
+						    }
+						    sl=&DA_LAST(sla);
+
+						    if (!(sl->domain=malloc(sz))) {
+							    print_serr(rs,"Out of memory.");
+							    goto free_sla_names_break;
+						    }
+						    memcpy(sl->domain,rhn,sz);
+						    sl->exact=0;
+						    sl->rule=tp;
+						    p = q+1;
+					    }
+				    }
+				    if(empty_cache(sla))
 					    print_succ(rs);
 				    else
 					    print_serr(rs,"Could not lock the cache.");
+			    free_sla_names_break:
+				    free_slist_array(sla);
+			    free_names_break:
+				    free(names);
+			    }
 				    break;
 			    case CTL_DUMP: {
-				    int rv;
+				    int rv,exact=0;
 				    char *nm=NULL;
 				    char buf[256],rhn[256];
 				    DEBUG_MSG("Received DUMP command.\n");
@@ -554,14 +607,21 @@ static void *status_thread (void *p)
 					    break;
 				    }
 				    if(rv>0) {
-					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),rhn))!=NULL)
+					    int sz;
+					    exact=1; nm=buf; sz=sizeof(buf);
+					    if(buf[0]=='.' && buf[1]) {
+						    exact=0; ++nm; --sz;
+					    }
+					    if ((errmsg=parsestr2rhn(nm,sz,rhn))!=NULL)
 						    goto bad_domain_name;
 					    nm=rhn;
 				    }
 				    if(!print_succ(rs))
 					    break;
-				    if((rv=dump_cache(rs,nm))<0 ||
-				       (!rv && fsprintf(rs,"Could not find %s in the cache.\n",nm?buf:"any entries")<0))
+				    if((rv=dump_cache(rs,nm,exact))<0 ||
+				       (!rv && fsprintf(rs,"Could not find %s%s in the cache.\n",
+							exact?"":nm?"any entries matching ":"any entries",
+							nm?buf:"")<0))
 				    {
 					    DEBUG_MSG("Error writing to control socket: %s\n",strerror(errno));
 				    }

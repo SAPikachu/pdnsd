@@ -20,7 +20,8 @@ short int run_ipv4=DEFAULT_IPV4;
 #ifdef ENABLE_IPV6
 struct in6_addr ipv4_6_prefix;
 #endif
-pthread_t main_thread;
+pthread_t main_thrid,servstat_thrid;
+volatile int signal_interrupt;
 #if DEBUG>0
 FILE *dbg_file;
 #endif

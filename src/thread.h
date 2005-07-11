@@ -1,7 +1,7 @@
 /* thread.h - Threading helpers
 
    Copyright (C) 2000 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -34,6 +34,7 @@ extern sigset_t sigs_msk;
 /* --- */
 
 #if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
+extern volatile short int waiting;
 void thread_sig(int sig);
 #endif
 
@@ -57,29 +58,45 @@ void thread_sig(int sig);
 # define THREAD_SIGINIT
 # else
 #  ifdef THREADLIB_LINUXTHREADS2
-#  define THREAD_SIGINIT   { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
-			     signal(SIGINT,thread_sig);			   \
-			     signal(SIGILL,thread_sig);			   \
-			     signal(SIGABRT,thread_sig);		   \
-			     signal(SIGFPE,thread_sig);			   \
-			     signal(SIGSEGV,thread_sig);		   \
-			     signal(SIGTSTP,thread_sig);		   \
-			     signal(SIGTTOU,thread_sig);		   \
-			     signal(SIGTTIN,thread_sig);		   \
-			     signal(SIGTERM, thread_sig);		   \
-			     signal(SIGPIPE, SIG_IGN);			   \
-			   }
+#  define THREAD_SIGINIT   {				\
+	struct sigaction action;			\
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);	\
+	action.sa_handler = thread_sig;			\
+	action.sa_mask = sigs_msk;			\
+	action.sa_flags = 0;				\
+	sigaction(SIGINT,&action,NULL);			\
+	sigaction(SIGILL,&action,NULL);			\
+	sigaction(SIGABRT,&action,NULL);		\
+	sigaction(SIGFPE,&action,NULL);			\
+	sigaction(SIGSEGV,&action,NULL);		\
+	sigaction(SIGTSTP,&action,NULL);		\
+	sigaction(SIGTTOU,&action,NULL);		\
+	sigaction(SIGTTIN,&action,NULL);		\
+	sigaction(SIGTERM,&action,NULL);		\
+	action.sa_handler = SIG_IGN;			\
+	sigemptyset(&action.sa_mask);			\
+	action.sa_flags = 0;				\
+	sigaction(SIGPIPE,&action,NULL);		\
+   }
 #  else
-#  define THREAD_SIGINIT   { pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);  \
-			     signal(SIGILL,thread_sig);			   \
-			     signal(SIGABRT,thread_sig);		   \
-			     signal(SIGFPE,thread_sig);			   \
-			     signal(SIGSEGV,thread_sig);		   \
-			     signal(SIGTSTP,thread_sig);		   \
-			     signal(SIGTTOU,thread_sig);		   \
-			     signal(SIGTTIN,thread_sig);		   \
-			     signal(SIGPIPE, SIG_IGN);			   \
-			   }
+#  define THREAD_SIGINIT   {				\
+	struct sigaction action;			\
+	pthread_sigmask(SIG_UNBLOCK,&sigs_msk,NULL);	\
+	action.sa_handler = thread_sig;			\
+	action.sa_mask = sigs_msk;			\
+	action.sa_flags = 0;				\
+	sigaction(SIGILL,&action,NULL);			\
+	sigaction(SIGABRT,&action,NULL);		\
+	sigaction(SIGFPE,&action,NULL);			\
+	sigaction(SIGSEGV,&action,NULL);		\
+	sigaction(SIGTSTP,&action,NULL);		\
+	sigaction(SIGTTOU,&action,NULL);		\
+	sigaction(SIGTTIN,&action,NULL);		\
+	action.sa_handler = SIG_IGN;			\
+	sigemptyset(&action.sa_mask);			\
+	action.sa_flags = 0;				\
+	sigaction(SIGPIPE,&action,NULL);		\
+   }
 #  endif
 # endif
 #elif (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)

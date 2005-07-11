@@ -1,7 +1,7 @@
 /* conff.c - Maintain configuration information
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -314,6 +314,11 @@ int reload_config_file(const char *nm, char **errstr)
 	return 0;
 }
 
+void free_zone(void *ptr)
+{
+  free(*((unsigned char **)ptr));
+}
+
 static void free_zones(zone_array za)
 {
 	int i,n=DA_NEL(za);
@@ -323,22 +328,33 @@ static void free_zones(zone_array za)
 	da_free(za);
 }
 
+void free_slist_domain(void *ptr)
+{
+	free(((slist_t *)ptr)->domain);
+}
+
+void free_slist_array(slist_array sla)
+{
+	int j,m=DA_NEL(sla);
+	for(j=0;j<m;++j)
+		free(DA_INDEX(sla,j).domain);
+	da_free(sla);
+
+}
+
+void free_servparm(servparm_t *serv)
+{
+	free(serv->uptest_cmd);
+	free(serv->label);
+	da_free(serv->atup_a);
+	free_slist_array(serv->alist);
+}
+
 static void free_server_data(servparm_array sa)
 {
 	int i,n=DA_NEL(sa);
-	for(i=0;i<n;++i) {
-		servparm_t *sp=&DA_INDEX(sa,i);
-		free(sp->uptest_cmd);
-		free(sp->label);
-		da_free(sp->atup_a);
-		{
-			slist_array al=sp->alist;
-			int j,m=DA_NEL(al);
-			for(j=0;j<m;++j)
-				free(DA_INDEX(al,j).domain);
-			da_free(al);
-		}
-	}
+	for(i=0;i<n;++i)
+		free_servparm(&DA_INDEX(sa,i));
 	da_free(sa);
 }
 
@@ -439,7 +455,10 @@ static int report_server_stat(int f,int i)
 	if(st->interval>0) {
 		fsprintf_or_return(f,"\tuptest interval: %li\n",(long)st->interval);
 	} else {
-		fsprintf_or_return(f,"\tuptest interval: %s\n",st->interval?"onquery":"(never retest)");
+		fsprintf_or_return(f,"\tuptest interval: %s\n",
+				   st->interval==-1?"onquery":
+				   st->interval==-2?"ontimeout":
+				                    "(never retest)");
 	}
 	fsprintf_or_return(f,"\tping timeout: %li\n",(long)st->ping_timeout);
 	{char buf[ADDRSTR_MAXLEN];

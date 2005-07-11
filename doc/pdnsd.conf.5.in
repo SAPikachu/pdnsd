@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Apr 2005" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Jul 2005" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -23,7 +23,8 @@ This manual page describes the layout of the
 configuration file and the available configuration options.
 The default location of the file is @sysconfdir@/pdnsd.conf. This may be changed
 with the \fB-c\fP command line option.
-An example pdnsd.conf comes with the pdnsd distribution in the documentation directory.
+An example pdnsd.conf comes with the pdnsd distribution in the documentation directory
+or in @sysconfdir@/pdnsd.conf.sample.
 .SH "FILE FORMAT"
 .PP
 The configuration file is divided into sections. Each section is prefixed with
@@ -241,6 +242,8 @@ you want maximum security, you should not enable this option. It is disabled by 
 .B daemon=(on|off);
 This has the same effect as the -d command line option: the daemon mode is enabled when
 on is specified.
+.br
+Default is off.
 .TP
 .B tcp_server=(on|off);
 tcp_server=on has the same effect as the -t or --tcp
@@ -261,6 +264,7 @@ messages with it. The argument is a number between 0 (few messages) to 3 (most m
 This has the same effect as the -m command line option. Read the documentation for the
 command line option on this. tcp_only corresponds to the to, udp_only to
 the uo and tcp_udp to the tu argument of the command line option.
+If you use query_method=tcp_udp, it is recommended that you also set the global timeout option to at least twice the longest server timeout.
 .TP
 .B run_ipv4=(on|off);
 This has the same effect as the -4 or -6 command line option:
@@ -350,6 +354,10 @@ slow to respond (but will still continue to listen for responses from
 the first ones). This may allow pdnsd to get an answer more quickly in
 certain situations.
 .br
+If you use query_method=tcp_udp it is recommended that
+you make the global timeout at least twice as large as the largest
+server timeout, otherwise pdnsd may not have time to try a UDP query
+if a TCP connection times out.
 Default value is 0.
 .TP
 .B randomize_recs=(on|off);
@@ -556,13 +564,12 @@ be installed as setuid or setgid.\fP
 The command is executed using /bin/sh, so you should be able to use
 shell builtin commands.
 .TP
-.B interval=(\fInumber\fP|onquery);
+.B interval=(\fInumber\fP|onquery|ontimeout);
 Sets the interval for the server up-test in seconds. The default is 
-900; however, a test is forced when a query times out. The interval
-timeout is reset then.
+900; however, a test is forced when a query times out and the timestamp is reset then.
 .br
 If you specify onquery instead of a timeout, the interface will be
-tested before every query. This is to prevent automatically dialling
+tested before every query. This is to prevent automatically dialing
 interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
 used in connection with an interface-testing uptest ;-) 
 .br
@@ -576,6 +583,16 @@ will not be used. When another (reachable) dns server tells pdnsd
 to query a third dns server for data, pdnsd will do that and has 
 no means of checking whether this will dial up the interface or not.
 This however should be a rare situation.
+.br
+\fINew in version 1.2.3:\fP
+A third possibility is to specify interval=ontimeout.
+In this case the server is not tested at startup/reconfiguration, nor at regular intervals,
+but only after a DNS query to a server times out. Certain types of network problems
+such as a refused connection will also cause the server to be considered unavailable.
+However, once a server is declared dead it is never considered again unless it is revived using a
+pdnsd\-ctl config or server command.
+The idea behind this option is to minimize uptests by assuming all
+servers are available until there is reason to believe otherwise.
 .TP
 .B interface=\fIstring\fP;
 The network interface (or network device, e.g. "eth0") for the uptest=if option.
@@ -1100,4 +1117,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 03 Apr 2005 by Paul Rombouts
+Last revised: 07 Jul 2005 by Paul Rombouts

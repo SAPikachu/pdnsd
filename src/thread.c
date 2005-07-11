@@ -38,7 +38,9 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
+#if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 volatile short int waiting=0; /* Has the main thread already done sigwait() ? */
+#endif
 pthread_attr_t attr_detached;
 #if DEBUG>0
 pthread_key_t thrid_key;
@@ -59,7 +61,7 @@ void thread_sig(int sig)
 		log_warn("Caught signal %i.",sig);
 		if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
 			crash_msg("A fatal signal occured.");
-		pthread_kill(main_thread,SIGTERM);
+		pthread_kill(main_thrid,SIGTERM);
 		pthread_exit(NULL);
 	} else {
 		crash_msg("An error occured at startup.");

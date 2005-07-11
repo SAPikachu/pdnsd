@@ -1,7 +1,7 @@
 /* cache.h - Definitions for the dns cache
 
    Copyright (C) 2000 Thomas Moestl
-   Copyright (C) 2003,2004 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -178,13 +178,13 @@ inline static void init_cache_lock()
 	use_cache_lock=1;
 }
 
-int empty_cache(void);
+int empty_cache(slist_array sla);
 void destroy_cache(void);
 void read_disk_cache(void);
 void write_disk_cache(void);
 
 int report_cache_stat(int f);
-int dump_cache(int fd, const unsigned char *name);
+int dump_cache(int fd, const unsigned char *name, int exact);
 
 /*
  *  add_cache expects the dns_cent_t to be filled.

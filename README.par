@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.2-par by Paul Rombouts
+	        pdnsd version 1.2.3-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -14,7 +14,7 @@ REAME.par.old. In this README I restrict myself to describing changes between
 1.1.11 and 1.2.
 The main difference between versions 1.2 and 1.2.1, aside from some minor
 changes, is that 1.2.1 has (experimental) support for the Cygwin platform.
-In version 1.2.2 has further improvements in portability and should in
+Version 1.2.2 has further improvements in portability and should in
 particular now also compile on the Darwin (Apple Mac OS X) platform.
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -23,7 +23,7 @@ version because the (compressed) patch file is barely smaller than the
 
 Here follows a list of some of changes in version 1.2 from a user's perspective.
 For a more technical description of some of the changes in the code see the ChangeLog.
-For a short history about recent releases have a look at doc/html/index.html.
+For a short history about recent releases have a look at NEWS or doc/html/index.html.
 
 - First of all, two potentially rather nasty bugs have been fixed in the code
   for the handling of NXT and NAPTR records. A response from a remote server
@@ -131,9 +131,9 @@ For a short history about recent releases have a look at doc/html/index.html.
   service. However, some types of configuration changes cannot be put into
   effect this way, and you will be prompted to restart pdnsd instead.
 
-  empty-cache: Empties the cache completely, freeing all existing entries. This
-  command is mainly useful for debugging purposes, or if you suspect that stale
-  cache entries are causing you problems, but you are not sure which ones.
+  empty-cache: Empties the cache completely, freeing all existing entries.
+  In version 1.2.3 you can specify a selection of entries to delete by providing
+  a list of include/exclude patterns.
 
   dump: Prints information about all the names stored in the cached. This is
   mainly useful for diagnostic purposes.

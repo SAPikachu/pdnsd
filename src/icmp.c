@@ -1,7 +1,7 @@
 /* icmp.c - Server response tests using ICMP echo requests
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003 Paul A. Rombouts
+   Copyright (C) 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -62,15 +62,17 @@ Boston, MA 02111-1307, USA.  */
 #include "icmp.h"
 #include "error.h"
 #include "helpers.h"
+#include "servers.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: icmp.c,v 1.26 2002/01/14 17:39:26 tmm Exp $";
 #endif
 
 #define ICMP_MAX_ERRS 10
-volatile unsigned long icmp_errs=0; /* This is only here to minimize log output. Since the 
-				       consequences of a race is only one log message more/less
-				       (out of ICMP_MAX_ERRS), no lock is required. */
+static volatile unsigned long icmp_errs=0; /* This is only here to minimize log output.
+					      Since the consequences of a race is only
+					      one log message more/less (out of
+					      ICMP_MAX_ERRS), no lock is required. */
 
 volatile int ping_isocket=-1;
 #ifdef ENABLE_IPV6
@@ -238,20 +240,40 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 			fd_set fds,fdse;
 			struct timeval tv;
 			FD_ZERO(&fds);
+			PDNSD_ASSERT(isock<FD_SETSIZE,"socket file descriptor exceeds FD_SETSIZE.");
 			FD_SET(isock, &fds);
 			fdse=fds;
 			tv.tv_usec=0;
 			tv.tv_sec=timeout>tpassed?timeout-tpassed:0;
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that the effort
+			   to do this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				return -1;
+			}
 			psres=select(isock+1,&fds,NULL,&fdse,&tv);
 #else
 			struct pollfd pfd;
 			pfd.fd=isock;
 			pfd.events=POLLIN;
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that the effort
+			   to do this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				return -1;
+			}
 			psres=poll(&pfd,1,timeout>tpassed?(timeout-tpassed)*1000:0);
 #endif
 
 			if (psres<0) {
-				if (++icmp_errs<=ICMP_MAX_ERRS) {
+				if(errno==EINTR && is_interrupted_servstat_thread()) {
+					DEBUG_MSG("poll/select interrupted in server status thread.\n");
+				}
+				else if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 
@@ -409,20 +431,40 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 			fd_set fds,fdse;
 			struct timeval tv;
 			FD_ZERO(&fds);
+			PDNSD_ASSERT(isock<FD_SETSIZE,"socket file descriptor exceeds FD_SETSIZE.");
 			FD_SET(isock, &fds);
 			fdse=fds;
 			tv.tv_usec=0;
 			tv.tv_sec=timeout>tpassed?timeout-tpassed:0;
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that the effort
+			   to do this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				return -1;
+			}
 			psres=select(isock+1,&fds,NULL,&fdse,&tv);
 #else
 			struct pollfd pfd;
 			pfd.fd=isock;
 			pfd.events=POLLIN;
+			/* There is a possible race condition with the arrival of a signal here,
+			   but it is so unlikely to be a problem in practice that the effort
+			   to do this properly is not worth the trouble.
+			*/
+			if(is_interrupted_servstat_thread()) {
+				DEBUG_MSG("server status thread interrupted.\n");
+				return -1;
+			}
 			psres=poll(&pfd,1,timeout>tpassed?(timeout-tpassed)*1000:0);
 #endif
 
 			if (psres<0) {
-				if (++icmp_errs<=ICMP_MAX_ERRS) {
+				if(errno==EINTR && is_interrupted_servstat_thread()) {
+					DEBUG_MSG("poll/select interrupted in server status thread.\n");
+				}
+				else if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
 				return -1; 

@@ -95,7 +95,7 @@ static char rcsid[]="$Id: netdev.c,v 1.11 2001/06/13 17:28:04 tmm Exp $";
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
 # if (TARGET==TARGET_LINUX)
 
-volatile int isdn_errs=0;
+static volatile unsigned long isdn_errs=0;
 
 #  ifdef ISDN_SUPPORT
 
@@ -115,9 +115,8 @@ int statusif(char *name)
 	int isdninfo,rc=0;
 
 	if ((isdninfo = open("/dev/isdninfo", O_RDONLY))<0) {
-		if (isdn_errs<2) {
+		if (++isdn_errs<=2) {
 			log_warn("Could not open /dev/isdninfo for uptest: %s",strerror(errno));
-			isdn_errs++;
 		}
 		return 0;
 	}

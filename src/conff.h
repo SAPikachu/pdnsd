@@ -1,7 +1,7 @@
 /* conff.h - Definiton for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -40,7 +40,7 @@ Boston, MA 02111-1307, USA.  */
 /* From main.c */
 extern short int debug_p;
 extern short int stat_pipe;
-extern pthread_t main_thread;
+extern pthread_t main_thrid;
 extern uid_t init_uid;
 extern char *conf_file;
 
@@ -56,7 +56,7 @@ typedef struct {
 typedef DYNAMIC_ARRAY(atup_t) *atup_array;
 
 typedef struct {
-	char            *domain;
+	unsigned char   *domain;
 	short            exact;
 	short            rule;
 } slist_t;
@@ -148,6 +148,10 @@ extern servparm_array servers;
 
 int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, char **errstr);
 int reload_config_file(const char *nm, char **errstr);
+void free_zone(void *ptr);
+void free_slist_domain(void *ptr);
+void free_slist_array(slist_array sla);
+void free_servparm(servparm_t *serv);
 
 int report_conf_stat(int f);
 #endif

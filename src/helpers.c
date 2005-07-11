@@ -1,7 +1,7 @@
 /* helpers.c - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -49,7 +49,7 @@ static char rcsid[]="$Id: helpers.c,v 1.33 2002/01/03 13:33:06 tmm Exp $";
  */
 void pdnsd_exit()
 {
-	pthread_kill(main_thread,SIGTERM);
+	pthread_kill(main_thrid,SIGTERM);
 	pthread_exit(NULL);
 }
 
@@ -581,7 +581,7 @@ int escapestr(char *in, int ilen, char *str, int size)
 		if(j>=size-1)
 			return -1;
 		c=in[i];
-		if(c<0x20 || c>=0x7f) {
+		if(!isprint(c)) {
 			int rem=size-j;
 			int n=snprintf(&str[j],rem,"\\%03o",c);
 			if(n<0 || n>=rem) {

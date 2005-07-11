@@ -155,15 +155,27 @@ static const char *help_messages[] =
 	"\tstarted, and be readable by pdnsd's run_as uid. If no file name is\n"
 	"\tspecified, the config file used at start up is reloaded.\n",
 
-	"empty-cache\t[no options]\n"
-	"\tEmpty the cache completely, freeing all existing entries.\n"
-	"\tThis also removes \"local\" records, as defined by the config file.\n"
-	"\tTo restore local records, run \"pdnsd-ctl config\" immediately afterwards.\n",
+	"empty-cache\t[[+|-]name ...]\n"
+	"\tDelete all entries in the cache matching include/exclude rules.\n"
+	"\tIf no arguments are provided, the cache is completely emptied,\n"
+	"\tfreeing all existing entries. This also removes \"local\" records,\n"
+	"\tas defined by the config file. To restore local records, run\n"
+	"\t\"pdnsd-ctl config\" immediately afterwards.\n"
+	"\tIf one or more arguments are provided, these are interpreted as \n"
+	"\tinclude/exclude names. If an argument starts with a '+' the name is to\n"
+	"\tbe included. If an argument starts with a '-' it is to be excluded.\n"
+	"\tIf an argument does not begin with '+' or '-', a '+' is assumed.\n"
+	"\tIf the domain name of a cache entry ends in one of the names in the\n"
+	"\tlist, the first match will determine what happens. If the matching name\n"
+	"\tis to be included, the cache entry is deleted, otherwise it remains.\n"
+	"\tIf there are no matches, the default action is not to delete.\n",
 
 	"dump\t[name]\n"
 	"\tPrint information stored in the cache about name.\n"
-	"\tIf name is missing, information about all the names in the cache will\n"
-	"\tbe printed.\n",
+	"\tIf name begins with a dot and is not the root domain, information\n"
+	"\tabout the names in the cache ending in name (including name without\n"
+	"\tthe leading dot) will be printed. If name is missing, information about\n"
+	"\tall the names in the cache will be printed.\n",
 
 	"list-rrtypes\t[no options]\n"
 	"\tList available rr types for the neg command. Note that those are only\n"
@@ -229,10 +241,11 @@ static void send_string(int fd, const char *s)
 
 static uint16_t read_short(int fd)
 {
+	int err;
 	uint16_t nc;
 
-	if (read(fd,&nc,sizeof(nc))!=sizeof(nc)) {
-		perror("Error: could not read short");
+	if ((err=read(fd,&nc,sizeof(nc)))!=sizeof(nc)) {
+		fprintf(stderr,"Error: could not read short: %s\n",err<0?strerror(errno):"unexpected EOF");
 		exit(2);
 	}
 	return ntohs(nc);
@@ -534,10 +547,25 @@ int main(int argc, char *argv[])
 			goto read_retval;
 
 		case CTL_EMPTY:
-			if (argc!=1)
-				goto wrong_args;
 			pf=open_sock(cache_dir);
 			send_short(pf,cmd);
+			if(argc>1) {
+				int i,totsz=0;
+				for(i=1;i<argc;++i)
+					totsz += strlen(argv[i])+1;
+
+				send_short(pf,totsz);
+				for(i=1;i<argc;++i) {
+					int sz=strlen(argv[i])+1;
+					if(write_all(pf,argv[i],sz)!=sz) {
+						perror("Error: could not write string");
+						exit(2);
+					}
+				}
+			}
+			else
+				send_short(pf,~0);
+
 			goto read_retval;
 
 		case CTL_DUMP:

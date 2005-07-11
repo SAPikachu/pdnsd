@@ -73,20 +73,22 @@ static char rcsid[]="$Id: dns_answer.c,v 1.60 2002/08/07 08:55:33 tmm Exp $";
 #define MEM_MAX_ERRS 10
 #define THRD_MAX_ERRS 10
 #define MISC_MAX_ERRS 10
-volatile unsigned long da_tcp_errs=0;
-volatile unsigned long da_udp_errs=0;
-volatile unsigned long da_mem_errs=0;
-volatile unsigned long da_thrd_errs=0;
-volatile unsigned long da_misc_errs=0;
-pthread_t tcps;
-pthread_t udps;
-volatile int procs=0;   /* active query processes */
-volatile int qprocs=0;  /* queued query processes */
-volatile unsigned thrid_cnt=0;
-pthread_mutex_t proc_lock = PTHREAD_MUTEX_INITIALIZER;
+static volatile unsigned long da_tcp_errs=0;
+static volatile unsigned long da_udp_errs=0;
+static volatile unsigned long da_mem_errs=0;
+static volatile unsigned long da_thrd_errs=0;
+#if DEBUG>0
+static volatile unsigned long da_misc_errs=0;
+#endif
+static pthread_t tcps;
+static pthread_t udps;
+static volatile int procs=0;   /* active query processes */
+static volatile int qprocs=0;  /* queued query processes */
+static volatile unsigned thrid_cnt=0;
+static pthread_mutex_t proc_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef SOCKET_LOCKING
-pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 typedef union {
@@ -121,6 +123,20 @@ typedef struct {
 	long               len;
 	unsigned char      buf[udp_buf_len];
 } udp_buf_t;
+
+
+typedef struct {
+#ifndef NO_TCP_SERVER
+	uint16_t len        __attribute__((packed));
+#endif
+	dns_hdr_t hdr       __attribute__((packed));
+} dns_ans_t;
+
+#ifdef NO_TCP_SERVER
+# define ansoffset 0
+#else
+# define ansoffset 2
+#endif
 
 typedef struct {
 	unsigned short qtype;
@@ -183,7 +199,7 @@ inline static time_t ans_ttl(time_t ttl, time_t ts, time_t queryts, unsigned fla
  * belongs logically. Note that you still have to add the rrs in the right order (answer rrs first,
  * then authority and last additional).
  */
-static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void *data, char section, dlist *cb,
+static int add_rr(dns_ans_t **ans, long *sz, unsigned short type, int dlen, void *data, char section, dlist *cb,
 		  char udp, unsigned char *rrn, time_t ttl)
 {
 	int ilen,blen,osz,rdlen;
@@ -200,17 +216,17 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 		/* This buffer is over-allocated usually due to compression. Never mind, just a few bytes,
 		 * and the buffer is freed soon*/
 		{
-			dns_hdr_t *nans=(dns_hdr_t *)pdnsd_realloc(*ans,*sz+nlen+sizeof(rr_hdr_t)+dlen+2);
+			dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(*ans,ansoffset+*sz+nlen+sizeof(rr_hdr_t)+dlen+2);
 			if (!nans)
 				goto failed;
 			*ans=nans;
 		}
-		memcpy((unsigned char *)(*ans)+*sz,nbuf,nlen);
+		memcpy((unsigned char *)(&(*ans)->hdr)+*sz,nbuf,nlen);
 		*sz+=nlen;
 	}
 
 	/* the rr header will be filled in later. Just reserve some space for it. */
-	rrht=((unsigned char *)(*ans))+(*sz);
+	rrht=((unsigned char *)(&(*ans)->hdr))+(*sz);
 	*sz+=sizeof(rr_hdr_t);
 	
 	switch (type) {
@@ -222,7 +238,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 	case T_MR:
 	case T_NS:
 	case T_PTR:
-		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		*sz+=rdlen;
 		break;
@@ -230,12 +246,12 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 #ifdef DNS_NEW_RRS
 	case T_RP:
 #endif
-		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		*sz+=rdlen;
 		ilen=rhnlen((unsigned char *)data);
 		PDNSD_ASSERT(rdlen <= ilen, "T_MINFO/T_RP: got longer");
-		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen+=blen;
 		*sz+=blen;
@@ -247,57 +263,57 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 	case T_KX:
 #endif
 		PDNSD_ASSERT(dlen > 2, "T_MX/T_AFSDB/...: rr botch");
-		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)data,2);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),(unsigned char *)data,2);
 		*sz+=2;
-		if (!(blen=compress_name(((unsigned char *)data)+2, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+2, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen=2+blen;
 		*sz+=blen;
 		break;
 	case T_SOA:
-		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		*sz+=rdlen;
 		ilen=rhnlen((unsigned char *)data);
 		PDNSD_ASSERT(rdlen <= ilen, "T_SOA: got longer");
-		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen+=blen;
 		*sz+=blen;
 		ilen+=rhnlen(((unsigned char *)data)+ilen);
 		PDNSD_ASSERT(rdlen <= ilen, "T_SOA: got longer");
-		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)data)+ilen,20);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),((unsigned char *)data)+ilen,20);
 		*sz+=20;
 		rdlen+=20;
 		break;
 #ifdef DNS_NEW_RRS
 	case T_PX:
 		PDNSD_ASSERT(dlen > 2, "T_PX: rr botch");
-		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)data,2);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),(unsigned char *)data,2);
 		*sz+=2;
 		ilen=2;
-		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen=2+blen;
 		*sz+=blen;
 		ilen+=rhnlen(((unsigned char *)data)+ilen);
 		PDNSD_ASSERT(rdlen <= ilen, "T_PX: got longer");
-		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen+=blen;
 		*sz+=blen;
 		break;
 	case T_SRV:
 		PDNSD_ASSERT(dlen > 6, "T_SRV: rr botch");
-		memcpy(((unsigned char *)(*ans))+(*sz),(unsigned char *)data,6);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),(unsigned char *)data,6);
 		*sz+=6;
-		if (!(blen=compress_name(((unsigned char *)data)+6, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+6, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen=6+blen;
 		*sz+=blen;
 		break;
 	case T_NXT:
-		if (!(blen=compress_name(((unsigned char *)data), ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen=blen;
 		*sz+=blen;
@@ -306,7 +322,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 		PDNSD_ASSERT(dlen >= ilen, "T_NXT: rr botch");
 		{
 			int wlen=dlen < ilen ? 0 : (dlen - ilen);
-			memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)data)+ilen,wlen);
+			memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),((unsigned char *)data)+ilen,wlen);
 			*sz+=wlen;
 			rdlen+=wlen;
 		}
@@ -321,10 +337,10 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 				PDNSD_ASSERT(dlen > ilen, "T_NAPTR: rr botch 2");
 			}
 		}
-		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)data),ilen);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),((unsigned char *)data),ilen);
 		(*sz)+=ilen;
 
-		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(*ans))+(*sz),*sz,cb)))
+		if (!(blen=compress_name(((unsigned char *)data)+ilen, ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			goto failed;
 		rdlen=ilen+blen;
 		*sz+=blen;
@@ -332,7 +348,7 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 #endif
 	default:
 		rdlen=dlen;
-		memcpy(((unsigned char *)(*ans))+(*sz),((unsigned char *)data),dlen);
+		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),((unsigned char *)data),dlen);
 		*sz+=dlen;
 	}
 
@@ -346,13 +362,13 @@ static int add_rr(dns_hdr_t **ans, long *sz, unsigned short type, int dlen, void
 
 		switch (section) {
 		case S_ANSWER:
-			(*ans)->ancount=htons(ntohs((*ans)->ancount)+1);
+			(*ans)->hdr.ancount=htons(ntohs((*ans)->hdr.ancount)+1);
 			break;
 		case S_AUTHORITY:
-			(*ans)->nscount=htons(ntohs((*ans)->nscount)+1);
+			(*ans)->hdr.nscount=htons(ntohs((*ans)->hdr.nscount)+1);
 			break;
 		case S_ADDITIONAL:
-			(*ans)->arcount=htons(ntohs((*ans)->arcount)+1);
+			(*ans)->hdr.arcount=htons(ntohs((*ans)->hdr.arcount)+1);
 			break;
 		}
 	}
@@ -407,7 +423,7 @@ static const int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start 
 /* This adds an rrset, optionally randomizing the first element it adds.
  * if that is done, all rrs after the randomized one appear in order, starting from
  * that one and wrapping over if needed. */
-static int add_rrset(unsigned tp, dns_hdr_t **ans, long *sz, dns_cent_t *cached, dlist *cb,
+static int add_rrset(unsigned tp, dns_ans_t **ans, long *sz, dns_cent_t *cached, dlist *cb,
 		     char udp, unsigned char *rrn, time_t queryts, dlist *sva, dlist *ar)
 {
 	rr_bucket_t *b;
@@ -475,7 +491,7 @@ static int add_rrset(unsigned tp, dns_hdr_t **ans, long *sz, dns_cent_t *cached,
  * the first time. It gets filled with a pointer to compression information that can be
  * reused in subsequent calls to add_to_response.
  */
-static int add_to_response(unsigned qtype, dns_hdr_t **ans, long *sz, dns_cent_t *cached, dlist *cb,
+static int add_to_response(unsigned qtype, dns_ans_t **ans, long *sz, dns_cent_t *cached, dlist *cb,
 			   char udp, unsigned char *rrn, time_t queryts, dlist *sva, dlist *ar)
 {
 	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
@@ -517,7 +533,7 @@ static int add_to_response(unsigned qtype, dns_hdr_t **ans, long *sz, dns_cent_t
 			return 0;
 	}
 #if 0
-	if (!ntohs((*ans)->ancount)) {
+	if (!ntohs((*ans)->hdr.ancount)) {
 		/* Add a SOA if we have one and no other records are present in the answer.
 		 * This is to aid caches so that they have a ttl. */
 		if (!add_rrset(T_SOA , ans, sz, cached, cb, udp, rrn, queryts, sva, ar))
@@ -530,7 +546,7 @@ static int add_to_response(unsigned qtype, dns_hdr_t **ans, long *sz, dns_cent_t
 /*
  * Add an additional
  */
-static int add_additional_rr(unsigned char *rhn, dlist *sva, dns_hdr_t **ans,
+static int add_additional_rr(unsigned char *rhn, dlist *sva, dns_ans_t **ans,
 			     long *rlen, char udp, dlist *cb, unsigned tp,
 			     unsigned dlen,void *data, time_t ttl, int sect)
 {
@@ -559,7 +575,7 @@ static int add_additional_rr(unsigned char *rhn, dlist *sva, dns_hdr_t **ans,
 /*
  * The code below actually handles A and AAAA additionals.
  */
-static int add_additional_a(unsigned char *rhn, dlist *sva, dns_hdr_t **ans, long *rlen, char udp, time_t queryts, dlist *cb) 
+static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, long *rlen, char udp, time_t queryts, dlist *cb) 
 {
 	dns_cent_t *ae;
 	int retval = 1;
@@ -592,7 +608,7 @@ static int add_additional_a(unsigned char *rhn, dlist *sva, dns_hdr_t **ans, lon
  * Compose an answer message for the decoded query in q, hdr is the header of the dns request
  * rlen is set to be the answer length.
  */
-static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp) 
+static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp) 
 {
 	short aa=1;
 	dlist sva=NULL;
@@ -600,38 +616,38 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 	dlist cb=NULL;
 	time_t queryts=time(NULL);
 	dns_queryel_t *qe;
-	dns_hdr_t *ans;
+	dns_ans_t *ans;
 	dns_cent_t *cached;
 
-	ans=(dns_hdr_t *)pdnsd_malloc(sizeof(dns_hdr_t));
+	ans=(dns_ans_t *)pdnsd_malloc(sizeof(dns_ans_t));
 	if (!ans)
 		return NULL;
-	ans->id=hdr->id;
-	ans->qr=QR_RESP;
-	ans->opcode=OP_QUERY;
-	ans->aa=0;
-	ans->tc=0; /* If tc is needed, it is set when the response is sent in udp_answer_thread. */
-	ans->rd=hdr->rd;
-	ans->ra=1;
-	ans->z1=0;
-	ans->au=0;
-	ans->z2=0;
-	ans->rcode=RC_OK;
-	ans->qdcount=0; /* this is first filled in and will be modified */
-	ans->ancount=0;
-	ans->nscount=0;
-	ans->arcount=0;
+	ans->hdr.id=hdr->id;
+	ans->hdr.qr=QR_RESP;
+	ans->hdr.opcode=OP_QUERY;
+	ans->hdr.aa=0;
+	ans->hdr.tc=0; /* If tc is needed, it is set when the response is sent in udp_answer_thread. */
+	ans->hdr.rd=hdr->rd;
+	ans->hdr.ra=1;
+	ans->hdr.z1=0;
+	ans->hdr.au=0;
+	ans->hdr.z2=0;
+	ans->hdr.rcode=RC_OK;
+	ans->hdr.qdcount=0; /* this is first filled in and will be modified */
+	ans->hdr.ancount=0;
+	ans->hdr.nscount=0;
+	ans->hdr.arcount=0;
 
 	*rlen=sizeof(dns_hdr_t);
 	/* first, add the query to the response */
 	for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
 		int qclen;
-		dns_hdr_t *nans=(dns_hdr_t *)pdnsd_realloc(ans,*rlen+rhnlen(qe->query)+4);
+		dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(ans,ansoffset+*rlen+rhnlen(qe->query)+4);
 		if (!nans)
 			goto error_ans;
 		ans=nans;
 		{
-			unsigned char *p = ((unsigned char *)ans) + *rlen;
+			unsigned char *p = ((unsigned char *)&ans->hdr) + *rlen;
 			/* the first name occurrence will not be compressed,
 			   but the offset needs to be stored for future compressions */
 			if (!(qclen=compress_name(qe->query,p,*rlen,&cb)))
@@ -641,7 +657,7 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 			PUTINT16(qe->qclass,p);
 		}
 		*rlen += qclen+4;
-		ans->qdcount=htons(ntohs(ans->qdcount)+1);
+		ans->hdr.qdcount=htons(ntohs(ans->hdr.qdcount)+1);
 	}
 
 	/* Barf if we get a query we cannot answer */
@@ -651,8 +667,8 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 		    (qe->qclass!=C_IN && qe->qclass!=QC_ALL))
 		{
 			DEBUG_MSG("Unsupported QTYPE or QCLASS.\n");
-			ans->rcode=RC_NOTSUPP;
-			return (unsigned char *)ans;
+			ans->hdr.rcode=RC_NOTSUPP;
+			return ans;
 		}
 	}
 	
@@ -668,7 +684,7 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 			int rc;
 			unsigned char c_soa=cundef;
 			if ((rc=dns_cached_resolve(qname, &cached, MAX_HOPS,qe->qtype,queryts,&c_soa))!=RC_OK) {
-				ans->rcode=rc;
+				ans->hdr.rcode=rc;
 				if(rc==RC_NAMEERR && c_soa!=cundef) {
 					/* Try to add a SOA record to the authority section. */
 					unsigned scnt=rhnsegcnt(qname);
@@ -787,7 +803,7 @@ static unsigned char *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char u
 		}
 	}
 	if (aa)
-		ans->aa=1;
+		ans->hdr.aa=1;
 	goto cleanup_return;
 
 	/* You may not like goto's, but here we avoid lots of code duplication. */
@@ -801,7 +817,7 @@ cleanup_return:
 	dlist_free(sva);
 	dlist_free(ar);
 	dlist_free(cb);
-	return (unsigned char *)ans;
+	return ans;
 }
 
 /*
@@ -885,13 +901,13 @@ static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned sho
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
  */
-static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
+static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 {
 	long rlen= *rlenp;
 	int res;
 	dns_hdr_t *hdr;
 	dlist q;
-	dns_hdr_t *ans;
+	dns_ans_t *ans;
 
 	DEBUG_MSG("Received query.\n");
 	DEBUG_DUMP_DNS_MSG(NULL, data, rlen);
@@ -955,27 +971,27 @@ static unsigned char *process_query(unsigned char *data, long *rlenp, char udp)
 		res=RC_FORMAT;
 		goto error_reply;
 	}
-	if (!(ans=(dns_hdr_t *)compose_answer(q, hdr, rlenp, udp))) {
+	if (!(ans=compose_answer(q, hdr, rlenp, udp))) {
 		/* An out of memory condition or similar could cause NULL output. Send failure notification */
 		dlist_free(q);
 		res=RC_SERVFAIL;
 		goto error_reply;
 	}
 	dlist_free(q);
-	return (unsigned char *)ans;
+	return ans;
 
 
  error_reply:
 	*rlenp=sizeof(dns_hdr_t);
 	{
-		dns_hdr_t *resp=pdnsd_malloc(sizeof(dns_hdr_t));
+		dns_ans_t *resp=pdnsd_malloc(sizeof(dns_ans_t));
 		if (resp) {
-			mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,resp);
+			mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,&resp->hdr);
 		}
 		else if (++da_mem_errs<=MEM_MAX_ERRS) {
 			log_error("Out of memory in query processing.");
 		}
-		return (unsigned char *)resp;
+		return resp;
 	}
 }
 
@@ -1013,7 +1029,7 @@ static void *udp_answer_thread(void *data)
 #endif
 	long rlen=((udp_buf_t *)data)->len;
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
-	unsigned char *resp;
+	dns_ans_t *resp;
 	unsigned thrid;
 	pthread_cleanup_push(udp_answer_thread_cleanup, data);
 	THREAD_SIGINIT;
@@ -1056,11 +1072,11 @@ static void *udp_answer_thread(void *data)
 	pthread_cleanup_push(free, resp);
 	if (rlen>512) {
 		rlen=512;
-		((dns_hdr_t *)resp)->tc=1; /*set truncated bit*/
+		resp->hdr.tc=1; /*set truncated bit*/
 	}
-	DEBUG_MSG("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,((dns_hdr_t *)resp)->tc,get_ename(((dns_hdr_t *)resp)->rcode));
+	DEBUG_MSG("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,resp->hdr.tc,get_ename(resp->hdr.rcode));
 
-	v.iov_base=(char *)resp;
+	v.iov_base=(char *)&resp->hdr;
 	v.iov_len=rlen;
 	msg.msg_iov=&v;
 	msg.msg_iovlen=1;
@@ -1491,12 +1507,14 @@ static void *tcp_answer_thread(void *csock)
 	while (1) {
 		int rlen,olen;
 		long nlen;
-		unsigned char *buf,*resp;
+		unsigned char *buf;
+		dns_ans_t *resp;
 
 #ifdef NO_POLL
 		fd_set fds;
 		struct timeval tv;
 		FD_ZERO(&fds);
+		PDNSD_ASSERT(sock<FD_SETSIZE,"socket file descriptor exceeds FD_SETSIZE.");
 		FD_SET(sock, &fds);
 		tv.tv_usec=0;
 		tv.tv_sec=global.tcp_qtimeout;
@@ -1510,8 +1528,10 @@ static void *tcp_answer_thread(void *csock)
 			pthread_exit(NULL); /* socket is closed by cleanup handler */
 #endif
 		{
+			int err;
 			uint16_t rlen_net;
-			if (read(sock,&rlen_net,sizeof(rlen_net))!=sizeof(rlen_net)) {
+			if ((err=read(sock,&rlen_net,sizeof(rlen_net)))!=sizeof(rlen_net)) {
+				DEBUG_MSG("Error while reading from TCP client: %s\n",err==-1?strerror(errno):"incomplete data");
 				/*
 				 * If the socket timed or was closed before we even received the 
 				 * query length, we cannot return an error. So exit silently.
@@ -1551,20 +1571,19 @@ static void *tcp_answer_thread(void *csock)
 #endif
 			rv=read(sock,buf+olen,rlen-olen);
 			if (rv<=0) {
+				DEBUG_MSG("Error while reading from TCP client: %s\n",rv==-1?strerror(errno):"incomplete data");
 				/*
 				 * If the promised length was not sent, we should return an error message,
 				 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
 				 */
 				if (olen>=2) { /* We need the id to send a valid reply. */
-					uint16_t slen_net;
-					dns_hdr_t err;
+					dns_ans_t err;
 					mk_error_reply(((dns_hdr_t*)buf)->id,
 						       olen>=3?((dns_hdr_t*)buf)->opcode:OP_QUERY,
 						       RC_FORMAT,
-						       &err);
-					slen_net=htons(sizeof(err));
-					if (write_all(sock,&slen_net,sizeof(slen_net))==sizeof(slen_net))
-						write_all(sock,&err,sizeof(err)); /* error anyway. */
+						       &err.hdr);
+					err.len=htons(sizeof(dns_hdr_t));
+					write_all(sock,&err,sizeof(err)); /* error anyway. */
 				}
 				pthread_exit(NULL); /* buf freed and socket closed by cleanup handlers */
 			}
@@ -1581,9 +1600,11 @@ static void *tcp_answer_thread(void *csock)
 		pthread_cleanup_pop(1);  /* free(buf) */
 		pthread_cleanup_push(free,resp);
 		{
-			uint16_t slen_net=htons(nlen);
-			if (write_all(sock,&slen_net,sizeof(slen_net))!=sizeof(slen_net) || 
-			    write_all(sock,resp,nlen)!=nlen) {
+			int err,rsize;
+			resp->len=htons(nlen);
+			rsize=ansoffset+nlen;
+			if ((err=write_all(sock,resp,rsize))!=rsize) {
+				DEBUG_MSG("Error while writing to TCP client: %s\n",err==-1?strerror(errno):"unknown error");
 				pthread_exit(NULL); /* resp is freed and socket is closed by cleanup handlers */
 			}
 		}

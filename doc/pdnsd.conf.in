@@ -6,39 +6,49 @@ global {
 	cache_dir="@cachedir@";
 #	pid_file = /var/run/pdnsd.pid;
 	run_as="@def_id@";
-	server_ip = 127.0.0.1;
+	server_ip = 127.0.0.1;  # Use eth0 here if you want to allow other
+				# machines on your network to query pdnsd.
 	status_ctl = on;
 #	paranoid=on;
+#	query_method=tcp_udp;	# pdnsd must be compiled with tcp
+				# query support for this to work.
+	min_ttl=900;       # Retain cached entries at least 15 minutes.
 	max_ttl=604800;	   # One week
 	timeout=10;        # Global timeout option.
 }
 
+# The following section is most appropriate for fixed connections to the Internet.
 server {
 	label= "myisp";
 	ip = 192.168.0.1;  # Put your ISP's DNS-server address(es) here.
-	proxy_only=on;
-	timeout=4;
-	uptest=query;
-	interval=600;
-	ping_timeout=200;
-	purge_cache=off;
+	proxy_only=on;     # Do not query any name servers beside your ISP's.
+	timeout=4;         # Server timeout; this may be much shorter
+			   # that the global timeout option.
+	uptest=if;
+	interface=eth0;
+	interval=600;      # Check every 10 minutes
+	purge_cache=off;   # Keep stale cache entries in case the ISP's
+			   # DNS servers go offline.
 }
 
 /*
+# The following section is more appropriate for dial-up connections.
+# Read about how to use pdnsd-ctl for dynamic configuration in the documentation.
 server {
 	label= "dialup";
 	file = "/etc/ppp/resolv.conf";  # Preferably do not use /etc/resolv.conf
 	proxy_only=on;
 	timeout=4;
 	uptest=if;
-	interval=10;
 	interface = ppp0;
+	interval=10;
 	purge_cache=off;
 	preset=off;
 }
 */
 
 /*
+# This section is meant for resolving from root servers.
 server {
 	label = "root-servers";
 	root_server=on;
@@ -58,8 +68,8 @@ server {
 	;
 	timeout = 5;
 	uptest = query;
-	interval = 900;
-	ping_timeout = 300;
+	interval = 1800;     # Test every half hour.
+	ping_timeout = 300;  # 30 seconds.
 	purge_cache = off;
 	exclude = .localdomain;
 	policy = included;
@@ -90,7 +100,7 @@ neg {
 
 /*
 neg {
-	name=foo.bar;
-	types=A,AAAA, MX;
+	name=bad.server.com;   # Badly behaved server you don't want to connect to.
+	types=A,AAAA;
 }
 */

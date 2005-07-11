@@ -60,7 +60,7 @@ short int run_ipv4=DEFAULT_IPV4;
 short int cmdlineipv=0;
 #endif
 cmdlineflags_t cmdline={0};
-pthread_t main_thread;
+pthread_t main_thrid,servstat_thrid;
 uid_t init_uid;
 #if DEBUG>0
 FILE *dbg_file;
@@ -218,7 +218,8 @@ int main(int argc,char *argv[])
 {
 	int i,sig,pfd=-1;  /* Initialized to inhibit compiler warning */
 
-	main_thread=pthread_self();
+	main_thrid=pthread_self();
+	servstat_thrid=main_thrid;
 	init_uid=getuid();
 #ifdef ENABLE_IPV6
 	{
@@ -484,7 +485,16 @@ int main(int argc,char *argv[])
 	if (!final_init())
 		exit(1);
 #endif
-	signal(SIGPIPE, SIG_IGN);
+
+	{
+		struct sigaction action;
+		action.sa_handler = SIG_IGN;
+		sigemptyset(&action.sa_mask);
+		action.sa_flags = 0;
+		if(sigaction(SIGPIPE, &action, NULL) != 0)
+			log_error("Could not call sigaction to ignore SIGPIPE: %s",strerror(errno));
+	}
+
 	umask(0077); /* for security reasons */
 	if (global.daemon) {
 		pid_t pid;
@@ -647,8 +657,8 @@ int main(int argc,char *argv[])
 
 #if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
-#endif
 	waiting=1;
+#endif
 	sigwait(&sigs_msk,&sig);
 	DEBUG_MSG("Signal %i caught.\n",sig);
 	write_disk_cache();

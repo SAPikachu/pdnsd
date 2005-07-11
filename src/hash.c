@@ -1,7 +1,7 @@
 /* hash.c - Manage hashes for cached dns records
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003 Paul A. Rombouts
+   Copyright (C) 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -29,6 +29,7 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "error.h"
 #include "helpers.h"
+#include "consts.h"
 
 #if !defined(lint) && !defined(NO_RCSIDS)
 static char rcsid[]="$Id: hash.c,v 1.12 2001/06/02 23:08:13 tmm Exp $";
@@ -187,6 +188,62 @@ dns_cent_t *del_dns_hash(const unsigned char *key)
 	return NULL;   /* not found */
 }
 
+
+/*
+ * Delete all entries in a hash bucket.
+ */
+void free_dns_hash_bucket(int i)
+{
+	dns_hash_ent_t *he,*hen;
+
+	he=hash_buckets[i];
+	hash_buckets[i]=NULL;
+	while (he) {
+		hen=he->next;
+		del_cent(he->data);
+		free(he);
+		he=hen;
+	}
+}
+
+/*
+ * Delete all entries in a hash bucket whose names match those in
+ * an include/exclude list.
+ */
+void free_dns_hash_selected(int i, slist_array sla)
+{
+	dns_hash_ent_t **hep,*he,*hen;
+	int j,m=DA_NEL(sla);
+
+	hep= &hash_buckets[i];
+	he= *hep;
+
+	while (he) {
+		unsigned char *name=he->data->qname;
+		for(j=0;j<m;++j) {
+			slist_t *sl=&DA_INDEX(sla,j);
+			int nrem,lrem;
+			domain_match(name,sl->domain,&nrem,&lrem);
+			if(!lrem && (!sl->exact || !nrem)) {
+				if(sl->rule==C_INCLUDED)
+					goto delete_entry;
+				else
+					break;
+			}
+		}
+		/* default policy is not to delete */
+		hep= &he->next;
+		he= *hep;
+		continue;
+
+	delete_entry:
+		*hep=hen=he->next;;
+		del_cent(he->data);
+		free(he);
+		he=hen;
+	}
+}
+
 /*
  * Delete the whole hash table, freeing all memory
  */
@@ -198,8 +255,8 @@ void free_dns_hash()
 		he=hash_buckets[i];
 		hash_buckets[i]=NULL;
 		while (he) {
-			del_cent(he->data);
 			hen=he->next;
+			del_cent(he->data);
 			free(he);
 			he=hen;
 		}

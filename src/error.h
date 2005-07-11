@@ -37,7 +37,6 @@ Boston, MA 02111-1307, USA.  */
 #include "pdnsd_assert.h"
 
 /* --- from error.c */
-extern volatile short int waiting;
 extern volatile short int use_log_lock;
 /* --- */
 

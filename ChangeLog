@@ -1,3 +1,116 @@
+2005-07-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	It appears that some servers that do not support recursive queries
+	answer with "query refused" instead of "not supported". The
+	p_exec_query() function now takes that possibility into account.
+
+2005-07-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	In the processing of queries, I will make a distinction between
+	recoverable errors and non-recoverable ones (typically caused by out of
+	memory conditions). In the case of non-recoverable errors, no attempt to
+	query alternative name servers is made.
+
+2005-06-26  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	In p_recursive_query(), as soon as one of the servers in the q list
+	replied "no error" or "name error", only this reply was examined and
+	the other servers in the q list were ignored. Joshua Coombs has brought
+	to my attention that this strategy sometimes fails when this reply is not
+	authoritative and doesn't contain any usable references to name servers
+	in the authority section.
+	I have modified p_recursive_query() to allow pdnsd to continue querying
+	the remaining servers in the q list as long as we haven't received an
+	authoritative answer or usable authority information. This will allow
+	pdnsd to arrive at the correct answer in some cases where it would
+	formerly fail.
+
+2005-06-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/status.c
+	The "pdnsd dump" command may now also be given an argument
+	consisting of a name beginning with a dot. This will dump information
+	about all names in the cache ending in the given name. An argument
+	consisting of a name without a leading dot will only give information
+	about the exact name, as it did before.
+
+2005-06-24  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/servers.c,src/status.c
+	All uptests are now conducted by the server status thread. If a retest
+	is requested via a "pdnsd-ctl server", an existing server status thread
+	is signaled or a new server status thread is spawned if the old one has
+	exited. This has the effect that a "pdnsd-ctl server label retest"
+	command will now return immediately without waiting for the tests to
+	finish.
+
+2005-06-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c,src/servers.c,src/servers.h
+	At the request of Al-Junaid Walker I have added a new configuration
+	option for the uptest interval. With "interval=ontimeout" the server is
+	not tested at startup/reconfig, or at regular intervals, but only after
+	a DNS query to a server times out. However, once a server is declared
+	dead it is never considered again unless it is revived using a
+	"pdnsd-ctl config" or "pdnsd-ctl server" command.
+
+2005-06-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/servers.c,src/dns_query.c,src/icmp.c
+	During an uptest the server configuration data is locked. Especially
+	with ping or query uptests of unresponsive servers this means that the
+	execution of "pdnsd-ctl config" or "pdnsd-ctl server" commands can be
+	delayed for a long time (or even time out). I have made modifications
+	that allow a "pdnsd-ctl config" or "pdnsd-ctl server" commands to
+	interrupt pending uptests to allow these commands to proceed without
+	delay in most cases.
+
+	* src/thread.h
+	Use the POSIX sigaction() instead of signal() to install signal handlers.
+
+2005-06-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c
+	I have defined a struct dns_msg_t that includes a message length field.
+	In the case of sending a DNS message over TCP, we no longer need a
+	separate write() call to send the message length. This prevents possible
+	packet fragmentation.
+
+2005-06-07  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	The query_method=tcp_udp option only used to work with cooperative name
+	servers, i.e. servers that either send back a TCP reply or explicitly
+	refuse the TCP connection request. This wasn't sufficiently satisfactory
+	in practice, because some name servers are completely unresponsive to TCP
+	connection requests. I have made modifications to allow pdnsd to try UDP
+	queries in case TCP connections time out. When a short server timeout is
+	combined with a global timeout that is at least twice as long, this may
+	allow a query to a name server that only responds to UDP queries to
+	succeed with query_method=tcp_udp.
+
+2005-04-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/hash.c,src/conff.c,src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	The "pdnsd-ctl empty-cache" command now accepts additional arguments;
+	these are interpreted as include/exclude names. During execution of the
+	command the name of each cache entry is matched against the names in the
+	include/exclude list. If the name ends in a name to be included, the
+	cache entry is deleted, otherwise not.
+	This feature was added at the request of Joshua Coombs.
+
+2005-04-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c, src/hash.c
+	pdnsd will now (temporarily) unlock the cache between emptying hash
+	buckets, this should allow pdnsd to remain responsive while executing
+	the "pdnsd-ctl empty-cache" command. However, this only applies to DNS
+	queries; pdnsd will not accept any new pdnsd-ctl commands while a
+	pdnsd-ctl command is still running.
+
 2005-03-29  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* configure.in, src/hash.h
@@ -29,7 +142,7 @@
 	Local PTR records generated for resolving numeric IPv6 addresses back into
 	names, are now based on ip6.arpa instead of ip6.int, because the latter domain
 	will be phased out eventually.
-	
+
 2005-03-06  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* Makefile.am,src/cache.c

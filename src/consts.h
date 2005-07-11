@@ -1,7 +1,7 @@
 /* consts.h - Common config constants & handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -39,6 +39,7 @@ enum {
 	C_EXEC,
 	C_QUERY,
 	C_ONQUERY,
+	C_ONTIMEOUT,
 	UDP_ONLY,
 	TCP_ONLY,
 	TCP_UDP,

@@ -171,8 +171,6 @@ static const char *slist_add(slist_array *sla, const char *nm, size_t len, int t
 #define include_list_add(sla,nm,len) slist_add(sla,nm,len,C_INCLUDED)
 #define exclude_list_add(sla,nm,len) slist_add(sla,nm,len,C_EXCLUDED)
 static const char *zone_add(zone_array *za, const char *zone, size_t len);
-static void free_serv(servparm_t *serv);
-static void freestring(void *ptr);
 
 #define CONCAT(a,b) a ## b
 /* a macro for concatenating tokens that expands its arguments */
@@ -717,7 +715,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
       case SERVER: {
 	servparm_t server=serv_presets;
 #	undef  CLEANUP_HANDLER
-#	define CLEANUP_HANDLER (free_serv(&server))
+#	define CLEANUP_HANDLER (free_servparm(&server))
 
 	while(isalpha(*p)) {
 	  SCAN_ALPHANUM(ps,p,len);
@@ -800,6 +798,9 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      cnst=lookup_const(ps,len);
 	      if(cnst==C_ONQUERY) {
 		server.interval=-1;
+	      }
+	      else if(cnst==C_ONTIMEOUT) {
+		server.interval=-2;
 	      }
 	      else {
 		goto bad_interval_option;
@@ -901,13 +902,17 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  }
 	}
 	{
-	  int j;
-	  for(j=0;j<DA_NEL(server.atup_a);++j)
-	    DA_INDEX(server.atup_a,j).is_up=server.preset;
+	  int j,n=DA_NEL(server.atup_a);
+	  for(j=0;j<n;++j) {
+	    atup_t *at= &DA_INDEX(server.atup_a,j);
+	    at->is_up=server.preset;
+	    /* A negative test interval means don't test at startup or reconfig. */
+	    if(server.interval<0) at->i_ts=time(NULL);
+	  }
 	}
-	if(server.interval<0) global->onquery=1;
+	if(server.interval==-1) global->onquery=1;
 
-	if (!(*servers=DA_GROW1_F(*servers,(void(*)(void*))free_serv))) {
+	if (!(*servers=DA_GROW1_F(*servers,(void(*)(void*))free_servparm))) {
 	  CLEANUP_GOTO(out_of_memory);
 	}
 	DA_LAST(*servers)= server;
@@ -1558,7 +1563,7 @@ static const char *slist_add(slist_array *sla, const char *nm, size_t len, int t
   if((err=parsestr2rhn(nm,len,rhn)))
     return err;
   sz=rhnlen(rhn);
-  if (!(*sla=DA_GROW1_F(*sla,freestring))) {
+  if (!(*sla=DA_GROW1_F(*sla,free_slist_domain))) {
     return "out of memory!";
   }
   sl=&DA_LAST(*sla);
@@ -1581,27 +1586,9 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len)
   if((err=parsestr2rhn(zone,len,rhn)))
     return err;
   sz=rhnlen(rhn);
-  if(!(*za=DA_GROW1_F(*za,freestring)) || !(DA_LAST(*za)=z=malloc(sz)))
+  if(!(*za=DA_GROW1_F(*za,free_zone)) || !(DA_LAST(*za)=z=malloc(sz)))
     return "out of memory!";
   memcpy(z,rhn,sz);
   return NULL;
 }
 
-static void free_serv(servparm_t *serv)
-{
-  free(serv->uptest_cmd);
-  free(serv->label);
-  da_free(serv->atup_a);
-  {
-    slist_array al=serv->alist;
-    int j,m=DA_NEL(al);
-    for(j=0;j<m;++j)
-      free(DA_INDEX(al,j).domain);
-    da_free(al);
-  }
-}
-
-static void freestring(void *ptr)
-{
-  free(*((char **)ptr));
-}

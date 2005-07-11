@@ -39,7 +39,7 @@
     License,  as  published by the Free Software Foundation; either version
     2, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.2-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.3-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -159,21 +159,12 @@
     <br>
     <h3>0.3 Installing from the pure sources (tar archives)</h3>
     <h4>0.3.1 Decompressing</h4>
-    pdsnsd comes in two different packed archives: the standard gzip'ed version
-    pdnsd-&lt;version&gt;.tar.gz, and the bzip2-packed version (about 10% smaller)
-    pdnsd-&lt;version&gt;.tar.bz2. If you have bunzip2 installed on your computer, I 
-    recommed you save bandwidth and get the .bz2-version.
+    The pdsnsd source comes in a gzip'ed tar archive.
     To decompress it (using a modern tar) do<br>
-    <code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code><br>
-    <i>--or--</i><br>
-    <code>tar&nbsp;-xjf&nbsp;pdnsd-&lt;version&gt;.tar.bz2</code><br><br>
+    <ul><code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code></ul>
     If your tar doesn't do this, use:<br>
-    <code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code><br>
-    <i>--or--</i><br>
-    <code>bzip2&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.bz2&nbsp;| tar&nbsp;-xf&nbsp;-</code>
+    <ul><code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code></ul>
 
-
-    <br>
     <h4>0.3.2 Setup </h4>
     Change into the pdnsd source directory and run configure. It takes the following command line
     options (if you do not specify an option, defaults will be used):<br>
@@ -653,7 +644,7 @@
     device handling also works fine with isdn4bsd devices.<br>
     When compiled for FreeBSD, pdnsd as a small RFC compatability issue: RFC2181 demands answers on dns querys
     to be sent with the same source address the query packet went to. In seldom cases, this will not be the case,
-    because the kernel selects the source address dependig on the interface that was used for sending the answer.<br>
+    because the kernel selects the source address depending on the interface that was used for sending the answer.<br>
     Setting the source address currently does not work for IPv4. I have written a kernel patch that will provide an easy way
     to program this. We'll see if or when it gets commited.<br>
     <br>
@@ -697,21 +688,23 @@
       the cache directory called <code>pdnsd.status</code>. This socket allows run-time configuration of pdnsd
       using the utility <code>pdnsd-ctl</code>. See <a href="#pdnsdctl">below</a> for more details about <code>pdnsd-ctl</code>.
       <b>--nostatus</b> disables status control.
-      See also the configuration option <code>status_ctl</code> in the <a href="#statusctl">global section</a>.
+      See also the configuration option <a href="#statusctl"><code>status_ctl</code></a> in the global section.
     </p>
     <p>
       The option <b>--notcp</b> disables the seldom needed TCP server thread, which may
       save you some resources. <b>-t</b> or <b>--tcp</b> will enable it.
+      See also the <a href="#tcpserver"><code>tcp_server</code></a> configuration option.
     </p>
     <p>
-      Using the <b>-m</b> option, you can select the method pdnsd uses to query other name servers. Following
-      methods are supported:<br>
+      Using the <b>-m</b> option, you can select the method pdnsd uses to query other name servers.
+      Following methods are supported (see also the <a href="#querymethod"><code>query_method</code></a>
+      configuration option):<br>
       <b>-muo</b>: pdnsd will use UDP only. This is the fastest method, and should be supported by all name servers
-      on the internt. <br>
+      on the Internet. <br>
       <b>-mto</b>: pdnsd will use TCP only. TCP queries usually take longer time than UDP queries, but are more secure
       against certain attacks, where an attacker tries to guess your query id and to send forged answers. TCP queries
       are not supported by some name servers.<br>
-      <b>-mtu</b>: pdnsd will try to use TCP, and will fall back to UDP if its connection is refused.<br>
+      <b>-mtu</b>: pdnsd will try to use TCP, and will fall back to UDP if its connection is refused or times out.<br>
     </p>
     <p>
       The <b>-4</b> option switches to IPv4 mode, providing pdnsd was compiled with IPv4 support.<br>
@@ -972,12 +965,13 @@
 	<td>
 	  <b><code>daemon=(on|off);</code></b><br>
 	  This has the same effect as the <code>-d</code> command line option: the daemon mode is enabled when
-	  <code>on</code> is specified.
+	  <code>on</code> is specified.<br>
+	  Default is off.
 	</td>
       </tr>
       <tr>
 	<td>
-	  <b><code>tcp_server=(on|off);</code></b><br>
+	  <b><code><a name="tcpserver">tcp_server=(on|off);</a></code></b><br>
 	  <code>tcp_server=on</code> has the same effect as the <code>-t</code> or <code>--tcp</code>
 	  command-line option: it enables TCP serving.
 	  Similarly, <code>tcp_server=off</code> is like the <code>--notcp</code> command-line option.<br>
@@ -1000,10 +994,11 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>query_method=(tcp_only|udp_only|tcp_udp);</code></b><br>
+	  <b><code><a name="querymethod">query_method=(tcp_only|udp_only|tcp_udp);</a></code></b><br>
 	  This has the same effect as the <code>-m</code> command line option. Read the documentation for the
 	  command line option on this. <code>tcp_only</code> corresponds to the <code>to</code>, <code>udp_only</code> to
-	  the <code>uo</code> and <code>tcp_udp</code> to the <code>tu</code> argument of the command line option.
+	  the <code>uo</code> and <code>tcp_udp</code> to the <code>tu</code> argument of the command line option.</br>
+	  If you use <code>query_method=tcp_udp</code>, it is recommended that you also set the <a href="#globaltimeout">global timeout option</a> to at least twice the longest server timeout.
 	</td>
       </tr>
       <tr>
@@ -1107,6 +1102,10 @@
 	  slow to respond (but will still continue to listen for responses from
 	  the first ones). This may allow pdnsd to get an answer more quickly in
 	  certain situations.<br>
+	  If you use <code>query_method=tcp_udp</code> it is recommended that
+	  you make the global timeout at least twice as large as the largest
+	  server timeout, otherwise pdnsd may not have time to try a UDP query
+	  if a TCP connection times out.</br>
 	  Default value is 0.
 	</td>
       </tr>
@@ -1225,7 +1224,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>file=<i>string</i>;</code></b><br>
+	  <b><code><a name="resolvfile">file=<i>string</i>;</a></code></b><br>
 	  <em>New in version 1.2:</em> This option allows you to give the name of a <code>resolv.conf</code>-style file.
 	  Of the lines beginning with the <code>nameserver</code> keyword, the second field will be parsed as an
 	  IP address, as if it were specified with the <code>ip=</code> option. The remaining lines will be ignored.
@@ -1333,12 +1332,11 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>interval=(<i>number</i>|onquery);</code></b><br>
+	  <b><code>interval=(<i>number</i>|onquery|ontimeout);</code></b><br>
 	  Sets the interval for the server up-test in seconds. The default is 
-	  900; however, a test is forced when a query times out. The interval
-	  timeout is reset then.<br>
+	  900; however, a test is forced when a query times out and the timestamp is reset then.<br>
 	  If you specify <code>onquery</code> instead of a timeout, the interface will be
-	  tested before every query. This is to prevent automatically dialling
+	  tested before every query. This is to prevent automatically dialing
 	  interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
 	  used in connection with an interface-testing uptest ;-) <br>
 	  Note that using uptest=exec, you might run into performance problems
@@ -1350,7 +1348,16 @@
 	  will not be used. When another (reachable) dns server tells pdnsd
 	  to query a third dns server for data, pdnsd will do that and has 
 	  no means of checking whether this will dial up the interface or not.
-	  This however should be a rare situation.
+	  This however should be a rare situation.<br>
+	  <em>New in version 1.2.3:</em>
+	  A third possibility is to specify <code>interval=ontimeout</code>.
+	  In this case the server is not tested at startup/reconfiguration, nor at regular intervals,
+	  but only after a DNS query to a server times out. Certain types of network problems
+	  such as a refused connection will also cause the server to be considered unavailable.
+	  However, once a server is declared dead it is never considered again unless it is revived using a
+	  <code><a href="#pdnsdctl">pdnsd-ctl</a> config</code> or <code>server</code> command.
+	  The idea behind this option is to minimize uptests by assuming all
+	  servers are available until there is reason to believe otherwise.
 	</td>
       </tr>
       <tr>
@@ -1898,7 +1905,7 @@
 	<td>Print version info.</td>
       </tr>
       <tr>
-	<td>status</td>
+	<td valign=top>status</td>
 	<td></td>
 	<td>
 	  Print a description of pdnsd's cache status and configuration.
@@ -1906,8 +1913,8 @@
 	</td>
       </tr>
       <tr>
-	<td>server</td>
-	<td>(<i>index</i>|<i>label</i>)&nbsp;&nbsp;(up|down|retest)&nbsp;&nbsp;[<i>dns1</i>[,<i>dns2</i>[,...]]]</td>
+	<td valign=top>server</td>
+	<td valign=top>(<i>index</i>|<i>label</i>)&nbsp;&nbsp;(up|down|retest)&nbsp;&nbsp;[<i>dns1</i>[,<i>dns2</i>[,...]]]</td>
 	<td>
 	  Set the status of the server with the given <i>index</i> or <i>label</i> (where the given label
 	  matches the one given with the label option in the respective server section in the config file)
@@ -1930,8 +1937,8 @@
 	</td>
       </tr>
       <tr>
-	<td>record</td>
-	<td><i>name</i>&nbsp;&nbsp;(delete|invalidate)</td>
+	<td valign=top>record</td>
+	<td valign=top><i>name</i>&nbsp;&nbsp;(delete|invalidate)</td>
 	<td>
 	  Delete or invalidate the records of the given domain <i>name</i> if it is in the
 	  cache. Invalidation means that the records are marked as timed out, and
@@ -1945,8 +1952,8 @@
 	</td>
       </tr>
       <tr>
-	<td>source</td>
-	<td><i>fn</i>&nbsp;&nbsp;<i>owner</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[(on|off)]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>source</td>
+	<td valign=top><i>fn</i>&nbsp;&nbsp;<i>owner</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[(on|off)]&nbsp;&nbsp;[noauth]</td>
 	<td>
 	  Load a hosts-style file. Works like using the pdnsd source option.
 	  <i>owner</i> and <i>ttl</i> are used as in the source section. <i>ttl</i> has a default
@@ -1960,8 +1967,8 @@
 	</td>
       </tr>
       <tr>
-	<td>add</td>
-	<td>a&nbsp;&nbsp;<i>addr</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>add</td>
+	<td valign=top>a&nbsp;&nbsp;<i>addr</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
 	<td rowspan=5>
 	  Add a record of the given type to the pdnsd cache, replacing existing
 	  records for the same <i>name</i> and type. The 2nd argument corresponds
@@ -1980,24 +1987,24 @@
 	</td>
       </tr>
       <tr>
-	<td>add</td>
-	<td>aaaa&nbsp;&nbsp;<i>addr</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>add</td>
+	<td valign=top>aaaa&nbsp;&nbsp;<i>addr</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
       </tr>
       <tr>
-	<td>add</td>
-	<td>ptr&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>add</td>
+	<td valign=top>ptr&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
       </tr>
       <tr>
-	<td>add</td>
-	<td>cname&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>add</td>
+	<td valign=top>cname&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
       </tr>
       <tr>
-	<td>add</td>
-	<td>mx&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;<i>pref</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+	<td valign=top>add</td>
+	<td valign=top>mx&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;<i>pref</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
       </tr>
       <tr>
-	<td>neg</td>
-	<td><i>name</i>&nbsp;&nbsp;[<i>type</i>]&nbsp;&nbsp;[<i>ttl</i>]</td>
+	<td valign=top>neg</td>
+	<td valign=top><i>name</i>&nbsp;&nbsp;[<i>type</i>]&nbsp;&nbsp;[<i>ttl</i>]</td>
 	<td>
 	  Add a negatively cached record to pdnsd's cache, replacing existing
 	  records for the same <i>name</i> and <i>type</i>. If no type is given, the whole
@@ -2012,8 +2019,8 @@
 	</td>
       </tr>
       <tr>
-	<td>config</td>
-	<td>[<i>filename</i>]</td>
+	<td valign=top>config</td>
+	<td valign=top>[<i>filename</i>]</td>
 	<td>
 	  Reload pdnsd's configuration file.<br>
 	  The config file must be owned by the uid that pdnsd had when it was
@@ -2025,22 +2032,45 @@
 	</td>
       </tr>
       <tr>
-	<td>empty-cache</td>
-	<td></td>
+	<td valign=top>empty-cache</td>
+	<td valign=top>[[+|-]<i>name</i> ...]</td>
 	<td>
-	  Empty the cache completely, freeing all existing entries.
+	  If no arguments are provided, the cache will be completely emptied,
+	  freeing all existing entries.
 	  Note that this also removes local records, as defined by the config file.
 	  To restore local records, run <code>"pdnsd-ctl&nbsp;config"</code> immediately afterwards.<br>
-	  This command is mainly useful for debugging purposes, or if you suspect
-	  that stale cache entries are causing you problems, but you are not sure
-	  which ones.
+	  The <code>"pdnsd-ctl&nbsp;empty-cache"</code> now accepts additional arguments; these are
+	  interpreted as include/exclude names. If an argument starts with a '+'
+	  the name will be included. If an argument starts with a '-' it will be
+	  excluded. If an argument does not begin with '+' or '-', a '+' is
+	  assumed. If the domain name of a cache entry ends in one of the names in
+	  the list, the first match will determine what happens. If the matching
+	  name is to be included, the cache entry is deleted, otherwise not.
+	  If there are no matches, the default action is not to delete.
+	  Note that if you want to delete exactly one name and no others, you should
+	  use <code>"pdnsd-ctl&nbsp;record&nbsp;<i>name</i>&nbsp;delete"</code>,
+	  this is also much more efficient.<br>
+	  Examples:<br>
+	  <code>pdnsd-ctl&nbsp;empty-cache</code><br>
+	  This command will remove all cache entries.<br>
+	  <br>
+	  <code>pdnsd-ctl&nbsp;empty-cache&nbsp;microsoft.com&nbsp;msft.net</code><br>
+	  This will remove all entries ending in microsoft.com or msft.net.<br>
+	  <br>
+	  <code>pdnsd-ctl&nbsp;empty-cache&nbsp;-localdomain&nbsp;-168.192.in-addr.arpa&nbsp;.</code><br>
+	  This will remove all entries except those ending in localdomain or
+	  168.192.in-addr.arpa. Note that '.' is the root domain which matches any
+	  domain name.
 	</td>
       </tr>
       <tr>
-	<td>dump</td>
-	<td>[<i>name</i>]</td>
+	<td valign=top>dump</td>
+	<td valign=top>[<i>name</i>]</td>
 	<td>
 	  Print information stored in the cache about <i>name</i>.
+	  If <i>name</i> begins with a dot and is not the root domain, information about
+	  the  names  in the cache ending in <i>name</i> (including <i>name</i> without
+	  the leading dot) will be printed. 
 	  If <i>name</i> is not specified, information about all the names in the cache will
 	  be printed.<br>
 	  For each RR record the time and date that this record has been added to the cache
@@ -2056,7 +2086,7 @@
 	</td>
       </tr>
       <tr>
-	<td>list-rrtypes</td>
+	<td valign=top>list-rrtypes</td>
 	<td></td>
 	<td>
 	  List available rr types for the neg command.
@@ -2076,7 +2106,7 @@
     <h2>5 Problems...</h2>
     If you have problems with configuring or tunning pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
     If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
-    <em>Note added by Paul Rombouts</em>: I have revised the code and added a few new features.
+    <em>Note added by Paul Rombouts</em>: Thomas Moestl no longer maintains the code. I have revised the code and added new features.
     See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed an RPM) for more details.
     If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
     <br>
@@ -2247,7 +2277,7 @@
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <p>
-      <i>Last revised: 03 Apr 2005 by Paul Rombouts</i>
+      <i>Last revised: 07 Jul 2005 by Paul Rombouts</i>
     </p>
   </body>
 </html>

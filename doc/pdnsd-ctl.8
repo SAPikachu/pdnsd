@@ -4,7 +4,7 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD\-CTL" "8" "Oct 2004" "pdnsd 1.2-par" ""
+.TH "PDNSD\-CTL" "8" "Jun 2005" "pdnsd 1.2.3-par" ""
 .SH NAME
 \fBpdnsd\-ctl\fP \- controls pdnsd
 .SH SYNOPSIS
@@ -133,16 +133,31 @@ cannot be made this way and you will receive an error message.
 In these cases, you will have to restart pdnsd instead.
 .TP
 \fBempty\-cache\fP
-[no options]
+[[+|-]\fIname\fP ...]
 
-Empty the cache completely, freeing all existing entries.
+Delete all entries in the cache matching include/exclude rules.
+.br
+If no arguments are provided, the cache is completely emptied,
+freeing all existing entries.
 Note that this also removes local records, as defined by the config file.
 To restore local records, run "pdnsd-ctl\ config" immediately afterwards.
+.br
+If one or more arguments are provided, these are interpreted as 
+include/exclude names. If an argument starts with a '+' the name is to
+be included. If an argument starts with a '-' it is to be excluded.
+If an argument does not begin with '+' or '-', a '+' is assumed.
+If the domain name of a cache entry ends in one of the names in the
+list, the first match will determine what happens. If the matching name
+is to be included, the cache entry is deleted, otherwise it remains.
+If there are no matches, the default action is not to delete.
 .TP
 \fBdump\fP
 [\fIname\fP]
 
 Print information stored in the cache about \fIname\fP.
+If \fIname\fP begins with a dot and is not the root domain, information
+about the names in the cache ending in \fIname\fP (including \fIname\fP without
+the leading dot) will be printed.
 If \fIname\fP is not specified, information about all the names in the cache
 will be printed.
 .TP
@@ -173,7 +188,7 @@ Paul Rombouts
 .UE
 (for versions 1.1.8b1\-par and later)
 .PP
-Last revised: 10 Oct 2004 by Paul Rombouts.
+Last revised: 30 Jun 2005 by Paul Rombouts.
 .SH "SEE ALSO"
 .PP
 .BR pdnsd (8),

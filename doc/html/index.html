@@ -42,6 +42,25 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2005-07-11</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.3-par has been released.</b>
+	New feature in this release: the "<code>pdnsd-ctl empty-cache</code>" command can
+	be provided with an include/exclude list, allowing the user to specify a
+	selection of names to be removed, instead of emptying the cache completely.<br>
+	Additional improvements: pdnsd should now remain responsive while executing the
+	"<code>pdnsd-ctl empty-cache</code>" command.
+	With the <code>query_method=tcp_udp</code> option pdnsd will now also
+	try a UDP query after a TCP connection times out, which should allow
+	pdnsd to resolve the same names with <code>query_method=tcp_udp</code>
+	as with <code>query_method=udp_only</code>, although perhaps with an
+	occasional delay.
+	"<code>pdnsd-ctl config</code>" or "<code>pdnsd-ctl server</code>"
+	commands should now run without delays, even if pdnsd is performing
+	<code>ping</code> or <code>query</code> uptests at the time.
+	Some problems with resolving certain names using root servers have been fixed.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2005-04-03</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.2-par has been released.</b>
 	The main emphasis of this release is improved portability.
@@ -540,7 +559,7 @@
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
     <br>
     <p>
-      <i>Last revised: 03 Apr 2005 by Paul Rombouts</i>
+      <i>Last revised: 11 Jul 2005 by Paul Rombouts</i>
     </p>
   </body>
 </html>

@@ -36,4 +36,4 @@ install-exec-local:
 #	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d/rc5.d; \
 #	  cd $(DESTDIR)/etc/rc.d/rc5.d; \
 #	  ln -fs ../init.d/pdnsd K45pdnsd; ln -s ../init.d/pdnsd S12pdnsd; \
-#	  cd $$CURDIR ; \
+#	  cd $$CURDIR ;

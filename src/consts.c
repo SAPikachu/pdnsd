@@ -1,7 +1,7 @@
 /* consts.c - Common config constants & handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -45,6 +45,7 @@ static const namevalue_t const_dic[]={
 	{"off",         C_OFF},
 	{"on",          C_ON},
 	{"onquery",     C_ONQUERY},
+	{"ontimeout",   C_ONTIMEOUT},
 	{"ping",        C_PING},
 	{"query",       C_QUERY},
 	{"simple_only", C_SIMPLE_ONLY},
@@ -64,6 +65,7 @@ static const char *const_names[]={
 	"exec",
 	"query",
 	"onquery",
+	"ontimeout",
 	"udp_only",
 	"tcp_only",
 	"tcp_udp",

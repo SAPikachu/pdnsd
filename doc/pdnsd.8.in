@@ -1,4 +1,4 @@
-.TH PDNSD 8 "Oct 2004" "pdnsd @VERSION@" "System Administration Commands"
+.TH PDNSD 8 "Jun 2005" "pdnsd @VERSION@" "System Administration Commands"
 
 .SH NAME
 \fBpdnsd\fP \- dns proxy daemon
@@ -11,7 +11,7 @@ This man page is an extract of the documentation of \fBpdnsd\fP.
 For complete, current documentation, refer to the HTML (or plain text)
 documentation (which you can find in the \fBdoc/\fP subdirectory of the
 source or in a standard documentation directory, typically
-\fB/usr/share/doc/pdnsd/\fP, if you are using a binary package).
+\fB/usr/share/doc/pdnsd/\fP if you are using a binary package).
 
 .SH DESCRIPTION
 .PP
@@ -91,7 +91,7 @@ queries are not supported by some name servers.
 .IP
 .B tu
 \- pdnsd will try to use TCP, and will fall back to UDP if its
-connection is refused. 
+connection is refused or times out. 
 
 .IP
 .B uo
@@ -151,6 +151,8 @@ server {
 Note the opening and closing braces. Add more such \fBserver\fP
 sections for each set of DNS servers you want \fBpdnsd\fP to query.
 Of course the configuration options shown here are just examples.
+More examples can be found in \fB@sysconfdir@/pdnsd.conf.sample\fP
+or the pdnsd.conf in the documentation directory.
 See the
 .BR pdnsd.conf (5)
 man page for all the possible options and their exact meaning.
@@ -183,7 +185,8 @@ man page for details.
 \fB@sysconfdir@/pdnsd.conf\fP is the pdnsd configuration file.
 The file format and configuration options are described in the
 .BR pdnsd.conf (5)
-man page.
+man page. You can find examples of almost all options in
+\fB@sysconfdir@/pdnsd.conf.sample\fP.
 .PP
 \fB@cachedir@/pdnsd.cache\fP
 .PP
@@ -292,7 +295,7 @@ and was extensively revised by Paul Rombouts
 (for versions 1.1.8b1\-par and later).
 .PP
 Several others have contributed to \fBpdnsd\fP; see files in the
-\fB/usr/share/doc/pdnsd/\fP directory.
+source or \fB/usr/share/doc/pdnsd/\fP directory.
 .PP
 This man page was written by Mahesh T. Pai
 .UR
@@ -301,7 +304,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too. 
 .PP
-Last revised: 03 Apr 2005 by Paul Rombouts.
+Last revised: 30 Jun 2005 by Paul Rombouts.
 
 .SH COPYRIGHT
 
