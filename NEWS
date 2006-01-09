@@ -1,3 +1,14 @@
+In version 1.2.4-par a memory leak and a minor buffer-overflow problem have been
+fixed. There is now a fix for some situations that would previously cause pdnsd
+to exit prematurely (such as ACPI S3 sleep or trying to attach strace to pdnsd).
+Time intervals specified in the configuration file can now be expressed in
+minutes, hours, days and weeks as well as seconds. Support for Apple Mac OS X
+v10.4 Tiger has been improved. The "pdnsd-ctl status" command now also provides
+some information about the status of the running threads. There are some further
+improvements in the debugging information provided by pdnsd.
+TCP-query support is now compiled in by default (but can still be disabled using
+the configure option --disable-tcp-queries).
+
 In version 1.2.3-par the "pdnsd-ctl empty-cache" command can be provided with an
 include/exclude list, allowing the user to specify a selection of names to be
 removed, instead of emptying the cache completely.

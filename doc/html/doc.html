@@ -1,10 +1,11 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
     <title>pdnsd Documentation</title>
     <style type="text/css">
       <!--
-      #small { font-family:helvetica; font-size:small; text-align:center; }
+      .small { font-family:helvetica; font-size:small; text-align:center; }
+      .indented { text-indent: 2em; }
       // -->
     </style>
   </head>
@@ -13,33 +14,34 @@
     <!--notext(-->
     <table width="100%">
       <tr>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="index.html">pdnsd Homepage</a>
 	  </span></td> 
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="doc.html">Documentation</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="../../COPYING">GNU GPL (pdnsd's License)</a>
 	  </span> </td>
-	<td><span id="small">
+	<td><span class="small">
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
     </table> 
     <!--)notext-->
     <center><h1>pdnsd Documentation</h1></center>
-    This is the &quot;official&quot; pdnsd documentation and reference written by Thomas Moestl
-    with revisions by Paul Rombouts.<br>
+    This is the &quot;official&quot; pdnsd documentation and reference written by
+    <a href="index.html#authors">Thomas Moestl</a> with revisions by
+    <a href="index.html#authors">Paul Rombouts</a>.<br>
     This manual is a part of the pdnsd package, and may be distributed in
     original or modified  form  under  terms  of  the  GNU  General  Public
     License,  as  published by the Free Software Foundation; either version
     2, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.3-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.4-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -48,7 +50,7 @@
     <h2>0. Installation</h2>
     <h3>0.1 Installing binary RPM's</h3>
     To install a binary RPM, just do<br>
-    <ul><code>rpm&nbsp;-i&nbsp;pdnsd-&lt;<i>version</i>&gt;.rpm</code></ul>
+    <p class="indented"><code>rpm&nbsp;-i&nbsp;pdnsd-&lt;<i>version</i>&gt;.rpm</code></p>
     This should install pretty much everything automatically. The only thing left
     for you to do is adapt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
     according to your needs (see below). 
@@ -58,9 +60,9 @@
     <br>
     <h3>0.2 Building RPM's</h3>
     It is possible to build a binary RPM from a source package using the command<br>
-    <ul><code>rpmbuild&nbsp;--rebuild&nbsp;pdnsd-&lt;<i>version</i>&gt;.src.rpm</code></ul>
+    <p class="indented"><code>rpmbuild&nbsp;--rebuild&nbsp;pdnsd-&lt;<i>version</i>&gt;.src.rpm</code></p>
     or alternatively from a tarball using the command<br>
-    <ul><code>rpmbuild&nbsp;-tb&nbsp;pdnsd-&lt;<i>version</i>&gt;.tar.gz</code></ul>
+    <p class="indented"><code>rpmbuild&nbsp;-tb&nbsp;pdnsd-&lt;<i>version</i>&gt;.tar.gz</code></p>
     You can do this as root, but it is safer to build a binary package first as a normal user,
     and then, when all has gone well, install the resulting binary package as root as in the previous section.
     How to build an RPM package without being root is described at
@@ -102,10 +104,10 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with&nbsp;tcpqueries</code>
+	  <code>--without&nbsp;tcpqueries</code>
 	</td>
 	<td>
-	  Has the same effect as <code>--enable-tcp-queries</code> (<a href="#enabletcpqueries">see below</a>).
+	  Has the same effect as <code>--disable-tcp-queries</code> (<a href="#disabletcpqueries">see below</a>).
 	</td>
       </tr>
       <tr>
@@ -161,9 +163,9 @@
     <h4>0.3.1 Decompressing</h4>
     The pdsnsd source comes in a gzip'ed tar archive.
     To decompress it (using a modern tar) do<br>
-    <ul><code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code></ul>
+    <p class="indented"><code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code></p>
     If your tar doesn't do this, use:<br>
-    <ul><code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code></ul>
+    <p class="indented"><code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code></p>
 
     <h4>0.3.2 Setup </h4>
     Change into the pdnsd source directory and run configure. It takes the following command line
@@ -188,7 +190,7 @@
 	  Specify the config directory. pdnsd expects its pdnsd.conf file to reside
 	  there if the <code>-c</code> option is not given at startup.
 	  The default for this is the <code>etc</code> subdirectory of your prefix, e.g. <code>/usr/local/etc</code>
-	  if you did not specify a prefix. To set this e.g. to <code>/etc<code>, use <code>--sysconfdir=/etc</code>.
+	  if you did not specify a prefix. To set this e.g. to <code>/etc</code>, use <code>--sysconfdir=/etc</code>.
 	</td>
       </tr>
       <tr>
@@ -222,13 +224,13 @@
       </tr>
       <tr>
 	<td>
-	  <code>--with-hash-buckets=<i>num</i></a></code>
+	  <code>--with-hash-buckets=<i>num</i></code>
 	</td>
 	<td>
 	  Number of hash buckets to use (default=1024). The default should be
 	  sufficient for most purposes, but if you want to store a large number of names
 	  in the cache, cache lookups may be faster if the number of hash buckets
-	  is comparable to the numbers of names stored in the cache.
+	  is comparable to the number of names stored in the cache.
 	  The number actually used is the smallest power of two
 	  greater or equal to the number specified here.
 	</td>
@@ -288,16 +290,24 @@
 	  <code>--disable-udp-queries</code>
 	</td>
 	<td>
-	  Disable udp as query method. You shouldn't need to change
+	  Disable UDP as query method. You shouldn't need to change
 	  this.
 	</td>
       </tr>
       <tr>
 	<td>
-	  <code><a name="enabletcpqueries">--enable-tcp-queries</a></code>
+	  <code><a name="disabletcpqueries">--disable-tcp-queries</a></code>
 	</td>
 	<td>
-	  Enable the TCP as query method. This is seldom needed in normal usage.
+	  Disable TCP as query method. This only effects the querying of
+	  name servers by pdnsd, not the ability of pdnsd to answer
+	  TCP queries from clients.
+	  TCP queries are slower than UDP queries, but can be more secure
+	  against certain types of attacks and are able to handle large answers.
+	  For normal use this can be disabled.
+	  (Note that the default has changed: TCP-query support
+	  is now compiled in by default, but it still depends on the run-time
+	  options whether it is actually used.)
 	</td>
       </tr>
       <tr>
@@ -306,10 +316,12 @@
 	</td>
 	<td>
 	  Specify the query method (default=udponly, others: tcpudp, tcponly)
-	  If you have enabled both udp and tcp queries, this lets you control
-	  which query method pdnsd will use by default. tcpudp will try tcp
-	  first and back out to udp if tcp is not supported by the server;
-	  udponly and tcponly should be clear.
+	  If you have enabled both UDP and TCP queries, this lets you control
+	  which query method pdnsd will use by default. tcpudp will try TCP
+	  first and fall back to UDP if tcp is not supported by the server;
+	  udponly and tcponly should be clear. Note that this only effects
+	  the compiled-in default; the query method can still be changed using
+	  command-line options or options in the configuration file.
 	</td>
       </tr>
       <tr>
@@ -317,7 +329,9 @@
 	  <code>--disable-tcp-server</code>
 	</td>
 	<td>
-	  Disable tcp server. This may cause problems with very large answers.
+	  Disable the TCP server.
+	  In this case pdnsd will not be able to respond to TCP queries from clients.
+	  This may cause problems with very large answers.
 	</td>
       </tr>
       <tr>
@@ -413,11 +427,19 @@
           Specify debugging level. Normally you can safely switch debugging off
 	  by setting the level to 0. This will increase speed (although only
 	  marginally) and save space in the executable (only about 12kB).
+	  However, more significant may be the savings in stack space, especially
+	  if pdnsd is put under heavy load and there are many simultaneous
+	  running threads.<br>
 	  Presently the only defined debug levels are in the range 0 - 9.
 	  Setting the level to 9 enables hex dumps of the queries and replies
 	  pdnsd receives and should normally not be needed. Debug output will only
 	  be generated if you turn on special switches; it might be useful for
 	  debugging your config files, so I recommend using the default (1).
+	  However, if you use pdnsd under heavy load, a  better strategy may be
+	  to compile one version of pdnsd without debug support (configured with
+	  <code>--with-debug=0</code>) for production use, and one version with 
+	  with debug support (e.g. <code>--with-debug=9</code>)
+	  for diagnostic purposes.
 	</td>
       </tr>
       <tr>
@@ -523,7 +545,7 @@
     optimization or no optimization at all. In that case prefix the
     <code>configure</code> command with the desired compiler flags like this
     (assuming you're using a bash shell):
-    <ul><code>CFLAGS="-O1&nbsp;-Wall"&nbsp;./configure&nbsp;...</code></ul>
+    <p class="indented"><code>CFLAGS="-O1&nbsp;-Wall"&nbsp;./configure&nbsp;...</code></p>
 
     
     <br>
@@ -736,15 +758,24 @@
     <br><code>
       <i>option_name</i>=<i>option_value</i>;
     </code><br>
-    Option value may be a string literal, a number or a constant.<br>
-    <em>Note by Paul Rombouts</em>: In previous  versions of pdnsd strings had to be enclosed
+    Option value may be a string literal, a number, a time specification or a constant.
+    In previous  versions of pdnsd strings had to be enclosed
     in quotes (&quot;), but since version 1.1.10 this is no longer necessary, unless
     a string contains a special character such as whitespace, a token that normally starts
     a comment, or one of &quot;<code>,;{}</code>&quot;.<br>
+    A time specification consists a sequence of digits followed by a one-letter suffix.
+    The following suffixes are recognized:
+    <code>s</code> (seconds), <code>m</code> (minutes), <code>h</code> (hours),
+    <code>d</code> (days) and <code>w</code> (weeks).
+    If the suffix is missing, seconds are assumed.
+    If several time specifications are concatenated, their values are added together;
+    e.g. <code>2h30m</code> is interpreted as 2*60*60 + 30*60 = 9000 seconds.<br>
     Some options take more than one value; in this case, the values are separated with commas.<br>
     If you may supply one of a set of possible values to an option, this is noted
     in the documentation as
     <code>(option1|option2|option3|...)</code><br>
+    The constants <code>true|false</code> and <code>yes|no</code>
+    are accepted as synonyms for the constants <code>on|off</code>.<br>
     Comments may be enclosed in /* and */, nested comments are possible. If the 
     # sign or two slashes (//) appear in the configuration file, everything from 
     these signs to the end of the current line is regarded as a comment and ignored.<br>
@@ -832,8 +863,8 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>max_ttl=<i>number</i>;</code></b><br>
-	  This option sets the maximum time a record is held in cache in seconds. All dns 
+	  <b><code>max_ttl=<i>timespec</i>;</code></b><br>
+	  This option sets the maximum time a record is held in cache. All dns 
 	  resource records have a time to live field that says for what period of time the
 	  record may be cached before it needs to be requeried. If this is more than the
 	  value given with <code>max_ttl</code>, this time to live value is set to <code>max_ttl</code>.
@@ -843,8 +874,8 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>min_ttl=<i>number</i>;</code></b><br>
-	  This option sets the minimum time a record is held in cache in seconds. All dns 
+	  <b><code>min_ttl=<i>timespec</i>;</code></b><br>
+	  This option sets the minimum time a record is held in cache. All dns 
 	  resource records have a time to live field that says for what period of time the
 	  record may be cached before it needs to be requeried. If this is less than the
 	  value given with <code>min_ttl</code>, this time to live value is set to <code>min_ttl</code>.
@@ -853,7 +884,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>neg_ttl=<i>number</i>;</code></b><br>
+	  <b><code>neg_ttl=<i>timespec</i>;</code></b><br>
 	  This option sets the time that negatively cached records will remain valid in the
 	  cache if no time to live can be determined. This is always the case when whole
 	  domains are being cached negatively, and additionally when record types are cached
@@ -997,7 +1028,7 @@
 	  <b><code><a name="querymethod">query_method=(tcp_only|udp_only|tcp_udp);</a></code></b><br>
 	  This has the same effect as the <code>-m</code> command line option. Read the documentation for the
 	  command line option on this. <code>tcp_only</code> corresponds to the <code>to</code>, <code>udp_only</code> to
-	  the <code>uo</code> and <code>tcp_udp</code> to the <code>tu</code> argument of the command line option.</br>
+	  the <code>uo</code> and <code>tcp_udp</code> to the <code>tu</code> argument of the command line option.<br>
 	  If you use <code>query_method=tcp_udp</code>, it is recommended that you also set the <a href="#globaltimeout">global timeout option</a> to at least twice the longest server timeout.
 	</td>
       </tr>
@@ -1058,7 +1089,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>tcp_qtimeout=<i>number</i>;</code></b><br>
+	  <b><code>tcp_qtimeout=<i>timespec</i>;</code></b><br>
 	  This option sets a timeout for tcp queries. If no full query has been received on a tcp connection
 	  after that time has passed, the connection will be closed. The default is set using the
 	  <code>--with-tcp-qtimeout</code> option to <code>configure</code>.
@@ -1090,8 +1121,8 @@
       </tr>
       <tr>
 	<td>
-	  <b><code><a name="globaltimeout">timeout=<i>number</i>;</a></code></b><br>
-	  This is the global timeout parameter (in seconds) for dns queries.
+	  <b><code><a name="globaltimeout">timeout=<i>timespec</i>;</a></code></b><br>
+	  This is the global timeout parameter for dns queries.
 	  This specifies the minimum period of time pdnsd will wait after sending the
 	  first query to a remote server before giving up without having
 	  received a reply. The timeout options in the configuration file are
@@ -1105,7 +1136,7 @@
 	  If you use <code>query_method=tcp_udp</code> it is recommended that
 	  you make the global timeout at least twice as large as the largest
 	  server timeout, otherwise pdnsd may not have time to try a UDP query
-	  if a TCP connection times out.</br>
+	  if a TCP connection times out.<br>
 	  Default value is 0.
 	</td>
       </tr>
@@ -1153,10 +1184,10 @@
 	  subdomains of that zone, pdnsd will answer NXDOMAIN (unknown domain).
 	  This feature can be used for undoing the undesired effects of DNS
 	  "wildcards". Several "delegation-only" zones may be specified together.
-	  If you specify root servers in a <a href="#serversection"></code>server</code></a> section it is
-	  important that you set </code><a href="#rootserver">root_server</a>=on</code> in such a section.<br>
+	  If you specify root servers in a <a href="#serversection"><code>server</code></a> section it is
+	  important that you set <code><a href="#rootserver">root_server</a>=on</code> in such a section.<br>
 	  Example:
-	  <ul><code>delegation_only="com","net";</code></ul>
+	  <p class="indented"><code>delegation_only="com","net";</code></p>
 	  This feature is off by default. It is recommended that you only use
 	  this feature if you actually need it, because there is a risk that
 	  some legitimate names will be blocked, especially if the remote
@@ -1207,7 +1238,7 @@
 	  Multiple IP addresses can be given per server section.
 	  This can be done by entering multiple lines of the form <code>ip=<i>string</i>;</code>
 	  or a single line like this:
-	  <ul><code>ip=<i>string</i>,<i>string</i>,<i>string</i>;</code></ul>
+	  <p class="indented"><code>ip=<i>string</i>,<i>string</i>,<i>string</i>;</code></p>
 	  IP addresses do not have to be specified in the configuration file.
 	  A server section without IP addresses will remain inactive until it is assigned
 	  one or more addresses with <a href="#pdnsdctl"><code>pdnsd-ctl</code></a>,
@@ -1332,9 +1363,9 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>interval=(<i>number</i>|onquery|ontimeout);</code></b><br>
-	  Sets the interval for the server up-test in seconds. The default is 
-	  900; however, a test is forced when a query times out and the timestamp is reset then.<br>
+	  <b><code>interval=(<i>timespec</i>|onquery|ontimeout);</code></b><br>
+	  Sets the interval for the server up-test. The default is 900 seconds; 
+	  however, a test is forced when a query times out and the timestamp is reset then.<br>
 	  If you specify <code>onquery</code> instead of a timeout, the interface will be
 	  tested before every query. This is to prevent automatically dialing
 	  interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
@@ -1378,8 +1409,8 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>timeout=<i>number</i>;</code></b><br>
-	  Set the timeout for the dns query in seconds. The default is 120. You probably want to set this lower.<br>
+	  <b><code>timeout=<i>timespec</i>;</code></b><br>
+	  Set the timeout for the dns query. The default is 120 seconds. You probably want to set this lower.<br>
 	  Timeouts specified in the configuration file are only treated as the
 	  minimum period of time to wait for a reply. A queries to a remote
 	  server are not canceled until a useful reply has been received, or all
@@ -1513,12 +1544,13 @@
 	  will be matched (hint: if you want to include all subdomains, but not the domain of the given
 	  name itself, place an exact-match exclude rule before the include rule, e.g:
 	  <code>exclude="foo.bar."; include=".foo.bar.";</code><br>
-	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  Previous versions of pdnsd
 	  required that names given with this and the next option ended in a dot, but since
 	  version 1.1.8b1-par8, pdnsd automatically adds a dot at the end if it
 	  is missing.<br>
 	  pdnsd now also accepts a more compact notation for adding several <code>"include"</code> entries in
-	  one line, e.g.: <ul><code>include=".foo",".bar",".my.dom";</code></ul>
+	  one line, e.g.:
+	  <p class="indented"><code>include=".foo",".bar",".my.dom";</code></p>
 	</td>
       </tr>
       <tr>
@@ -1535,7 +1567,8 @@
 	  name itself, place an exact-match include rule before the exclude rule, e.g:
 	  <code>include="foo.bar."; exclude=".foo.bar.";</code><br>
 	  pdnsd now also accepts a more compact notation for adding several <code>"exclude"</code> entries in
-	  one line, e.g.: <ul><code>exclude=".foo",".bar",".my.dom";</code></ul>
+	  one line, e.g.:
+	  <p class="indented"><code>exclude=".foo",".bar",".my.dom";</code></p>
 	</td>
       </tr>
     </table>
@@ -1561,7 +1594,7 @@
 	  (i.e. pdnsd assumes they end in the root domain).
 	  For this and all following arguments that take domain names, you need to
 	  specify domain names in dotted notation (example venera.isi.edu.).<br>
-	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  Previous versions of pdnsd
 	  required that domain names given in the configuration file ended in a
 	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
 	  dot at the end if it is missing.<br>
@@ -1595,7 +1628,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>ttl=<i>number</i>;</code></b><br>
+	  <b><code>ttl=<i>timespec</i>;</code></b><br>
 	  Specifies the ttl (time to live) for all resource records in this section after this entry.
 	  This may be redefined. The default is 86400 seconds (=1 day).
 	</td>
@@ -1717,7 +1750,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>soa=<i>string</i>,<i>string</i>,<i>number</i>,<i>number</i>,<i>number</i>,<i>number</i>,<i>number</i>;</code></b><br>
+	  <b><code>soa=<i>string</i>,<i>string</i>,<i>number</i>,<i>timespec</i>,<i>timespec</i>,<i>timespec</i>,<i>timespec</i>;</code></b><br>
 	  This defines a soa (start of authority) record. The first string is the 
 	  domain name of the server and should be equal to the name you specified as 
 	  owner. <br>
@@ -1726,16 +1759,14 @@
 	  @ sign in the name with a dot (.) to get the name you have to specify here.
 	  The next parameter (the first number) is the serial number of the record. You 
 	  should increment this number if you change the record.<br>
-	  The 4th parameter (the 2nd number) is the refresh timeout. It specifies after 
-	  what amount of time a caching server should attempt to refresh the cached 
-	  record.<br>
+	  The 4th parameter is the refresh timeout. It specifies after what amount
+	  of time a caching server should attempt to refresh the cached record.<br>
 	  The 5th parameter specifies a time after which a caching server should attempt 
 	  to refresh the record after a refresh failure.<br>
 	  The 6th parameter defines the timeout after which a cached record expires if it
 	  has not been refreshed.<br>
 	  The 7th parameter is the ttl that is specified in every rr and should be the 
 	  same as given with the ttl option (if you do not specify a ttl, use the default 86400)<br>
-	  All time parameters must be specified in seconds.
 	</td>
       </tr>
     </table>
@@ -1777,7 +1808,7 @@
 	  Names are interpreted as absolute domain names (i.e. pdnsd
 	  assumes they end in the root domain).
 	  You need to specify domain names in dotted notation (example venera.isi.edu.).<br>
-	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  Previous versions of pdnsd
 	  required that domain names given in the configuration file ended in a
 	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
 	  dot at the end if it is missing.
@@ -1785,7 +1816,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>ttl=<i>number</i>;</code></b><br>
+	  <b><code>ttl=<i>timespec</i>;</code></b><br>
 	  Specifies the ttl (time to live) for all resource records in this section after this entry.
 	  This may be redefined. The default is 86400 seconds (=1 day).
 	</td>
@@ -1832,7 +1863,7 @@
 	  Names are interpreted as absolute domain names (i.e. pdnsd
 	  assumes they end in the root domain).
 	  You need to specify domain names in dotted notation (example venera.isi.edu.).<br>
-	  <em>Note added by Paul Rombouts</em>: Previous versions of pdnsd
+	  Previous versions of pdnsd
 	  required that domain names given in the configuration file ended in a
 	  dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
 	  dot at the end if it is missing.
@@ -1840,7 +1871,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>ttl=<i>number</i>;</code></b><br>
+	  <b><code>ttl=<i>timespec</i>;</code></b><br>
 	  Specifies the ttl (time to live) for all resource records in this section after 
 	  this entry. This may be redefined. The default is 86400 seconds (=1 day).
 	</td>
@@ -1908,7 +1939,7 @@
 	<td valign=top>status</td>
 	<td></td>
 	<td>
-	  Print a description of pdnsd's cache status and configuration.
+	  Print a description of pdnsd's cache status, thread status and configuration.
 	  Also shows which remote name servers are assumed to be available.
 	</td>
       </tr>
@@ -2107,7 +2138,7 @@
     If you have problems with configuring or tunning pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
     If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
     <em>Note added by Paul Rombouts</em>: Thomas Moestl no longer maintains the code. I have revised the code and added new features.
-    See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed an RPM) for more details.
+    See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed a binary package) for more details.
     If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
     <br>
     <br>
@@ -2275,9 +2306,11 @@
 
     <br>
     <hr>
-    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
+    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
+      and <a href="index.html#currentmaintainer">Paul Rombouts</a>
+    </address>
     <p>
-      <i>Last revised: 07 Jul 2005 by Paul Rombouts</i>
+      <i>Last revised: 07 Jan 2006 by Paul Rombouts</i>
     </p>
   </body>
 </html>

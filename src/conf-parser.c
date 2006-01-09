@@ -115,7 +115,7 @@ static char* getnextp(char **buf, size_t *n, FILE* in, char *p, char **errstr)
 	  ++p;
 	}
 	if(getline(buf,n,in)<0) {
-	  *errstr=report_error("comment without closing */");
+	  *errstr="comment without closing */";
 	  return NULL;
 	}
 	++linenr;
@@ -159,6 +159,54 @@ static int scan_string(char **startp,char **curp,size_t *lenp)
   *startp=start;
   *curp=cur;
   return 1;
+}
+
+
+/* Convert a string to a time value in seconds.
+   The string referred to by nptr is scanned for a sequence of components,
+   where each component contains a non-empty sequence of digits followed
+   by a possible one-letter suffix.
+   The position where the scanning stops is returned in endptr.
+   If an error is detected during scanning, a pointer to a
+   (static) error message is returned in errstr.
+*/   
+static time_t strtotime(char *nptr, char **endptr, char **errstr)
+{
+  time_t retval=0,t;
+  char c;
+
+  *errstr=NULL;
+  while(isalnum(c=*nptr)) {
+    if(!isdigit(c)) {
+	*errstr="no digits before suffix.";
+	break;
+    }
+
+    t=strtol(nptr,&nptr,10);
+
+    if(isalpha(c=*nptr)) {
+      if(c=='s') /* seconds */
+	;
+      else if(c=='m') /* minutes */
+	t *= 60;
+      else if(c=='h') /* hours */
+	t *= 60*60;
+      else if(c=='d') /* days */
+	t *= 24*60*60;
+      else if(c=='w') /* weeks */
+	t *= 7*24*60*60;
+      else {
+	*errstr="allowed suffixes are w,d,h,m,s.";
+	break;
+      }
+      ++nptr;
+    }
+
+    retval += t;
+  }
+
+  if(endptr) *endptr=nptr;
+  return retval;
 }
 
 
@@ -291,6 +339,22 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
   }									\
 }
 
+#define SCAN_TIMESECS(dst,cur,errmsg)						\
+{										\
+  if(isdigit(*(cur))) {								\
+    char *_err;									\
+    dst=strtotime(cur,&(cur),&_err);						\
+    if(_err) {									\
+      REPORT_ERRORF("invalid time specification for %s: %s",errmsg,_err);	\
+      PARSERROR;								\
+    }										\
+  }										\
+  else {									\
+    REPORT_ERROR("expected a time specification for " errmsg);			\
+    PARSERROR;									\
+  }										\
+}
+
 #define PARSESTR2RHN(src,len,dst)		\
 {						\
   const char *_err;				\
@@ -333,12 +397,19 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
 */
 int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errstr)
 {
-  char *linebuf,*p,*ps;
+  char *linebuf,*p,*ps,*getnextperr=NULL;
   size_t buflen=256,len;
   int retval=0,sechdr,option;
 # define CLEANUP_HANDLER
-# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,errstr))) {CLEANUP_HANDLER; goto unexpected_eof;}}
+# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,&getnextperr))) {CLEANUP_HANDLER; goto unexpected_eof;}}
 # define REPORT_ERROR(msg) (*errstr=report_error(msg))
+# if !defined(CPP_C99_VARIADIC_MACROS)
+   /* GNU C Macro Varargs style. */
+#  define REPORT_ERRORF(args...) (*errstr=report_errorf(args))
+#else
+   /* ANSI C99 style. */
+#  define REPORT_ERRORF(...) (*errstr=report_errorf(__VA_ARGS__))
+# endif
 # define PARSERROR {CLEANUP_HANDLER; goto free_linebuf_return;}
 # define CLEANUP_GOTO(lab) {CLEANUP_HANDLER; goto lab;}
 
@@ -351,7 +422,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
   linenr=0;
   p=NULL;
-  while((p=getnextp(&linebuf,&buflen,in,p,errstr))) {
+  while((p=getnextp(&linebuf,&buflen,in,p,&getnextperr))) {
     if(isalpha(*p)) {
       SCAN_ALPHANUM(ps,p,len);
       sechdr=lookup_keyword(ps,len,section_headers);
@@ -463,11 +534,11 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    break;
 
 	  case MAX_TTL:
-	    SCAN_UNSIGNED_NUM(global->max_ttl,p,"max_ttl option");
+	    SCAN_TIMESECS(global->max_ttl,p,"max_ttl option");
 	    break;
 
 	  case MIN_TTL:
-	    SCAN_UNSIGNED_NUM(global->min_ttl,p,"min_ttl option");
+	    SCAN_TIMESECS(global->min_ttl,p,"min_ttl option");
 	    break;
 
 	  case RUN_AS:
@@ -622,11 +693,11 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    break;
 
 	  case TCP_QTIMEOUT:
-	    SCAN_UNSIGNED_NUM(global->tcp_qtimeout, p,"tcp_qtimeout option");
+	    SCAN_TIMESECS(global->tcp_qtimeout, p,"tcp_qtimeout option");
 	    break;
 
 	  case TIMEOUT:
-	    SCAN_UNSIGNED_NUM(global->timeout, p,"global timeout option");
+	    SCAN_TIMESECS(global->timeout, p,"global timeout option");
 	    break;
 
 	  case C_PAR_QUERIES: {
@@ -646,7 +717,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    break;
 
 	  case NEG_TTL:
-	    SCAN_UNSIGNED_NUM(global->neg_ttl, p,"neg_ttl option");
+	    SCAN_TIMESECS(global->neg_ttl, p,"neg_ttl option");
 	    break;
 
 	  case NEG_RRS_POL: {
@@ -761,7 +832,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    break;
 
 	  case TIMEOUT:
-	    SCAN_UNSIGNED_NUM(server.timeout,p,"timeout option");
+	    SCAN_TIMESECS(server.timeout,p,"timeout option");
 	    break;
 
 	  case PING_TIMEOUT:
@@ -807,7 +878,12 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      }
 	    }
 	    else if(isdigit(*p)) {
-	      server.interval=strtol(p,&p,0);
+	      char *err;
+	      server.interval=strtotime(p,&p,&err);
+	      if(err) {
+		*errstr=report_errorf("bad time specification in interval= option: %s",err);
+		PARSERROR;
+	      }
 	    }
 	    else {
 	    bad_interval_option:
@@ -953,14 +1029,14 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      PARSERROR;
 	    }
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,c_name);
+	    PARSESTR2RHN(ucharp ps,len,c_name);
 	    if (!init_cent(&c_cent, c_name, 0, 0, c_flags  DBG0))
 	      goto out_of_memory;
 	  }
 	    break;
 
 	  case TTL:
-	    SCAN_UNSIGNED_NUM(c_ttl,p, "ttl option");
+	    SCAN_TIMESECS(c_ttl,p, "ttl option");
 	    break;
 
 	  case AUTHREC: {
@@ -1024,7 +1100,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      if (!c_cent.qname)
 		goto no_name_spec;
 	      SCAN_STRING(ps,p,len);
-	      PARSESTR2RHN(ps,len,c_name);
+	      PARSESTR2RHN(ucharp ps,len,c_name);
 	      if(!add_cent_rr(&c_cent,tp,c_ttl,0,CF_LOCAL,rhnlen(c_name),c_name  DBG0))
 		goto add_cent_failed;
 	    }
@@ -1039,7 +1115,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      goto no_name_spec;
 	    cp=c_mx+2;
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,cp);
+	    PARSESTR2RHN(ucharp ps,len,cp);
 	    SKIP_COMMA(p,"missing second argument (preference level) of mx= option");
 	    SCAN_UNSIGNED_NUM(pref,p,"second argument of mx= option");
 	    cp=c_mx;
@@ -1058,13 +1134,13 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    if (!c_cent.qname)
 	      goto no_name_spec;
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,buf);
+	    PARSESTR2RHN(ucharp ps,len,buf);
 	    rlen=rhnlen(buf);
 	    blen=rlen;
 	    bp=buf+rlen;
 	    SKIP_COMMA(p,"missing 2nd argument of soa= option");
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,bp);
+	    PARSESTR2RHN(ucharp ps,len,bp);
 	    rlen=rhnlen(bp);
 	    blen += rlen;
 	    bp += rlen;
@@ -1072,16 +1148,16 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    SCAN_UNSIGNED_NUM(val,p,"3rd argument of soa= option");
 	    PUTINT32(val,bp);
 	    SKIP_COMMA(p,"missing 4th argument of soa= option");
-	    SCAN_UNSIGNED_NUM(val,p,"4th argument of soa= option");
+	    SCAN_TIMESECS(val,p,"4th argument of soa= option");
 	    PUTINT32(val,bp);
 	    SKIP_COMMA(p,"missing 5th argument of soa= option");
-	    SCAN_UNSIGNED_NUM(val,p,"5th argument of soa= option");
+	    SCAN_TIMESECS(val,p,"5th argument of soa= option");
 	    PUTINT32(val,bp);
 	    SKIP_COMMA(p,"missing 6th argument of soa= option");
-	    SCAN_UNSIGNED_NUM(val,p,"6th argument of soa= option");
+	    SCAN_TIMESECS(val,p,"6th argument of soa= option");
 	    PUTINT32(val,bp);
 	    SKIP_COMMA(p,"missing 7th argument of soa= option");
-	    SCAN_UNSIGNED_NUM(val,p,"7th argument of soa= option");
+	    SCAN_TIMESECS(val,p,"7th argument of soa= option");
 	    PUTINT32(val,bp);
 	    blen += 20;
 	    if(!add_cent_rr(&c_cent,T_SOA,c_ttl,0,CF_LOCAL,blen,buf  DBG0))
@@ -1105,7 +1181,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	if(c_cent.qname[0]==1 && c_cent.qname[1]=='*') {
 	  /* Wild card record. Set the DF_WILD flag for the name with '*.' removed. */
 	  if(!set_cent_flags(&c_cent.qname[2],DF_WILD)) {
-	    char buf[256];
+	    unsigned char buf[256];
 	    rhn2str(c_cent.qname,buf,sizeof(buf));
 	    *errstr=report_errorf("You must define some records for '%s'"
 				  " before you can define records for the wildcard name '%s'",
@@ -1158,11 +1234,11 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  switch(option) {
 	  case OWNER:
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,c_owner);
+	    PARSESTR2RHN(ucharp ps,len,c_owner);
 	    break;
 
 	  case TTL:
-	    SCAN_UNSIGNED_NUM(c_ttl,p,"ttl option");
+	    SCAN_TIMESECS(c_ttl,p,"ttl option");
 	    break;
 
 	  case FILET:
@@ -1232,11 +1308,11 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  switch(option) {
 	  case NAME:
 	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ps,len,c_name);
+	    PARSESTR2RHN(ucharp ps,len,c_name);
 	    break;
 
 	  case TTL:
-	    SCAN_UNSIGNED_NUM(c_ttl,p, "ttl option");
+	    SCAN_TIMESECS(c_ttl,p, "ttl option");
 	    break;
 
 	  case TYPES:
@@ -1330,7 +1406,8 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
   }
 
   if(feof(in)) {
-    if(*errstr) {
+    if(getnextperr) {
+      *errstr=report_error(getnextperr);
       PARSERROR;
     }
     retval=1; /* success */
@@ -1373,12 +1450,10 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
  unexpected_eof:
   if(feof(in)) {
-    if(!(*errstr))
-      *errstr=report_error("unexpected end of file");
+    *errstr=report_error(getnextperr?getnextperr:"unexpected end of file");
   }
   else
     input_error: {
-    if(*errstr) free(*errstr);
     if(asprintf(errstr,"Error while reading config file: %s",strerror(errno))<0)
       *errstr=NULL;
   }
@@ -1389,6 +1464,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 #undef SKIP_BLANKS
 #undef REPORT_ERROR
+#undef REPORT_ERRORF
 #undef PARSERROR
 #undef CLEANUP_GOTO
 }
@@ -1560,7 +1636,7 @@ static const char *slist_add(slist_array *sla, const char *nm, size_t len, int t
     ++nm;
     --len;
   }
-  if((err=parsestr2rhn(nm,len,rhn)))
+  if((err=parsestr2rhn(ucharp nm,len,rhn)))
     return err;
   sz=rhnlen(rhn);
   if (!(*sla=DA_GROW1_F(*sla,free_slist_domain))) {
@@ -1583,7 +1659,7 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len)
   size_t sz;
   unsigned char rhn[256];
 
-  if((err=parsestr2rhn(zone,len,rhn)))
+  if((err=parsestr2rhn(ucharp zone,len,rhn)))
     return err;
   sz=rhnlen(rhn);
   if(!(*za=DA_GROW1_F(*za,free_zone)) || !(DA_LAST(*za)=z=malloc(sz)))

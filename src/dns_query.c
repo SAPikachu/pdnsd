@@ -1169,7 +1169,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 					}
 #if DEBUG>0
 					{
-						char nmbuf[256],zbuf[256];
+						unsigned char nmbuf[256],zbuf[256];
 						DEBUG_PDNSDA_MSG(authcnt?"%s is in %s zone, but no delegation found in answer returned by server %s\n"
 								 :"%s is in %s zone, but no authority information provided by server %s\n",
 								 rhn2str(name,nmbuf,sizeof(nmbuf)), rhn2str(DA_INDEX(global.deleg_only_zones,i),zbuf,sizeof(zbuf)),
@@ -1305,7 +1305,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int *aa,
 							add_cache(cent);
 						else {
 #if DEBUG>0
-							char nmbuf[256],nsbuf[256];
+							unsigned char nmbuf[256],nsbuf[256];
 							DEBUG_MSG("Record for %s not in nsdomain %s; dropped.\n",
 								  rhn2str(cent->qname,nmbuf,sizeof(nmbuf)),rhn2str(st->nsdomain,nsbuf,sizeof(nsbuf)));
 #endif
@@ -1914,8 +1914,16 @@ static int auth_ok(query_stat_array q, unsigned char *name, dns_cent_t *ent,
 					int rem;
 					/* paranoia mode: don't query name servers that are not responsible */
 					domain_match(nsdomain,name,&rem,NULL);
-					if (rem!=0)
+					if (rem!=0) {
+#if DEBUG>0
+						unsigned char nmbuf[256],dbuf[256],nsbuf[256];
+						DEBUG_MSG("The name server %s is responsible for the %s domain, which does not match %s\n",
+							  rhn2str(nsname,nsbuf,sizeof(nsbuf)),
+							  rhn2str(nsdomain,dbuf,sizeof(dbuf)),
+							  rhn2str(name,nmbuf,sizeof(nmbuf)));
+#endif
 						continue;
+					}
 				}
 				/* look it up in the cache or resolve it if needed.
 				   The records received should be in the cache now, so it's ok.

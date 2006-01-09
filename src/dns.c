@@ -303,7 +303,7 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 {
 	if(tp==T_A) {
 		unsigned char *p=(unsigned char *)&a->ipv4.s_addr;
-		int n=snprintf(buf,256,"%i.%i.%i.%i.in-addr.arpa.",p[3],p[2],p[1],p[0]);
+		int n=snprintf(charp buf,256,"%u.%u.%u.%u.in-addr.arpa.",p[3],p[2],p[1],p[0]);
 		if(n<0 || n>=256)
 			return 0;
 	}
@@ -395,9 +395,9 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 		int tp,sz;
 		pdnsd_ca a;
 
-		p=strchr(buf,'#');
+		p= ucharp strchr(buf,'#');
 		if(p) *p=0;
-		p=buf;
+		p= ucharp buf;
 		for(;;) {
 			if(!*p) goto nextline;
 			if(!isspace(*p)) break;
@@ -418,7 +418,7 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 		len=p-pn;
 		if (parsestr2rhn(pn,len,rhn)!=NULL)
 			continue;
-		if (inet_aton(pi,&a.ipv4)) {
+		if (inet_aton(charp pi,&a.ipv4)) {
 			tp=T_A;
 			sz=sizeof(struct in_addr);
 		} else {
@@ -476,10 +476,10 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 /*
  * Const decoders for debugging display
  */
-char *c_names[C_NUM] = {"IN","CS","CH","HS"};
-char *qt_names[QT_NUM]={"IXFR","AXFR","MAILB","MAILA","*"};
+static const char *c_names[C_NUM] = {"IN","CS","CH","HS"};
+static const char *qt_names[QT_NUM]={"IXFR","AXFR","MAILB","MAILA","*"};
 
-char *get_cname(int id)
+const char *get_cname(int id)
 {
 	if (id>=C_MIN && id<=C_MAX)
 		return c_names[id-C_MIN];
@@ -488,7 +488,7 @@ char *get_cname(int id)
 	return "[unknown]";
 }
 
-char *get_tname(int id)
+const char *get_tname(int id)
 {
 	if (id>=T_MIN && id<=T_MAX)
 		return rr_info[id-T_MIN].name;
@@ -497,13 +497,32 @@ char *get_tname(int id)
 	return "[unknown]";
 }
 
-char *e_names[RC_REFUSED+1]={"no error","query format error","server failed","unknown domain","not supported","query refused"};
 
-char *get_ename(int id)
+#define NRC 16
+static const char *e_names[NRC]={
+	"no error",
+	"query format error",
+	"server failed",
+	"unknown domain",
+	"not supported",
+	"query refused",
+	"6",
+	"7",
+	"8",
+	"9",
+	"10",
+	"11",
+	"12",
+	"13",
+	"14",
+	"15"
+};
+
+const char *get_ename(int id)
 {
-	if (id<0 || id>RC_REFUSED)
-		return "[unknown]";
-	return e_names[id];
+	if (id>=0 && id<NRC)
+		return e_names[id];
+	return "[unknown]";
 }
 
 

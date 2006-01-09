@@ -1,6 +1,6 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
 
-   Copyright (C) 2004 Paul Rombouts
+   Copyright (C) 2004,2005 Paul A. Rombouts
 
    Based on information previously contained in conf-lex.y and conf-parse.y
    This file is part of the pdnsd package.
@@ -87,7 +87,7 @@ enum {
 };
 
 
-/* table for looking up section headers. Order alphabetically! */
+/* Table for looking up section headers. Order alphabetically! */
 static const namevalue_t section_headers[]= {
 	{"global", GLOBAL},
 	{"neg",    NEG},
@@ -96,7 +96,7 @@ static const namevalue_t section_headers[]= {
 	{"source", SOURCE}
 };
 
-/* table for looking up global options. Order alphabetically! */
+/* Table for looking up global options. Order alphabetically! */
 static const namevalue_t global_options[]= {
 	{"cache_dir",        CACHE_DIR},
 	{"ctl_perms",        C_CTL_PERMS},
@@ -134,7 +134,7 @@ static const namevalue_t global_options[]= {
 	{"verbosity",        C_VERBOSITY}
 };
 
-/* table for looking up server options. Order alphabetically! */
+/* Table for looking up server options. Order alphabetically! */
 static const namevalue_t server_options[]= {
 	{"caching",      CACHING},
 	{"device",       DEVICE},
@@ -160,7 +160,7 @@ static const namevalue_t server_options[]= {
 	{"uptest_cmd",   UPTEST_CMD}
 };
 
-/* table for looking up rr options. Order alphabetically! */
+/* Table for looking up rr options. Order alphabetically! */
 static const namevalue_t rr_options[]= {
 	{"a",       A},
 	{"authrec", AUTHREC},
@@ -175,7 +175,7 @@ static const namevalue_t rr_options[]= {
 	{"ttl",     TTL}
 };
 
-/* table for looking up source options. Order alphabetically! */
+/* Table for looking up source options. Order alphabetically! */
 static const namevalue_t source_options[]= {
 	{"authrec",       AUTHREC},
 	{"file",          FILET},
@@ -185,7 +185,7 @@ static const namevalue_t source_options[]= {
 	{"ttl",           TTL}
 };
 
-/* table for looking up neg options. Order alphabetically! */
+/* Table for looking up neg options. Order alphabetically! */
 static const namevalue_t neg_options[]= {
 	{"name",  NAME},
 	{"ttl",   TTL},

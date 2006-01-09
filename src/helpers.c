@@ -116,7 +116,7 @@ int run_as(const char *user)
 			else if(buflen>=16*1024) {
 				/* If getpwnam_r() seems defective, call it quits rather than
 				   keep on allocating ever larger buffers until we crash. */
-				log_error("getpwnam_r() requires more than %i bytes of buffer space.",(int)buflen);
+				log_error("getpwnam_r() requires more than %u bytes of buffer space.",(unsigned)buflen);
 				return 0;
 			}
 			/* Else try again with larger buffer. */
@@ -257,7 +257,8 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
  * followed by the first part of the name, ..., followed by a 0 length byte),
  * and return a string in the usual dotted notation. Length checking is done
  * elsewhere (in decompress_name), this takes names from the cache which are
- * validated. No more than "size" bytes will be written to the buffer str points to.
+ * validated. No more than "size" bytes will be written to the buffer str points to
+ * (but size must be positive).
  * If the labels in rhn contains non-printable characters, these are represented
  * in the result by a backslash followed three octal digits. Additionally some
  * special characters are preceded by a backslash. Normally the result should
@@ -273,29 +274,32 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 	unsigned lb;
 	int i,j;
 
-	lb=rhn[0];
+	if(size<=0) return NULL;
+
+	i=0; j=0;
+	lb=rhn[i++];
 	if (!lb) {
-		strcpy(str,".");
+		if(size>=2)
+			str[j++]='.';
 	}
 	else {
-		i=1; j=0;
 		do {
 			for (;lb;--lb) {
 				unsigned char c;
-				if(j>=size-2)
+				if(j+2>=size)
 					goto overflow;
 				c=rhn[i++];
 				if(isgraph(c)) {
 					if(c=='.' || c=='\\' || c=='"') {
 						str[j++]='\\';
-						if(j>=size-2)
+						if(j+2>=size)
 							goto overflow;
 					}
 					str[j++]=c;
 				}
 				else {
 					int rem=size-1-j;
-					int n=snprintf(&str[j],rem,"\\%03o",c);
+					int n=snprintf(charp &str[j],rem,"\\%03o",c);
 					if(n<0 || n>=rem) {
 						str[j++]='.';
 						goto overflow;
@@ -306,20 +310,20 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 			str[j++]='.';
 			lb=rhn[i++];
 		} while(lb);
-		str[j]=0;
 	}
+	str[j]=0;
 	return str;
 
  overflow:
 	j=size;
 	str[--j]=0;
 	if(j>0) {
-	  str[--j]='.';
-	  if(j>0) {
-	    str[--j]='.';
-	    if(j>0)
-	      str[--j]='.';
-	  }
+		str[--j]='.';
+		if(j>0) {
+			str[--j]='.';
+			if(j>0)
+				str[--j]='.';
+		}
 	}
 	return str;
 }
@@ -356,19 +360,6 @@ unsigned int rhncpy(unsigned char *dst, const unsigned char *src)
 	return len;
 }
 
-
-/* take a name in length-byte string notation (buffer must be 256 bytes),
-   and return the name indicated by the cnames in the record. */
-int follow_cname_chain(dns_cent_t *c, unsigned char *name)
-{
-	rr_set_t *rrset=c->rr[T_CNAME-T_MIN];
-	rr_bucket_t *rr;
-	if (!rrset || !(rr=rrset->rrs))
-		return 0;
-	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
-	memcpy(name,rr+1,rr->rdlen);
-	return 1;
-}
 
 int str2pdnsd_a(const char *addr, pdnsd_a *a)
 {
@@ -553,7 +544,7 @@ void hexdump(const void *data, int dlen, char *buf, int buflen)
 		if(n<0 || n>=rem) goto truncated;
 		j += n;
 	}
-	return;
+	goto done;
 
  truncated:
 	if(j>=6) {
@@ -565,6 +556,13 @@ void hexdump(const void *data, int dlen, char *buf, int buflen)
 		buf[j++]='.';
 		buf[j++]='.';
 	}
+	else {
+		int ndots=buflen-1;
+		if(ndots>3) ndots=3;
+		j=0;
+		while(j<ndots) buf[j++]='.';
+	}
+ done:
 	buf[j]=0;
 }
 
@@ -573,12 +571,12 @@ void hexdump(const void *data, int dlen, char *buf, int buflen)
    Returns the length of the output string, or -1 if the result does not
    fit in the output buffer.
 */
-int escapestr(char *in, int ilen, char *str, int size)
+int escapestr(const char *in, int ilen, char *str, int size)
 {
 	int i,j=0;
 	for(i=0;i<ilen;++i) {
 		unsigned char c;
-		if(j>=size-1)
+		if(j+1>=size)
 			return -1;
 		c=in[i];
 		if(!isprint(c)) {
@@ -592,7 +590,7 @@ int escapestr(char *in, int ilen, char *str, int size)
 		else {
 			if(c=='\\' || c=='"') {
 				str[j++]='\\';
-				if(j>=size-1)
+				if(j+1>=size)
 					return -1;
 			}
 			str[j++]=c;
@@ -759,7 +757,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t size)
 		case AF_INET:
 		{
 			const unsigned char *p=src;
-			int n = snprintf(dst, size, "%i.%i.%i.%i",
+			int n = snprintf(dst, size, "%u.%u.%u.%u",
 					 p[0],p[1],p[2],p[3]);
 			if (n >= 0 && n < size) rc = dst;
 		}

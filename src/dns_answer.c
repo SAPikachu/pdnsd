@@ -80,10 +80,9 @@ static volatile unsigned long da_thrd_errs=0;
 #if DEBUG>0
 static volatile unsigned long da_misc_errs=0;
 #endif
-static pthread_t tcps;
-static pthread_t udps;
 static volatile int procs=0;   /* active query processes */
 static volatile int qprocs=0;  /* queued query processes */
+static volatile unsigned long dropped=0,spawned=0;
 static volatile unsigned thrid_cnt=0;
 static pthread_mutex_t proc_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -175,16 +174,40 @@ static int sva_add(dlist *sva, const unsigned char *rhn, unsigned short tp, unsi
 	return 1;
 }
 
-inline static time_t ans_ttl(time_t ttl, time_t ts, time_t queryts, unsigned flags)
+/* ans_ttl computes the ttl value to return to the client.
+   This is the ttl value stored in the cache entry minus the time
+   the cache entry has lived in the cache.
+   Local cache entries are an exception, they never "age".
+*/
+inline static time_t ans_ttl(rr_set_t *rrset, time_t queryts)
 {
-	if (!(flags&CF_LOCAL)) {
-		time_t tpassed=queryts-ts;
+	time_t ttl= rrset->ttl;
+	
+	if (!(rrset->flags&CF_LOCAL)) {
+		time_t tpassed= queryts - rrset->ts;
 		if(tpassed<0) tpassed=0;
 		ttl -= tpassed;
 		if(ttl<0) ttl=0;
 	}
 	return ttl;
 }
+
+/* follow_cname_chain takes a cache entry and a buffer (must be at least 256 bytes),
+   and copies the name indicated by the first cname record in the cache entry.
+   The name is returned in length-byte string notation.
+   follow_cname_chain returns 1 if a cname record is found, otherwise 0.
+*/
+inline static int follow_cname_chain(dns_cent_t *c, unsigned char *name)
+{
+	rr_set_t *rrset=c->rr[T_CNAME-T_MIN];
+	rr_bucket_t *rr;
+	if (!rrset || !(rr=rrset->rrs))
+		return 0;
+	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
+	memcpy(name,rr+1,rr->rdlen);
+	return 1;
+}
+
 
 /*
  * Add data from a rr_bucket_t (as in cache) into a dns message in ans. Ans is grown
@@ -453,7 +476,7 @@ static int add_rrset(unsigned tp, dns_ans_t **ans, long *sz, dns_cent_t *cached,
 		}
 		while (b) {
 			if (!add_rr(ans, sz, tp,b->rdlen,b+1, S_ANSWER,cb,udp,rrn,
-				    ans_ttl(crrset->ttl,crrset->ts,queryts,crrset->flags))) 
+				    ans_ttl(crrset,queryts))) 
 				return 0;
 			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
 				/* mark it as added */
@@ -464,7 +487,7 @@ static int add_rrset(unsigned tp, dns_ans_t **ans, long *sz, dns_cent_t *cached,
 			for (i=0;i<AR_NUM;i++) {
 				if (ar_recs[i]==tp) {
 					if (!add_ar(ar, RRETP_ADD,b->rdlen-ar_offs[i],((unsigned char *)(b+1))+ar_offs[i],
-						    "", 0))
+						    ucharp "", 0))
 						goto failed;
 					break;
 				}
@@ -586,7 +609,7 @@ static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, lon
 		if (rrset && (rr=rrset->rrs))
 		  
 			if (!add_additional_rr(rhn, sva, ans, rlen, udp, cb, T_A, rr->rdlen,rr+1,
-					       ans_ttl(rrset->ttl,rrset->ts,queryts,rrset->flags),S_ADDITIONAL))
+					       ans_ttl(rrset,queryts),S_ADDITIONAL))
 				retval = 0;
 
 #ifdef DNS_NEW_RRS
@@ -594,7 +617,7 @@ static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, lon
 			rrset=ae->rr[T_AAAA-T_MIN];
 			if (rrset && (rr=rrset->rrs))
 				if (!add_additional_rr(rhn, sva, ans, rlen, udp, cb, T_AAAA, rr->rdlen,rr+1,
-						       ans_ttl(rrset->ttl,rrset->ts,queryts,rrset->flags),S_ADDITIONAL))
+						       ans_ttl(rrset,queryts),S_ADDITIONAL))
 					retval = 0;
 		}
 #endif
@@ -668,7 +691,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 		{
 			DEBUG_MSG("Unsupported QTYPE or QCLASS.\n");
 			ans->hdr.rcode=RC_NOTSUPP;
-			return ans;
+			goto cleanup_return;
 		}
 	}
 	
@@ -694,7 +717,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 							rr_bucket_t *rr=rrset->rrs;
 							while(rr) {
 								if (!add_rr(&ans,rlen,T_SOA,rr->rdlen,rr+1,S_AUTHORITY,&cb,udp,cached->qname,
-									    ans_ttl(rrset->ttl,rrset->ts,queryts,rrset->flags)))
+									    ans_ttl(rrset,queryts)))
 									goto error_cached;
 								rr=rr->next;
 							}
@@ -763,7 +786,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 					rr_bucket_t *rr=rrset->rrs;
 					while (rr) {
 						if (!add_ar(&ar, rretp, rr->rdlen,rr+1, cached->qname,
-							    ans_ttl(rrset->ttl,rrset->ts,queryts,rrset->flags)))
+							    ans_ttl(rrset,queryts)))
 							goto error_cached;
 						rr=rr->next;
 					}
@@ -851,10 +874,15 @@ static int decode_query(unsigned char *data, long rlen, dlist *qp)
 		if (res!=RC_OK)
 			goto cleanup_return;
 		if (sz<4) {
-			/* truncated in qname or qclass*/
-			if (i==0) /*not even one complete query*/
+			/* truncated in qtype or qclass */
+			DEBUG_MSG("decode_query: query truncated in qtype or qclass.\n");
+			if (hdr->tc) {
+				if (i==0) /*not even one complete query*/
+					goto return_rc_format;
+				break;
+			}
+			else
 				goto return_rc_format;
-			break;
 		}
 		if(!(q=dlist_grow(q,sizeof(dns_queryel_t)+qlen)))
 			return RC_SERVFAIL;
@@ -906,7 +934,7 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 	long rlen= *rlenp;
 	int res;
 	dns_hdr_t *hdr;
-	dlist q;
+	dlist q=NULL; /* Initialized to inhibit compiler warning. */
 	dns_ans_t *ans;
 
 	DEBUG_MSG("Received query.\n");
@@ -947,6 +975,24 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 		return NULL; /* discard (may cause error storms) */
 	}
 
+	if (hdr->ancount) {
+		DEBUG_MSG("Query has a non-empty answer section!\n");
+		res=RC_FORMAT;
+		goto error_reply;
+	}
+
+	if (hdr->nscount) {
+		DEBUG_MSG("Query has a non-empty authority section!\n");
+		res=RC_FORMAT;
+		goto error_reply;
+	}
+
+	if (hdr->arcount) {
+		DEBUG_MSG("Query has a non-empty additional section!\n");
+		res=RC_FORMAT;
+		goto error_reply;
+	}
+
 	res=decode_query(data,rlen,&q);
 	if (res!=RC_OK) {
 		goto error_reply;
@@ -958,7 +1004,7 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 			dns_queryel_t *qe;
 			DEBUG_MSG("Questions are:\n");
 			for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
-				DEBUG_RHN_MSG("\tqc=%s (%i), qt=%s (%i), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
+				DEBUG_RHN_MSG("\tqc=%s (%u), qt=%s (%u), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
 			}
 		}
 		else {
@@ -983,16 +1029,14 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 
  error_reply:
 	*rlenp=sizeof(dns_hdr_t);
-	{
-		dns_ans_t *resp=pdnsd_malloc(sizeof(dns_ans_t));
-		if (resp) {
-			mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,&resp->hdr);
-		}
-		else if (++da_mem_errs<=MEM_MAX_ERRS) {
-			log_error("Out of memory in query processing.");
-		}
-		return resp;
+	ans=pdnsd_malloc(sizeof(dns_ans_t));
+	if (ans) {
+		mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,&ans->hdr);
 	}
+	else if (++da_mem_errs<=MEM_MAX_ERRS) {
+		log_error("Out of memory in query processing.");
+	}
+	return ans;
 }
 
 /*
@@ -1047,7 +1091,7 @@ static void *udp_answer_thread(void *data)
 		pthread_mutex_unlock(&proc_lock);
 		usleep_r(50000);
 	}
-	procs++;
+	++procs;
 	thrid= ++thrid_cnt;
 	pthread_mutex_unlock(&proc_lock);
 
@@ -1074,7 +1118,7 @@ static void *udp_answer_thread(void *data)
 		rlen=512;
 		resp->hdr.tc=1; /*set truncated bit*/
 	}
-	DEBUG_MSG("Outbound msg len %li, tc=%i, rc=\"%s\"\n",rlen,resp->hdr.tc,get_ename(resp->hdr.rcode));
+	DEBUG_MSG("Outbound msg len %li, tc=%u, rc=\"%s\"\n",rlen,resp->hdr.tc,get_ename(resp->hdr.rcode));
 
 	v.iov_base=(char *)&resp->hdr;
 	v.iov_len=rlen;
@@ -1425,7 +1469,7 @@ void *udp_server_thread(void *dummy)
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
 				int err;
-				qprocs++;
+				++qprocs; ++spawned;
 				pthread_mutex_unlock(&proc_lock);
 				buf->len=qlen;
 				err=pthread_create(&pt,&attr_detached,udp_answer_thread,(void *)buf);
@@ -1435,8 +1479,9 @@ void *udp_server_thread(void *dummy)
 					log_warn("pthread_create failed: %s",strerror(err));
 				/* If thread creation failed, free resources associated with it. */
 				pthread_mutex_lock(&proc_lock);
-				qprocs--;
+				--qprocs; --spawned;
 			}
+			++dropped;
 			pthread_mutex_unlock(&proc_lock);
 		}
 	free_buf_continue:
@@ -1446,6 +1491,7 @@ void *udp_server_thread(void *dummy)
 
 	udp_socket=-1;
 	close(sock);
+	udps_thrid=main_thrid;
 	if (tcp_socket==-1)
 	  pdnsd_exit();
 	return NULL;
@@ -1485,7 +1531,7 @@ static void *tcp_answer_thread(void *csock)
 		pthread_mutex_unlock(&proc_lock);
 		usleep_r(50000);
 	}
-	procs++;
+	++procs;
 	thrid= ++thrid_cnt;
 	pthread_mutex_unlock(&proc_lock);
 
@@ -1691,7 +1737,6 @@ void *tcp_server_thread(void *p)
 	int sock;
 	pthread_t pt;
 	int *csock;
-	int first=1;
 
 	/* (void)p; */  /* To inhibit "unused variable" warning */
 
@@ -1720,11 +1765,7 @@ void *tcp_server_thread(void *p)
 			break;
 		}
 		if ((*csock=accept(sock,NULL,0))==-1) {
-			pdnsd_free(csock);
-			if (errno==EINTR)
-				break;
-			else if (first) {
-				first=0; /* special handling, not da_tcp_errs*/
+			if (errno!=EINTR && ++da_tcp_errs<=TCP_MAX_ERRS) {
 				log_error("tcp accept failed: %s",strerror(errno));
 			}
 		} else {
@@ -1735,7 +1776,7 @@ void *tcp_server_thread(void *p)
 			pthread_mutex_lock(&proc_lock);
 			if (qprocs<global.proc_limit+global.procq_limit) {
 				int err;
-				qprocs++;
+				++qprocs; ++spawned;
 				pthread_mutex_unlock(&proc_lock);
 				err=pthread_create(&pt,&attr_detached,tcp_answer_thread,(void *)csock);
 				if(err==0)
@@ -1744,17 +1785,19 @@ void *tcp_server_thread(void *p)
 					log_warn("pthread_create failed: %s",strerror(err));
 				/* If thread creation failed, free resources associated with it. */
 				pthread_mutex_lock(&proc_lock);
-				qprocs--;
+				--qprocs; --spawned;
 			}
+			++dropped;
 			pthread_mutex_unlock(&proc_lock);
 			close(*csock);
-			pdnsd_free(csock);
 		}
+		pdnsd_free(csock);
 		usleep_r(50000);
 	}
  close_sock_return:
 	tcp_socket=-1;
 	close(sock);
+	tcps_thrid=main_thrid;
 	if (udp_socket==-1)
 		pdnsd_exit();
 	return NULL;
@@ -1770,19 +1813,60 @@ void start_dns_servers()
 
 #ifndef NO_TCP_SERVER
 	if (tcp_socket!=-1) {
+		pthread_t tcps;
+
 		if (pthread_create(&tcps,&attr_detached,tcp_server_thread,NULL)) {
 			log_error("Could not create tcp server thread. Exiting.");
 			pdnsd_exit();
-		} else
+		} else {
+			tcps_thrid=tcps;
 			log_info(2,"tcp server thread started.");
+		}
 	}
 #endif
 
 	if (udp_socket!=-1) {
+		pthread_t udps;
+
 		if (pthread_create(&udps,&attr_detached,udp_server_thread,NULL)) {
 			log_error("Could not create udp server thread. Exiting.");
 			pdnsd_exit();
-		} else
+		} else {
+			udps_thrid=udps;
 			log_info(2,"udp server thread started.");
+		}
 	}
 }
+
+
+/* Report the thread status to the file descriptor f, for the status fifo (see status.c) */
+int report_thread_stat(int f)
+{
+	unsigned long nspawned,ndropped;
+	int nactive,ncurrent,nqueued;
+
+	/* The thread counters are volatile, so we will make copies
+	   under locked conditions to make sure we get consistent data.
+	*/
+	pthread_mutex_lock(&proc_lock);
+	nspawned=spawned; ndropped=dropped;
+	nactive=procs; ncurrent=qprocs;
+	nqueued=ncurrent-nactive;
+	pthread_mutex_unlock(&proc_lock);
+
+	fsprintf_or_return(f,"\nThread status:\n=============\n");
+	if(!pthread_equal(servstat_thrid,main_thrid))
+		fsprintf_or_return(f,"server status thread is running.\n");
+	if(!pthread_equal(statsock_thrid,main_thrid))
+		fsprintf_or_return(f,"pdnsd control thread is running.\n");
+	if(!pthread_equal(tcps_thrid,main_thrid))
+		fsprintf_or_return(f,"tcp server thread is running.\n");
+	if(!pthread_equal(udps_thrid,main_thrid))
+		fsprintf_or_return(f,"udp server thread is running.\n");
+	fsprintf_or_return(f,"%lu query threads spawned in total (%lu queries dropped).\n",
+			   nspawned,ndropped);
+	fsprintf_or_return(f,"%i running query threads (%i active, %i queued).\n",
+			   ncurrent,nactive,nqueued);
+	return 0;
+}
+

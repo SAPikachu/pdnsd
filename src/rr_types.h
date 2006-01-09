@@ -76,8 +76,8 @@ Boston, MA 02111-1307, USA.  */
 struct rr_infos {
 	char	*name;		/* name of the RR */
 	int	class;		/* class (values see below) */
-	int	excludes;	/* reltaions to other classes. Mutual exclusion is mareked by or'ing the
-				 * respective RRCL value in this field. Exclusions should be symmettric */
+	int	excludes;	/* relations to other classes. Mutual exclusion is marked by or'ing the
+				 * respective RRCL value in this field. Exclusions should be symmetric. */
 };
 
 /* Class values */

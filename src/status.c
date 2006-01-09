@@ -44,6 +44,7 @@ Boston, MA 02111-1307, USA.  */
 #include "cache.h"
 #include "error.h"
 #include "servers.h"
+#include "dns_answer.h"
 #include "helpers.h"
 
 #if !defined(HAVE_ALLOCA) && !defined(alloca)
@@ -58,7 +59,6 @@ static char rcsid[]="$Id: status.c,v 1.34 2002/07/12 14:32:28 tmm Exp $";
 char *sock_path=NULL;
 int stat_sock;
 
-pthread_t st;
 
 /* Print an error to the socket */
 static int print_serr(int rs, const char *msg)
@@ -185,9 +185,7 @@ static void *status_thread (void *p)
 
 	if (listen(stat_sock,5)==-1) {
 		log_warn("Error: could not listen on socket: %s.\nStatus readback will be impossible",strerror(errno));
-		stat_pipe=0;
-		close(stat_sock);
-		return NULL;
+		goto exit_thread;
 	}
 	for(;;) {
 		struct sockaddr_un ra;
@@ -205,6 +203,7 @@ static void *status_thread (void *p)
 				    uname(&nm);
 				    if(fsprintf(rs,"pdnsd-%s running on %s.\n",VERSION,nm.nodename)<0 ||
 				       report_cache_stat(rs)<0 ||
+				       report_thread_stat(rs)<0 ||
 				       report_conf_stat(rs)<0)
 				    {
 					    DEBUG_MSG("Error writing to control socket: %s\n"
@@ -295,7 +294,7 @@ static void *status_thread (void *p)
 						}
 					    }
 					    {
-						unsigned char *ipstr,*q=dnsaddr;
+						char *ipstr,*q=dnsaddr;
 						addr_array ar=NULL;
 						pdnsd_a addr;
 						int err;
@@ -345,11 +344,11 @@ static void *status_thread (void *p)
 				    break;
 			    case CTL_RECORD: {
 				    uint16_t cmd2;
-				    char name[256],buf[256];
+				    unsigned char name[256],buf[256];
 				    DEBUG_MSG("Received RECORD command.\n");
 				    if (!read_short(rs,&cmd2))
 					    goto incomplete_command;
-				    if (read_domain(rs, buf, sizeof(buf))<=0)
+				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 					    goto incomplete_command;
 				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
 					    goto bad_domain_name;
@@ -371,14 +370,14 @@ static void *status_thread (void *p)
 				    uint32_t ttl;
 				    char *fn;
 				    uint16_t servaliases,flags;
-				    char buf[256],owner[256];
+				    unsigned char buf[256],owner[256];
 
 				    DEBUG_MSG("Received SOURCE command.\n");
 				    if (read_allocstring(rs,&fn,NULL)<=0) {
 					    print_serr(rs,"Bad filename name.");
 					    break;
 				    }
-				    if (read_domain(rs, buf, sizeof(buf))<=0 ||
+				    if (read_domain(rs, charp buf, sizeof(buf))<=0 ||
 					!read_long(rs,&ttl) ||
 					!read_short(rs,&servaliases) ||	/* serve aliases */
 					!read_short(rs,&flags))		/* caching flags */
@@ -411,12 +410,12 @@ static void *status_thread (void *p)
 				    uint32_t ttl;
 				    int sz;
 				    uint16_t tp,flags;
-				    char name[256],buf[256],dbuf[260];
+				    unsigned char name[256],buf[256],dbuf[260];
 
 				    DEBUG_MSG("Received ADD command.\n");
 				    if (!read_short(rs,&tp))
 					    goto incomplete_command;
-				    if (read_domain(rs, buf, sizeof(buf))<=0)
+				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 					    goto incomplete_command;
 				    if (!read_long(rs,&ttl))
 					    goto incomplete_command;
@@ -442,7 +441,7 @@ static void *status_thread (void *p)
 #endif
 				    case T_CNAME:
 				    case T_PTR:
-					    if (read_domain(rs, buf, sizeof(buf))<=0)
+					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 						    goto incomplete_command;
 					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
 						    goto bad_domain_name;
@@ -451,7 +450,7 @@ static void *status_thread (void *p)
 				    case T_MX:
 					    if (read(rs,dbuf,2)!=2)
 						    goto bad_arg;
-					    if (read_domain(rs, buf, sizeof(buf))<=0)
+					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 						    goto incomplete_command;
 					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf+2))!=NULL)
 						    goto bad_domain_name;
@@ -478,10 +477,10 @@ static void *status_thread (void *p)
 			    case CTL_NEG: {
 				    uint32_t ttl;
 				    uint16_t tp;
-				    char name[256],buf[256];
+				    unsigned char name[256],buf[256];
 
 				    DEBUG_MSG("Received NEG command.\n");
-				    if (read_domain(rs, buf, sizeof(buf))<=0)
+				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 					    goto incomplete_command;
 				    if (!read_short(rs,&tp))
 					    goto incomplete_command;
@@ -565,7 +564,7 @@ static void *status_thread (void *p)
 						    if(p+1<last && *p=='.' && *(p+1)) ++p;
 						    q=p;
 						    while(q<last && *q) ++q;
-						    if ((errmsg=parsestr2rhn(p,q-p,rhn))!=NULL) {
+						    if ((errmsg=parsestr2rhn(ucharp p,q-p,rhn))!=NULL) {
 							    DEBUG_MSG("EMPTY: received bad domain name: %s\n",p);
 							    print_serr(rs,errmsg);
 							    goto free_sla_names_break;
@@ -599,8 +598,9 @@ static void *status_thread (void *p)
 				    break;
 			    case CTL_DUMP: {
 				    int rv,exact=0;
-				    char *nm=NULL;
-				    char buf[256],rhn[256];
+				    unsigned char *nm=NULL;
+				    char buf[256];
+				    unsigned char rhn[256];
 				    DEBUG_MSG("Received DUMP command.\n");
 				    if (!(rv=read_domain(rs,buf,sizeof(buf)))) {
 					    print_serr(rs,"Bad domain name.");
@@ -608,7 +608,7 @@ static void *status_thread (void *p)
 				    }
 				    if(rv>0) {
 					    int sz;
-					    exact=1; nm=buf; sz=sizeof(buf);
+					    exact=1; nm= ucharp buf; sz=sizeof(buf);
 					    if(buf[0]=='.' && buf[1]) {
 						    exact=0; ++nm; --sz;
 					    }
@@ -652,12 +652,19 @@ static void *status_thread (void *p)
 			}
 			close(rs);
 			usleep_r(100000); /* sleep some time. I do not want the query frequency to be too high. */
-		} else {
-			if (errno!=EINTR)
-				log_warn("Failed to open socket: %s. Status readback will be impossible",strerror(errno));
+		}
+		else if (errno!=EINTR) {
+			log_warn("Failed to accept connection on status socket: %s. "
+				 "Status readback will be impossible",strerror(errno));
 			break;
 		}
 	}
+
+ exit_thread:
+	stat_pipe=0;
+	close(stat_sock);
+	statsock_thrid=main_thrid;
+
 	return NULL;
 }
 
@@ -713,10 +720,14 @@ void init_stat_sock()
  */
 int start_stat_sock()
 {
+	pthread_t st;
+
 	int rv=pthread_create(&st,&attr_detached,status_thread,NULL);
 	if (rv)
 		log_warn("Failed to start status thread. The status socket will be unuseable");
-	else
+	else {
+		statsock_thrid=st;
 		log_info(2,"Status thread started.");
+	}
 	return rv;
 }

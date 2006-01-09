@@ -284,8 +284,8 @@ Eelco Vriezekolk
 
 -------------------------------------------------------------------------------
 
-Thomas Moestl
+Thomas Moestl and Paul Rombouts
 
 
-Last revised: 11 Jul 2005 by Paul Rombouts
+Last revised: 09 Jan 2006 by Paul Rombouts
 

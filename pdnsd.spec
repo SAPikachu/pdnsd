@@ -23,7 +23,7 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.2.3
+Version: 1.2.4
 Release: par
 License: GPL
 Group:  Daemons
@@ -68,7 +68,7 @@ CFLAGS="${CFLAGS:-$RPM_OPT_FLAGS -Wall}" ./configure \
 	%{?_without_poll:--disable-poll} \
 	%{?_without_nptl:--with-thread-lib=linuxthreads} \
 	%{?_with_ipv6:--enable-ipv6} \
-	%{?_with_tcpqueries:--enable-tcp-queries} \
+	%{?_without_tcpqueries:--disable-tcp-queries} \
 	%{?_without_debug:--with-debug=0}
 
 make
@@ -188,6 +188,9 @@ fi
 %endif
 
 %changelog
+* Thu Dec 29 2005 Paul Rombouts <p.a.rombouts@home.nl>
+- TCP-query support is now compiled in by default,
+  but can be disabled using "--without tcpqueries".
 * Sun Jul 20 2003 Paul Rombouts <p.a.rombouts@home.nl>
 - Changed default run_as ID from "nobody" to "pdnsd"
 * Fri Jun 20 2003 Paul Rombouts <p.a.rombouts@home.nl>

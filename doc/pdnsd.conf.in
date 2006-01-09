@@ -12,9 +12,9 @@ global {
 #	paranoid=on;
 #	query_method=tcp_udp;	# pdnsd must be compiled with tcp
 				# query support for this to work.
-	min_ttl=900;       # Retain cached entries at least 15 minutes.
-	max_ttl=604800;	   # One week
-	timeout=10;        # Global timeout option.
+	min_ttl=15m;       # Retain cached entries at least 15 minutes.
+	max_ttl=1w;	   # One week.
+	timeout=10;        # Global timeout option (10 seconds).
 }
 
 # The following section is most appropriate for fixed connections to the Internet.
@@ -26,7 +26,7 @@ server {
 			   # that the global timeout option.
 	uptest=if;
 	interface=eth0;
-	interval=600;      # Check every 10 minutes
+	interval=10m;      # Check every 10 minutes.
 	purge_cache=off;   # Keep stale cache entries in case the ISP's
 			   # DNS servers go offline.
 }
@@ -41,7 +41,7 @@ server {
 	timeout=4;
 	uptest=if;
 	interface = ppp0;
-	interval=10;
+	interval=10;       # Check if the interface every 10 seconds.
 	purge_cache=off;
 	preset=off;
 }
@@ -68,7 +68,7 @@ server {
 	;
 	timeout = 5;
 	uptest = query;
-	interval = 1800;     # Test every half hour.
+	interval = 30m;      # Test every half hour.
 	ping_timeout = 300;  # 30 seconds.
 	purge_cache = off;
 	exclude = .localdomain;

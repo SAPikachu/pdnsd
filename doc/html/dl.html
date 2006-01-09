@@ -1,10 +1,10 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
     <title>pdnsd Download Page</title>
     <style type="text/css">
       <!--
-      #small { font-family:helvetica; font-size:small; text-align:center; }
+      .small { font-family:helvetica; font-size:small; text-align:center; }
       // -->
     </style>
   </head>
@@ -12,19 +12,19 @@
   <body bgcolor="#EEEEEE">
     <table width="100%">
       <tr>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="index.html">pdnsd Homepage</a>
   </span></td> 
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="doc.html">Documentation</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="../../COPYING">GNU GPL (pdnsd's License)</a>
 	  </span> </td>
-	<td><span id="small">
+	<td><span class="small">
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
@@ -34,14 +34,15 @@
     <!--  For obvious reasons, the real download page is not included in the distribution ;-) -->
     <p>To obtain pdnsd from the original author, please visit <a href="http://home.t-online.de/home/Moestl/dl.html">http://home.t-online.de/home/Moestl/dl.html</a><br>
     Note that pdnsd is no longer maintained by <a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>.<br>
-    However, Paul Rombouts maintains a version with many fixes and improvements at
+    However, <a href="index.html#currentmaintainer">Paul Rombouts</a> maintains
+    a version with many fixes and improvements at
     <a href="http://www.phys.uu.nl/~rombouts/pdnsd.html">http://www.phys.uu.nl/~rombouts/pdnsd.html</a>.<br>
     He has pre-patched tarballs and RPM packages available for download at this site.<br>
     There is also a mirror site at <a href="http://members.home.nl/p.a.rombouts/pdnsd.html">http://members.home.nl/p.a.rombouts/pdnsd.html</a>.
     </p>
-    <p>
-    The most recent tarball is <a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.3-par.tar.gz">pdnsd-1.2.3-par.tar.gz</a>
-    (<a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.3-par.tar.gz.asc">GPG signature</a>).<br>
+
+    The most recent tarball is <a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.4-par.tar.gz">pdnsd-1.2.4-par.tar.gz</a>
+    (<a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.4-par.tar.gz.asc">GPG signature</a>).<br>
     The most recent RPM packages are:
 <table cellspacing=1 cellpadding=7>
   <tr>
@@ -50,27 +51,27 @@
     <td width="70%"><b>Description</b></td>
   </tr>
   <tr>
-    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.3-par.src.rpm">pdnsd-1.2.3-par.src.rpm</a></td>
-    <td width="10%" align=right>526kB</td>
+    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.4-par.src.rpm">pdnsd-1.2.4-par.src.rpm</a></td>
+    <td width="10%" align=right>532kB</td>
     <td width="70%">Source RPM (binary packages can also be built directly from the tarball).
     </td>
   </tr>
   <tr>
-    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.3-par_sl4.i386.rpm">pdnsd-1.2.3-par_sl4.i386.rpm</a></td>
-    <td width="10%" align=right>278kB</td>
+    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.4-par_sl4.i386.rpm">pdnsd-1.2.4-par_sl4.i386.rpm</a></td>
+    <td width="10%" align=right>284kB</td>
     <td width="70%">i386 binary built on a Scientific Linux 4 system (compatible with Red Hat EL 4).
     </td>
   </tr>
   <tr>
-    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.3-par_fc3.x86_64.rpm">pdnsd-1.2.3-par_fc3.x86_64.rpm</a></td>
-    <td width="10%" align=right>285kB</td>
-    <td width="70%">x86_64 binary built on a Fedora Core 3 system.
+    <td width="20%"><a href="http://www.phys.uu.nl/~rombouts/pdnsd/releases/pdnsd-1.2.4-par_fc4.x86_64.rpm">pdnsd-1.2.4-par_fc4.x86_64.rpm</a></td>
+    <td width="10%" align=right>298kB</td>
+    <td width="70%">x86_64 binary built on a Fedora Core 4 system.
     </td>
   </tr>
 </table>
     If you want to check the signatures on these packages you will need a copy of my GPG key
     which you can get <a href="http://www.phys.uu.nl/~rombouts/paromb.asc">here</a>
-    or from a public key server.</p>
+    or from a public key server.
     <p>
     There are also <a href="http://packages.debian.org/pdnsd">Debian</a>
     and <a href="http://packages.gentoo.org/packages/?category=net-dns;name=pdnsd">Gentoo</a>
@@ -81,7 +82,7 @@
     <hr>
     <br>
     <p>
-      <i>Last revised: 11 Jul 2005 by Paul Rombouts</i>
+      <i>Last revised: 09 Jan 2006 by Paul Rombouts</i>
     </p>
   </body>
 </html>

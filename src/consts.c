@@ -38,9 +38,11 @@ static const namevalue_t const_dic[]={
 	{"domain",      C_DOMAIN},
 	{"excluded",    C_EXCLUDED},
 	{"exec",        C_EXEC},
+	{"false",       C_OFF},
 	{"fqdn_only",   C_FQDN_ONLY},
 	{"if",          C_IF},
 	{"included",    C_INCLUDED},
+	{"no",          C_OFF},
 	{"none",        C_NONE},
 	{"off",         C_OFF},
 	{"on",          C_ON},
@@ -51,7 +53,9 @@ static const namevalue_t const_dic[]={
 	{"simple_only", C_SIMPLE_ONLY},
 	{"tcp_only",    TCP_ONLY},
 	{"tcp_udp",     TCP_UDP},
-	{"udp_only",    UDP_ONLY}
+	{"true",        C_ON},
+	{"udp_only",    UDP_ONLY},
+	{"yes",         C_ON}
 };
 
 /* Added by Paul Rombouts */

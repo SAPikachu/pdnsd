@@ -105,8 +105,6 @@ inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 
 unsigned int rhncpy(unsigned char *dst, const unsigned char *src);
 
-int follow_cname_chain(dns_cent_t *c, unsigned char *name);
-
 inline static int is_inaddr_any(pdnsd_a *a)
 {
   return
@@ -180,7 +178,7 @@ inline static int write_all(int fd,const void *data,int n)
 }
 
 void hexdump(const void *data, int dlen, char *buf, int buflen);
-int escapestr(char *in, int ilen, char *str, int size);
+int escapestr(const char *in, int ilen, char *str, int size);
 
 #if 0
 inline static int stricomp(const char *a, const char *b)

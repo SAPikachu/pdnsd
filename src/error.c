@@ -170,7 +170,7 @@ void debug_msg(int c, const char *fmt, ...)
 		char ts[sizeof "12/31 23:59:59"];
 		time_t tt = time(NULL);
 		struct tm tm;
-		int *id;
+		unsigned *id;
 		localtime_r(&tt, &tm);
 		if(strftime(ts, sizeof(ts), "%m/%d %T", &tm) > 0) {
 			if((id = (unsigned *)pthread_getspecific(thrid_key)))

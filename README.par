@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.3-par by Paul Rombouts
+	        pdnsd version 1.2.4-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -16,6 +16,11 @@ The main difference between versions 1.2 and 1.2.1, aside from some minor
 changes, is that 1.2.1 has (experimental) support for the Cygwin platform.
 Version 1.2.2 has further improvements in portability and should in
 particular now also compile on the Darwin (Apple Mac OS X) platform.
+Version 1.2.4 has some important fixes for a memory leak, a minor buffer-
+overflow problem and some situations which could cause pdnsd to exit
+prematurely. Note that TCP-query support is now compiled in by default, but can
+still be disabled using a configure option.
+
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
 version because the (compressed) patch file is barely smaller than the
@@ -41,10 +46,10 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   names, but I feel that it is the responsibility of the client application to
   reject these, not the proxy server.
 
-- At the suggestion of Dan Tihelka, I have expanded to the server_ip= option
-  to allow the name of an interface to be specified instead of an IP address.
-  Presently this works for Linux only. Can someone running pdnsd on *BSD
-  tell me if the code for getting the address of an interface is different
+- At the suggestion of Dan Tihelka, I have expanded to the server_ip= option to
+  allow the name of an interface to be specified instead of an IP address.
+  Presently this has been tested on Linux only. Can someone running pdnsd on
+  *BSD tell me if the code for getting the address of an interface is different
   for Linux and BSD-type systems?
 
 - At the suggestion of Juliusz Chroboczek I've added an new server availability
@@ -141,6 +146,11 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
 - There is now a pdnsd.conf(5) man page, describing pdnsd's configuration file.
   The man page has been generated from the html documentation using a customized
   Perl script.
+
+- New in version 1.2.4: Time intervals in the configuration files can now be
+  expressed in seconds, minutes, hours, days and weeks, using the suffixes
+  s,m,h,d,and w.
+  Example: 2h30m is interpreted as 2*60*60 + 30*60 = 9000 seconds.
 
 
 The new features are described in greater detail in the manual doc/html/doc.html

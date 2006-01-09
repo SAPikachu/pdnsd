@@ -37,24 +37,24 @@ Boston, MA 02111-1307, USA.  */
 
 #if (TARGET==TARGET_BSD)
 # if !defined(__BIG_ENDIAN)
-#  if defined(_BIG_ENDIAN)
-#   define __BIG_ENDIAN _BIG_ENDIAN
-#  elif defined(BIG_ENDIAN)
+#  if defined(BIG_ENDIAN)
 #   define __BIG_ENDIAN BIG_ENDIAN
+#  elif defined(_BIG_ENDIAN)
+#   define __BIG_ENDIAN _BIG_ENDIAN
 #  endif
 # endif
 # if !defined(__LITTLE_ENDIAN)
-#  if defined(_LITTLE_ENDIAN)
-#   define __LITTLE_ENDIAN _LITTLE_ENDIAN
-#  elif defined(LITTLE_ENDIAN)
+#  if defined(LITTLE_ENDIAN)
 #   define __LITTLE_ENDIAN LITTLE_ENDIAN
+#  elif defined(_LITTLE_ENDIAN)
+#   define __LITTLE_ENDIAN _LITTLE_ENDIAN
 #  endif
 # endif
 # if !defined(__BYTE_ORDER)
-#  if defined(_BYTE_ORDER)
-#   define __BYTE_ORDER _BYTE_ORDER
-#  elif defined(BYTE_ORDER)
+#  if defined(BYTE_ORDER)
 #   define __BYTE_ORDER BYTE_ORDER
+#  elif defined(_BYTE_ORDER)
+#   define __BYTE_ORDER _BYTE_ORDER
 #  endif
 # endif
 #endif
@@ -247,9 +247,9 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf);
 int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr);
 
 #if DEBUG>0 
-char *get_cname(int id);
-char *get_tname(int id);
-char *get_ename(int id);
+const char *get_cname(int id);
+const char *get_tname(int id);
+const char *get_ename(int id);
 #endif
 
 #if DEBUG>=9

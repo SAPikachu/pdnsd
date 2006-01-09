@@ -83,7 +83,7 @@ extern FILE *dbg_file;
 #  define DEBUG_MSGC(args...)	{if (debug_p) debug_msg(1,args);}
 #  define DEBUG_PDNSDA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
 #  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
-#  define DEBUG_RHN_MSG(args...) {char _debugstrbuf[256]; DEBUG_MSG(args);}
+#  define DEBUG_RHN_MSG(args...) {unsigned char _debugstrbuf[256]; DEBUG_MSG(args);}
 #  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(args...)
@@ -102,7 +102,7 @@ extern FILE *dbg_file;
 #  define DEBUG_MSGC(...)	{if (debug_p) debug_msg(1,__VA_ARGS__);}
 #  define DEBUG_PDNSDA_MSG(...)	{char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
 #  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
-#  define DEBUG_RHN_MSG(...)	{char _debugstrbuf[256]; DEBUG_MSG(__VA_ARGS__);}
+#  define DEBUG_RHN_MSG(...)	{unsigned char _debugstrbuf[256]; DEBUG_MSG(__VA_ARGS__);}
 #  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(...)

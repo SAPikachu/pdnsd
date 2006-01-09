@@ -8,7 +8,7 @@ the Free Software Foundation; either version 2, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.3-par. For older documentation,
+This manual is up-to-date for version 1.2.4-par. For older documentation,
 please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/.
@@ -19,7 +19,7 @@ setup instructions) is available at http://www.geocities.com/sunil_tt/.
 
 To install a binary RPM, just do
 
-    rpm -i pdnsd-<version>.rpm
+rpm -i pdnsd-<version>.rpm
 
 This should install pretty much everything automatically. The only thing left
 for you to do is adapt your configuration file (stored in /etc/pdnsd.conf)
@@ -30,11 +30,11 @@ installed; read the section 0.4, Start at Boot Time about that.
 
 It is possible to build a binary RPM from a source package using the command
 
-    rpmbuild --rebuild pdnsd-<version>.src.rpm
+rpmbuild --rebuild pdnsd-<version>.src.rpm
 
 or alternatively from a tarball using the command
 
-    rpmbuild -tb pdnsd-<version>.tar.gz
+rpmbuild -tb pdnsd-<version>.tar.gz
 
 You can do this as root, but it is safer to build a binary package first as a
 normal user, and then, when all has gone well, install the resulting binary
@@ -52,7 +52,7 @@ Several pdnsd-specific options are available when building RPM packages:
 
 --with ipv6             Has the same effect as --enable-ipv6 (see below).
 
---with tcpqueries       Has the same effect as --enable-tcp-queries (see below
+--without tcpqueries    Has the same effect as --disable-tcp-queries (see below
                         ).
 
 --without debug         Has the same effect as --with-debug=0 (see below).
@@ -83,11 +83,11 @@ This is useful if you prefer a different level of optimization, for instance.
 The pdsnsd source comes in a gzip'ed tar archive. To decompress it (using a
 modern tar) do
 
-    tar -xzf pdnsd-<version>.tar.gz
+tar -xzf pdnsd-<version>.tar.gz
 
 If your tar doesn't do this, use:
 
-    gzip -dc pdnsd-<version>.tar.gz | tar -xf -
+gzip -dc pdnsd-<version>.tar.gz | tar -xf -
 
 0.3.2 Setup
 
@@ -130,7 +130,7 @@ distro                    RedHat, SuSE, Debian)
                           default should be sufficient for most purposes, but
                           if you want to store a large number of names in the
 --with-hash-buckets=num   cache, cache lookups may be faster if the number of
-                          hash buckets is comparable to the numbers of names
+                          hash buckets is comparable to the number of names
                           stored in the cache. The number actually used is the
                           smallest power of two greater or equal to the number
                           specified here.
@@ -157,21 +157,33 @@ distro                    RedHat, SuSE, Debian)
                           which IP version will really be used. Normally, you
                           won't need to change these.
 
---disable-udp-queries     Disable udp as query method. You shouldn't need to
+--disable-udp-queries     Disable UDP as query method. You shouldn't need to
                           change this.
 
---enable-tcp-queries      Enable the TCP as query method. This is seldom needed
-                          in normal usage.
+                          Disable TCP as query method. This only effects the
+                          querying of name servers by pdnsd, not the ability of
+                          pdnsd to answer TCP queries from clients. TCP queries
+                          are slower than UDP queries, but can be more secure
+--disable-tcp-queries     against certain types of attacks and are able to
+                          handle large answers. For normal use this can be
+                          disabled. (Note that the default has changed:
+                          TCP-query support is now compiled in by default, but
+                          it still depends on the run-time options whether it
+                          is actually used.)
 
                           Specify the query method (default=udponly, others:
-                          tcpudp, tcponly) If you have enabled both udp and tcp
---with-query-method=qm    queries, this lets you control which query method
-                          pdnsd will use by default. tcpudp will try tcp first
-                          and back out to udp if tcp is not supported by the
-                          server; udponly and tcponly should be clear.
+                          tcpudp, tcponly) If you have enabled both UDP and TCP
+                          queries, this lets you control which query method
+                          pdnsd will use by default. tcpudp will try TCP first
+--with-query-method=qm    and fall back to UDP if tcp is not supported by the
+                          server; udponly and tcponly should be clear. Note
+                          that this only effects the compiled-in default; the
+                          query method can still be changed using command-line
+                          options or options in the configuration file.
 
---disable-tcp-server      Disable tcp server. This may cause problems with very
-                          large answers.
+                          Disable the TCP server. In this case pdnsd will not
+--disable-tcp-server      be able to respond to TCP queries from clients. This
+                          may cause problems with very large answers.
 
                           Disable the UDP source address discovery.
                           You need this only if you have trouble with messages
@@ -228,13 +240,21 @@ device                    read random numbers from it 16-bit-wise. /dev/urandom
                           switch debugging off by setting the level to 0. This
                           will increase speed (although only marginally) and
                           save space in the executable (only about 12kB).
+                          However, more significant may be the savings in stack
+                          space, especially if pdnsd is put under heavy load
+                          and there are many simultaneous running threads.
                           Presently the only defined debug levels are in the
---with-debug=level        range 0 - 9. Setting the level to 9 enables hex dumps
-                          of the queries and replies pdnsd receives and should
+                          range 0 - 9. Setting the level to 9 enables hex dumps
+--with-debug=level        of the queries and replies pdnsd receives and should
                           normally not be needed. Debug output will only be
                           generated if you turn on special switches; it might
                           be useful for debugging your config files, so I
-                          recommend using the default (1).
+                          recommend using the default (1). However, if you use
+                          pdnsd under heavy load, a better strategy may be to
+                          compile one version of pdnsd without debug support
+                          (configured with --with-debug=0) for production use,
+                          and one version with with debug support (e.g.
+                          --with-debug=9) for diagnostic purposes.
 
 --with-verbosity=level    Specify default message verbosity. The default should
                           be ok.
@@ -313,7 +333,7 @@ level of optimization or no optimization at all. In that case prefix the
 configure command with the desired compiler flags like this (assuming you're
 using a bash shell):
 
-    CFLAGS="-O1 -Wall" ./configure ...
+CFLAGS="-O1 -Wall" ./configure ...
 
 
 0.3.3 Building & installing
@@ -508,15 +528,22 @@ The configuration file is divided into sections. Each section is prefixed with
 the section name and opening curlies ({) and closed with closing curlies (}).
 In each section, configuration options can be given in the form
 option_name=option_value;
-Option value may be a string literal, a number or a constant.
-Note by Paul Rombouts: In previous versions of pdnsd strings had to be enclosed
-in quotes ("), but since version 1.1.10 this is no longer necessary, unless a
-string contains a special character such as whitespace, a token that normally
-starts a comment, or one of ",;{}".
+Option value may be a string literal, a number, a time specification or a
+constant. In previous versions of pdnsd strings had to be enclosed in quotes
+("), but since version 1.1.10 this is no longer necessary, unless a string
+contains a special character such as whitespace, a token that normally starts a
+comment, or one of ",;{}".
+A time specification consists a sequence of digits followed by a one-letter
+suffix. The following suffixes are recognized: s (seconds), m (minutes), h
+(hours), d (days) and w (weeks). If the suffix is missing, seconds are assumed.
+If several time specifications are concatenated, their values are added
+together; e.g. 2h30m is interpreted as 2*60*60 + 30*60 = 9000 seconds.
 Some options take more than one value; in this case, the values are separated
 with commas.
 If you may supply one of a set of possible values to an option, this is noted
 in the documentation as (option1|option2|option3|...)
+The constants true|false and yes|no are accepted as synonyms for the constants
+on|off.
 Comments may be enclosed in /* and */, nested comments are possible. If the #
 sign or two slashes (//) appear in the configuration file, everything from
 these signs to the end of the current line is regarded as a comment and
@@ -586,23 +613,22 @@ is that local records (as specified in rr and source sections are still served
 normally. In general, you probably want to get cached entries even when the
 network is down, so this defaults to off.
 
-max_ttl=number;
-This option sets the maximum time a record is held in cache in seconds. All dns
-resource records have a time to live field that says for what period of time
-the record may be cached before it needs to be requeried. If this is more than
-the value given with max_ttl, this time to live value is set to max_ttl. This
-is done to prevent records from being cached an inappropriate long period of
-time, because that is almost never a good thing to do. Default is 604800s (one
-week).
+max_ttl=timespec;
+This option sets the maximum time a record is held in cache. All dns resource
+records have a time to live field that says for what period of time the record
+may be cached before it needs to be requeried. If this is more than the value
+given with max_ttl, this time to live value is set to max_ttl. This is done to
+prevent records from being cached an inappropriate long period of time, because
+that is almost never a good thing to do. Default is 604800s (one week).
 
-min_ttl=number;
-This option sets the minimum time a record is held in cache in seconds. All dns
-resource records have a time to live field that says for what period of time
-the record may be cached before it needs to be requeried. If this is less than
-the value given with min_ttl, this time to live value is set to min_ttl.
-Default is 120 seconds.
+min_ttl=timespec;
+This option sets the minimum time a record is held in cache. All dns resource
+records have a time to live field that says for what period of time the record
+may be cached before it needs to be requeried. If this is less than the value
+given with min_ttl, this time to live value is set to min_ttl. Default is 120
+seconds.
 
-neg_ttl=number;
+neg_ttl=timespec;
 This option sets the time that negatively cached records will remain valid in
 the cache if no time to live can be determined. This is always the case when
 whole domains are being cached negatively, and additionally when record types
@@ -718,9 +744,9 @@ messages) to 3 (most messages).
 query_method=(tcp_only|udp_only|tcp_udp);
 This has the same effect as the -m command line option. Read the documentation
 for the command line option on this. tcp_only corresponds to the to, udp_only
-to the uo and tcp_udp to the tu argument of the command line option. If you use
-query_method=tcp_udp, it is recommended that you also set the global timeout
-option to at least twice the longest server timeout.
+to the uo and tcp_udp to the tu argument of the command line option.
+If you use query_method=tcp_udp, it is recommended that you also set the global
+timeout option to at least twice the longest server timeout.
 
 run_ipv4=(on|off);
 This has the same effect as the -4 or -6 command line option: if on is
@@ -766,7 +792,7 @@ threads will exist at any one time (plus 3 to 6 threads that will always be
 present depending on your configuration).
 The default for this option is 60.
 
-tcp_qtimeout=number;
+tcp_qtimeout=timespec;
 This option sets a timeout for tcp queries. If no full query has been received
 on a tcp connection after that time has passed, the connection will be closed.
 The default is set using the --with-tcp-qtimeout option to configure.
@@ -793,21 +819,21 @@ See also the explanation of the global timeout option below.
 1 or 2 are good values for this option. The default is set at compile time
 using the --with-par-queries option to configure.
 
-timeout=number;
-This is the global timeout parameter (in seconds) for dns queries. This
-specifies the minimum period of time pdnsd will wait after sending the first
-query to a remote server before giving up without having received a reply. The
-timeout options in the configuration file are now only minimum timeout
-intervals. Setting the global timeout option makes it possible to specify quite
-short timeout intervals in the server sections (see below). This will have the
-effect that pdnsd will start querying additional servers fairly quickly if the
-first servers are slow to respond (but will still continue to listen for
-responses from the first ones). This may allow pdnsd to get an answer more
-quickly in certain situations.
+timeout=timespec;
+This is the global timeout parameter for dns queries. This specifies the
+minimum period of time pdnsd will wait after sending the first query to a
+remote server before giving up without having received a reply. The timeout
+options in the configuration file are now only minimum timeout intervals.
+Setting the global timeout option makes it possible to specify quite short
+timeout intervals in the server sections (see below). This will have the effect
+that pdnsd will start querying additional servers fairly quickly if the first
+servers are slow to respond (but will still continue to listen for responses
+from the first ones). This may allow pdnsd to get an answer more quickly in
+certain situations.
 If you use query_method=tcp_udp it is recommended that you make the global
 timeout at least twice as large as the largest server timeout, otherwise pdnsd
-may not have time to try a UDP query if a TCP connection times out. Default
-value is 0.
+may not have time to try a UDP query if a TCP connection times out.
+Default value is 0.
 
 randomize_recs=(on|off);
 If this option is turned on, pdnsd will randomly reorder the cached records of
@@ -848,7 +874,7 @@ specified together. If you specify root servers in a server section it is
 important that you set root_server=on in such a section.
 Example:
 
-    delegation_only="com","net";
+delegation_only="com","net";
 
 This feature is off by default. It is recommended that you only use this
 feature if you actually need it, because there is a risk that some legitimate
@@ -889,7 +915,7 @@ Give the IP (the IP, not the host name) of the server.
 Multiple IP addresses can be given per server section. This can be done by
 entering multiple lines of the form ip=string; or a single line like this:
 
-    ip=string,string,string;
+ip=string,string,string;
 
 IP addresses do not have to be specified in the configuration file. A server
 section without IP addresses will remain inactive until it is assigned one or
@@ -993,10 +1019,9 @@ Note that this is not always possible, and that pdnsd should never be installed
 as setuid or setgid. The command is executed using /bin/sh, so you should be
 able to use shell builtin commands.
 
-interval=(number|onquery|ontimeout);
-Sets the interval for the server up-test in seconds. The default is 900;
-however, a test is forced when a query times out and the timestamp is reset
-then.
+interval=(timespec|onquery|ontimeout);
+Sets the interval for the server up-test. The default is 900 seconds; however,
+a test is forced when a query times out and the timestamp is reset then.
 If you specify onquery instead of a timeout, the interface will be tested
 before every query. This is to prevent automatically dialing interfaces (diald/
 pppd or ippp) to dial on dns queries. It is intended to be used in connection
@@ -1028,8 +1053,8 @@ dial-on-demand ppp uptest (together with uptest=dev), you need to enter the
 device you are using for your pppd here, e.g. modem for /dev/modem.
 Must be specified if uptest=dev is given.
 
-timeout=number;
-Set the timeout for the dns query in seconds. The default is 120. You probably
+timeout=timespec;
+Set the timeout for the dns query. The default is 120 seconds. You probably
 want to set this lower.
 Timeouts specified in the configuration file are only treated as the minimum
 period of time to wait for a reply. A queries to a remote server are not
@@ -1133,13 +1158,13 @@ If it does not start in a dot, only exactly the given name (ignoring the case,
 of course) will be matched (hint: if you want to include all subdomains, but
 not the domain of the given name itself, place an exact-match exclude rule
 before the include rule, e.g: exclude="foo.bar."; include=".foo.bar.";
-Note added by Paul Rombouts: Previous versions of pdnsd required that names
-given with this and the next option ended in a dot, but since version
-1.1.8b1-par8, pdnsd automatically adds a dot at the end if it is missing.
+Previous versions of pdnsd required that names given with this and the next
+option ended in a dot, but since version 1.1.8b1-par8, pdnsd automatically adds
+a dot at the end if it is missing.
 pdnsd now also accepts a more compact notation for adding several "include"
 entries in one line, e.g.:
 
-    include=".foo",".bar",".my.dom";
+include=".foo",".bar",".my.dom";
 
 exclude=string;
 This option adds an entry to the exclusion/inclusion list. If a domain matches
@@ -1155,7 +1180,7 @@ before the exclude rule, e.g: include="foo.bar."; exclude=".foo.bar.";
 pdnsd now also accepts a more compact notation for adding several "exclude"
 entries in one line, e.g.:
 
-    exclude=".foo",".bar",".my.dom";
+exclude=".foo",".bar",".my.dom";
 
 
 2.1.3 rr Section
@@ -1176,9 +1201,9 @@ cname, mx, ns or soa records. Names are interpreted as absolute domain names
 (i.e. pdnsd assumes they end in the root domain). For this and all following
 arguments that take domain names, you need to specify domain names in dotted
 notation (example venera.isi.edu.).
-Note added by Paul Rombouts: Previous versions of pdnsd required that domain
-names given in the configuration file ended in a dot, but since version
-1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.
+Previous versions of pdnsd required that domain names given in the
+configuration file ended in a dot, but since version 1.1.8b1-par8, pdnsd
+automatically assumes a dot at the end if it is missing.
 New in version 1.2: It is also possible to specify a name starting with the
 label *. Such a name is called a wildcard. The * in a wildcard can match one or
 more labels in a queried name, but only whole labels. Any other * characters in
@@ -1204,7 +1229,7 @@ address 192.168.1.10 (unless you add rr sections explicitly specifying
 different addresses for www.mydomain or ftp.mydomain). If you want mydomain
 also to resolve to a numeric address, add an A record to the first rr section.
 
-ttl=number;
+ttl=timespec;
 Specifies the ttl (time to live) for all resource records in this section after
 this entry. This may be redefined. The default is 86400 seconds (=1 day).
 
@@ -1310,7 +1335,7 @@ specifies owner= before name= (sorry about that). Apart from greater
 consistency, the advantage is that you can now specify as many NS records as
 you like (including zero).
 
-soa=string,string,number,number,number,number,number;
+soa=string,string,number,timespec,timespec,timespec,timespec;
 This defines a soa (start of authority) record. The first string is the domain
 name of the server and should be equal to the name you specified as owner.
 The second string specifies the email address of the maintainer of the name
@@ -1318,9 +1343,8 @@ server. It is also specified as a domain name, so you will have to replace the
 @ sign in the name with a dot (.) to get the name you have to specify here. The
 next parameter (the first number) is the serial number of the record. You
 should increment this number if you change the record.
-The 4th parameter (the 2nd number) is the refresh timeout. It specifies after
-what amount of time a caching server should attempt to refresh the cached
-record.
+The 4th parameter is the refresh timeout. It specifies after what amount of
+time a caching server should attempt to refresh the cached record.
 The 5th parameter specifies a time after which a caching server should attempt
 to refresh the record after a refresh failure.
 The 6th parameter defines the timeout after which a cached record expires if it
@@ -1328,7 +1352,6 @@ has not been refreshed.
 The 7th parameter is the ttl that is specified in every rr and should be the
 same as given with the ttl option (if you do not specify a ttl, use the default
 86400)
-All time parameters must be specified in seconds.
 
 
 2.1.4 neg Section
@@ -1367,11 +1390,11 @@ Specifies the name of the domain for which negative cache entries are created.
 This option must be specified before the types option. Names are interpreted as
 absolute domain names (i.e. pdnsd assumes they end in the root domain). You
 need to specify domain names in dotted notation (example venera.isi.edu.).
-Note added by Paul Rombouts: Previous versions of pdnsd required that domain
-names given in the configuration file ended in a dot, but since version
-1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.
+Previous versions of pdnsd required that domain names given in the
+configuration file ended in a dot, but since version 1.1.8b1-par8, pdnsd
+automatically assumes a dot at the end if it is missing.
 
-ttl=number;
+ttl=timespec;
 Specifies the ttl (time to live) for all resource records in this section after
 this entry. This may be redefined. The default is 86400 seconds (=1 day).
 
@@ -1411,11 +1434,11 @@ entries.
 Names are interpreted as absolute domain names (i.e. pdnsd assumes they end in
 the root domain). You need to specify domain names in dotted notation (example
 venera.isi.edu.).
-Note added by Paul Rombouts: Previous versions of pdnsd required that domain
-names given in the configuration file ended in a dot, but since version
-1.1.8b1-par8, pdnsd automatically assumes a dot at the end if it is missing.
+Previous versions of pdnsd required that domain names given in the
+configuration file ended in a dot, but since version 1.1.8b1-par8, pdnsd
+automatically assumes a dot at the end if it is missing.
 
-ttl=number;
+ttl=timespec;
 Specifies the ttl (time to live) for all resource records in this section after
 this entry. This may be redefined. The default is 86400 seconds (=1 day).
 
@@ -1467,9 +1490,9 @@ help                                    Print a command summary.
 
 version                                 Print version info.
 
-status                                  Print a description of pdnsd's cache status and
-                                        configuration. Also shows which remote name servers are
-                                        assumed to be available.
+status                                  Print a description of pdnsd's cache status, thread status
+                                        and configuration. Also shows which remote name servers
+                                        are assumed to be available.
 
 server         (index|label)  (up|      Set the status of the server with the given index or label
                down|retest)  [dns1      (where the given label matches the one given with the
@@ -1633,9 +1656,9 @@ If you have problems with configuring or tunning pdnsd, be sure to read the FAQ
 tmoestl@gmx.net.
 Note added by Paul Rombouts: Thomas Moestl no longer maintains the code. I have
 revised the code and added new features. See README.par and the ChangeLog in
-the source directory (or /usr/share/doc/pdnsd-<version> if you have installed
-an RPM) for more details. If you have questions about my modifications, you can
-find my email address at the end of README.par.
+the source directory (or /usr/share/doc/pdnsd-<version> if you have installed a
+binary package) for more details. If you have questions about my modifications,
+you can find my email address at the end of README.par.
 
 
 5 Hacking
@@ -1729,7 +1752,7 @@ status.h              pdnsd's interface to pdnsd-ctl.
 
 -------------------------------------------------------------------------------
 
-Thomas Moestl
+Thomas Moestl and Paul Rombouts
 
-Last revised: 07 Jul 2005 by Paul Rombouts
+Last revised: 07 Jan 2006 by Paul Rombouts
 

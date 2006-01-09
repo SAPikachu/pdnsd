@@ -53,7 +53,7 @@
  *       against DNS spoofing. Note that some name servers on the 
  *       internet do not support TCP queries, notably dnscache.
  * TCP_UDP: TCP, then UDP. If the TCP query fails with a "connection refused"-
- *       error, the query is retried using UDP. */
+ *       error or times out, the query is retried using UDP. */
 #define M_PRESET UDP_ONLY
 
 /* In addition to choosing the presets, you may also completely disable
@@ -65,7 +65,7 @@
 /* With the following option, you can disable the TCP server functionality
  * of pdnsd. Nearly no program does TCP queries, so you probably can do
  * this safely and save some executable space and one thread.
- * You also can turn off the TCP server at runtimu with the -t option. */
+ * You also can turn off the TCP server at runtime with the -t option. */
 #undef NO_TCP_SERVER
 
 /* By undefining the following, you can disable the UDP source address
@@ -123,8 +123,9 @@
 /* This is for various debugging facilities that produce debug output and
  * double-check some values. You can enable debug messages with the -g option.
  * Normally, you can switch this off safely by setting the number after DEBUG
- * to 0. This will increase speed (although only marginally) and save space 
- * in the executable (only about 12kB).
+ * to 0. This will increase speed (although only marginally), save space 
+ * in the executable (only about 12kB) and some stack space per thread
+ * (which may be significant if you have many threads running simultaneously).
  * However, it may be an aid when debugging config files. 
  * The only defined debug levels by now are in the range 0 - 9.
  * Define this to 9 if you want hex dumps of all the queries and replies pdnsd
@@ -162,7 +163,7 @@
 /* Define if you have working C99 Variadic macro support */
 #undef CPP_C99_VARIADIC_MACROS
 
-/* Define to int socklen_t typedef is missing */
+/* Define as int if socklen_t typedef is missing */
 #undef socklen_t
 
 /* Lock the UDP socket before using it? */
@@ -174,7 +175,7 @@
 /* Allow subsequent TCP queries on one connection? */
 #undef TCP_SUBSEQ
 
-/*default value for parallel query number */
+/* Default value for parallel query number */
 #define PAR_QUERIES   2
 
 /* These are the possible targets. Normally no need to touch these 
@@ -195,6 +196,17 @@
 /* The following is needed for using LinuxThreads. Better don't touch. */
 #define _REENTRANT 1
 #define _THREAD_SAFE 1
+
+/* It appears the newer versions of gcc won't convert a pointer to char into
+   a pointer to unsigned char and vice versa without complaining.
+   By using casts these warning messages can be suppressed, but at the cost
+   of losing some type safety.
+   Define charp and ucharp to be empty if you are a developer and find type
+   safety more important.
+   Leave the definitions unchanged to avoid distracting warning messages. */
+#define charp (char *)
+#define ucharp (unsigned char *)
+   
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */

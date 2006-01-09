@@ -60,7 +60,7 @@ short int run_ipv4=DEFAULT_IPV4;
 short int cmdlineipv=0;
 #endif
 cmdlineflags_t cmdline={0};
-pthread_t main_thrid,servstat_thrid;
+pthread_t main_thrid,servstat_thrid,statsock_thrid,tcps_thrid,udps_thrid;
 uid_t init_uid;
 #if DEBUG>0
 FILE *dbg_file;
@@ -220,6 +220,9 @@ int main(int argc,char *argv[])
 
 	main_thrid=pthread_self();
 	servstat_thrid=main_thrid;
+	statsock_thrid=main_thrid;
+	tcps_thrid=main_thrid;
+	udps_thrid=main_thrid;
 	init_uid=getuid();
 #ifdef ENABLE_IPV6
 	{
@@ -390,9 +393,7 @@ int main(int argc,char *argv[])
 #endif
 				}
 				else {
-					fputs("Error: unknown option: ",stderr);
-					fwrite(arg,1,plen,stderr);
-					fputc('\n',stderr);
+					fprintf(stderr,"Error: unknown option: %.*s\n",plen,arg);
 					exit(1);
 				}
 			} else {
@@ -534,7 +535,8 @@ int main(int argc,char *argv[])
 		}
 
 		if (global.pidfile) close(pfd);
-		chdir("/");
+		if(chdir("/"))
+			log_warn("Cannot chdir to root directory: %s",strerror(errno));
 		if ((fd=open("/dev/null",O_RDONLY))==-1) {
 			log_error("Could not become a daemon: open for /dev/null failed: %s",strerror(errno));
 			_exit(1);
@@ -659,11 +661,20 @@ int main(int argc,char *argv[])
 	pthread_sigmask(SIG_BLOCK,&sigs_msk,NULL);
 	waiting=1;
 #endif
-	sigwait(&sigs_msk,&sig);
-	DEBUG_MSG("Signal %i caught.\n",sig);
+	{
+		int err;
+		while ((err=sigwait(&sigs_msk,&sig))) {
+			if (err!=EINTR) {
+				log_error("sigwait failed: %s",strerror(err));
+				sig=0;
+				break;
+			}
+		}
+	}
+	if(sig) DEBUG_MSG("Signal %i caught.\n",sig);
 	write_disk_cache();
 	destroy_cache();
-	log_warn("Caught signal %i. Exiting.",sig);
+	if(sig) log_warn("Caught signal %i. Exiting.",sig);
 	if (sig==SIGSEGV || sig==SIGILL || sig==SIGBUS)
 		crash_msg("This is a fatal signal probably triggered by a bug.");
 	if (ping_isocket!=-1)

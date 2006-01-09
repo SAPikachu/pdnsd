@@ -1,3 +1,85 @@
+2006-01-02  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	compose_answer() would leak memory if the query contained
+	an unsupported QTYPE or QCLASS. This has now been fixed.
+
+2005-12-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in
+	TCP-query support is now compiled in by default.
+	It can still be disabled using the configure option
+	--disable-tcp-queries.
+
+2005-12-23  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Queries received from clients with non-empty answer, authority or
+	additional sections are	now treated as malformed and rejected with
+	rcode 1 (format error).
+
+2005-11-06  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Time intervals in the configuration files can now be expressed in
+	seconds, minutes, hours, days and weeks, using the suffixes
+	s,m,h,d,and w.
+
+2005-10-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/consts.c
+	In the pdnsd configuration file, true/false and yes/no are now accepted
+	as synonyms for the constants on/off.
+
+2005-08-24  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/helpers.c
+	I have fixed a potential buffer overflow problem that could occur with
+	the 'pdnsd-ctl dump' command.
+	In case of the root domain, the function rhn2str() would write 2 bytes
+	to the output buffer even if size==1. Theoretically (under pathological
+	circumstances) this could have allowed the dbuf buffer in the function
+	dump_cent() to overflow by one byte.
+
+2005-08-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* acconfig.h,src/cache.c,src/conff.c,src/conf-parser.c,src/dns.c,
+	  src/dns_answer.c,src/dns_query.c,src/error.h,src/helpers.c,src/main.c,
+	  status.c
+
+	It appears the newer versions of gcc won't convert a pointer to char
+	into a pointer to unsigned char and vice versa without complaining.
+	The changes I have made should get rid of these distracting warning
+	messages. Unfortunately I had to introduce casts in some cases,
+	which reduces type safety :-(.
+
+2005-08-16  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.h
+	Some changes were made to the endianess detection code to
+	address problems on Mac OS X v10.4 Tiger.
+
+2005-08-15  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* configure.in
+	Some changes where made to address the reported problems with the
+	configure script on Mac OS X v10.4 Tiger.
+
+2005-08-05  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/status.c,src/dns_answer.c
+	The output of the 'pdnsd-ctl status' command now includes some
+	statistics on the number of query threads.
+
+2005-07-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/main.c
+	It appears that sigwait() can return EINTR under certain conditions.
+	This explains the problems reported by Sanjoy Mahajan with strace
+	and ACPI S3 sleep, which both caused pdnsd to exit prematurely.
+	The return value of sigwait() is now checked and sigwait() is retried
+	if the return value is EINTR.
+
 2005-07-04  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c

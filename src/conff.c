@@ -414,7 +414,7 @@ int report_conf_stat(int f)
 	else {
 		int rv;
 		for(i=0;i<DA_NEL(global.deleg_only_zones);++i) {
-			char buf[256];
+			unsigned char buf[256];
 			rv=fsprintf(f,i==0?"%s":", %s",
 					rhn2str(DA_INDEX(global.deleg_only_zones,i),buf,sizeof(buf)));
 			if(rv<0) {retval=rv; goto unlock_return;}
@@ -482,7 +482,7 @@ static int report_server_stat(int f,int i)
 	} else {
 		for (j=0;j<DA_NEL(st->alist);j++) {
 			slist_t *sl=&DA_INDEX(st->alist,j);
-			char buf[256];
+			unsigned char buf[256];
 			fsprintf_or_return(f,"\t\t%s: %s%s\n",
 					   sl->rule==C_INCLUDED?"include":"exclude",
 					   sl->exact?"":".",

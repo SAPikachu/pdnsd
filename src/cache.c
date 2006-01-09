@@ -607,8 +607,10 @@ static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsi
 	cent->cs += sizeof(rr_bucket_t)+rr->rdlen;
 #if DEBUG>0
 	rrset=cent->rr[tp-T_MIN];
-	if (rrset->flags&CF_NEGATIVE)
-		DEBUG_MSG("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%i\n",rrset->flags);
+	if (rrset->flags&CF_NEGATIVE) {
+		char cflagstr[CFLAGSTRLEN];
+		DEBUG_MSG("Tried to add rr to a rrset with CF_NEGATIVE set! flags=%s\n",cflags2str(rrset->flags,cflagstr));
+	}
 #endif
 	return 1;
  cleanup_return:
@@ -1394,7 +1396,7 @@ void write_disk_cache()
 				}
 			}
 			if(num_rrs!=le->num_rrs && ++num_rrs_errs<=MAX_NUM_RRS_ERRS) {
-				char buf[256];
+				unsigned char buf[256];
 				log_warn("Counted %d rr record types for %s but cached counter=%d",
 					 num_rrs,rhn2str(le->qname,buf,sizeof(buf)),le->num_rrs);
 			}
@@ -1998,7 +2000,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 	time_t now;
 	char tstr[sizeof "2000/12/31 23:59:59"],dbuf[1024];
 
-	fsprintf_or_return(fd,"%s\n",rhn2str(cent->qname,dbuf,sizeof(dbuf)));
+	fsprintf_or_return(fd,"%s\n",rhn2str(cent->qname,ucharp dbuf,sizeof(dbuf)));
 	now=time(NULL);
 
 	if(cent->flags&DF_NEGATIVE) {
@@ -2026,7 +2028,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						case T_MR:
 						case T_NS:
 						case T_PTR:
-							rhn2str((unsigned char *)(rr+1),dbuf,sizeof(dbuf));
+							rhn2str((unsigned char *)(rr+1),ucharp dbuf,sizeof(dbuf));
 							break;
 						case T_MINFO:
 #ifdef DNS_NEW_RRS
@@ -2035,12 +2037,12 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						{
 							unsigned char *p=(unsigned char *)(rr+1);
 							int n;
-							rhn2str(p,dbuf,sizeof(dbuf));
+							rhn2str(p,ucharp dbuf,sizeof(dbuf));
 							n=strlen(dbuf);
 							dbuf[n++] = ' ';
 							if(n>=sizeof(dbuf))
 								goto hex_dump;
-							rhn2str(skiprhn(p),dbuf+n,sizeof(dbuf)-n);
+							rhn2str(skiprhn(p),ucharp dbuf+n,sizeof(dbuf)-n);
 						}
 						break;
 						case T_MX:
@@ -2056,7 +2058,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							GETINT16(pref,p);
 							n=sprintf(dbuf,"%u ",pref);
 							if(n<0) goto hex_dump;
-							rhn2str(p,dbuf+n,sizeof(dbuf)-n);
+							rhn2str(p,ucharp dbuf+n,sizeof(dbuf)-n);
 						}
 						break;
 						case T_SOA:
@@ -2065,7 +2067,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							char *q;
 							int n,rem;
 							uint32_t serial,refresh,retry,expire,minimum;
-							rhn2str(p,dbuf,sizeof(dbuf));
+							rhn2str(p,ucharp dbuf,sizeof(dbuf));
 							n=strlen(dbuf);
 							dbuf[n++] = ' ';
 							if(n>=sizeof(dbuf))
@@ -2073,7 +2075,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							q=dbuf+n;
 							rem=sizeof(dbuf)-n;
 							p=skiprhn(p);
-							rhn2str(p,q,rem);
+							rhn2str(p,ucharp q,rem);
 							n=strlen(q);
 							q[n++] = ' ';
 							if(n>=rem)
@@ -2116,7 +2118,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 								lb=*p++;
 								if((j += lb+1)>rr->rdlen)
 									goto hex_dump;
-								n=escapestr(p,lb,q,rem);
+								n=escapestr(charp p,lb,q,rem);
 								if(n<0 || n+1>=rem)
 									goto hex_dump;
 								q += n;
@@ -2139,12 +2141,12 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							if(n<0) goto hex_dump;
 							q=dbuf+n;
 							rem=sizeof(dbuf)-n;
-							rhn2str(p,q,rem);
+							rhn2str(p,ucharp q,rem);
 							n=strlen(q);
 							q[n++] = ' ';
 							if(n>=rem)
 								goto hex_dump;
-							rhn2str(skiprhn(p),q+n,rem-n);
+							rhn2str(skiprhn(p),ucharp q+n,rem-n);
 						}
 						break;
 						case T_SRV:
@@ -2157,14 +2159,14 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							GETINT16(port,p);
 							n=sprintf(dbuf,"%u %u %u ",priority,weight,port);
 							if(n<0) goto hex_dump;
-							rhn2str(p,dbuf+n,sizeof(dbuf)-n);
+							rhn2str(p,ucharp dbuf+n,sizeof(dbuf)-n);
 						}
 						break;
 						case T_NXT:
 						{
 							unsigned char *p=(unsigned char *)(rr+1);
 							int n,rlen;
-							rhn2str(p,dbuf,sizeof(dbuf));
+							rhn2str(p,ucharp dbuf,sizeof(dbuf));
 							n=strlen(dbuf);
 							dbuf[n++] = ' ';
 							if(n>=sizeof(dbuf))
@@ -2192,7 +2194,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 								*q++ = '"';
 								--rem;
 								lb=*p++;
-								n=escapestr(p,lb,q,rem);
+								n=escapestr(charp p,lb,q,rem);
 								if(n<0 || n+2>=rem)
 									goto hex_dump;
 								q += n;
@@ -2201,7 +2203,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 								rem -= n+2;
 								p += lb;
 							}
-							rhn2str(p,q,rem);
+							rhn2str(p,ucharp q,rem);
 						}
 						break;
 						case T_LOC:

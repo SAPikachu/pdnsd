@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA.  */
 #include <config.h>
 
 /* --- from main.c */
+extern pthread_t main_thrid,servstat_thrid,statsock_thrid,tcps_thrid,udps_thrid;
 extern volatile int tcp_socket;
 extern volatile int udp_socket;
 /* --- */
@@ -33,5 +34,6 @@ extern volatile int udp_socket;
 int init_udp_socket(void);
 int init_tcp_socket(void);
 void start_dns_servers(void);
+int report_thread_stat(int f);
 
 #endif

@@ -1,10 +1,10 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
     <title>pdnsd homepage</title>
     <style type="text/css">
       <!--
-      #small { font-family:helvetica; font-size:small; text-align:center; }
+      .small { font-family:helvetica; font-size:small; text-align:center; }
       // -->
     </style>
   </head>
@@ -21,19 +21,19 @@
     <!--notext(-->
     <table width="100%">
       <tr>
-	<td> <span id="small">
-	    <a href="index.html">pdnsd Homepage</a>
+	<td> <span class="small">
+	    <a href="index.html#aboutpdnsd">About pdnsd</a>
 	  </span></td> 
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="doc.html">Documentation</a>
 	  </span></td>
-	<td> <span id="small">
+	<td> <span class="small">
 	    <a href="../../COPYING">GNU GPL (pdnsd's License)</a>
 	  </span> </td>
-	<td><span id="small">
+	<td><span class="small">
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
@@ -42,19 +42,35 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2006-01-09</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.4-par has been released.</b>
+	A memory leak and a minor buffer-overflow problem have been fixed.
+	There is now a fix for some situations that would previously cause pdnsd to
+	exit prematurely (such as ACPI S3 sleep or trying to attach strace to pdnsd).
+	Time intervals specified in the configuration file can now be expressed in
+	minutes, hours, days and weeks as well as seconds.
+	Support for Apple Mac OS X v10.4 Tiger has been improved.
+	The "<code>pdnsd-ctl&nbsp;status</code>" command now also provides some
+	information about the status of the running threads.
+	There are some further improvements in the debugging information provided by pdnsd.<br>
+	TCP-query support is now compiled in by default (but can still be disabled using
+	the configure option <code>--disable-tcp-queries</code>).
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2005-07-11</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.3-par has been released.</b>
-	New feature in this release: the "<code>pdnsd-ctl empty-cache</code>" command can
+	New feature in this release: the "<code>pdnsd-ctl&nbsp;empty-cache</code>" command can
 	be provided with an include/exclude list, allowing the user to specify a
 	selection of names to be removed, instead of emptying the cache completely.<br>
 	Additional improvements: pdnsd should now remain responsive while executing the
-	"<code>pdnsd-ctl empty-cache</code>" command.
+	"<code>pdnsd-ctl&nbsp;empty-cache</code>" command.
 	With the <code>query_method=tcp_udp</code> option pdnsd will now also
 	try a UDP query after a TCP connection times out, which should allow
 	pdnsd to resolve the same names with <code>query_method=tcp_udp</code>
 	as with <code>query_method=udp_only</code>, although perhaps with an
 	occasional delay.
-	"<code>pdnsd-ctl config</code>" or "<code>pdnsd-ctl server</code>"
+	"<code>pdnsd-ctl&nbsp;config</code>" or "<code>pdnsd-ctl&nbsp;server</code>"
 	commands should now run without delays, even if pdnsd is performing
 	<code>ping</code> or <code>query</code> uptests at the time.
 	Some problems with resolving certain names using root servers have been fixed.
@@ -261,7 +277,7 @@
     </table>
     <!--)notext-->
     <hr>
-    <h2>About pdnsd</h2>
+    <h2><a name="aboutpdnsd">About pdnsd</a></h2>
     pdnsd is a  proxy DNS server with permanent caching (the cache contents
     are written to hard disk on exit) that is designed to cope with unreachable
     or down DNS servers (for example in dial-in networking).<br>
@@ -451,7 +467,7 @@
     <h1>Download</h1>
     If you want to download pdnsd, please visit the <a href="dl.html">download page</a>.
     <br>
-    <h1>Authors</h1>
+    <h1><a name="authors">Authors</a></h1>
     <p>
       pdnsd was originally written by <a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>,
       but is no longer maintained by him. Paul Rombouts has revised large portions of the code
@@ -459,7 +475,8 @@
       See <a href="../../README.par"><code>README.par</code></a> and the <a href="../../ChangeLog"><code>ChangeLog</code></a>
       in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code>
       if you have installed a binary package) for more details.
-      If you have questions about the recent modifications, you can find the email address of the current maintainer
+      If you have questions about the recent modifications, you can find
+      <a name="currentmaintainer">the email address of the current maintainer</a>
       at the end of <a href="../../README.par"><code>README.par</code></a>.
     </p>
     <p>
@@ -534,17 +551,18 @@
       <tr>
 	<td><center>
 	    <a href="http://www.gnu.org">
-	      <img src="gnuhead.png"alt="http://www.gnu.org"><br>
+	      <img src="gnuhead.png" alt="http://www.gnu.org"><br>
 	      The GNU homepage
 	    </a>
 	</center></td> 
 	<td><center>
 	    <a href="http://freshmeat.net">
-	      <img src="fm.mini.jpg"alt="http://freshmeat.net"><br>
+	      <img src="fm.mini.jpg" alt="http://freshmeat.net"><br>
 	      freshmeat - huge free software index
 	    </a>
 	  </center></td>
       </tr>
+      <tr>
 	<td><center>
 	    <a href="http://www.freebsd.org">
 	      <img src="freebsd.png" alt="http://www.freebsd.org"><br>
@@ -556,10 +574,12 @@
     <!--)nodoc-->
     <br>
     <hr>
-    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
+    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
+      and <a href="#currentmaintainer">Paul Rombouts</a>
+    </address>
     <br>
     <p>
-      <i>Last revised: 11 Jul 2005 by Paul Rombouts</i>
+      <i>Last revised: 09 Jan 2006 by Paul Rombouts</i>
     </p>
   </body>
 </html>
