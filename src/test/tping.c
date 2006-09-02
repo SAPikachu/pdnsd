@@ -12,7 +12,9 @@ static char rcsid[]="$Id: tping.c,v 1.2 2000/10/18 16:21:37 thomas Exp $";
 #endif
 
 short int daemon_p=0;
+#if DEBUG>0
 short int debug_p=0;
+#endif
 short int verbosity=VERBOSITY;
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 short int run_ipv4=DEFAULT_IPV4;

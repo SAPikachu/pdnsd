@@ -1,7 +1,7 @@
 /* helpers.c - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -85,7 +85,8 @@ int run_as(const char *user)
 
 			/* Note that we use getpwnam_r() instead of getpwnam(),
 			   which returns its result in a statically allocated buffer and
-			   cannot be considered thread safe. */
+			   cannot be considered thread safe. 
+			   Doesn't use NSS! */
 			err=getpwnam_r(user, &pwdbuf, buf, buflen, &pwd);
 			if(err==0 && pwd) {
 				/* setgid first, because we may not be allowed to do it anymore after setuid */
@@ -94,7 +95,10 @@ int run_as(const char *user)
 						  user,strerror(errno));
 					return 0;
 				}
-				if (initgroups(user, pwd->pw_gid)!=0) {
+
+				/* initgroups uses NSS, so we can disable it, 
+				   i.e. we might need DNS for LDAP lookups, which times out */
+				if (global.use_nss && (initgroups(user, pwd->pw_gid)!=0)) {
 					log_error("Could not initialize the group access list of run_as user '%s': %s",
 						  user,strerror(errno));
 					return 0;
@@ -135,7 +139,9 @@ int run_as(const char *user)
 				  user,strerror(errno));
 			return 0;
 		}
-		if (initgroups(user, pwd->pw_gid)!=0) {
+		/* initgroups uses NSS, so we can disable it,
+		   i.e. we might need DNS for LDAP lookups, which times out */
+		if (global.use_nss && (initgroups(user, pwd->pw_gid)!=0)) {
 			log_error("Could not initialize the group access list of run_as user '%s': %s",
 				  user,strerror(errno));
 			return 0;

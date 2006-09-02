@@ -43,7 +43,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  pdnsd does not aim to be a complete name server implementation, such as the
 	  BIND. It is optimized for caching, and you can only specify a small subset of all
 	  dns record types pdnsd knows in your local &quot;zone&quot; definitions. 
@@ -78,11 +78,12 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  Really, it is not.
 	  pdnsd uses multithreading, not multiprocessing. That means that the processes 
 	  share most of their process space. In the LinuxThreads library
-	  (which is used by pdnsd on Linux), in fact the total process address space is shared
+	  or NPTL (Native Posix Thread Libary), 
+	  which are used by pdnsd on Linux, in fact the total process address space is shared
 	  (although the processes have different stacks, these are in one process
 	  address space). You may check this by looking at the at the process sizes of 
 	  the  pdnsd threads: all should be the same. The effective size that pdnsd 
@@ -103,7 +104,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  It enables you to do some things you might or might not need. With it, you can:
 	  <ul>
 	    <li> query pdnsd's settings at runtime to debug configuration files and
@@ -112,7 +113,9 @@
 	      handy if you want to control which servers pdnsd queries, e.g for muliple
 	      dial-up accounts
 	    <li> delete, invalidate or add DNS records - useful e.g. when you want to build
-	      records for dynamically assigned IP addresses or domain names.
+	      records for dynamically assigned IP addresses or domain names
+	    <li> reload pdnsd's configuration file without restarting pdnsd
+	    <li> print information about the contents of pdnsd's cache.
 	  </ul>
 	</td>
       </tr>
@@ -128,7 +131,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  Some resolver programs, e.g. nslookup, want to look up the name of the 
 	  server they are using before doing anything else. This option is for defining
 	  a PTR record for your IP such that those programs get an answer even if the
@@ -168,7 +171,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  Normally, this macros should be defined in your C library's header files.
 	  There are two different methods, most C libraries support both (and pdnsd
 	  honors both): either <code>__BYTE_ORDER</code> is set to <code>__LITTLE_ENDIAN</code>
@@ -203,14 +206,14 @@
 	<td bgcolor="#CCFFFF">
 	  At startup, I get a warning saying:<br> 
 	  <i>
-	    Uptest command [...] will implicitely be executed as root 
+	    Uptest command [...] will implicitly be executed as root 
 	  </i> <br>
 	  What does that mean?
 	</td>
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  This warning only occurs if you use the <code>uptest=exec</code> option in your 
 	  configuration. It means that the uptest command is run as root
 	  because pdnsd is running as root, and this was not explicitely specified.
@@ -238,7 +241,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  pdnsd will drop privileges gained through setuid/setgid before executing the
 	  uptest commands (you shouldn't set the pdnsd executable setuid/setgid anyway). 
 	  The reason is clear: if you install the pdnsd
@@ -262,7 +265,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  pdnsd has an option (<code>uptest=exec</code>) that allows the execution of arbitrary 
 	  shell code (for testing whether an interface is up). This must be
 	  of course secured against unauthorized use. One of these
@@ -292,7 +295,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  Some resolvers (e.g. of the glibc 2.1) seem sometimes not to look up unmodified names, but the names with
 	  an entry of the search path already appended. Since pdnsd will serve short names with this 
 	  option anyway, you can delete the search an domain options from your /etc/resolv.conf. This is reported to
@@ -301,6 +304,7 @@
       </tr>
     </table>
     <hr>
+    <a name="q011"></a>
     <table width="100%" cellspacing=1 cellpadding=7>
      <tr>
         <td bgcolor="#FFCCFF"><b>Q:</b></td>
@@ -310,7 +314,7 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	  pdnsd versions prior to 1.1.0 had the tcp server thread disabled by default. Most resolvers
 	  repeat their query using tcp when they receive a truncated answer (the answer is truncated
 	  when it exceeds a length of 512 bytes). You need to recompile pdnsd with the option
@@ -318,8 +322,37 @@
 	</td>
       </tr>
     </table>
+    <hr>
+    <a name="q012"></a>
+    <table width="100%" cellspacing=1 cellpadding=7>
+     <tr>
+        <td bgcolor="#FFCCFF"><b>Q:</b></td>
+	<td bgcolor="#CCFFFF">
+	  I am behind some kind of firewall. In the configuration file
+	  I have only listed addresses of name servers on the local (ISP's) netwerk,
+	  but pdnsd is slow and DNS queries frequently time out.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF"><b>A:</b></td>
+	<td bgcolor="#DDFFEE">
+	  In some cases pdnsd will not consider the answer of the local name server
+	  authoritative enough, and will try to get answers from the name servers listed in the
+	  authority section of the reply message. If pdnsd is behind a firewall that blocks the
+	  UDP reply packets from remote name servers, pdnsd will wait in vain for a reply.
+	  One solution is to set <a href="doc.html#proxyonly"><code>proxy_only=on</code></a>
+	  in the servers sections of the configuration file. 
+	  This will prevent pdnsd from querying name servers that are not listed in the configuration
+	  file.
+	  Another solution that can be tried is specifying
+	  <a href="doc.html#querymethod"><code>query_method=tcp_only</code></a>
+	  in the global section of the configuration file, because a firewall that blocks
+	  UDP packets from outside might still allow outgoing TCP connections to port 53.
+	</td>
+      </tr>
+    </table>
 <!--<hr>
-    <a name="q011"></a>
+    <a name="q013"></a>
     <table width="100%" cellspacing=1 cellpadding=7>
      <tr>
         <td bgcolor="#FFCCFF"><b>Q:</b></td>
@@ -328,16 +361,21 @@
       </tr>
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
-	<td bgcolor="#CCFFFF">
+	<td bgcolor="#DDFFEE">
 	</td>
       </tr>
     </table>-->
     <hr>
-    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a></address>
+    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
+      and <a href="index.html#currentmaintainer">Paul Rombouts</a>
+    </address>
     <br>
     <p>
-      $Id: faq.html,v 1.9 2003/04/06 23:19:14 tmm Exp $
+      <i>Last revised: 31 Aug 2006 by Paul Rombouts</i>
     </p>
+<!--<p>
+      $Id: faq.html,v 1.9 2003/04/06 23:19:14 tmm Exp $
+    </p>-->
   </body>
 </html>
 

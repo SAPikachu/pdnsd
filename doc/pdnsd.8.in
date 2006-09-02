@@ -1,4 +1,4 @@
-.TH PDNSD 8 "Jun 2005" "pdnsd @VERSION@" "System Administration Commands"
+.TH PDNSD 8 "Jul 2006" "pdnsd @VERSION@" "System Administration Commands"
 
 .SH NAME
 \fBpdnsd\fP \- dns proxy daemon
@@ -24,7 +24,7 @@ saves the contents of its DNS cache to the disk on exit.
 .TP
 .B \-4
 enables IPv4 support. IPv6 support is automatically
-disabled (should it be available). On by default. 
+disabled (should it be available). On by default.
 .TP
 .B \-6
 enables IPv6 support. IPv4 support is automatically
@@ -82,6 +82,11 @@ between  0 (normal operation) to 3 (many messages for debugging).
 sets the query method \fBpdnsd\fP
 uses. Possible values for \fIxx\fP are:
 .IP
+.B uo
+\- pdnsd will use UDP only. This is the fastest method, and should
+be supported by all name servers on the Internet.
+
+.IP
 .B to
 \- pdnsd will use TCP only. TCP queries usually take more time than
 UDP queries, but are more secure against certain attacks, where an
@@ -91,12 +96,13 @@ queries are not supported by some name servers.
 .IP
 .B tu
 \- pdnsd will try to use TCP, and will fall back to UDP if its
-connection is refused or times out. 
+connection is refused or times out.
 
 .IP
-.B uo
-\- pdnsd will use UDP only. This is the fastest method, and should
-be supported by all name servers on the Internet. 
+.B ut
+\- pdnsd will try to use UDP, and will repeat the query using TCP
+if the UDP reply was truncated (i.e. the tc bit is set).
+This is the behaviour recommended by the DNS standards.
 
 .PP
 Additionally, "no" can be prepended to the \-\-status, \-\-daemon, \-\-debug
@@ -110,7 +116,7 @@ work, You need to:-
 
 .IP
 1. Tell your system to use \fBpdnsd\fP as the primary DNS server by
-modifying \fB/etc/resolv.conf\fP. 
+modifying \fB/etc/resolv.conf\fP.
 
 .IP
 2. Tell \fBpdnsd\fP to use an authentic source for DNS records, by
@@ -164,7 +170,7 @@ establish a connection) so that \fB/etc/resolv.conf\fP is not replaced
 every time a connection is established. Read the documentation for the
 scripts run when your network comes up.
 .PP
-If you use pppconfig, specify `none' in the  `nameservers' option  in 
+If you use pppconfig, specify `none' in the  `nameservers' option  in
 the `advanced' tab. If you use multiple ISPs, you should  do this for
 each connection/account.
 .PP
@@ -198,8 +204,8 @@ may be different depending on your distribution.)
 .PP
 \fB/etc/resolv.conf\fP
 .PP
-\fB/etc/defaults/pdnsd\fP contains additional parameters or options 
-which may be passed to pdnsd at boot time. This saves the hassle of 
+\fB/etc/defaults/pdnsd\fP contains additional parameters or options
+which may be passed to pdnsd at boot time. This saves the hassle of
 fiddling with initscripts (not available on all distributions).
 
 .SH BUGS
@@ -231,7 +237,7 @@ marked optional, experimental or obsolete in these RFCs:
 .IP
 \(bu Namespaces other than IN (Internet)
 .IP
-\(bu AXFR and IXFR queries (whole zone transfers); since pdnsd does not maintain zones, that should not violate the standard  
+\(bu AXFR and IXFR queries (whole zone transfers); since pdnsd does not maintain zones, that should not violate the standard
 
 .PP
 The following record types, that are extensions to the original DNS
@@ -302,9 +308,9 @@ This man page was written by Mahesh T. Pai
 <paivakil@yahoo.co.in>
 .UE
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
-but can be used on other distributions too. 
+but can be used on other distributions too.
 .PP
-Last revised: 30 Jun 2005 by Paul Rombouts.
+Last revised: 02 Jul 2006 by Paul Rombouts.
 
 .SH COPYRIGHT
 
@@ -315,6 +321,6 @@ License, as published by the Free Software Foundation; either version
 2, or (at your option) any later version.
 
 .PP
-You can find a copy of the GNU GPL in the file \fBCOPYING\fP in the source 
+You can find a copy of the GNU GPL in the file \fBCOPYING\fP in the source
 or the \fB/usr/share/common\-licenses/\fP directory if you are using a
 Debian system.

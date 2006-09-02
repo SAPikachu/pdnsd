@@ -1,5 +1,5 @@
 /* conf-parser.c - Parser for pdnsd config files.
-   Copyright (C) 2004, 2005 Paul A. Rombouts.
+   Copyright (C) 2004, 2005, 2006 Paul A. Rombouts.
 
    Based on the files conf-lex.l and conf-parse.y written by 
    Thomas Moestl.
@@ -550,6 +550,10 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    ASSIGN_ON_OFF(global->strict_suid, p,C_ON,"bad qualifier in strict_setuid= option.");
 	    break;
 
+	  case USE_NSS:
+	    ASSIGN_ON_OFF(global->use_nss, p,C_ON,"bad qualifier in use_nss= option.");
+	    break;
+
 	  case PARANOID:
 	    ASSIGN_ON_OFF(global->paranoid, p,C_ON,"bad qualifier in paranoid= option.");
 	    break;
@@ -597,7 +601,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 	  case C_QUERY_METHOD: {
 	    int cnst;
-	    ASSIGN_CONST(cnst,p,cnst==TCP_ONLY || cnst==UDP_ONLY || cnst==TCP_UDP,"bad qualifier in query_method= option.");
+	    ASSIGN_CONST(cnst,p,cnst==TCP_ONLY || cnst==UDP_ONLY || cnst==TCP_UDP || cnst==UDP_TCP,"bad qualifier in query_method= option.");
 #ifdef NO_TCP_QUERIES
 	    if (cnst==TCP_ONLY) {
 	      *errstr=report_error("the tcp_only option is only available when pdnsd is compiled with TCP support.");
@@ -615,6 +619,10 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 #if defined(NO_TCP_QUERIES) || defined(NO_UDP_QUERIES)
 		if (cnst==TCP_UDP) {
 		  *errstr=report_error("the tcp_udp option is only available when pdnsd is compiled with both TCP and UDP support.");
+		  PARSERROR;
+		}
+		else if (cnst==UDP_TCP) {
+		  *errstr=report_error("the udp_tcp option is only available when pdnsd is compiled with both TCP and UDP support.");
 		  PARSERROR;
 		}
 		else

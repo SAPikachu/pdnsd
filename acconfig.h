@@ -53,7 +53,9 @@
  *       against DNS spoofing. Note that some name servers on the 
  *       internet do not support TCP queries, notably dnscache.
  * TCP_UDP: TCP, then UDP. If the TCP query fails with a "connection refused"-
- *       error or times out, the query is retried using UDP. */
+ *       error or times out, the query is retried using UDP.
+ * UDP_TCP: UDP, then TCP. If the UDP reply is truncated (i.e. the tc flag is set),
+ *       the query is retried using TCP. */
 #define M_PRESET UDP_ONLY
 
 /* In addition to choosing the presets, you may also completely disable
@@ -65,7 +67,7 @@
 /* With the following option, you can disable the TCP server functionality
  * of pdnsd. Nearly no program does TCP queries, so you probably can do
  * this safely and save some executable space and one thread.
- * You also can turn off the TCP server at runtime with the -t option. */
+ * You also can turn off the TCP server at runtime with the --notcp option. */
 #undef NO_TCP_SERVER
 
 /* By undefining the following, you can disable the UDP source address

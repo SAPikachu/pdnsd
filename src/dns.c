@@ -1,7 +1,7 @@
 /* dns.c - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -48,25 +48,26 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 	int lb,offs;
 	int hops=0,tpos=0;
 	unsigned char *lptr=*src;
-	long osz=*sz;
+	long oldsz=*sz;
+	long newsz=oldsz;
 
-	if (*sz<=0)
+	if (newsz<=0)
 		goto name_outside_data;
 	if (lptr-msg>=msgsz)
 		goto name_outside_msg;
 
 	for(;;) {
-		(*sz)--;
+		newsz--;
 		lb=*lptr++;
 
 		if(lb>0x3f) {
  			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
 				goto unsupported_lbl_bits;
-			if (*sz<=0)
+			if (newsz<=0)
 				goto name_outside_data;
 			if (lptr-msg>=msgsz)
 				goto name_outside_msg;
-			(*sz)--;
+			newsz--;
 			offs=((lb&0x3f)<<8)|(*lptr);
 			if (offs>=msgsz) 
 				goto offset_outside_msg;
@@ -77,13 +78,13 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 		if (lb==0)
 			break;
 
-		if (*sz<=lb)
+		if (newsz<=lb)
 			goto name_outside_data;
 		if (lptr+lb-msg>=msgsz)
 			goto name_outside_msg;
 		if (tpos+lb>255) /* terminating null byte has to follow */
 			goto name_buf_full;
-		(*sz) -= lb;
+		newsz -= lb;
 		do {
 			/* if (!*lptr || *lptr=='.')
 				return RC_FORMAT; */
@@ -125,7 +126,8 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 		} while(--lb);
 	}
  return_OK:
-	*src+=osz-*sz;
+	*src += oldsz-newsz;
+	*sz = newsz;
 	if(len) *len=tpos;
 	return RC_OK;
 

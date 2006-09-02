@@ -11,7 +11,9 @@ static char rcsid[]="$Id: if_up.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
 #endif
 
 short int daemon_p=0;
+#if DEBUG>0
 short int debug_p=0;
+#endif
 short int verbosity=VERBOSITY;
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 short int run_ipv4=DEFAULT_IPV4;

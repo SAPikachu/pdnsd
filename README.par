@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.4-par by Paul Rombouts
+	        pdnsd version 1.2.5-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -20,6 +20,7 @@ Version 1.2.4 has some important fixes for a memory leak, a minor buffer-
 overflow problem and some situations which could cause pdnsd to exit
 prematurely. Note that TCP-query support is now compiled in by default, but can
 still be disabled using a configure option.
+The main new feature of version 1.2.5 is the new query method "udp_tcp".
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -151,6 +152,13 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   expressed in seconds, minutes, hours, days and weeks, using the suffixes
   s,m,h,d,and w.
   Example: 2h30m is interpreted as 2*60*60 + 30*60 = 9000 seconds.
+
+- Version 1.2.5 introduces a new configuration option, contributed by Jan-Marek
+  Glogowski, called "use_nss" which can be turned off to prevent nasty delays in
+  certain situations.
+  Besides the query methods "udp_only", "tcp_only" and "tcp_udp" you can now
+  also specify "udp_tcp", which more closely adheres to the behaviour
+  recommended by DNS standards.
 
 
 The new features are described in greater detail in the manual doc/html/doc.html

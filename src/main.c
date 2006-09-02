@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -51,7 +51,9 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
 #endif
 
+#if DEBUG>0
 short int debug_p=0;
+#endif
 short int stat_pipe=0;
 
 /* int sigr=0; */
@@ -63,7 +65,7 @@ cmdlineflags_t cmdline={0};
 pthread_t main_thrid,servstat_thrid,statsock_thrid,tcps_thrid,udps_thrid;
 uid_t init_uid;
 #if DEBUG>0
-FILE *dbg_file;
+FILE *dbg_file=NULL;
 #endif
 volatile int tcp_socket=-1;
 volatile int udp_socket=-1;
@@ -125,14 +127,17 @@ static const char help_message[] =
 	"\t\t(normal operation) to 3 (many messages for debugging).\n"
 	"\t\tUse like -v2\n"
 	"-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n"
-	"\t\tuo (UDP only), to (TCP only), and tu (TCP or, if the server\n"
-	"\t\tdoes not support this, UDP). Use like -muo. Preset: "
+	"\t\tuo (UDP only), to (TCP only), tu (TCP or, if the server\n"
+	"\t\tdoes not support this, UDP) and ut (UDP and, if the reply was\n"
+	"\t\ttruncated, TCP). Use like -muo. Preset: "
 #if M_PRESET==UDP_ONLY
 	"-muo"
 #elif M_PRESET==TCP_ONLY
 	"-mto"
-#else
+#elif M_PRESET==TCP_UDP
 	"-mtu"
+#else
+	"-mut"
 #endif
 	"\n"
 	"-c\t\t--or--\n"
@@ -357,8 +362,15 @@ int main(int argc,char *argv[])
 #else
 				global.query_method=TCP_UDP;
 #endif
+			} else if (strcmp(&arg[2],"ut")==0) {
+#if defined(NO_UDP_QUERIES) || defined(NO_TCP_QUERIES)
+				fprintf(stderr,"Error: pdnsd was not compiled with UDP and TCP support.\n");
+				exit(1);
+#else
+				global.query_method=UDP_TCP;
+#endif
 			} else {
-				fprintf(stderr,"Error: uo, to or tu expected after the  -m option (like -muo).\n");
+				fprintf(stderr,"Error: uo, to, tu or ut expected after the  -m option (like -muo).\n");
 				exit(1);
 			}
 			cmdline.query_method=1;
@@ -429,7 +441,6 @@ int main(int argc,char *argv[])
 
 	if(!global.cache_dir)   global.cache_dir = CACHEDIR;
 	if(!global.scheme_file) global.scheme_file = "/var/lib/pcmcia/scheme";
-	debug_p=global.debug;
 	stat_pipe=global.stat_pipe;
 
 	if (!(global.run_as[0] && global.strict_suid)) {
@@ -441,7 +452,7 @@ int main(int argc,char *argv[])
 		
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
-				fprintf(stderr,"Warning: uptest command \"%s\" will implicitely be executed as user ", sp->uptest_cmd);
+				fprintf(stderr,"Warning: uptest command \"%s\" will implicitly be executed as user ", sp->uptest_cmd);
 				if (pws)
 					fprintf(stderr,"%s\n",pws->pw_name);
 				else
@@ -520,18 +531,28 @@ int main(int argc,char *argv[])
 			_exit(1);
 		}
 		if (pid!=0) {
+			int exitval=0;
 			if (global.pidfile) {
 				FILE *pf=fdopen(pfd,"w");
-				if (pf) {
-					fprintf(pf,"%i\n",pid);
-					fclose(pf);
+				if (!pf) {
+					log_error("Error: could not open pid file %s: %s",
+						  global.pidfile, strerror(errno));
+					exitval=1;
 				}
 				else {
-					log_error("Error: could not open pid file %s: %s",global.pidfile, strerror(errno));
-					_exit(1);
+					if(fprintf(pf,"%i\n",pid)<0) {
+						log_error("Error: could not write to pid file %s: %s",
+							  global.pidfile, strerror(errno));
+						exitval=1;
+					}
+					if(fclose(pf)<0) {
+						log_error("Error: could not close pid file %s: %s",
+							  global.pidfile, strerror(errno));
+						exitval=1;
+					}
 				}
 			}
-			_exit(0); /* exit parent, so we are no session group leader */
+			_exit(exitval); /* exit parent, so we are no session group leader */
 		}
 
 		if (global.pidfile) close(pfd);
@@ -551,11 +572,11 @@ int main(int argc,char *argv[])
 		dup2(fd,2);
 		close(fd);
 #if DEBUG>0
-		if (debug_p) {
-		  char dbgdir[strlen(global.cache_dir)+sizeof("/pdnsd.debug")];
-		  stpcpy(stpcpy(dbgdir,global.cache_dir),"/pdnsd.debug");
-		  if (!(dbg_file=fopen(dbgdir,"w")))
-		    debug_p=0;
+		if (global.debug) {
+			char dbgpath[strlen(global.cache_dir)+sizeof("/pdnsd.debug")];
+			stpcpy(stpcpy(dbgpath,global.cache_dir),"/pdnsd.debug");
+			if (!(dbg_file=fopen(dbgpath,"w")))
+				log_warn("Warning: could not open debug file %s: %s",dbgpath, strerror(errno));
 		}
 #endif
 	} else {
@@ -563,6 +584,10 @@ int main(int argc,char *argv[])
 		dbg_file=stdout;
 #endif
 	}
+
+#if DEBUG>0
+	debug_p= (global.debug && dbg_file);
+#endif
 	log_info(0,"pdnsd-%s starting.\n",VERSION);
 	DEBUG_MSG("Debug messages activated\n");
 
@@ -691,7 +716,9 @@ int main(int argc,char *argv[])
 	free_rng();
 #if DEBUG>0
 	if (debug_p && global.daemon)
-		fclose(dbg_file);
+		if(fclose(dbg_file)<0) {
+			log_warn("Could not close debug file: %s", strerror(errno));
+		}
 #endif
 	_exit(0);
 }

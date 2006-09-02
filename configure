@@ -884,7 +884,7 @@ Optional Packages:
   --with-cachedir=dir         Default directory for pdnsd cache
                               (default=/var/cache/pdnsd)
   --with-query-method=qm      Specify the query method (default=udponly;
-                              others: tcpudp, tcponly)
+                              others: tcponly, tcpudp, udptcp)
   --with-random-device=device Specify random device other than
                               /dev/random; default: C Library random() PRNG;
                               special value arc4random for BSD C Library
@@ -1976,9 +1976,17 @@ _ACEOF
     udp_queries=yes;
     tcp_queries=yes;
     ;;
+  udptcp|UDPTCP)
+    cat >>confdefs.h <<\_ACEOF
+#define M_PRESET UDP_TCP
+_ACEOF
+
+    udp_queries=yes;
+    tcp_queries=yes;
+    ;;
   *)
-    { { echo "$as_me:$LINENO: error: --with-query-method must have udponly, tcpudp or tcponly as parameter." >&5
-echo "$as_me: error: --with-query-method must have udponly, tcpudp or tcponly as parameter." >&2;}
+    { { echo "$as_me:$LINENO: error: --with-query-method must have udponly, tcponly, tcpudp or udptcp as parameter." >&5
+echo "$as_me: error: --with-query-method must have udponly, tcponly, tcpudp or udptcp as parameter." >&2;}
    { (exit 1); exit 1; }; }
     ;;
 esac

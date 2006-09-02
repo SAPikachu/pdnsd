@@ -1,6 +1,6 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
 
-   Copyright (C) 2004,2005 Paul A. Rombouts
+   Copyright (C) 2004,2005,2006 Paul A. Rombouts
 
    Based on information previously contained in conf-lex.y and conf-parse.y
    This file is part of the pdnsd package.
@@ -26,6 +26,7 @@ enum {
 	MIN_TTL,
 	RUN_AS,
 	STRICT_SETUID,
+	USE_NSS,
 	PARANOID,
 	STATUS_CTL,
 	DAEMON,
@@ -131,6 +132,7 @@ static const namevalue_t global_options[]= {
 	{"tcp_qtimeout",     TCP_QTIMEOUT},
 	{"tcp_server",       C_TCP_SERVER},
 	{"timeout",          TIMEOUT},
+	{"use_nss",          USE_NSS},
 	{"verbosity",        C_VERBOSITY}
 };
 

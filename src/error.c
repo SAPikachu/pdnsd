@@ -89,19 +89,20 @@ void log_message(int prior, const char *s, ...)
 			char ts[sizeof "* 12/31 23:59:59| "];
 			time_t tt = time(NULL);
 			struct tm tm;
-			const char *p;
-			localtime_r(&tt, &tm);
-			if(strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <=0)
+
+			if(!localtime_r(&tt, &tm) || strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <=0)
 				ts[0]=0;
 			fprintf(f,"%spdnsd: %s: ", ts,
 				prior<=LOG_CRIT?"critical":
 				prior==LOG_ERR?"error":
 				prior==LOG_WARNING?"warning":
 				"info");
-			va_start(va,s);
-			vfprintf(f,s,va);
-			va_end(va);
-			p=strchr(s,0);
+		}
+		va_start(va,s);
+		vfprintf(f,s,va);
+		va_end(va);
+		{
+			const char *p=strchr(s,0);
 			if(!p || p==s || *(p-1)!='\n')
 				fprintf(f,"\n");
 		}
@@ -142,15 +143,16 @@ void log_info(int level, const char *s, ...)
 				char ts[sizeof "* 12/31 23:59:59| "];
 				time_t tt = time(NULL);
 				struct tm tm;
-				const char *p;
-				localtime_r(&tt, &tm);
-				if(strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <= 0)
+
+				if(!localtime_r(&tt, &tm) || strftime(ts, sizeof(ts), "* %m/%d %T| ", &tm) <= 0)
 					ts[0]=0;
 				fprintf(f,"%spdnsd: info: ",ts);
-				va_start(va,s);
-				vfprintf(f,s,va);
-				va_end(va);
-				p=strchr(s,0);
+			}
+			va_start(va,s);
+			vfprintf(f,s,va);
+			va_end(va);
+			{
+				const char *p=strchr(s,0);
 				if(!p || p==s || *(p-1)!='\n')
 					fprintf(f,"\n");
 			}
@@ -171,8 +173,8 @@ void debug_msg(int c, const char *fmt, ...)
 		time_t tt = time(NULL);
 		struct tm tm;
 		unsigned *id;
-		localtime_r(&tt, &tm);
-		if(strftime(ts, sizeof(ts), "%m/%d %T", &tm) > 0) {
+
+		if(localtime_r(&tt, &tm) && strftime(ts, sizeof(ts), "%m/%d %T", &tm) > 0) {
 			if((id = (unsigned *)pthread_getspecific(thrid_key)))
 				fprintf(dbg_file,"%u %s| ", *id, ts);
 			else

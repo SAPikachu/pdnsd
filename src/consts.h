@@ -1,7 +1,7 @@
 /* consts.h - Common config constants & handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -43,6 +43,7 @@ enum {
 	UDP_ONLY,
 	TCP_ONLY,
 	TCP_UDP,
+	UDP_TCP,
 	C_DEV,
 	C_DIALD,
 	C_INCLUDED,

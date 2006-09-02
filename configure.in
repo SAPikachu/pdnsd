@@ -121,7 +121,7 @@ AC_ARG_ENABLE(tcp-queries,
 
 AC_ARG_WITH(query-method,
 [  --with-query-method=qm      Specify the query method (default=udponly;
-                              others: tcpudp, tcponly)],
+                              others: tcponly, tcpudp, udptcp)],
   query_m=$withval)
 case $query_m in
   udponly|UDPonly)
@@ -137,8 +137,13 @@ case $query_m in
     udp_queries=yes;
     tcp_queries=yes;
     ;;
+  udptcp|UDPTCP)
+    AC_DEFINE(M_PRESET, UDP_TCP)
+    udp_queries=yes;
+    tcp_queries=yes;
+    ;;
   *)
-    AC_MSG_ERROR([--with-query-method must have udponly, tcpudp or tcponly as parameter.])
+    AC_MSG_ERROR([--with-query-method must have udponly, tcponly, tcpudp or udptcp as parameter.])
     ;;
 esac
 

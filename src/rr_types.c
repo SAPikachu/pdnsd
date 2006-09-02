@@ -122,7 +122,7 @@ static const char *precsize_ntoa(uint8_t prec,char *retbuf)
    This is an adapted version of the loc_ntoa function that
    can be found in the BIND 9 source.
  */
-const char *loc2str(const void *binary, char *ascii, int asclen)
+const char *loc2str(const void *binary, char *ascii, size_t asclen)
 {
 	const unsigned char *cp = binary;
 

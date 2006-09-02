@@ -1,3 +1,42 @@
+2006-04-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/main.c
+	pdnsd would segfault if it tried to call log_message() (via the
+	log_warn() and log_error() macros) before the FILE pointer to the debug
+	output stream was properly initialized.
+	Thanks to Thomas Cort for discovering this problem and suggesting a fix.
+
+2006-04-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c,src/helpers.c,src/conff.h,src/conff.c
+	I have included a patch contributed by Jan-Marek Glogowski, that
+	implements the configuration option "use_nss". With use_nss=off pdnsd
+	will avoid system functions that may use NSS (i.e. initgroups()), which
+	may need DNS for LDAP lookups, which can lead to long timeouts and
+	stalls if pdnsd itself is used for the DNS lookup.
+
+2006-03-26  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Negative caching of RR sets is now also supported with lean_query=off.
+
+2006-03-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c,src/conf-parser.c,src/main.c
+	I have implemented a new query method: udp_tcp. With this method a UDP
+	query is tried first and, if the UDP answer is truncated, the query is
+	repeated using TCP. This is the behaviour that seems to be recommended
+	by the DNS standards. However, pdnsd wil not discard the truncated
+	answer if the TCP requery fails.
+
+2006-03-24  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Previously, pdnsd would add at most one additional A (and AAA) record
+	for each record in the answer and authority sections. At the request of
+	Angel Marin, pdnsd will now add all A and AAA records it can find in the
+	cache for each name that produces additional records.
+
 2006-01-02  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c

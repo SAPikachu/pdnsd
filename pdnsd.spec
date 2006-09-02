@@ -1,7 +1,33 @@
 # rpmbuild spec file for pdnsd.
 # with modifications by Paul Rombouts.
 
-%if "%{!?distro:1}"
+# Supported rpmbuild --define and --with options include:
+#
+# --with isdn                   Configure with --enable-isdn.
+#
+# --without poll                Configure with --disable-poll 
+#
+# --without nptl                Configure with --with-thread-lib=linuxthreads.
+#
+# --with ipv6                   Configure with --enable-ipv6.
+#
+# --without tcpqueries          Configure with --disable-tcp-queries.
+#
+# --without debug 	        Configure with --with-debug=0.
+#
+# --define "distro <distro>" 	Configure with --with-distribution=<distro>.
+#
+# --define "run_as_user <user>" Configure with --with-default-id=<user>.
+#                               For RPMs the default <user> is "pdnsd".
+#
+# --define "run_as_uid <uid>" 	If the user defined by the previous option does not exist
+#                               when the RPM is installed, the pre-install script will try
+#                               to create a new user with numerical id <uid>.
+#
+# --define "cachedir <dir>" 	Configure with --with-cachedir=<dir>.
+#
+
+%if 0%{!?distro:1}
 %if "%{_vendor}" == "redhat"
 %define distro RedHat
 %else
@@ -16,14 +42,16 @@
 %endif
 
 # The default run_as ID to use
-%{!?run_as_user: %{expand: %%define run_as_user pdnsd}}
-%{!?run_as_uid: %{expand: %%define run_as_uid 96}}
-%{!?cachedir: %{expand: %%define cachedir /var/cache/pdnsd}}
+%{!?run_as_user: %define run_as_user pdnsd}
+# By default, if a new run_as_user is to be created, we let
+# useradd choose the numerical uid, unless run_as_uid is defined.
+#define run_as_uid 96
+%{!?cachedir: %define cachedir /var/cache/pdnsd}
 %define conffile %{_sysconfdir}/pdnsd.conf
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.2.4
+Version: 1.2.5
 Release: par
 License: GPL
 Group:  Daemons
@@ -77,10 +105,10 @@ make
 %if "%{run_as_user}" != "nobody"
 [ "$(id -un)" != root ] ||
 id -u %{run_as_user} > /dev/null 2>&1 ||
-/usr/sbin/useradd -c "Proxy DNS daemon" -u %{run_as_uid} \
+/usr/sbin/useradd -c "Proxy DNS daemon" %{?run_as_uid:-u %{run_as_uid}} \
 	-s /sbin/nologin -r -d "%{cachedir}" %{run_as_user} || {
   set +x
-  echo "Cannot create user \"%{run_as_user}\" with uid=%{run_as_uid}"
+  echo "Cannot create user \"%{run_as_user}\"%{?run_as_uid: with uid=%{run_as_uid}}"
   echo "Please select another numerical uid and rebuild with --define \"run_as_uid uid\""
   echo "or create a user named \"%{run_as_user}\" by hand and try again."
   exit 1
@@ -125,9 +153,9 @@ fi
 %if "%{run_as_user}" != "nobody"
 # Add the "pdnsd" user
 id -u %{run_as_user} > /dev/null 2>&1 ||
-/usr/sbin/useradd -c "Proxy DNS daemon" -u %{run_as_uid} \
+/usr/sbin/useradd -c "Proxy DNS daemon" %{?run_as_uid:-u %{run_as_uid}} \
 	 -s /sbin/nologin -r -d "%{cachedir}" %{run_as_user} || {
-  echo "Cannot create user \"%{run_as_user}\" with uid=%{run_as_uid}"
+  echo "Cannot create user \"%{run_as_user}\"%{?run_as_uid: with uid=%{run_as_uid}}"
   echo "Please create a user named \"%{run_as_user}\" by hand and try again."
   exit 1
 }
@@ -188,6 +216,9 @@ fi
 %endif
 
 %changelog
+* Fri Mar 24 2006 Paul Rombouts <p.a.rombouts@home.nl>
+- Instead of using a fixed default value for run_as_uid,
+  I let useradd choose the uid if run_as_uid is undefined.
 * Thu Dec 29 2005 Paul Rombouts <p.a.rombouts@home.nl>
 - TCP-query support is now compiled in by default,
   but can be disabled using "--without tcpqueries".

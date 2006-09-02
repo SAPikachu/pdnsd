@@ -4,7 +4,7 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD\-CTL" "8" "Dec 2005" "pdnsd 1.2.3-par" ""
+.TH "PDNSD\-CTL" "8" "Sep 2006" "pdnsd 1.2.5-par" ""
 .SH NAME
 \fBpdnsd\-ctl\fP \- controls pdnsd
 .SH SYNOPSIS
@@ -52,22 +52,21 @@ starting with 0. Use the status command to view the indexes. You can specify all
 instead of an index to perform the action for all servers registered with pdnsd.
 .IP
 An optional third argument can be given consisting of a list of IP addresses
-separated by commas or spaces. This list will replace the addresses of name
-servers used by pdnsd for the given server section. This feature is useful for
-run-time configuration of pdnsd with dynamic DNS data in scripts called by ppp
-or DHCP clients. The last argument may also be an empty string, which causes
-existing IP addresses to be removed and the corresponding server section to
-become inactive.
+separated by commas or white-space characters. This list will replace the
+addresses of name servers used by pdnsd for the given server section. This
+feature is useful for run-time configuration of pdnsd with dynamic DNS data in
+scripts called by ppp or DHCP clients. The last argument may also be an empty
+string, which causes existing IP addresses to be removed and the corresponding
+server section to become inactive.
 .TP
 \fBrecord\fP
 \fIname\fP (\fBdelete\fP|\fBinvalidate\fP)
 
-Delete or invalidate the records of the given domain name if it is 
-in the cache.
-Invalidation means that the records are marked as timed out, and will be reloaded if possible.
-For local records (i.e., records that were given in the config file using a rr section,
-records read from a hosts-style file and records added using pdnsd-ctl),
-invalidation has no effect. Deletion will work, though.
+Delete or invalidate the records of the given domain name if it is in the cache.
+Invalidation means that the records are marked as timed out, and will be
+reloaded if possible. For local records (i.e., records that were given in the
+config file using a rr section, records read from a hosts-style file and records
+added using pdnsd-ctl), invalidation has no effect. Deletion will work, though.
 .TP
 \fBsource\fP
 \fIfn\fP \fIowner\fP [\fIttl\fP] [(\fBon\fP|\fBoff\fP)] [\fBnoauth\fP]
@@ -188,7 +187,7 @@ Paul Rombouts
 .UE
 (for versions 1.1.8b1\-par and later)
 .PP
-Last revised: 23 Dec 2005 by Paul Rombouts.
+Last revised: 01 Sep 2006 by Paul Rombouts.
 .SH "SEE ALSO"
 .PP
 .BR pdnsd (8),

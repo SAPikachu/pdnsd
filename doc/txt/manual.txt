@@ -8,10 +8,12 @@ the Free Software Foundation; either version 2, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.4-par. For older documentation,
+This manual is up-to-date for version 1.2.5-par. For older documentation,
 please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
-setup instructions) is available at http://www.geocities.com/sunil_tt/.
+setup instructions) is available at http://www.geocities.com/sunil_tt/. For
+Apple Mac users, Brian Wells has published a good HOWTO at http://web.mac.com/
+brianwells/iWeb/main/pdnsd.html.
 
 0. Installation
 
@@ -64,9 +66,11 @@ Several pdnsd-specific options are available when building RPM packages:
 <user>"                 below).
                         For RPMs the default <user> is "pdnsd".
 
---define "run_as_uid    If the user defined by the previous option does not
-<uid>"                  exist when the RPM is installed, the pre-install script
-                        will try to create a new user with numerical id <uid>.
+                        If the user defined by the previous option does not
+--define "run_as_uid    exist when the RPM is installed, the pre-install script
+<uid>"                  will try to create a new user with numerical id <uid>.
+                        The default is to let the system choose the numerical
+                        id at install time.
 
 --define "cachedir      Has the same effect as --with-cachedir=<dir> (see below
 <dir>"                  ).
@@ -172,14 +176,17 @@ distro                    RedHat, SuSE, Debian)
                           is actually used.)
 
                           Specify the query method (default=udponly, others:
-                          tcpudp, tcponly) If you have enabled both UDP and TCP
-                          queries, this lets you control which query method
-                          pdnsd will use by default. tcpudp will try TCP first
---with-query-method=qm    and fall back to UDP if tcp is not supported by the
-                          server; udponly and tcponly should be clear. Note
-                          that this only effects the compiled-in default; the
-                          query method can still be changed using command-line
-                          options or options in the configuration file.
+                          tcponly, tcpudp, udptcp). If you have enabled both
+                          UDP and TCP queries, this lets you control which
+                          query method pdnsd will use by default. tcpudp will
+                          try TCP first and fall back to UDP if TCP is not
+--with-query-method=qm    supported by the server; udptcp will try UDP first
+                          and, if the answer was truncated, will repeat the
+                          query using TCP. udponly and tcponly should be clear.
+                          Note that this only effects the compiled-in default;
+                          the query method can still be changed using
+                          command-line options or options in the configuration
+                          file.
 
                           Disable the TCP server. In this case pdnsd will not
 --disable-tcp-server      be able to respond to TCP queries from clients. This
@@ -471,10 +478,10 @@ Example: pdnsd -d -p /var/run/pdnsd.pid
 If you want to specify a configuration file other that /etc/pdnsd.conf, specify
 -c or --config-file on the command line, followed by a filename.
 
-If pdnsd was compiled with debugging options enabled, you may specify -g or
---debug on the command line. This will cause extra diagnostic messages to be
-printed. When pdnsd runs in deamon mode, the messages will be written to the
-pdnsd.debug file in your cache directory. --nodebug disables debugging.
+If pdnsd was compiled with debugging support, you may specify -g or --debug on
+the command line. This will cause extra diagnostic messages to be printed. When
+pdnsd runs in daemon mode, the messages will be written to the pdnsd.debug file
+in your cache directory. --nodebug disables debugging.
 
 pdnsd -vn sets the verbosity level of pdnsd. n may be a digit from 0 to 3,
 where 0 means normal operation, while 3 will most verbose. Example is -v2
@@ -500,6 +507,9 @@ to guess your query id and to send forged answers. TCP queries are not
 supported by some name servers.
 -mtu: pdnsd will try to use TCP, and will fall back to UDP if its connection is
 refused or times out.
+-mut: New in version 1.2.5: pdnsd will try to use UDP, and will repeat the
+query using TCP if the UDP reply was truncated (i.e. the tc bit is set). This
+is the behaviour recommended by the DNS standards.
 
 The -4 option switches to IPv4 mode, providing pdnsd was compiled with IPv4
 support.
@@ -741,10 +751,11 @@ This has the same effect as the -v command line option: you can set the
 verbosity of pdnsd's messages with it. The argument is a number between 0 (few
 messages) to 3 (most messages).
 
-query_method=(tcp_only|udp_only|tcp_udp);
+query_method=(tcp_only|udp_only|tcp_udp|udp_tcp);
 This has the same effect as the -m command line option. Read the documentation
 for the command line option on this. tcp_only corresponds to the to, udp_only
-to the uo and tcp_udp to the tu argument of the command line option.
+to the uo, tcp_udp to the tu and udp_tcp to the ut argument of the command line
+option.
 If you use query_method=tcp_udp, it is recommended that you also set the global
 timeout option to at least twice the longest server timeout.
 
@@ -889,6 +900,16 @@ IPv6-mapped addresses. The string must be a valid IPv6 address. Only the first
 96 bits are used. Note that this only effects the parsing of IPv4 addresses
 listed after this option.
 The default is "::ffff.0.0.0.0".
+
+use_nss=(on|off);
+If this option is turned on, pdnsd will call initgroups() to set up the group
+access list, whenever pdnsd changes its user and group id (see run_as option).
+There is a possible snag, though, if initgroups() uses NSS (Name Service
+Switch) and NSS in turn uses DNS. In such a case you may experience lengthy
+timeouts and stalls. By setting use_nss=off, you can disable the initgroups()
+call (only possible in versions 1.2.5 and later).
+This option was contributed by Jan-Marek Glogowski.
+On by default.
 
 
 2.1.2 server Section
@@ -1084,7 +1105,6 @@ switched off, pdnsd will always cache all data about a host it can find and
 will specifically ask for all available records (well, at least it is a good
 approximation for what it really does ;-) This will of course increase the
 answer packet sizes.
-Negative caching is only effective with lean_query activated.
 Some buggy name servers may not deliver CNAME records when not asked for all
 records. I do not know if such servers are around, but if you have trouble
 resolving certain host names, try turning this option off.
@@ -1505,17 +1525,19 @@ server         (index|label)  (up|      Set the status of the server with the gi
                                         registered with pdnsd. Example:
                                         pdnsd-ctl server 0 retest
                                         An optional third argument consisting of a list of IP
-                                        addresses (separated by commas or spaces) can be given.
-                                        This list will replace the previous list of addresses of
-                                        name servers used by pdnsd in the specified section of the
-                                        config file. For example in the /etc/ppp/ip-up script
-                                        called by pppd you could place the following line:
+                                        addresses (separated by commas or white-space characters)
+                                        can be given. This list will replace the previous list of
+                                        addresses of name servers used by pdnsd in the specified
+                                        section of the config file. For example in the /etc/ppp/
+                                        ip-up script called by pppd you could place the following
+                                        line:
                                         pdnsd-ctl server isplabel up $DNS1,$DNS2
-                                        If spaces are used to separate addresses the list will
-                                        have to be quoted. Spurious commas and spaces are ignored.
-                                        The last argument may also be an empty string, in which
-                                        case the existing IP addresses are removed and the
-                                        corresponding server section becomes inactive.
+                                        If white space is used to separate addresses the list will
+                                        have to be quoted. Spurious commas and white-space
+                                        characters are ignored. The last argument may also be an
+                                        empty string, in which case the existing IP addresses are
+                                        removed and the corresponding server section becomes
+                                        inactive.
 
 record         name  (delete|           Delete or invalidate the records of the given domain name
                invalidate)              if it is in the cache. Invalidation means that the records
@@ -1651,7 +1673,7 @@ the contrib directory for further information.
 
 5 Problems...
 
-If you have problems with configuring or tunning pdnsd, be sure to read the FAQ
+If you have problems with configuring or running pdnsd, be sure to read the FAQ
 . If this does not help you, pdnsd crashes or you find bugs, please mail me at
 tmoestl@gmx.net.
 Note added by Paul Rombouts: Thomas Moestl no longer maintains the code. I have
@@ -1661,7 +1683,7 @@ binary package) for more details. If you have questions about my modifications,
 you can find my email address at the end of README.par.
 
 
-5 Hacking
+6 Hacking
 
 Here comes some information you might find useful for hacking on pdnsd.
 
@@ -1754,5 +1776,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 
 Thomas Moestl and Paul Rombouts
 
-Last revised: 07 Jan 2006 by Paul Rombouts
+Last revised: 01 Sep 2006 by Paul Rombouts
 

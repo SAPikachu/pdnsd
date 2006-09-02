@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Jan 2006" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Sep 2006" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -270,10 +270,12 @@ will write its pid into when it starts in daemon mode.
 This has the same effect as the -v command line option: you can set the verbosity of pdnsd's
 messages with it. The argument is a number between 0 (few messages) to 3 (most messages).
 .TP
-.B query_method=(tcp_only|udp_only|tcp_udp);
-This has the same effect as the -m command line option. Read the documentation for the
-command line option on this. tcp_only corresponds to the to, udp_only to
-the uo and tcp_udp to the tu argument of the command line option.
+.B query_method=(tcp_only|udp_only|tcp_udp|udp_tcp);
+This has the same effect as the -m command line option.
+Read the documentation for the command line option on this.
+tcp_only corresponds to the to, udp_only to the uo,
+tcp_udp to the tu and udp_tcp to the ut
+argument of the command line option.
 .br
 If you use query_method=tcp_udp, it is recommended that you also set the global timeout option to at least twice the longest server timeout.
 .TP
@@ -429,6 +431,18 @@ The string must be a valid IPv6 address. Only the first 96 bits are used.
 Note that this only effects the parsing of IPv4 addresses listed after this option.
 .br
 The default is "::ffff.0.0.0.0".
+.TP
+.B use_nss=(on|off);
+If this option is turned on, pdnsd will call initgroups() to set up the group access list,
+whenever pdnsd changes its user and group id (see run_as option).
+There is a possible snag, though, if initgroups() uses NSS (Name Service Switch) and
+NSS in turn uses DNS. In such a case you may experience lengthy timeouts and stalls.
+By setting use_nss=off, you can disable the initgroups() call
+(only possible in versions 1.2.5 and later).
+.br
+This option was contributed by Jan-Marek Glogowski.
+.br
+On by default.
 
 .SS server Section
 Each server section specifies a set of name servers that pdnsd should try to get 
@@ -635,7 +649,7 @@ specifies how long the fetched data may be cached until it needs to be
 reloaded. If purge_cache is set to off, the cached records are not purged 
 (unless the cache size would be exceeded, in this case the oldest records are purged). 
 Instead, they are still served if they cannot succesfully be
-updated (e.g. because all servers are down).       
+updated (e.g. because all servers are down).
 .TP
 .B caching=(on|off);
 Specifies if caching shall be performed for this server at all. Default is
@@ -650,8 +664,6 @@ anyway. If switched off, pdnsd will always cache all data about a host
 it can find and will specifically ask for all available records 
 (well, at least it is a good approximation for what it really does ;-)
 This will of course increase the answer packet sizes.
-.br
-Negative caching is only effective with lean_query activated. 
 .br
 Some buggy name servers may not deliver CNAME records when not asked for
 all records. I do not know if such servers are around, but if you have
@@ -1129,4 +1141,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 07 Jan 2006 by Paul Rombouts
+Last revised: 01 Sep 2006 by Paul Rombouts

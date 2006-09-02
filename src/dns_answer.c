@@ -1,7 +1,7 @@
 /* dns_answer.c - Receive and process incoming dns queries.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -439,6 +439,23 @@ static int add_ar(dlist *ar,unsigned short tp, unsigned short tsz,void *tnm,unsi
 	return 1;
 }
 
+
+/* Select a random rr record from a list. */
+inline static rr_bucket_t *randrr(rr_bucket_t *rrb)
+{
+	rr_bucket_t *rr;
+	unsigned cnt=0;
+
+	/* In order to have an equal chance for each record to be selected, we have to count first. */
+	for(rr=rrb; rr; rr=rr->next) ++cnt;
+
+	/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
+	 * and we do not need any good PRNG here). */
+	if(cnt) for(cnt=random()%cnt; cnt; --cnt) rrb=rrb->next;
+
+	return rrb;
+}
+
 #define AR_NUM 5
 static const int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX}; 
 static const int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start to server name */
@@ -449,31 +466,17 @@ static const int ar_offs[AR_NUM]={0,0,0,0,2}; /* offsets from record data start 
 static int add_rrset(unsigned tp, dns_ans_t **ans, long *sz, dns_cent_t *cached, dlist *cb,
 		     char udp, unsigned char *rrn, time_t queryts, dlist *sva, dlist *ar)
 {
-	rr_bucket_t *b;
-	rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
-	int cnt,i;
 	rr_set_t *crrset=cached->rr[tp-T_MIN];
 
 	if (crrset && crrset->rrs) {
+		rr_bucket_t *b;
+		rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
+		int i;
 		int rnd_recs=global.rnd_recs;
+
 		b=crrset->rrs;
-		if (rnd_recs) {
-			/* in order to have equal chances for each records to be the first, we have to count first. */
-			first=b;
-			cnt=0;
-			while (b) {
-				b=b->next;
-				cnt++;
-			}
-			/* We do not use the pdnsd random functions (these might use /dev/urandom if the user is paranoid,
-			 * and we do not need any good PRNG here). */
-			cnt=random()%cnt;
-			while (cnt) {
-				cnt--;
-				first=first->next;
-			}
-			b=first;
-		}
+		if (rnd_recs) b=first=randrr(crrset->rrs);
+
 		while (b) {
 			if (!add_rr(ans, sz, tp,b->rdlen,b+1, S_ANSWER,cb,udp,rrn,
 				    ans_ttl(crrset,queryts))) 
@@ -576,7 +579,6 @@ static int add_additional_rr(unsigned char *rhn, dlist *sva, dns_ans_t **ans,
 	sva_t *st;
 
 	/* Check if already added; no double additionals */
-	/* We do NOT look at the data field for addresses, because I feel one address is enough. */
 	for (st=dlist_first(*sva); st; st=dlist_next(st)) {
 		if (st->tp==tp && rhnicmp(st->nm,rhn) && st->dlen==dlen &&
 		    (memcmp(skiprhn(st->nm),data, dlen)==0))
@@ -596,6 +598,32 @@ static int add_additional_rr(unsigned char *rhn, dlist *sva, dns_ans_t **ans,
 }
 
 /*
+ * Add one or more additionals from an rr bucket.
+ */
+static int add_additional_rrs(unsigned char *rhn, dlist *sva, dns_ans_t **ans,
+			     long *rlen, char udp, dlist *cb, unsigned tp,
+			     rr_bucket_t *rrb, time_t ttl, int sect)
+{
+	rr_bucket_t *rr;
+	rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
+	int rnd_recs=global.rnd_recs;
+
+	rr=rrb;
+	if (rnd_recs) rr=first=randrr(rrb);
+
+	while(rr) {
+		if (!add_additional_rr(rhn, sva, ans, rlen, udp, cb, tp, rr->rdlen,rr+1, ttl, sect))
+			return 0;
+		rr=rr->next;
+		if (rnd_recs) {
+			if(!rr) rr=rrb; /* wraparound */
+			if(rr==first)	break;
+		}
+	}
+	return 1;
+}
+
+/*
  * The code below actually handles A and AAAA additionals.
  */
 static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, long *rlen, char udp, time_t queryts, dlist *cb) 
@@ -608,7 +636,7 @@ static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, lon
 		rrset=ae->rr[T_A-T_MIN];
 		if (rrset && (rr=rrset->rrs))
 		  
-			if (!add_additional_rr(rhn, sva, ans, rlen, udp, cb, T_A, rr->rdlen,rr+1,
+			if (!add_additional_rrs(rhn, sva, ans, rlen, udp, cb, T_A, rr,
 					       ans_ttl(rrset,queryts),S_ADDITIONAL))
 				retval = 0;
 
@@ -616,7 +644,7 @@ static int add_additional_a(unsigned char *rhn, dlist *sva, dns_ans_t **ans, lon
 		if(retval) {
 			rrset=ae->rr[T_AAAA-T_MIN];
 			if (rrset && (rr=rrset->rrs))
-				if (!add_additional_rr(rhn, sva, ans, rlen, udp, cb, T_AAAA, rr->rdlen,rr+1,
+				if (!add_additional_rrs(rhn, sva, ans, rlen, udp, cb, T_AAAA, rr,
 						       ans_ttl(rrset,queryts),S_ADDITIONAL))
 					retval = 0;
 		}
@@ -706,7 +734,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 		do {
 			int rc;
 			unsigned char c_soa=cundef;
-			if ((rc=dns_cached_resolve(qname, &cached, MAX_HOPS,qe->qtype,queryts,&c_soa))!=RC_OK) {
+			if ((rc=dns_cached_resolve(qname,qe->qtype, &cached, MAX_HOPS,queryts,&c_soa))!=RC_OK) {
 				ans->hdr.rcode=rc;
 				if(rc==RC_NAMEERR && c_soa!=cundef) {
 					/* Try to add a SOA record to the authority section. */
@@ -1854,7 +1882,7 @@ int report_thread_stat(int f)
 	nqueued=ncurrent-nactive;
 	pthread_mutex_unlock(&proc_lock);
 
-	fsprintf_or_return(f,"\nThread status:\n=============\n");
+	fsprintf_or_return(f,"\nThread status:\n==============\n");
 	if(!pthread_equal(servstat_thrid,main_thrid))
 		fsprintf_or_return(f,"server status thread is running.\n");
 	if(!pthread_equal(statsock_thrid,main_thrid))

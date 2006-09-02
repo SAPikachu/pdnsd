@@ -29,14 +29,14 @@ Q:  see some processes with a total size well above 3.5 MB. This is much more
 
     Really, it is not. pdnsd uses multithreading, not multiprocessing. That
     means that the processes share most of their process space. In the
-    LinuxThreads library (which is used by pdnsd on Linux), in fact the total
-    process address space is shared (although the processes have different
-A:  stacks, these are in one process address space). You may check this by
-    looking at the at the process sizes of the pdnsd threads: all should be the
-    same. The effective size that pdnsd occupies is thus the size of any of the
-    processes, not the sum of those. So, pdnsd with empty cache occupies about
-    800 kB, and the maximum size should be about the cache size plus this size
-    (in fact, ca 5-10% more).
+    LinuxThreads library or NPTL (Native Posix Thread Libary), which are used
+    by pdnsd on Linux, in fact the total process address space is shared
+A:  (although the processes have different stacks, these are in one process
+    address space). You may check this by looking at the at the process sizes
+    of the pdnsd threads: all should be the same. The effective size that pdnsd
+    occupies is thus the size of any of the processes, not the sum of those.
+    So, pdnsd with empty cache occupies about 800 kB, and the maximum size
+    should be about the cache size plus this size (in fact, ca 5-10% more).
 
 -------------------------------------------------------------------------------
 
@@ -46,12 +46,14 @@ Q:  What do I need the status control (option -s) for?
     can:
 
       * query pdnsd's settings at runtime to debug configuration files and see
-A:      which servers are regarded to be available
-      * mark servers as available or unavailable, or force a status retest -
+        which servers are regarded to be available
+A:    * mark servers as available or unavailable, or force a status retest -
         very handy if you want to control which servers pdnsd queries, e.g for
         muliple dial-up accounts
       * delete, invalidate or add DNS records - useful e.g. when you want to
-        build records for dynamically assigned IP addresses or domain names.
+        build records for dynamically assigned IP addresses or domain names
+      * reload pdnsd's configuration file without restarting pdnsd
+      * print information about the contents of pdnsd's cache.
 
 -------------------------------------------------------------------------------
 
@@ -110,7 +112,7 @@ A:  (big-endian). All intel x86 and Alpha machines are little-endian, for
 -------------------------------------------------------------------------------
 
     At startup, I get a warning saying:
-Q:  Uptest command [...] will implicitely be executed as root
+Q:  Uptest command [...] will implicitly be executed as root
     What does that mean?
 
     This warning only occurs if you use the uptest=exec option in your
@@ -176,8 +178,26 @@ A:  truncated answer (the answer is truncated when it exceeds a length of 512
 
 -------------------------------------------------------------------------------
 
-Thomas Moestl
+    I am behind some kind of firewall. In the configuration file I have only
+Q:  listed addresses of name servers on the local (ISP's) netwerk, but pdnsd is
+    slow and DNS queries frequently time out.
+
+    In some cases pdnsd will not consider the answer of the local name server
+    authoritative enough, and will try to get answers from the name servers
+    listed in the authority section of the reply message. If pdnsd is behind a
+    firewall that blocks the UDP reply packets from remote name servers, pdnsd
+    will wait in vain for a reply. One solution is to set proxy_only=on in the
+A:  servers sections of the configuration file. This will prevent pdnsd from
+    querying name servers that are not listed in the configuration file.
+    Another solution that can be tried is specifying query_method=tcp_only in
+    the global section of the configuration file, because a firewall that
+    blocks UDP packets from outside might still allow outgoing TCP connections
+    to port 53.
+
+-------------------------------------------------------------------------------
+
+Thomas Moestl and Paul Rombouts
 
 
-$Id: faq.html,v 1.9 2003/04/06 23:19:14 tmm Exp $
+Last revised: 31 Aug 2006 by Paul Rombouts
 

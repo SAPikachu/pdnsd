@@ -1,3 +1,11 @@
+Version 1.2.5-par introduces a new query method: udp_tcp. With this method a UDP
+query is tried first and, if the UDP answer is truncated, the query is repeated
+using TCP, which is the behaviour that seems to be recommended by the DNS
+standards. There is a new configuration option use_nss, which can be turned off
+to prevent lengthy timeouts and stalls in certain situations. A bug has been
+fixed which could cause pdnsd to crash if debug output was generated before the
+debug output stream was properly initialized.
+
 In version 1.2.4-par a memory leak and a minor buffer-overflow problem have been
 fixed. There is now a fix for some situations that would previously cause pdnsd
 to exit prematurely (such as ACPI S3 sleep or trying to attach strace to pdnsd).

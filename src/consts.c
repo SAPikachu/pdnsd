@@ -1,7 +1,7 @@
 /* consts.c - Common config constants & handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -55,6 +55,7 @@ static const namevalue_t const_dic[]={
 	{"tcp_udp",     TCP_UDP},
 	{"true",        C_ON},
 	{"udp_only",    UDP_ONLY},
+	{"udp_tcp",     UDP_TCP},
 	{"yes",         C_ON}
 };
 
@@ -73,6 +74,7 @@ static const char *const_names[]={
 	"udp_only",
 	"tcp_only",
 	"tcp_udp",
+	"udp_tcp",
 	"dev",
 	"diald",
 	"included",

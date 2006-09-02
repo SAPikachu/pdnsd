@@ -1,7 +1,7 @@
 /* conff.c - Maintain configuration information
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -65,6 +65,7 @@ globparm_t global={
   stat_pipe:         0,
   notcp:             0,
   strict_suid:       1,
+  use_nss:           1,
   paranoid:          0,
   lndown_kluge:      0,
   onquery:           0,
@@ -386,6 +387,7 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tNegative domain policy: %s\n",const_name(global.neg_domain_pol));
 	fsprintf_or_return(f,"\tRun as: %s\n",global.run_as);
 	fsprintf_or_return(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
+	fsprintf_or_return(f,"\tUse NSS: %s\n",global.use_nss?"on":"off");
 	fsprintf_or_return(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
 	fsprintf_or_return(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf_or_return(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);

@@ -41,11 +41,13 @@
     License,  as  published by the Free Software Foundation; either version
     2, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.4-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.5-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
-    
+    For Apple Mac users, Brian Wells has published a good HOWTO at
+    <a href="http://web.mac.com/brianwells/iWeb/main/pdnsd.html">http://web.mac.com/brianwells/iWeb/main/pdnsd.html</a>.
+
 
     <h2>0. Installation</h2>
     <h3>0.1 Installing binary RPM's</h3>
@@ -140,7 +142,9 @@
 	  <code>--define&nbsp;"run_as_uid&nbsp;&lt;<i>uid</i>&gt;"</code>
 	</td>
 	<td>
-	  If the user defined by the previous option does not exist when the RPM is installed, the pre-install script will try to create a new user with numerical id <code>&lt;<i>uid</i>&gt;</code>.
+	  If the user defined by the previous option does not exist when the RPM is installed,
+	  the pre-install script will try to create a new user with numerical id <code>&lt;<i>uid</i>&gt;</code>.
+	  The default is to let the system choose the numerical id at install time.
 	</td>
       </tr>
       <tr>
@@ -315,10 +319,12 @@
 	  <code>--with-query-method=<i>qm</i></code>
 	</td>
 	<td>
-	  Specify the query method (default=udponly, others: tcpudp, tcponly)
+	  Specify the query method (default=udponly, others: tcponly, tcpudp, udptcp).
 	  If you have enabled both UDP and TCP queries, this lets you control
 	  which query method pdnsd will use by default. tcpudp will try TCP
-	  first and fall back to UDP if tcp is not supported by the server;
+	  first and fall back to UDP if TCP is not supported by the server;
+	  udptcp will try UDP first and, if the answer was truncated, will repeat
+	  the query using TCP.
 	  udponly and tcponly should be clear. Note that this only effects
 	  the compiled-in default; the query method can still be changed using
 	  command-line options or options in the configuration file.
@@ -405,7 +411,6 @@
 	  library function (default for FreeBSD target), which is considered safe.<br>
 	  You can also specify <code>random</code> as device to use the C Library
 	  <code>random()</code> function (described above).
-	  
 	</td>
       </tr>
       <tr>
@@ -415,7 +420,7 @@
 	<td>
 	  Specify default user for pdnsd (default=nobody).
 	  This is the user that will be entered for the <code>run_as</code>
-	  option in the config file (see below) that will be installed during <code>make install</code>.
+	  option in the config file (see <a href="#runas">below</a>) that will be installed during <code>make install</code>.
 	  You can change this any time in your config file.
 	</td>
       </tr>
@@ -547,7 +552,7 @@
     (assuming you're using a bash shell):
     <p class="indented"><code>CFLAGS="-O1&nbsp;-Wall"&nbsp;./configure&nbsp;...</code></p>
 
-    
+
     <br>
     <h4>0.3.3 Building &amp; installing </h4>
     Type <code>make</code> in the source directory. <i>Should</i> work by now.<br>
@@ -560,8 +565,8 @@
       <li> creates your cache directory if it is not there.
 	After installation, you should check the file permissions and create or edit 
 	<code>/etc/pdnsd.conf</code> to fit your needs (see below).
-	If you use the <code>run_as</code> option, please make sure that your cache directory is owned by
-	the user you specified with this option!
+	If you use the <a href="#runas"><code>run_as</code></a> option, please make sure that your
+	cache directory is owned by the user you specified with this option!
     </ol>
     You must be root for this installation!<br>
     <b>Security notes:</b> <b><i>never</i></b> make the pdnsd cache directory 
@@ -645,11 +650,11 @@
 	  Then go to <code>/etc/rc.d/rc3.d</code> and create there the following symlink:<br>
 	  S78pdnsd -&gt; ../init.d/pdnsd 
 	  (do <code>ln -f -s ../init.d/pdnsd S78pdnsd</code> in that dir)<br>
-		
+
 	  Then go to <code>/etc/rc.d/rc0.d</code> and create there the following symlink:<br>
 	  K78pdnsd -&gt; ../init.d/pdnsd 
 	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)<br>
-		
+
 	  Then go to /etc/rc.d/rc6.d and create there the following symlink:<br>
 	  K78pdnsd -&gt; ../init.d/pdnsd 
 	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)
@@ -696,9 +701,9 @@
       <b>-c</b> or <b>--config-file</b> on the command line, followed by a filename.
     </p>
     <p>
-      If pdnsd was compiled with debugging options enabled, you may specify <b>-g</b> or
+      If pdnsd was compiled with debugging support, you may specify <b>-g</b> or
       <b>--debug</b> on the command line. This will cause extra diagnostic messages to be
-      printed. When pdnsd runs in deamon mode, the messages will be written to the <code>pdnsd.debug</code>
+      printed. When pdnsd runs in daemon mode, the messages will be written to the <code>pdnsd.debug</code>
       file in your cache directory. <b>--nodebug</b> disables debugging.
     </p>
     <p>
@@ -718,7 +723,7 @@
       See also the <a href="#tcpserver"><code>tcp_server</code></a> configuration option.
     </p>
     <p>
-      Using the <b>-m</b> option, you can select the method pdnsd uses to query other name servers.
+      Using the <a name="querymethodcommandlineoption"><b>-m</b></a> option, you can select the method pdnsd uses to query other name servers.
       Following methods are supported (see also the <a href="#querymethod"><code>query_method</code></a>
       configuration option):<br>
       <b>-muo</b>: pdnsd will use UDP only. This is the fastest method, and should be supported by all name servers
@@ -727,6 +732,8 @@
       against certain attacks, where an attacker tries to guess your query id and to send forged answers. TCP queries
       are not supported by some name servers.<br>
       <b>-mtu</b>: pdnsd will try to use TCP, and will fall back to UDP if its connection is refused or times out.<br>
+      <b>-mut</b>: <em>New in version 1.2.5:</em> pdnsd will try to use UDP, and will repeat the query using TCP if the UDP reply was truncated
+      (i.e. the <code>tc</code> bit is set). This is the behaviour recommended by the DNS standards.<br>
     </p>
     <p>
       The <b>-4</b> option switches to IPv4 mode, providing pdnsd was compiled with IPv4 support.<br>
@@ -749,7 +756,7 @@
     with the -c command line option.
     An example pdnsd.conf comes with the pdnsd distribution in the docs directory
     and will be installed to <code>/etc/</code> by <code>make install</code>.
-    
+
     <br>
     <h3>2.1 Layout</h3>
     The configuration file is divided into sections. Each section is prefixed with
@@ -915,7 +922,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>run_as=<i>string</i>;</code></b><br>
+	  <b><code><a name="runas">run_as=<i>string</i>;</a></code></b><br>
 	  This option allows you to let pdnsd change its user and group id after operations that needed
 	  privileges have been done. This helps minimize security risks and is therefore recommended. The
 	  supplied string gives a user name whose user id and primary group id are taken. <br>
@@ -936,8 +943,8 @@
 	  <b><code>strict_setuid=(on|off);</code></b><br>
 	  When used together with the <code>run_as</code> option, this option lets you specify that all threads of the
 	  program will run with the privileges of the <code>run_as</code> user. This provides higher security than 
-	  the normal run_as
-	  option, but is not always possible. See the <code>run_as</code> option for further discussion.<br>
+	  the normal <code>run_as</code>
+	  option, but is not always possible. See the <a href="#runas"><code>run_as</code></a> option for further discussion.<br>
 	  This option is on by default.<br>
 	  Note that this option has no effect on Non-Linux systems.
 	</td>
@@ -1025,10 +1032,12 @@
       </tr>
       <tr>
 	<td>
-	  <b><code><a name="querymethod">query_method=(tcp_only|udp_only|tcp_udp);</a></code></b><br>
-	  This has the same effect as the <code>-m</code> command line option. Read the documentation for the
-	  command line option on this. <code>tcp_only</code> corresponds to the <code>to</code>, <code>udp_only</code> to
-	  the <code>uo</code> and <code>tcp_udp</code> to the <code>tu</code> argument of the command line option.<br>
+	  <b><code><a name="querymethod">query_method=(tcp_only|udp_only|tcp_udp|udp_tcp);</a></code></b><br>
+	  This has the same effect as the <code>-m</code> command line option.
+	  Read the documentation for the <a href="#querymethodcommandlineoption">command line option</a> on this.
+	  <code>tcp_only</code> corresponds to the <code>to</code>, <code>udp_only</code> to the <code>uo</code>,
+	  <code>tcp_udp</code> to the <code>tu</code> and <code>udp_tcp</code> to the <code>ut</code>
+	  argument of the command line option.<br>
 	  If you use <code>query_method=tcp_udp</code>, it is recommended that you also set the <a href="#globaltimeout">global timeout option</a> to at least twice the longest server timeout.
 	</td>
       </tr>
@@ -1205,6 +1214,19 @@
 	  The string must be a valid IPv6 address. Only the first 96 bits are used.
 	  Note that this only effects the parsing of IPv4 addresses listed after this option.<br>
 	  The default is <code>"::ffff.0.0.0.0"</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>use_nss=(on|off);</code></b><br>
+	  If this option is turned on, pdnsd will call <code>initgroups()</code> to set up the group access list,
+	  whenever pdnsd changes its user and group id (see <a href="#runas"><code>run_as</code></a> option).
+	  There is a possible snag, though, if <code>initgroups()</code> uses NSS (Name Service Switch) and
+	  NSS in turn uses DNS. In such a case you may experience lengthy timeouts and stalls.
+	  By setting <code>use_nss=off</code>, you can disable the <code>initgroups()</code> call
+	  (only possible in versions 1.2.5 and later).<br>
+	  This option was contributed by Jan-Marek Glogowski.<br>
+	  On by default.
 	</td>
       </tr>
     </table>
@@ -1428,7 +1450,7 @@
 	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the cached records are not purged 
 	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
 	  Instead, they are still served if they cannot succesfully be
-	  updated (e.g. because all servers are down).       
+	  updated (e.g. because all servers are down).
 	</td>
       </tr>
       <tr>
@@ -1449,7 +1471,6 @@
 	  it can find and will specifically ask for all available records 
 	  (well, at least it is a good approximation for what it really does ;-)
 	  This will of course increase the answer packet sizes.<br>
-	  Negative caching is only effective with lean_query activated. <br>
 	  Some buggy name servers may not deliver CNAME records when not asked for
 	  all records. I do not know if such servers are around, but if you have
 	  trouble resolving certain host names, try turning this option off.<br>
@@ -1479,7 +1500,7 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>proxy_only=(on|off);</code></b><br>
+	  <b><code><a name="proxyonly">proxy_only=(on|off);</a></code></b><br>
 	  When this option is set to on, answers given by the servers are always accepted, and no
 	  other servers (as, for example, specified in the NS records of the query domain) are
 	  queried. If you do not turn this option on, pdnsd will do such queries in some cases
@@ -1954,15 +1975,15 @@
 	  You can specify <code>all</code> instead of an index or label to perform the action for all
 	  servers registered with pdnsd. Example:<br>
 	  <code>pdnsd-ctl&nbsp;server&nbsp;0&nbsp;retest</code><br>
-	  An optional third argument consisting of a list of IP addresses (separated by commas or spaces)
-	  can be given.
+	  An optional third argument consisting of a list of IP addresses (separated by commas or
+	  white-space characters) can be given.
 	  This list will replace the previous list of addresses of name servers used by pdnsd in the
 	  specified section of the config file.
 	  For example in the <code>/etc/ppp/ip-up</code> script called by <code>pppd</code> you could
 	  place the following line:<br>
 	  <code>pdnsd-ctl&nbsp;server&nbsp;isplabel&nbsp;up&nbsp;$DNS1,$DNS2</code><br>
-	  If spaces are used to separate addresses the list will have to be quoted.
-	  Spurious commas and spaces are ignored.
+	  If white space is used to separate addresses the list will have to be quoted.
+	  Spurious commas and white-space characters are ignored.
 	  The last argument may also be an empty string, in which case the existing IP addresses are
 	  removed and the corresponding server section becomes inactive.
 	</td>
@@ -2055,7 +2076,7 @@
 	<td>
 	  Reload pdnsd's configuration file.<br>
 	  The config file must be owned by the uid that pdnsd had when it was
-	  started, and be readable by pdnsd's <code>run_as</code> uid. If no file name is
+	  started, and be readable by pdnsd's <a href="#runas"><code>run_as</code></a> uid. If no file name is
 	  specified, the config file used at start-up is reloaded.<br>
 	  Note that some configuration changes, like the port or IP address pdnsd listens on,
 	  cannot be made this way and you will receive an error message.
@@ -2135,14 +2156,14 @@
     <br>
     <br>
     <h2>5 Problems...</h2>
-    If you have problems with configuring or tunning pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
+    If you have problems with configuring or running pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
     If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
     <em>Note added by Paul Rombouts</em>: Thomas Moestl no longer maintains the code. I have revised the code and added new features.
     See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed a binary package) for more details.
     If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
     <br>
     <br>
-    <h2>5 Hacking</h2>
+    <h2>6 Hacking</h2>
     Here comes some information you might find useful for hacking on pdnsd.
     <br>
     <h3>6.1 Source files</h3>
@@ -2310,7 +2331,7 @@
       and <a href="index.html#currentmaintainer">Paul Rombouts</a>
     </address>
     <p>
-      <i>Last revised: 07 Jan 2006 by Paul Rombouts</i>
+      <i>Last revised: 01 Sep 2006 by Paul Rombouts</i>
     </p>
   </body>
 </html>

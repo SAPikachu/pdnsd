@@ -1,7 +1,7 @@
 /* conff.h - Definiton for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
 
 This file is part of the pdnsd package.
 
@@ -38,7 +38,11 @@ Boston, MA 02111-1307, USA.  */
 #include "list.h"
 
 /* From main.c */
+#if DEBUG>0
 extern short int debug_p;
+#else
+#define debug_p 0
+#endif
 extern short int stat_pipe;
 extern pthread_t main_thrid;
 extern uid_t init_uid;
@@ -111,6 +115,7 @@ typedef struct {
 	char          stat_pipe;
 	char          notcp;
 	char          strict_suid;
+	char          use_nss;
 	char          paranoid;
 	char          lndown_kluge;
 	char	      onquery;

@@ -42,6 +42,19 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2006-09-02</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.5-par has been released.</b>
+	This release introduces a new query method: <code>udp_tcp</code>.
+	With this method a UDP query is tried first and, if the UDP answer is
+	truncated, the query is repeated using TCP, which is the behaviour that
+	seems to be recommended by the DNS standards. There is a new
+	configuration option <code>use_nss</code>, which can be turned off to
+	prevent lengthy timeouts and stalls in certain situations. A bug has
+	been fixed which could cause pdnsd to crash if debug output was
+	generated before the debug output stream was properly initialized.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2006-01-09</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.4-par has been released.</b>
 	A memory leak and a minor buffer-overflow problem have been fixed.
@@ -579,7 +592,7 @@
     </address>
     <br>
     <p>
-      <i>Last revised: 09 Jan 2006 by Paul Rombouts</i>
+      <i>Last revised: 02 Sep 2006 by Paul Rombouts</i>
     </p>
   </body>
 </html>
