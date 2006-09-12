@@ -35,7 +35,7 @@ AM_CONFIG_HEADER(config.h)
 
 AC_ARG_WITH(distribution,
 [  --with-distribution=distro  Specify target distribution (default=Generic;
-                              others: RedHat, SuSE, Debian)],
+                              others: RedHat, SuSE, Debian, ArchLinux)],
   distribution=$withval)
 AC_SUBST(distribution)
 
@@ -509,5 +509,7 @@ src/rc/Debian/Makefile
 src/rc/Debian/pdnsd
 src/rc/Slackware/Makefile
 src/rc/Slackware/rc.pdnsd
+src/rc/ArchLinux/Makefile
+src/rc/ArchLinux/pdnsd
 src/test/Makefile
 ])
