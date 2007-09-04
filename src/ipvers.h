@@ -1,24 +1,24 @@
 /* ipvers.h - definitions for IPv4 and IPv6
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003 Paul A. Rombouts
+   Copyright (C) 2003, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 /* $Id: ipvers.h,v 1.6 2001/04/06 18:11:35 tmm Exp $ */
 
@@ -152,7 +152,9 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 /* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine. 
  * Pass an in_addr* and an in6_addr* */
-#define IPV6_MAPIPV4(a,b) ((uint32_t *)(b))[3]=(a)->s_addr;((uint32_t *)(b))[2]=htonl(0xffff);((uint32_t *)(b))[1]=((uint32_t *)(b))[0]=0
+#define IPV6_MAPIPV4(a,b) {((uint32_t *)(b))[3]=(a)->s_addr;		\
+			   ((uint32_t *)(b))[2]=htonl(0xffff);		\
+			   ((uint32_t *)(b))[1]=((uint32_t *)(b))[0]=0; }
 
 /* A macro to extract the pointer to the address of a struct sockaddr (_in or _in6) */
 
@@ -192,6 +194,22 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # define ADDR_EQUIV(a,b) ADDR_EQUIV6(a,b)
 #endif
 
+/* Compare an IPv6 adress with an IPv4 one. b should have type struct in_addr*.
+   Note the similarity with the IPV6_MAPIPV4 macro. */
+#define ADDR_EQUIV6_4(a,b) (((uint32_t *)(a))[3]==(b)->s_addr &&	\
+			    ((uint32_t *)(a))[2]==htonl(0xffff) &&	\
+			    ((uint32_t *)(a))[1]==0 &&			\
+			    ((uint32_t *)(a))[0]==0)
+
+/* Compare two address a and b in combination with a netmask m.
+   Only the bits coresponding to those set in the netmask are matched, the rest are ignored.
+   Pass in_addr* or in6_addr* arguments, respectively. */
+#define ADDR4MASK_EQUIV(a,b,m) ((((a)->s_addr^(b)->s_addr)&(m)->s_addr)==0)
+#define ADDR6MASK_EQUIV(a,b,m) (((((uint32_t *)(a))[0]^((uint32_t *)(b))[0])&((uint32_t *)(m))[0])==0 && \
+				((((uint32_t *)(a))[1]^((uint32_t *)(b))[1])&((uint32_t *)(m))[1])==0 && \
+				((((uint32_t *)(a))[2]^((uint32_t *)(b))[2])&((uint32_t *)(m))[2])==0 && \
+				((((uint32_t *)(a))[3]^((uint32_t *)(b))[3])&((uint32_t *)(m))[3])==0)
+
 /* See if we need 4.4BSD style sockaddr_* structures and define some macros that set the length field. 
  * The non-4.4BSD behaviour is the only one that is POSIX-conformant.*/
 #if defined(SIN6_LEN) || defined(SIN_LEN)
@@ -226,10 +244,18 @@ typedef union {
 #endif
 } pdnsd_a;
 
-/* used to enter local records */
+/* Do we have sufficient support in the C libraries to allow local AAAA records
+   to be defined? */
+#if defined(DNS_NEW_RRS) && defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
+# define ALLOW_LOCAL_AAAA 1
+#else
+# define ALLOW_LOCAL_AAAA 0
+#endif
+
+/* Used to enter local records */
 typedef	union {
 	struct in_addr ipv4;
-#ifdef ENABLE_IPV6
+#if ALLOW_LOCAL_AAAA
 	struct in6_addr ipv6;
 #endif
 } pdnsd_ca;

@@ -42,6 +42,24 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2007-09-04</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.6-par has been released.</b>
+	pdnsd's license has been upgraded to GPL version 3.
+	A bug has been fixed which which caused pdnsd to handle NXDOMAIN replies
+	inefficiently when configured with <code>neg_domain_pol=on</code>.  The
+	code that implements the ping test has been fixed, which was broken for
+	64-bit systems.  A new option <code>randomize_servers</code> can be used
+	to give each server in a section of the configuration file an equal
+	chance of being queried.  The new options <code>reject</code>,
+	<code>reject_policy</code> and <code>reject_recursively</code> make it
+	possible to check for the presence of certain IP addresses in the
+	replies of name servers and to avoid some types of unwanted replies.
+	The pdnsd-ctl '<code>add a</code>' and '<code>add aaaa</code>' commands
+	now allow multiple IP addresses to be specified for the same name.
+	pdnsd's ability to resolve from root servers has been improved.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2006-09-02</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.5-par has been released.</b>
 	This release introduces a new query method: <code>udp_tcp</code>.
@@ -373,7 +391,7 @@
       <li> LOC (<i>location</i>, RFC 1876)
       <li> EID (<i>Nimrod EID</i>)
       <li> NIMLOC (<i>Nimrod locator</i>)
-      <li> SRV (<i>service record</i>, RFC 2052)
+      <li> SRV (<i>service record</i>, RFC 2782)
       <li> ATMA (<i>ATM address</i>)
       <li> NAPTR (<i>URI mapping</i>, RFC 2168)
       <li> KX (<i>key exchange</i>, RFC 2230)
@@ -592,7 +610,7 @@
     </address>
     <br>
     <p>
-      <i>Last revised: 02 Sep 2006 by Paul Rombouts</i>
+      <i>Last revised: 03 Sep 2007 by Paul Rombouts</i>
     </p>
   </body>
 </html>

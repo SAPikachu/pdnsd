@@ -21,9 +21,12 @@ PATH=/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin
 # Check that networking is up.
 if [[ $NETWORKING == [Nn][Oo] ]]; then exit 0; fi
 
+# Source sysconfig settings, if any.
+if [ -f /etc/sysconfig/pdnsd ]; then . /etc/sysconfig/pdnsd; fi
+
 start() {
 	echo -n 'Starting pdnsd: '
-	daemon @prefix@/sbin/pdnsd -d -s -p /var/run/pdnsd.pid
+	daemon @prefix@/sbin/pdnsd -d -s -p /var/run/pdnsd.pid "$EXTRAOPTIONS"
 	local RETVAL=$?
 	echo
 	if [ $RETVAL -eq 0 ]; then touch /var/lock/subsys/pdnsd; fi

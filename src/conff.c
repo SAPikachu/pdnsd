@@ -1,24 +1,24 @@
 /* conff.c - Maintain configuration information
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -84,30 +84,37 @@ globparm_t global={
 };
 
 servparm_t serv_presets={
-  port:          53,
-  uptest:        C_NONE,
-  timeout:       120,
-  interval:      900,
-  ping_timeout:  600,
-  scheme:        "",
-  uptest_cmd:    NULL,
-  uptest_usr:    "",
-  interface:     "",
-  device:        "",
-  label:         NULL,
-  purge_cache:   0,
-  nocache:       0,
-  lean_query:    1,
-  is_proxy:      0,
-  rootserver:    0,
-  preset:        1,
-  policy:        C_INCLUDED,
-  alist:         NULL,
-  atup_a:        NULL,
+  port:              53,
+  uptest:            C_NONE,
+  timeout:           120,
+  interval:          900,
+  ping_timeout:      600,
+  scheme:            "",
+  uptest_cmd:        NULL,
+  uptest_usr:        "",
+  interface:         "",
+  device:            "",
+  label:             NULL,
+  purge_cache:       0,
+  nocache:           0,
+  lean_query:        1,
+  is_proxy:          0,
+  rootserver:        0,
+  rand_servers:      0,
+  preset:            1,
+  rejectrecursively: 0,
+  rejectpolicy:      C_FAIL,
+  policy:            C_INCLUDED,
+  alist:             NULL,
+  atup_a:            NULL,
+  reject_a4:         NULL,
+#if ALLOW_LOCAL_AAAA
+  reject_a6:         NULL,
+#endif
 #ifdef ENABLE_IPV4
-  ping_a:        {{INADDR_ANY}}
+  ping_a:            {{INADDR_ANY}}
 #else
-  ping_a:        {IN6ADDR_ANY_INIT}
+  ping_a:            {IN6ADDR_ANY_INIT}
 #endif
 };
 
@@ -349,6 +356,10 @@ void free_servparm(servparm_t *serv)
 	free(serv->label);
 	da_free(serv->atup_a);
 	free_slist_array(serv->alist);
+	da_free(serv->reject_a4);
+#if ALLOW_LOCAL_AAAA
+	da_free(serv->reject_a6);
+#endif
 }
 
 static void free_server_data(servparm_array sa)
@@ -435,6 +446,14 @@ int report_conf_stat(int f)
 	return retval;
 }
 
+
+#if ALLOW_LOCAL_AAAA
+#define serv_has_rejectlist(s) ((s)->reject_a4!=NULL || (s)->reject_a6!=NULL)
+#else
+#define serv_has_rejectlist(s) ((s)->reject_a4!=NULL)
+#endif
+
+
 /* Report the current status of server i to the file descriptor f.
    Call with locks applied.
 */
@@ -477,19 +496,35 @@ static int report_server_stat(int f,int i)
 	fsprintf_or_return(f,"\tlean query: %s\n",st->lean_query?"on":"off");
 	fsprintf_or_return(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
 	fsprintf_or_return(f,"\tAssumed root server: %s\n",st->rootserver?"yes":"no");
+	fsprintf_or_return(f,"\tRandomize server query order: %s\n",st->rand_servers?"yes":"no");
 	fsprintf_or_return(f,"\tDefault policy: %s\n",const_name(st->policy));
-	fsprintf_or_return(f,"\tPolicies:\n");
-	if (st->alist==NULL) {
-		fsprintf_or_return(f,"\t\t(none)\n");
-	} else {
-		for (j=0;j<DA_NEL(st->alist);j++) {
-			slist_t *sl=&DA_INDEX(st->alist,j);
-			unsigned char buf[256];
-			fsprintf_or_return(f,"\t\t%s: %s%s\n",
-					   sl->rule==C_INCLUDED?"include":"exclude",
-					   sl->exact?"":".",
-					   rhn2str(sl->domain,buf,sizeof(buf)));
+	fsprintf_or_return(f,"\tPolicies:%s\n", st->alist?"":" (none)");
+	for (j=0;j<DA_NEL(st->alist);++j) {
+		slist_t *sl=&DA_INDEX(st->alist,j);
+		unsigned char buf[256];
+		fsprintf_or_return(f,"\t\t%s: %s%s\n",
+				   sl->rule==C_INCLUDED?"include":"exclude",
+				   sl->exact?"":".",
+				   rhn2str(sl->domain,buf,sizeof(buf)));
+	}
+	if(serv_has_rejectlist(st)) {
+		fsprintf_or_return(f,"\tAddresses which should be rejected in replies:\n");
+		for (j=0;j<DA_NEL(st->reject_a4);++j) {
+			addr4maskpair_t *am=&DA_INDEX(st->reject_a4,j);
+			char abuf[ADDRSTR_MAXLEN],mbuf[ADDRSTR_MAXLEN];
+			fsprintf_or_return(f,"\t\t%s/%s\n",inet_ntop(AF_INET,&am->a,abuf,sizeof(abuf)),
+					   inet_ntop(AF_INET,&am->mask,mbuf,sizeof(mbuf)));
 		}
+#if ALLOW_LOCAL_AAAA
+		for (j=0;j<DA_NEL(st->reject_a6);++j) {
+			addr6maskpair_t *am=&DA_INDEX(st->reject_a6,j);
+			char abuf[INET6_ADDRSTRLEN],mbuf[INET6_ADDRSTRLEN];
+			fsprintf_or_return(f,"\t\t%s/%s\n",inet_ntop(AF_INET6,&am->a,abuf,sizeof(abuf)),
+					   inet_ntop(AF_INET6,&am->mask,mbuf,sizeof(mbuf)));
+		}
+#endif
+		fsprintf_or_return(f,"\tReject policy: %s\n",const_name(st->rejectpolicy));
+		fsprintf_or_return(f,"\tReject recursively: %s\n",st->rejectrecursively?"yes":"no");
 	}
 	return 0;
 }

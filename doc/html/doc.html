@@ -39,9 +39,9 @@
     This manual is a part of the pdnsd package, and may be distributed in
     original or modified  form  under  terms  of  the  GNU  General  Public
     License,  as  published by the Free Software Foundation; either version
-    2, or (at your option) any later version.<br>
+    3, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.5-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.6-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -56,8 +56,8 @@
     This should install pretty much everything automatically. The only thing left
     for you to do is adapt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
     according to your needs (see below). 
-    In the SuSE RPMs, a start script is also installed; read the section <i>0.4, Start at Boot Time</i>
-    about that.
+    In the Red Hat and SuSE RPMs, a start script is also installed; read the section
+    <i>0.4, Start at Boot Time</i> about that.
 
     <br>
     <h3>0.2 Building RPM's</h3>
@@ -539,7 +539,7 @@
       <li> Distribution-specific portions might be included in the generated pdnsd.spec
 	file (only important if you want to build rpm archives yourself).
     </ul>
-    If you choose <code>Generic</code>, no rc script is installled, and a generic spec
+    If you choose <code>Generic</code>, no rc script is installed, and a generic spec
     file is generated.<br>
 
     Further instructions are in the INSTALL document in the pdnsd source directory.
@@ -697,7 +697,7 @@
       Example: <code>pdnsd -d -p /var/run/pdnsd.pid</code>
     </p>
     <p>
-      If you want to specify a configuration file other that /etc/pdnsd.conf, specify
+      If you want to specify a configuration file other than <code>/etc/pdnsd.conf</code>, specify
       <b>-c</b> or <b>--config-file</b> on the command line, followed by a filename.
     </p>
     <p>
@@ -1004,7 +1004,7 @@
 	  <b><code>daemon=(on|off);</code></b><br>
 	  This has the same effect as the <code>-d</code> command line option: the daemon mode is enabled when
 	  <code>on</code> is specified.<br>
-	  Default is off.
+	  Default is <code>off</code>.
 	</td>
       </tr>
       <tr>
@@ -1013,7 +1013,7 @@
 	  <code>tcp_server=on</code> has the same effect as the <code>-t</code> or <code>--tcp</code>
 	  command-line option: it enables TCP serving.
 	  Similarly, <code>tcp_server=off</code> is like the <code>--notcp</code> command-line option.<br>
-	  Default is on.
+	  Default is <code>on</code>.
 	</td>
       </tr>
       <tr>
@@ -1256,7 +1256,7 @@
       <tr>
 	<td>
 	  <b><code>ip=<i>string</i>;</code></b><br>
-	  Give the IP (the IP, <em>not</em> the host name) of the server.<br>
+	  Give the IP (the address, <em>not</em> the host name) of the server.<br>
 	  Multiple IP addresses can be given per server section.
 	  This can be done by entering multiple lines of the form <code>ip=<i>string</i>;</code>
 	  or a single line like this:
@@ -1352,13 +1352,16 @@
       <tr>
 	<td>
 	  <b><code>ping_timeout=<i>number</i>;</code></b><br>
-	  Sets the timeout for the ping test in tenth of seconds. The default is 600 (one minute).
+	  Sets the timeout for the ping test in tenths of seconds
+	  (this unit is used for legacy reasons; actually the current implementation is
+	  only accurate to a second).<br>
+	  The default is 600 (one minute).
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>ping_ip=<i>string</i>;</code></b><br>
-	  The ip for the ping test. The default is the ip of the name server.
+	  The IP address for the ping test. The default is the IP of the name server.
 	</td>
       </tr>
       <tr>
@@ -1457,7 +1460,7 @@
 	<td>
 	  <b><code>caching=(on|off);</code></b><br>
 	  Specifies if caching shall be performed for this server at all. Default is
-	  on.
+	  <code>on</code>.
 	</td>
       </tr>
       <tr>
@@ -1501,14 +1504,14 @@
       <tr>
 	<td>
 	  <b><code><a name="proxyonly">proxy_only=(on|off);</a></code></b><br>
-	  When this option is set to on, answers given by the servers are always accepted, and no
+	  When this option is set to <code>on</code>, answers given by the servers are always accepted, and no
 	  other servers (as, for example, specified in the NS records of the query domain) are
 	  queried. If you do not turn this option on, pdnsd will do such queries in some cases
 	  (in particular when processing ANY queries).<br>
 	  This option is useful when you do not want pdnsd to make connections to outside servers
 	  for some reasons (e.g. when a firewall is blocking such queries).<br>
 	  I recommend that you turn on <code>lean_query</code> when using this option.<br>
-	  Default is off.
+	  Default is <code>off</code>.
 	</td>
       </tr>
       <tr>
@@ -1522,7 +1525,70 @@
 	  You can get a list of available root servers by running the command
 	  <code>"dig&nbsp;-t&nbsp;ns&nbsp;."</code>.<br>
 	  This option is also necessary if you use the <a href="#delegationonly"><code>delegation_only</code></a> option.<br>
-	  Default is off.
+	  Default is <code>off</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>randomize_servers=(on|off);</code></b><br>
+	  <em>New in version 1.2.6:</em> Set this option to <code>on</code> to give each name server
+	  in this section an equal chance of being queried. If this option is off, the name servers
+	  are always queried starting with the first one specified. Even with this option on, the
+	  query order is not truly random. Only the first server is selected randomly; the following
+	  ones are queried in consecutive order, wrapping around to the beginning of the list when
+	  the end is reached.  Note that this option only effects the order within a section. The
+	  servers in the first (active) section are always queried before those in the second one,
+	  etc.<br> The default is off, but if you are resolving from root servers setting this
+	  option on is highly recommended. If <code>root_server=on</code> this option also effects
+	  the query order of the name servers for the top-level domains.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>reject=<i>string</i>;</code></b><br>
+	  <em>New in version 1.2.6:</em> This option can be used to make pdnsd reject replies that
+	  contain certain IP addresses.  You can specify a single IP address, which will be matched
+	  exactly, or a range of addresses using an address/mask pair.
+	  The mask can be specified as a simple integer, indicating the number of initial 1 bits in
+	  the mask, or in the usual IP address notation. IP addresses may be either IPv4 or IPv6
+	  (provided there is sufficient support in the C libraries and <code>--disable-new-rrs</code>
+	  was not used).
+	  When addresses in the reject list are compared with those in a reply, only the bits
+	  corresponding to those set in the netmask are significant, the rest are ignored.<br>
+	  Multiple addresses or address/mask pairs may be specified; this can be done by entering
+	  multiple lines of the form <code>reject=<i>string</i>;</code>
+	  or a single line like this:
+	  <p class="indented"><code>reject=<i>string</i>,<i>string</i>,<i>string</i>;</code></p>
+	  How pdnsd reacts when an address in the reply matches one in the <code>reject</code> list,
+	  depends on the <code>reject_policy</code> option, see below.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>reject_policy=(fail|negate);</code></b><br>
+	  <em>New in version 1.2.6:</em>
+	  This option determines what pdnsd does when an address in the reply from a name server
+	  matches the <code>reject</code> list (see above). If this option is set to
+	  <code>fail</code>, pdnsd will try another server, or, if there no more servers to try,
+	  return the answer SERVFAIL. If this option is set to <code>negate</code>, pdnsd will
+	  immediately return the answer NXDOMAIN (unknown domain) without querying additional
+	  servers. The <code>fail</code> setting is useful if you don't always trust the servers in
+	  this section, but do trust the servers in the following section. The <code>negate</code>
+	  setting can be used to completely censor certain IP addresses. In this case you should put
+	  the same <code>reject</code> list in every server section, and also set the
+	  <code>reject_recursively</code> option (see below) to true.<br>
+	  The default is <code>fail</code>.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>reject_recursively=(on|off);</code></b><br>
+	  <em>New in version 1.2.6:</em> Normally pdnsd checks for addresses in the
+	  <code>reject</code> list (see above) only when the reply comes directly from a name server
+	  listed in the configuration file.  With this option set to <code>on</code>, pdnsd will
+	  also do this check for name servers that where obtained from NS records in the authority
+	  section of a previous reply (which was incomplete and non-authoritative).<br>
+	  Default is <code>off</code>.
 	</td>
       </tr>
       <tr>
@@ -1595,7 +1661,7 @@
     </table>
     <br>
     <h3>2.1.3 <a name="rrsection"><code>rr</code> Section</a></h3>
-    Every rr section specifies a dns resource record that is stored locally. It
+    Every <code>rr</code> section specifies a dns resource record that is stored locally. It
     allows you to specify own dns records that are served by pdnsd in a limited way.
     Only A, PTR, CNAME, MX, NS and SOA records are implemented.<br>
     This option is intended to allow you to define RRs for 1.0.0.127.in-addr.arpa.
@@ -1657,14 +1723,14 @@
       <tr>
 	<td>
 	  <b><code>authrec=(on|off);</code></b><br>
-	  If this is turned on, pdnsd will create authoritative local records for this rr section.
+	  If this is turned on, pdnsd will create authoritative local records for this <code>rr</code> section.
 	  This means that pdnsd flags the domain record so that records of this domain that are not
 	  present in the cache are treated as non-existent, i.e. no other servers are queried for
 	  that record type, and an response containing none of those records is returned. This is
 	  most time what people want: if you add an A record for a host, and it has no AAAA record
-	  (and no IPv6 address), you normally don't want other name servers to be queried for it.<br>
+	  (thus no IPv6 address), you normally don't want other name servers to be queried for it.<br>
 	  This is on by default.<br>
-	  Please note that this only has an effect if it precedes the name option!
+	  Please note that this only has an effect if it precedes the <code>name</code> option!
 	</td>
       </tr>
       <tr>
@@ -1674,14 +1740,21 @@
 	  and vice versa, you can achieve this by setting reverse=on before defining the A record
 	  (see below). The alternative is to define a separate PTR record, but you will
 	  probably find this option much more convenient.<br>
-	  The default is off.
+	  The default is <code>off</code>.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>a=<i>string</i>;</code></b><br>
-	  Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
-	  this address for the host name given in the name option.
+	  Defines an A (host address) record. The argument is an IPv4 address in dotted notation.
+	  pdnsd will serve this address for the host name given in the <code>name</code> option.<br>
+	  Provided there is sufficient support in the C libraries and <code>--disable-new-rrs</code>
+	  was not used, the argument string may also be an IPv6 address, in which case an AAAA record
+	  will be defined.<br>
+	  This option be may used multiple times within an <code>rr</code> section, causing
+	  multiple addresses to be defined for the name. However, if you put the different addresses
+	  in different <code>rr</code> sections for the same name, the definition in the last
+	  <code>rr</code> section will cancel the definitions in the previous ones.
 	</td>
       </tr>
       <tr>
@@ -1954,7 +2027,7 @@
       <tr>
 	<td>version</td>
 	<td></td>
-	<td>Print version info.</td>
+	<td>Print version and license info.</td>
       </tr>
       <tr>
 	<td valign=top>status</td>
@@ -2028,6 +2101,9 @@
 	  the first option: a is a record for hostname-to-address mapping,
 	  aaaa is the same thing for IPv6 addresses, and ptr is for address-to-hostname
 	  mapping. See the documentation for the <code>rr</code> section for more details.
+	  In case of A and AAAA records, the <i>addr</i> argument may be a list of IP addresses,
+	  separated by commas or white space, causing multiple addresses to be defined
+	  for the same <i>name</i>.
 	  The <i>ttl</i> is optional, the default is 900 seconds.
 	  <code>noauth</code> is used to make the domains non-authoritative - please see
 	  the description of the <code>authrec</code> config file options for a description of what
@@ -2327,11 +2403,12 @@
 
     <br>
     <hr>
-    <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
-      and <a href="index.html#currentmaintainer">Paul Rombouts</a>
+    <address>
+    Copyright&nbsp;(C)&nbsp;2000,&nbsp;2001&nbsp;<a href="mailto:tmoestl@gmx.net">Thomas&nbsp;Moestl</a><br>
+    Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007&nbsp;<a href="index.html#currentmaintainer">Paul&nbsp;Rombouts</a>
     </address>
     <p>
-      <i>Last revised: 01 Sep 2006 by Paul Rombouts</i>
+      <i>Last revised: 20 Aug 2007 by Paul Rombouts</i>
     </p>
   </body>
 </html>

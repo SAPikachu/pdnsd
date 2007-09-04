@@ -1,24 +1,24 @@
 /* helpers.h - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 /* $Id: helpers.h,v 1.11 2001/06/02 20:12:45 tmm Exp $ */
 
@@ -161,12 +161,12 @@ int fsprintf(int fd, const char *format, ...) printfunc(2, 3);
 #endif
 
 /* Added by Paul Rombouts */
-inline static int write_all(int fd,const void *data,int n)
+inline static ssize_t write_all(int fd,const void *data,size_t n)
 {
-  int written=0;
+  ssize_t written=0;
 
   while(written<n) {
-      int m=write(fd,(const void*)(((const char*)data)+written),n-written);
+      ssize_t m=write(fd,(const void*)(((const char*)data)+written),n-written);
 
       if(m<0)
 	return m;

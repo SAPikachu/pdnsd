@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.5-par by Paul Rombouts
+	        pdnsd version 1.2.6-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -21,6 +21,9 @@ overflow problem and some situations which could cause pdnsd to exit
 prematurely. Note that TCP-query support is now compiled in by default, but can
 still be disabled using a configure option.
 The main new feature of version 1.2.5 is the new query method "udp_tcp".
+Version 1.2.6 has an updated license: GPL version 3. The main new feature of
+version 1.2.6 is the "reject" option, which makes it possible to censor or
+correct for unwanted IP addresses in replies.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -160,6 +163,12 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   also specify "udp_tcp", which more closely adheres to the behaviour
   recommended by DNS standards.
 
+- Version 1.2.6 introduces the "randomize_servers" and "reject" options. By
+  setting "randomize_servers" on you can give each server in a server section an
+  equal chance of being queried, which is useful when resolving from root
+  servers, for instance. The "reject" option can be used to censor certain IP
+  addresses or correct for unwanted replies from servers you don't completely
+  trust.
 
 The new features are described in greater detail in the manual doc/html/doc.html
 or doc/txt/manual.txt.

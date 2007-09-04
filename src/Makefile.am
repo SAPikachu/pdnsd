@@ -2,6 +2,8 @@
 
 sbin_PROGRAMS = pdnsd
 
+pdnsd_CFLAGS = -DCONFDIR="\"@sysconfdir@\"" @thread_CFLAGS@
+
 pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c \
 	dns_query.c error.c helpers.c icmp.c list.c main.c netdev.c rr_types.c \
 	status.c servers.c thread.c cache.c hash.c conf-parser.h \

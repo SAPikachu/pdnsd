@@ -1,5 +1,3 @@
-$Id: AUTHORS,v 1.29 2001/07/01 21:03:12 tmm Exp $
-
 Most of pdnsd was written by Thomas Moestl (tmoestl@gmx.net).
 In the "par" versions large parts of the code have been revised
 and several features have been added by Paul Rombouts.

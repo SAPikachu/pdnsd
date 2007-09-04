@@ -1,24 +1,24 @@
 /* cache.c - Keep the dns caches.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2005, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdlib.h>
@@ -531,7 +531,7 @@ int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t t
 /*
  * Create a rr record holder using the given values.
  */
-static rr_bucket_t *create_rr(unsigned short dlen, void *data  DBGPARAM)
+static rr_bucket_t *create_rr(unsigned dlen, void *data  DBGPARAM)
 {
 	rr_bucket_t *rrb;
 	rrb=(rr_bucket_t *)cache_malloc(sizeof(rr_bucket_t)+dlen);
@@ -540,7 +540,7 @@ static rr_bucket_t *create_rr(unsigned short dlen, void *data  DBGPARAM)
 	rrb->next=NULL;
 
 	rrb->rdlen=dlen;
-	memcpy(rrb+1,data,dlen);
+	memcpy(rrb->data,data,dlen);
 	return rrb;
 }
 
@@ -627,12 +627,13 @@ static int add_cent_rr_int(dns_cent_t *cent, int tp, time_t ttl, time_t ts, unsi
 int add_cent_rr(dns_cent_t *cent, int tp , time_t ttl, time_t ts, unsigned flags,
 		unsigned dlen, void *data  DBGPARAM)
 {
-	rr_bucket_t *rrb,*rtail=NULL;
+	rr_bucket_t *rtail=NULL;
+	rr_set_t *rrset=cent->rr[tp-T_MIN];
 	/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
-	if (cent->rr[tp-T_MIN]) {
-		rrb=cent->rr[tp-T_MIN]->rrs;
+	if (rrset) {
+		rr_bucket_t *rrb=rrset->rrs;
 		while (rrb) {
-			if (rrb->rdlen==dlen && memcmp(rrb+1,data,dlen)==0)
+			if (rrb->rdlen==dlen && memcmp(rrb->data,data,dlen)==0)
 				return 1;
 			rtail=rrb;
 			rrb=rrb->next;
@@ -1290,7 +1291,7 @@ static int write_rrset(int tp, rr_set_t *rrs, FILE *f)
 	rr=rrs->rrs;
 	for(; num_rr; --num_rr) {
 		rf.rdlen=rr->rdlen;
-		if (fwrite(&rf,sizeof(rf),1,f)!=1 || (rf.rdlen && fwrite((rr+1),rf.rdlen,1,f)!=1)) {
+		if (fwrite(&rf,sizeof(rf),1,f)!=1 || (rf.rdlen && fwrite((rr->data),rf.rdlen,1,f)!=1)) {
 			log_error("Error while writing rr data to disk cache: %s", strerror(errno));
 			return 0;
 		}
@@ -1544,25 +1545,24 @@ void add_cache(dns_cent_t *cent)
 		if(cent->num_rrs==0 && !(cent->flags&DF_NEGATIVE))
 			goto purge_cache_return;
 
-		if(!(ce=copy_cent(cent  DBG0))) {
+		if(!(ce=copy_cent(cent  DBG0)))
 			goto warn_unlock_cache_return;
-		}
+
 		/* Add the rrs to the rr list */
 		for (i=0;i<T_NUM;i++) {
 			if (ce->rr[i]) {
 				adjust_ttl(ce->rr[i]);
-				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
+				if (!insert_rrl(ce->rr[i],ce,i+T_MIN))
 					goto free_cent_unlock_cache_return;
-				}
 			}
 		}
 		/* If this record is negatively cached, add the cent to the rr list. */
 		if (ce->flags&DF_NEGATIVE) {
-			if (!insert_rrl(NULL,ce,-1)) {
+			if (!insert_rrl(NULL,ce,-1))
 				goto free_cent_unlock_cache_return;
-			}
 		}
-		add_dns_hash(ce,&loc);
+		if (!add_dns_hash(ce,&loc))
+			goto free_cent_unlock_cache_return;
 		ent_num++;
 	} else {
 		if (cent->flags&DF_NEGATIVE) {
@@ -1606,15 +1606,14 @@ void add_cache(dns_cent_t *cent)
 				if (!add_cent_rrset(ce, i+T_MIN, centrrs->ttl, centrrs->ts, centrrs->flags  DBG0)) {
 					goto addsize_unlock_cache_return;
 				}
-				rr=centrrs->rrs; rtail=NULL;
-				while (rr) {
+				rtail=NULL;
+				for (rr=centrrs->rrs; rr; rr=rr->next) {
 					if (!add_cent_rr_int(ce,i+T_MIN,centrrs->ttl, centrrs->ts, centrrs->flags,
-							     rr->rdlen, rr+1, &rtail  DBG0))
+							     rr->rdlen, rr->data, &rtail  DBG0))
 					{
 						/* cleanup this entry */
 						goto cleanup_cent_unlock_cache_return;
 					}
-					rr=rr->next;
 				}
 				adjust_ttl(ce->rr[i]);
 				if (!insert_rrl(ce->rr[i],ce,i+T_MIN)) {
@@ -1639,6 +1638,7 @@ void add_cache(dns_cent_t *cent)
  addsize_unlock_cache_return:
 	cache_size += ce->cs;
 	goto warn_unlock_cache_return;
+
  free_cent_unlock_cache_return:
 	free_cent(ce  DBG0);
 	pdnsd_free(ce);
@@ -1649,7 +1649,7 @@ void add_cache(dns_cent_t *cent)
 }
 
 /*
-  Convert A (and AAA) records in a ready built cache entry to PTR records suitable for reverse resolving
+  Convert A (and AAAA) records in a ready built cache entry to PTR records suitable for reverse resolving
   of numeric addresses and add them to the cache.
 */
 int add_reverse_cache(dns_cent_t * cent)
@@ -1659,11 +1659,11 @@ int add_reverse_cache(dns_cent_t * cent)
 	for(tp=T_A;;) {
 		rr_set_t *rrset=cent->rr[tp-T_MIN];
 		if(rrset) {
-			rr_bucket_t *rr=rrset->rrs;
-			while(rr) {
+			rr_bucket_t *rr;
+			for(rr=rrset->rrs; rr; rr=rr->next) {
 				dns_cent_t ce;
 				unsigned char buf[256],rhn[256];
-				if(!a2ptrstr((pdnsd_ca *)(rr+1),tp,buf) || !str2rhn(buf,rhn))
+				if(!a2ptrstr((pdnsd_ca *)(rr->data),tp,buf) || !str2rhn(buf,rhn))
 					return 0;
 				if(!init_cent(&ce, rhn, cent->ttl, cent->ts, cent->flags  DBG0))
 					return 0;
@@ -1677,10 +1677,9 @@ int add_reverse_cache(dns_cent_t * cent)
 				ce.rr[T_NS-T_MIN]=NULL;
 				ce.rr[T_SOA-T_MIN]=NULL;
 				free_cent(&ce  DBG0);
-				rr=rr->next;
 			}
 		}
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+#if ALLOW_LOCAL_AAAA
 		if(tp==T_AAAA)
 			break;
 		tp=T_AAAA;
@@ -1923,11 +1922,15 @@ int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, u
 	if (!(ret=dns_lookup(name,&loc))) {
 		if (!(ret=cache_malloc(sizeof(dns_cent_t))))
 			goto unlock_return;
-		if(!init_cent(ret, name, 0, ts, 0  DBG1)) {
-			cache_free(ret);
+		if(!init_cent(ret, name, 0, ts, 0  DBG0)) {
+			pdnsd_free(ret);
 			goto unlock_return;
 		}
-		add_dns_hash(ret,&loc);
+		if(!add_dns_hash(ret,&loc)) {
+			free_cent(ret  DBG0);
+			pdnsd_free(ret);
+			goto unlock_return;
+		}
 		ent_num++;
 	}
 	else {
@@ -2017,8 +2020,8 @@ static int dump_cent(int fd, dns_cent_t *cent)
 					fsprintf_or_return(fd,"%s    %-7s (negated)\n",tstr,rr_info[i].name);
 				}
 				else {
-					rr_bucket_t *rr=rrset->rrs;
-					while(rr) {
+					rr_bucket_t *rr;
+					for(rr=rrset->rrs; rr; rr=rr->next) {
 						switch (i+T_MIN) {
 						case T_CNAME:
 						case T_MB:
@@ -2028,14 +2031,14 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						case T_MR:
 						case T_NS:
 						case T_PTR:
-							rhn2str((unsigned char *)(rr+1),ucharp dbuf,sizeof(dbuf));
+							rhn2str((unsigned char *)(rr->data),ucharp dbuf,sizeof(dbuf));
 							break;
 						case T_MINFO:
 #ifdef DNS_NEW_RRS
 						case T_RP:
 #endif
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							int n;
 							rhn2str(p,ucharp dbuf,sizeof(dbuf));
 							n=strlen(dbuf);
@@ -2052,7 +2055,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						case T_KX:
 #endif
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							unsigned pref;
 							int n;
 							GETINT16(pref,p);
@@ -2063,7 +2066,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						break;
 						case T_SOA:
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							char *q;
 							int n,rem;
 							uint32_t serial,refresh,retry,expire,minimum;
@@ -2102,7 +2105,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							/* TXT records are not necessarily validated
 							   before they are stored in the cache, so
 							   we need to be careful. */
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							char *q=dbuf;
 							int j=0,n,rem=sizeof(dbuf);
 							while(j<rr->rdlen) {
@@ -2132,7 +2135,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 #ifdef DNS_NEW_RRS
 						case T_PX:
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							char *q;
 							unsigned pref;
 							int n,rem;
@@ -2151,7 +2154,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						break;
 						case T_SRV:
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							unsigned priority,weight,port;
 							int n;
 							GETINT16(priority,p);
@@ -2164,7 +2167,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						break;
 						case T_NXT:
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							int n,rlen;
 							rhn2str(p,ucharp dbuf,sizeof(dbuf));
 							n=strlen(dbuf);
@@ -2177,7 +2180,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 						break;
 						case T_NAPTR:
 						{
-							unsigned char *p=(unsigned char *)(rr+1);
+							unsigned char *p=(unsigned char *)(rr->data);
 							char *q;
 							unsigned order,pref;
 							int n,rem,j;
@@ -2210,26 +2213,25 @@ static int dump_cent(int fd, dns_cent_t *cent)
 							/* Binary data length has not necessarily been validated */
 							if(rr->rdlen!=16)
 								goto hex_dump;
-							if(!loc2str(rr+1,dbuf,sizeof(dbuf)))
+							if(!loc2str(rr->data,dbuf,sizeof(dbuf)))
 								goto hex_dump;
 							break;
 #endif
 						case T_A:
-							if (!inet_ntop(AF_INET,rr+1,dbuf,sizeof(dbuf)))
+							if (!inet_ntop(AF_INET,rr->data,dbuf,sizeof(dbuf)))
 								goto hex_dump;
 							break;
 #if defined(DNS_NEW_RRS) && defined(AF_INET6)
 						case T_AAAA:
-							if (!inet_ntop(AF_INET6,rr+1,dbuf,sizeof(dbuf)))
+							if (!inet_ntop(AF_INET6,rr->data,dbuf,sizeof(dbuf)))
 								goto hex_dump;
 							break;
 #endif
 						default:
 						hex_dump:
-							hexdump(rr+1,rr->rdlen,dbuf,sizeof(dbuf));
+							hexdump(rr->data,rr->rdlen,dbuf,sizeof(dbuf));
 						}
 						fsprintf_or_return(fd,"%s    %-7s %s\n",tstr,rr_info[i].name,dbuf);
-						rr=rr->next;
 					}
 				}
 			}

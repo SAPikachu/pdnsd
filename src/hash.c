@@ -3,22 +3,22 @@
    Copyright (C) 2000, 2001 Thomas Moestl
    Copyright (C) 2003, 2005 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdlib.h>
@@ -130,23 +130,26 @@ dns_cent_t *dns_lookup(const unsigned char *key, dns_hash_loc_t *loc)
 }
 
 /*
-  Add an entry to the hash.
-  loc contains the location where the the new entry should be inserted
-  (this location can be obtained with dns_lookup).
-*/
-void add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc) 
-{
-	dns_hash_ent_t *he;
+  Add a cache entry to the hash table.
 
-	he=malloc(sizeof(dns_hash_ent_t));
-	if (!he) {
-		log_error("Out of memory.");
-		pdnsd_exit();
-	}
+  loc must contain the location where the the new entry should be inserted
+  (this location can be obtained with dns_lookup).
+
+  add_dns_hash returns 1 on success, or 0 if out of memory.
+*/
+int add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc) 
+{
+	dns_hash_ent_t *he = malloc(sizeof(dns_hash_ent_t));
+
+	if(!he)
+		return 0;
+
 	he->next = *(loc->pos);
 	he->rhash = loc->rhash;
 	he->data = data;
 	*(loc->pos) = he;
+
+	return 1;
 }
 
 /*
@@ -167,7 +170,7 @@ dns_cent_t *del_dns_hash_ent(dns_hash_loc_t *loc)
  * Delete the first entry indexed by key from the hash. Returns the data field or NULL.
  * Since two cents are not allowed to be for the same host name, there will be only one.
  */
-dns_cent_t *del_dns_hash(const unsigned char *key) 
+dns_cent_t *del_dns_hash(const unsigned char *key)
 {
 	unsigned idx;
 	unsigned long rh;
@@ -294,7 +297,7 @@ dns_cent_t *fetch_next(dns_hash_pos_t *pos)
 		pos->ent=he->next;
 		return he->data;
 	}
-	
+
 	for (i=pos->bucket+1;i<HASH_NUM_BUCKETS;i++) {
 		he=hash_buckets[i];
 		if (he) {
@@ -312,7 +315,7 @@ void dumphash()
 	if(debug_p) {
 		int i, j;
 		dns_hash_ent_t *he;
-	
+
 		for (i=0; i<HASH_NUM_BUCKETS; i++) {
 			for (j=0, he=hash_buckets[i]; he; he=he->next, j++) ;
 			DEBUG_MSG("bucket %d: %d entries\n", i, j);

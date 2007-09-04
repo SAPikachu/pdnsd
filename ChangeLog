@@ -1,3 +1,141 @@
+2007-08-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Applied a Debian patch contributed by Juliusz Chroboczek which
+	reportedly fixes a problem with pdnsd running in IPv6 mode
+	(IPV6_RECVPKTINFO instead of IPV6_PKTINFO).
+
+2007-08-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	When resolving a name recursively, pdnsd would stop querying further
+	name servers as soon as it received a reply with the authority (aa) flag
+	set. Unfortunately, it appears this flag is sometimes raised erroneously
+	in replies. I have implemented a work-around that ignores the aa flag
+	when there appears to be a clear delegation to a sub-domain.
+	Thanks to Nico Erfurth for reporting this problem.
+
+	It appears that pdnsd would also fail to consult servers in the authority
+	section when configured with neg_rrs_pol=on. This has been fixed.
+
+2007-08-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/pdnsd-ctl/pdnsd-ctl.c
+	Made the matching of pdnsd-ctl command names and most of the arguments
+	case-insensitive.
+
+2007-07-22  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Instead of sharing the responsibility for freeing the answer buffer in
+	case of an error amongst different functions, only free it in
+	compose_answer().
+
+	* configure.in, src/Makefile.am, src/test/Makefile.am
+	Merged patch contributed by Pierre Habouzit to deal with CFLAGS the
+	automake way (allowing packagers to override CFLAGS properly).
+
+2007-07-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	For each target name in a SRV record in the answer section, add
+	addresses to the additional section of the response, as is recommended
+	by the RFCs.
+
+2007-07-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/list.c,src/list.h
+	Made modifications to the implementation of dynamic arrays, which
+	should ensure proper alignment on all supported architectures.
+
+2007-07-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* Upgraded pdnsd's license to GPL version 3.
+
+2007-07-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.h,src/dns_query.c
+	The data field of the rr_bucket_t struct is now aligned such that
+	it possible to use straightforward assignment to copy IP addresses,
+	making memcpy unnecessary for this purpose.
+
+2007-07-07  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	If pdnsd fails to connect to a name server using a IPv6 address, it will
+	now retry the connection using a IPv4 address, if available. This allows
+	pdnsd to recover from situations where IPv6 connectivity is temporarily
+	unavailable, but IPv4 connectivity still functions.
+	Thanks to Andreas Ferber for reporting this problem.
+
+2007-07-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	I have reordered the arguments of the add_rr() and related
+	functions to make them more consistent with each other.
+
+2007-07-03  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/hash.c
+	pdnsd will no longer immediately abort in add_dns_hash() if it fails
+	to allocate memory for a new hash entry.
+
+2007-07-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/consts.c,src/consts.h,
+	  src/conf-parser.c,src/conf-keywords.h,src/dns_query.c
+	Implemented the new "reject", "reject_policy" and "reject_recursively"
+	options for the server section of the configuration file.
+
+	* src/ipvers.h,src/conf-parser.c,src/dns.c,src/status.c,
+	  src/pdnsd-ctl/pdnsd-ctl.c
+	Allow local AAAA records to be defined even if pdnsd is compiled
+	without --enable-ipv6, provided there is sufficient support in the
+	C libraries and --disable-new-rrs was not used.
+
+2007-06-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	Previously, when the answer buffer was realloced in add_rr(), an
+	extra 2 bytes used to be reserved, which are unnecessary, as far
+	as I can tell. I have decided to do without these extra 2 bytes,
+	which originate from Thomas Moestl's code. As compensation, I have
+	added extra PDNSD_ASSERT() statements to check that the answer
+	buffer does not overflow.
+
+2007-06-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/status.c, src/pdnsd-ctl/pdnsd-ctl.c
+	Extended the pdnsd-ctl 'add a' and 'add aaaa' commands to allow
+	multiple IP addresses to be specified.
+
+2007-06-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/conf-parser.c,src/conf-keywords.h,
+	  src/dns_query.c
+	Implemented a new option for the server section of the configuration
+	file: randomize_servers.
+
+	* src/servers.c
+	Improved the debug messages in uptest().
+
+2007-01-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/icmp.c
+	Fixed up the code implementing the ping test in icmp.c,
+	which was broken for 64-bit systems.
+	Thanks to Michael Uleysky for reporting this bug.
+
+2007-01-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	auth_ok() now returns 1 if the cache entry has the DF_NEGATIVE flag set,
+	without providing a list of authoritative servers to continue querying.
+	Otherwise if we receive a non-authoritative NXDOMAIN reply and pdnsd
+	is configured with neg_domain_pol=on, pdnsd will continue to try to
+	get an authoritative answer. The intention is that pdnsd
+	stops querying as soon as it gets an "unknown domain" answer.
+
 2006-04-29  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/main.c

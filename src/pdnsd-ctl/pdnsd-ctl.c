@@ -1,24 +1,24 @@
 /* pdnsd-ctl.c - Control pdnsd through a pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -51,6 +51,12 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: pdnsd-ctl.c,v 1.19 2001/12/30 15:29:43 tmm Exp $";
 #endif
 
+#if defined(DNS_NEW_RRS) && defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
+# define ALLOW_AAAA 1
+#else
+# define ALLOW_AAAA 0
+#endif
+
 static short int verbose=1;
 
 typedef struct {
@@ -72,28 +78,44 @@ static const cmd_s top_cmds[]={
 static const cmd_s server_cmds[]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
 static const cmd_s record_cmds[]= {{"delete",CTL_R_DELETE},{"invalidate",CTL_R_INVAL},{NULL,0}};
 static const cmd_s onoff_cmds[]= {{"off",0},{"on",1},{NULL,0}};
-#ifdef ENABLE_IPV6
-static const cmd_s rectype_cmds[]= {{"a",T_A},{"aaaa",T_AAAA},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
-#else
-static const cmd_s rectype_cmds[]= {{"a",T_A},{"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+static const cmd_s rectype_cmds[]= {{"a",T_A},
+#if ALLOW_AAAA
+				    {"aaaa",T_AAAA},
 #endif
+				    {"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
 
 static const char version_message[] =
-	"pdnsd-ctl, version pdnsd-" VERSION "\n";
+	"pdnsd-ctl, version pdnsd-" VERSION "\n\n";
+
+static const char license_statement[] =
+	"Copyright (C) 2000, 2001 Thomas Moestl\n"
+	"Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts\n\n"
+	"This program is part of the pdnsd package.\n\n"
+	"pdnsd is free software; you can redistribute it and/or modify\n"
+	"it under the terms of the GNU General Public License as published by\n"
+	"the Free Software Foundation; either version 3 of the License, or\n"
+	"(at your option) any later version.\n\n"
+	"pdnsd is distributed in the hope that it will be useful,\n"
+	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+	"GNU General Public License for more details.\n\n"
+	"You should have received a copy of the GNU General Public License\n"
+	"along with pdsnd; see the file COPYING.  If not, see\n"
+	"<http://www.gnu.org/licenses/>.\n";
 
 static const char *help_messages[] =
 {
 	"Usage: pdnsd-ctl [-c cachedir] [-q] <command> [options]\n\n"
 
-	"Command line options\n"
+	"Command line options:\n"
 
 	"-c\tcachedir\n\tSet the cache directory to cachedir (must match pdnsd setting).\n"
-	"-q\n\tBe quiet unless output is specified by command or something goes wrong.\n"
+	"-q\n\tBe quiet unless output is specified by command or something goes wrong.\n\n"
 
 	"Commands and needed options are:\n"
 
 	"help\t[no options]\n\tPrint this help.\n"
-	"version\t[no options]\n\tPrint version info.\n",
+	"version\t[no options]\n\tPrint version and license info.\n",
 
 	"status\t[no options]\n\tPrint pdnsd's status.\n",
 
@@ -129,15 +151,18 @@ static const char *help_messages[] =
 	"\tfn is the name of the file, which must be readable by pdnsd.\n",
 
 	"add\ta\taddr\tname\t[ttl]\t[noauth]\n"
+#if ALLOW_AAAA
 	"add\taaaa\taddr\tname\t[ttl]\t[noauth]\n"
+#endif
 	"add\tptr\thost\tname\t[ttl]\t[noauth]\n"
 	"add\tcname\thost\tname\t[ttl]\t[noauth]\n"
 	"add\tmx\thost\tname\tpref\t[ttl]\t[noauth]\n"
 	"\tAdd a record of the given type to the pdnsd cache, replacing existing\n"
 	"\trecords for the same name and type. The 2nd argument corresponds\n"
  	"\tto the argument of the option in the rr section that is named like\n"
- 	"\tthe first option. The ttl is optional, the default is 900 seconds.\n"
-	"\tnoauth is used to make the domains non-authoritative.\n"
+ 	"\tthe first option. The addr argument may be a list of IP addresses,\n"
+	"\tseparated by commas or white space. The ttl is optional, the default is\n"
+	"\t900 seconds. noauth is used to make the domains non-authoritative.\n"
  	"\tIf you want no other record than the newly added in the cache, do\n"
  	"\tpdnsdctl record <name> delete\n"
  	"\tbefore adding records.\n",
@@ -241,7 +266,7 @@ static void send_string(int fd, const char *s)
 
 static uint16_t read_short(int fd)
 {
-	int err;
+	ssize_t err;
 	uint16_t nc;
 
 	if ((err=read(fd,&nc,sizeof(nc)))!=sizeof(nc)) {
@@ -254,9 +279,9 @@ static uint16_t read_short(int fd)
 /* copy data from file descriptor fd to file stream out until EOF
    or error is encountered.
 */
-static int copymsgtofile(int fd, FILE* out)
+static ssize_t copymsgtofile(int fd, FILE* out)
 {
-	int n,ntot=0;
+	ssize_t n,ntot=0;
 	char buf[1024];
 
 	while ((n=read(fd,buf,sizeof(buf)))>0)
@@ -272,7 +297,7 @@ static int match_cmd(const char *cmd, const cmd_s cmds[])
 {
 	int i;
 	for(i=0; cmds[i].name; ++i) {
-		if (strcmp(cmd,cmds[i].name)==0)
+		if (strcasecmp(cmd,cmds[i].name)==0)
 			return cmds[i].val;
 	}
 	return -1;
@@ -331,6 +356,7 @@ int main(int argc, char *argv[])
 
 		case CMD_VERSION:
 			fputs(version_message,stdout);
+			fputs(license_statement,stdout);
 			break;
 
 		case CMD_LIST_RRTYPES: {
@@ -395,13 +421,13 @@ int main(int argc, char *argv[])
 				acnt++;
 			}
 			servaliases=0;
-			if (acnt<argc && (argc==6 || strcmp(argv[acnt], "noauth"))) {
+			if (acnt<argc && (argc==6 || strcasecmp(argv[acnt], "noauth"))) {
 				servaliases=match_cmd(argv[acnt],onoff_cmds);
 				if(servaliases==-1) goto bad_arg;
 				acnt++;
 			}
 			if (acnt<argc) {
-				if (!strcmp(argv[acnt], "noauth"))
+				if (!strcasecmp(argv[acnt], "noauth"))
 					flags=0;
 				else
 					goto bad_arg;
@@ -419,6 +445,10 @@ int main(int argc, char *argv[])
 		case CTL_ADD: {
 			long ttl;
 			int tp,flags,pref;
+			unsigned int nadr;
+			size_t adrsz, adrbufsz;
+			char *q;
+
 			if (argc<2) goto wrong_args;
 			acnt=1;
 			tp=match_cmd(argv[1],rectype_cmds);
@@ -439,65 +469,125 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			if (acnt<argc && strcmp(argv[acnt],"noauth")) {
+			if (acnt<argc && strcasecmp(argv[acnt],"noauth")) {
 				char *endptr;
 				ttl=strtol(argv[acnt],&endptr,0);
 				if (*endptr)
 					goto bad_arg;
 				acnt++;
 			}
-			if (acnt<argc && !strcmp(argv[acnt],"noauth")) {
+			if (acnt<argc && !strcasecmp(argv[acnt],"noauth")) {
 				flags=0;
 				acnt++;
 			}
 			if (acnt<argc)
 				goto bad_arg;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
-			send_short(pf,tp);
-			send_string(pf,argv[3]);
-			send_long(pf,ttl);
-			send_short(pf,flags);
 
+			nadr=0; adrsz=0;
 			switch (tp) {
 			case T_A:
-				{
-					struct in_addr ina4;
-
-					if (!inet_aton(argv[2],&ina4)) {
-						fprintf(stderr,"Bad IP for 'add a' command: %s\n",argv[2]);
-						exit(2);
-					}
-					if(write(pf,&ina4,sizeof(ina4))!=sizeof(ina4)) {
-						perror("Error: could not send IP");
-						exit(2);
-					}
-				}
-				break;
-#ifdef ENABLE_IPV6
+				adrsz= sizeof(struct in_addr);
+#if ALLOW_AAAA
+				goto count_addresses;
 			case T_AAAA:
-				{
-					struct in6_addr ina6;
-
-					if (!inet_pton(AF_INET6,(char *)argv[2],&ina6)) {
-						fprintf(stderr,"Bad IP (v6) for 'add aaaa' command: %s\n",argv[2]);
-						exit(2);
+				adrsz= sizeof(struct in6_addr);
+			count_addresses:
+#endif
+				/* first count the number of comma- or space-delimited address strings,
+				   ignoring blank strings. */
+				for(q=argv[2];;) {
+					for(;;++q) {
+						if(!*q) goto finished_counting_addresses;
+						if(*q!=',' && !isspace(*q)) break;
 					}
-					if(write(pf,&ina6,sizeof(ina6))!=sizeof(ina6)) {
-						perror("Error: could not send IP (v6)");
-						exit(2);
-					}
+					do {
+						++q;
+					} while(*q && *q!=',' && !isspace(*q));
+					++nadr;
+				}
+			finished_counting_addresses:
+				if (!nadr) {
+					fprintf(stderr,"Empty IP list for 'add %s' command.\n", argv[1]);
+					exit(2);
 				}
 				break;
+			}
+
+			adrbufsz = nadr*adrsz;
+			{
+				/* Variable-size array for storing IP addresses. */
+				unsigned char adrbuf[adrbufsz] __attribute__((aligned));
+
+				switch (tp) {
+				case T_A:
+#if ALLOW_AAAA
+				case T_AAAA:
 #endif
-			case T_PTR:
-			case T_CNAME:
-				send_string(pf,argv[2]);
+				{
+					/* Convert the address strings into binary addresses and
+					   store them in adrbuf. */
+					unsigned char *adrp = adrbuf;
+					for(q=argv[2];;) {
+						char *p; size_t len;
+						for(;;++q) {
+							if(!*q) goto finished_converting_addresses;
+							if(*q!=',' && !isspace(*q)) break;
+						}
+						p=q;
+						do {
+							++q;
+						} while(*q && *q!=',' && !isspace(*q));
+						len = q-p;
+						{
+							char tmpbuf[len+1];
+							memcpy(tmpbuf,p,len);
+							tmpbuf[len]=0;
+
+							if(
+#if ALLOW_AAAA
+								tp==T_AAAA? inet_pton(AF_INET6,tmpbuf,adrp)<=0:
+#endif
+								!inet_aton(tmpbuf,(struct in_addr *)adrp))
+							{
+								fprintf(stderr,"Bad IP for 'add %s' command: %s\n",
+									argv[1],tmpbuf);
+								exit(2);
+							}
+						}
+						adrp += adrsz;
+					}
+				}
+				finished_converting_addresses:
+					break;
+				}
+
+				pf=open_sock(cache_dir);
+				send_short(pf,cmd);
+				send_short(pf,tp);
+				send_string(pf,argv[3]);
+				send_long(pf,ttl);
+				send_short(pf,flags);
+
+				switch (tp) {
+				case T_A:
+#if ALLOW_AAAA
+				case T_AAAA:
+#endif
+					send_short(pf,nadr);
+					if(write_all(pf,adrbuf,adrbufsz)!=adrbufsz) {
+						perror("Error: could not send IP address(es)");
+						exit(2);
+					}
 				break;
-			case T_MX:
-				send_short(pf,pref);
-				send_string(pf,argv[2]);
-				break;
+				case T_PTR:
+				case T_CNAME:
+					send_string(pf,argv[2]);
+					break;
+				case T_MX:
+					send_short(pf,pref);
+					send_string(pf,argv[2]);
+					break;
+				}
 			}
 		}
 			goto read_retval;
@@ -550,13 +640,13 @@ int main(int argc, char *argv[])
 			pf=open_sock(cache_dir);
 			send_short(pf,cmd);
 			if(argc>1) {
-				int i,totsz=0;
+				int i; size_t totsz=0;
 				for(i=1;i<argc;++i)
 					totsz += strlen(argv[i])+1;
 
 				send_short(pf,totsz);
 				for(i=1;i<argc;++i) {
-					int sz=strlen(argv[i])+1;
+					size_t sz=strlen(argv[i])+1;
 					if(write_all(pf,argv[i],sz)!=sz) {
 						perror("Error: could not write string");
 						exit(2);

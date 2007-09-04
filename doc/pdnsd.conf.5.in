@@ -3,16 +3,16 @@
 .\" Manpage for pdnsd.conf (pdnsd configuration file)
 .\" 
 .\" Copyright (C) 2000, 2001 Thomas Moestl
-.\" Copyright (C) 2003, 2004 Paul A. Rombouts
+.\" Copyright (C) 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
 .\" 
 .\" This manual is a part of the pdnsd package, and may be distributed in
 .\" original or modified  form  under  terms  of  the  GNU  General  Public
 .\" License,  as  published by the Free Software Foundation; either version
-.\" 2, or (at your option) any later version.
+.\" 3, or (at your option) any later version.
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Sep 2006" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Sep 2007" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -113,7 +113,7 @@ this is no longer necessary.
 .br
 If pdnsd has been compiled with both IPv4 and IPv6 support, and you want to
 specify an IPv6 address here, then unless pdnsd was compiled to start up in IPv6 mode
-by default, you will need to use the -6 command-line option or
+by default, you will need to use the \-6 command-line option or
 set run_ipv4=off first (see below) in order to ensure that the
 IPv6 address is parsed correctly.
 .br
@@ -242,7 +242,7 @@ holds the pcmcia scheme information. Normally, this is either /var/lib/pcmcia/sc
 /var/state/pcmcia/scheme.
 .TP
 .B status_ctl=(on|off);
-This has the same effect as the -s command line option: the status control is enabled when
+This has the same effect as the \-s command line option: the status control is enabled when
 on is specified.
 .br
 \fIAdded by Paul Rombouts\fP: Note that pdnsd\-ctl allows run-time configuration of pdnsd,
@@ -250,28 +250,28 @@ even the IP addesses of the name servers can be changed. If you're not using pdn
 you want maximum security, you should not enable this option. It is disabled by default.
 .TP
 .B daemon=(on|off);
-This has the same effect as the -d command line option: the daemon mode is enabled when
+This has the same effect as the \-d command line option: the daemon mode is enabled when
 on is specified.
 .br
 Default is off.
 .TP
 .B tcp_server=(on|off);
-tcp_server=on has the same effect as the -t or --tcp
+tcp_server=on has the same effect as the \-t or \-\-tcp
 command-line option: it enables TCP serving.
-Similarly, tcp_server=off is like the --notcp command-line option.
+Similarly, tcp_server=off is like the \-\-notcp command-line option.
 .br
 Default is on.
 .TP
 .B pid_file=\fIstring\fP;
-This has the same effect as the -p command line option: you can specify a file that pdnsd
+This has the same effect as the \-p command line option: you can specify a file that pdnsd
 will write its pid into when it starts in daemon mode.
 .TP
 .B verbosity=\fInumber\fP;
-This has the same effect as the -v command line option: you can set the verbosity of pdnsd's
+This has the same effect as the \-v command line option: you can set the verbosity of pdnsd's
 messages with it. The argument is a number between 0 (few messages) to 3 (most messages).
 .TP
 .B query_method=(tcp_only|udp_only|tcp_udp|udp_tcp);
-This has the same effect as the -m command line option.
+This has the same effect as the \-m command line option.
 Read the documentation for the command line option on this.
 tcp_only corresponds to the to, udp_only to the uo,
 tcp_udp to the tu and udp_tcp to the ut
@@ -280,7 +280,7 @@ argument of the command line option.
 If you use query_method=tcp_udp, it is recommended that you also set the global timeout option to at least twice the longest server timeout.
 .TP
 .B run_ipv4=(on|off);
-This has the same effect as the -4 or -6 command line option:
+This has the same effect as the \-4 or \-6 command line option:
 if on is specified, IPv4 support is enabled, and IPv6 support is disabled (if available).
 If off is specified, IPv4 will be disabled and IPv6 will be enabled.
 For this option to be meaningful, pdnsd needs to be compiled with support for the protocol you choose.
@@ -289,7 +289,7 @@ in the configuration file, you will probably need to specify run_ipv4=off first 
 ensure that the IPv6 addresses are parsed correctly.
 .TP
 .B debug=(on|off);
-This has the same effect as the -g command line option: the debugging messages are enabled when
+This has the same effect as the \-g command line option: the debugging messages are enabled when
 on is specified.
 .TP
 .B ctl_perms=\fInumber\fP;
@@ -326,7 +326,7 @@ The default for this option is 60.
 .B tcp_qtimeout=\fItimespec\fP;
 This option sets a timeout for tcp queries. If no full query has been received on a tcp connection
 after that time has passed, the connection will be closed. The default is set using the
---with-tcp-qtimeout option to configure.
+\-\-with\-tcp\-qtimeout option to configure.
 .TP
 .B par_queries=\fInumber\fP;
 This option used to set the maximum number of remote servers that would be queried simultaneously,
@@ -352,7 +352,7 @@ After all, if we wait longer anyway, why not for more servers.
 See also the explanation of the global timeout option below.
 .br
 1 or 2 are good values for this option.
-The default is set at compile time using the --with-par-queries option to configure.
+The default is set at compile time using the \-\-with\-par\-queries option to configure.
 .TP
 .B timeout=\fItimespec\fP;
 This is the global timeout parameter for dns queries.
@@ -423,7 +423,7 @@ name servers queried by pdnsd return answers with empty authority
 sections.
 .TP
 .B ipv4_6_prefix=\fIstring\fP;
-This option has the same effect as the -i command-line option.
+This option has the same effect as the \-i command-line option.
 When pdnsd runs in IPv6 mode, this option specifies the prefix pdnsd uses to convert IPv4 addresses in
 the configuration file (or addresses specified with pdnsd\-ctl)
 to IPv6-mapped addresses.
@@ -466,7 +466,7 @@ of a server section (see \fBip\fP option below) during run-time with
 the label must be unique.
 .TP
 .B ip=\fIstring\fP;
-Give the IP (the IP, \fInot\fP the host name) of the server.
+Give the IP (the address, \fInot\fP the host name) of the server.
 .br
 Multiple IP addresses can be given per server section.
 This can be done by entering multiple lines of the form ip=\fIstring\fP;
@@ -482,7 +482,7 @@ the pdnsd control utility.
 If pdnsd has been compiled with both IPv4 and IPv6 support, any IPv6 addresses you specify
 here will be skipped with a warning message, unless pdnsd is running in IPv6 mode.
 Thus, unless pdnsd was compiled to startup in IPv6 mode by default, you need to use the
-command-line option -6 or set run_ipv4=off
+command-line option \-6 or set run_ipv4=off
 first (see global section) in order to ensure
 that IPv6 addresses are parsed correctly.
 .br
@@ -537,7 +537,7 @@ alive. If this is the case, the normal if uptest is executed for the given inter
 The dev option is for pppd dial-on-demand, diald is the same for diald users.
 .IP
 \(bu \fBexec\fP: Executes a given command in the /bin/sh shell 
-(as /bin/sh -c <command>)
+(as /bin/sh \-c <command>)
 and evaluates the result (the return code of the last command) in the shell's way of handling return codes,
 i.e. 0 indicates success, all other indicate failure. The shell's process name will be
 uptest_sh. The command is given with the uptest_cmd option (see below).
@@ -560,10 +560,14 @@ since ping or query will send packets
 in the specified interval and the interface will thus frequently dial!
 .TP
 .B ping_timeout=\fInumber\fP;
-Sets the timeout for the ping test in tenth of seconds. The default is 600 (one minute).
+Sets the timeout for the ping test in tenths of seconds
+(this unit is used for legacy reasons; actually the current implementation is
+only accurate to a second).
+.br
+The default is 600 (one minute).
 .TP
 .B ping_ip=\fIstring\fP;
-The ip for the ping test. The default is the ip of the name server.
+The IP address for the ping test. The default is the IP of the name server.
 .TP
 .B uptest_cmd=\fIstring\fP,\fIstring\fP;
 or
@@ -597,7 +601,7 @@ however, a test is forced when a query times out and the timestamp is reset then
 If you specify onquery instead of a timeout, the interface will be
 tested before every query. This is to prevent automatically dialing
 interfaces (diald/pppd or ippp) to dial on dns queries. It is intended to be
-used in connection with an interface-testing uptest ;-) 
+used in connection with an interface-testing uptest ;\-) 
 .br
 Note that using uptest=exec, you might run into performance problems
 on slow machines when you use that option.
@@ -662,7 +666,7 @@ the advantage that usually less cache space is used and the query is
 usually faster. In 90% of the cases, only address (A) records are needed
 anyway. If switched off, pdnsd will always cache all data about a host
 it can find and will specifically ask for all available records 
-(well, at least it is a good approximation for what it really does ;-)
+(well, at least it is a good approximation for what it really does ;\-)
 This will of course increase the answer packet sizes.
 .br
 Some buggy name servers may not deliver CNAME records when not asked for
@@ -707,9 +711,67 @@ the name servers for the top-level domain in its reply. Setting root_server=on
 will cause pdnsd to try to use cached information about top-level domains to reduce to number
 of queries to root servers, making the resolving of new names more efficient.
 You can get a list of available root servers by running the command
-"dig\ -t\ ns\ .".
+"dig\ \-t\ ns\ .".
 .br
 This option is also necessary if you use the delegation_only option.
+.br
+Default is off.
+.TP
+.B randomize_servers=(on|off);
+\fINew in version 1.2.6:\fP Set this option to on to give each name server
+in this section an equal chance of being queried. If this option is off, the name servers
+are always queried starting with the first one specified. Even with this option on, the
+query order is not truly random. Only the first server is selected randomly; the following
+ones are queried in consecutive order, wrapping around to the beginning of the list when
+the end is reached.  Note that this option only effects the order within a section. The
+servers in the first (active) section are always queried before those in the second one,
+etc.
+.br
+ The default is off, but if you are resolving from root servers setting this
+option on is highly recommended. If root_server=on this option also effects
+the query order of the name servers for the top-level domains.
+.TP
+.B reject=\fIstring\fP;
+\fINew in version 1.2.6:\fP This option can be used to make pdnsd reject replies that
+contain certain IP addresses.  You can specify a single IP address, which will be matched
+exactly, or a range of addresses using an address/mask pair.
+The mask can be specified as a simple integer, indicating the number of initial 1 bits in
+the mask, or in the usual IP address notation. IP addresses may be either IPv4 or IPv6
+(provided there is sufficient support in the C libraries and \-\-disable\-new\-rrs
+was not used).
+When addresses in the reject list are compared with those in a reply, only the bits
+corresponding to those set in the netmask are significant, the rest are ignored.
+.br
+Multiple addresses or address/mask pairs may be specified; this can be done by entering
+multiple lines of the form reject=\fIstring\fP;
+or a single line like this:
+
+reject=\fIstring\fP,\fIstring\fP,\fIstring\fP;
+
+How pdnsd reacts when an address in the reply matches one in the reject list,
+depends on the reject_policy option, see below.
+.TP
+.B reject_policy=(fail|negate);
+\fINew in version 1.2.6:\fP
+This option determines what pdnsd does when an address in the reply from a name server
+matches the reject list (see above). If this option is set to
+fail, pdnsd will try another server, or, if there no more servers to try,
+return the answer SERVFAIL. If this option is set to negate, pdnsd will
+immediately return the answer NXDOMAIN (unknown domain) without querying additional
+servers. The fail setting is useful if you don't always trust the servers in
+this section, but do trust the servers in the following section. The negate
+setting can be used to completely censor certain IP addresses. In this case you should put
+the same reject list in every server section, and also set the
+reject_recursively option (see below) to true.
+.br
+The default is fail.
+.TP
+.B reject_recursively=(on|off);
+\fINew in version 1.2.6:\fP Normally pdnsd checks for addresses in the
+reject list (see above) only when the reply comes directly from a name server
+listed in the configuration file.  With this option set to on, pdnsd will
+also do this check for name servers that where obtained from NS records in the authority
+section of a previous reply (which was incomplete and non-authoritative).
 .br
 Default is off.
 .TP
@@ -853,7 +915,7 @@ This means that pdnsd flags the domain record so that records of this domain tha
 present in the cache are treated as non-existent, i.e. no other servers are queried for
 that record type, and an response containing none of those records is returned. This is
 most time what people want: if you add an A record for a host, and it has no AAAA record
-(and no IPv6 address), you normally don't want other name servers to be queried for it.
+(thus no IPv6 address), you normally don't want other name servers to be queried for it.
 .br
 This is on by default.
 .br
@@ -868,8 +930,17 @@ probably find this option much more convenient.
 The default is off.
 .TP
 .B a=\fIstring\fP;
-Defines an A (host address) record. The argument is an IP in dotted notation. pdnsd will serve
-this address for the host name given in the name option.
+Defines an A (host address) record. The argument is an IPv4 address in dotted notation.
+pdnsd will serve this address for the host name given in the name option.
+.br
+Provided there is sufficient support in the C libraries and \-\-disable\-new\-rrs
+was not used, the argument string may also be an IPv6 address, in which case an AAAA record
+will be defined.
+.br
+This option be may used multiple times within an rr section, causing
+multiple addresses to be defined for the name. However, if you put the different addresses
+in different rr sections for the same name, the definition in the last
+rr section will cancel the definitions in the previous ones.
 .TP
 .B ptr=\fIstring\fP;
 Defines a PTR (domain name pointer) record. The argument is a host name in 
@@ -1060,7 +1131,7 @@ address from its host name and vice versa for every entry in the file. This is
 normally easier than defining an rr for every of your addresses, since localhost
 and your other FQDNs are normally given in /etc/hosts.
 .br
-The accepted format is as follows: The #-sign initiates a comment, the rest of 
+The accepted format is as follows: The #\-sign initiates a comment, the rest of 
 the line from the first occurence of this character on is ignored. Empty lines 
 are tolerated.
 .br
@@ -1141,4 +1212,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 01 Sep 2006 by Paul Rombouts
+Last revised: 20 Aug 2007 by Paul Rombouts

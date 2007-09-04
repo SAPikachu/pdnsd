@@ -127,11 +127,14 @@ mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
+rpmspecrelease = @rpmspecrelease@
+rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
+thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
 
 # $Id: Makefile.am,v 1.2 2000/07/30 19:01:41 thomas Exp $

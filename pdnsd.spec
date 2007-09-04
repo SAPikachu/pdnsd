@@ -51,13 +51,13 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.2.5a
+Version: 1.2.6
 Release: par
-License: GPL
+License: GPLv3
 Group:  Daemons
 Source: http://www.phys.uu.nl/~rombouts/pdnsd/releases/%{name}-%{version}-%{release}.tar.gz
 URL: http://www.phys.uu.nl/~rombouts/pdnsd.html
-Vendor: Thomas Moestl
+Vendor: Paul A. Rombouts
 Packager:  Paul A. Rombouts <p.a.rombouts@home.nl>
 Prefix: %{_prefix} 
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
@@ -216,6 +216,8 @@ fi
 %endif
 
 %changelog
+* Sat Aug  4 2007 Paul Rombouts <p.a.rombouts@home.nl>
+- License is now GPL version 3
 * Fri Mar 24 2006 Paul Rombouts <p.a.rombouts@home.nl>
 - Instead of using a fixed default value for run_as_uid,
   I let useradd choose the uid if run_as_uid is undefined.

@@ -40,7 +40,7 @@ DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(srcdir)/file-list.base.in $(srcdir)/pdnsd.spec.in \
 	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
-	THANKS TODO acconfig.h depcomp install-sh missing
+	THANKS TODO acconfig.h compile depcomp install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -145,11 +145,14 @@ mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
+rpmspecrelease = @rpmspecrelease@
+rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
+thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
 SUBDIRS = src doc contrib
 #GZIP_ENV=

@@ -1,4 +1,4 @@
-.TH PDNSD 8 "Jul 2006" "pdnsd @VERSION@" "System Administration Commands"
+.TH PDNSD 8 "Jul 2007" "pdnsd @VERSION@" "System Administration Commands"
 
 .SH NAME
 \fBpdnsd\fP \- dns proxy daemon
@@ -270,7 +270,7 @@ pdnsd and save cache and executable space):
 .IP
 \(bu NIMLOC (Nimrod locator)
 .IP
-\(bu SRV (service record, RFC 2052)
+\(bu SRV (service record, RFC 2782)
 .IP
 \(bu ATMA (ATM address)
 .IP
@@ -310,7 +310,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too.
 .PP
-Last revised: 02 Jul 2006 by Paul Rombouts.
+Last revised: 22 Jul 2007 by Paul Rombouts.
 
 .SH COPYRIGHT
 
@@ -318,7 +318,7 @@ Last revised: 02 Jul 2006 by Paul Rombouts.
 This man page is a part of the pdnsd package, and may be distributed
 in original or modified form under terms of the GNU General Public
 License, as published by the Free Software Foundation; either version
-2, or (at your option) any later version.
+3, or (at your option) any later version.
 
 .PP
 You can find a copy of the GNU GPL in the file \fBCOPYING\fP in the source

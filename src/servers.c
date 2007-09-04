@@ -1,24 +1,24 @@
 /* servers.c - manage a set of dns servers
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -75,7 +75,7 @@ static void sigint_handler(int signum);
  */
 static int uptest (servparm_t *serv, int j)
 {
-	int ret=0;
+	int ret=0, count_running_ping=0;
 
 	DEBUG_PDNSDA_MSG("performing uptest (type=%s) for %s\n",const_name(serv->uptest),PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a));
 
@@ -83,6 +83,7 @@ static int uptest (servparm_t *serv, int j)
 	++server_data_users;
 	if((serv->uptest==C_PING || serv->uptest==C_QUERY) && pthread_equal(pthread_self(),servstat_thrid)) {
 		/* Inform other threads that a ping is in progress. */
+		count_running_ping=1;
 		++server_status_ping;
 	}
 	pthread_mutex_unlock(&servers_lock);
@@ -112,8 +113,9 @@ static int uptest (servparm_t *serv, int j)
 	  	pid_t pid;
 
 		if ((pid=fork())==-1) {
+			DEBUG_MSG("Could not fork to perform exec uptest: %s\n",strerror(errno));
 			break;
-		} else if (pid==0) {
+		} else if (pid==0) { /* child */
 			/*
 			 * If we ran as setuid or setgid, do not inherit this to the
 			 * command. This is just a last guard. Running pdnsd as setuid()
@@ -146,27 +148,57 @@ static int uptest (servparm_t *serv, int j)
 			}
 			execl("/bin/sh", "uptest_sh","-c",serv->uptest_cmd,(char *)NULL);
 			_exit(1); /* failed execl */
-		} else {
+		} else { /* parent */
 			int status;
-			if (waitpid(pid,&status,0)==pid && WIFEXITED(status)) {
-				ret=(WEXITSTATUS(status)==0);
+			pid_t wpid = waitpid(pid,&status,0);
+			if (wpid==pid) {
+				if(WIFEXITED(status)) {
+					int exitstatus=WEXITSTATUS(status);
+					DEBUG_MSG("uptest command \"%s\" exited with status %d\n",
+						  serv->uptest_cmd, exitstatus);
+					ret=(exitstatus==0);
+				}
+#if DEBUG>0
+				else if(WIFSIGNALED(status)) {
+					DEBUG_MSG("uptest command \"%s\" was terminated by signal %d\n",
+						  serv->uptest_cmd, WTERMSIG(status));
+				}
+				else {
+					DEBUG_MSG("status of uptest command \"%s\" is of unkown type (0x%x)\n",
+						  serv->uptest_cmd, status);
+				}
+#endif
 			}
+#if DEBUG>0
+			else if (wpid==-1) {
+				DEBUG_MSG("Error while waiting for uptest command \"%s\" to terminate: "
+					  "waitpid for pid %d failed: %s\n",
+					  serv->uptest_cmd, pid, strerror(errno));
+			}
+			else {
+				DEBUG_MSG("Error while waiting for uptest command \"%s\" to terminate: "
+					  "waitpid returned %d, expected pid %d\n",
+					  serv->uptest_cmd, wpid, pid);
+			}
+#endif
 		}
 	}
 		break;
 	case C_QUERY:
 		ret=query_uptest(&DA_INDEX(serv->atup_a,j).a, serv->port,
-				 serv->timeout>=global.timeout?serv->timeout:global.timeout, PINGREPEAT);
-	}
+				 serv->timeout>=global.timeout?serv->timeout:global.timeout,
+				 PINGREPEAT);
+	} /* end of switch */
 
 	pthread_mutex_lock(&servers_lock);
-	if((serv->uptest==C_PING || serv->uptest==C_QUERY) && pthread_equal(pthread_self(),servstat_thrid)) {
+	if(count_running_ping)
 		--server_status_ping;
-	}
 	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
 	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
 
-	DEBUG_PDNSDA_MSG("result of uptest for %s is %d\n",PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a),ret);
+	DEBUG_PDNSDA_MSG("result of uptest for %s: %s\n",
+			 PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a),
+			 ret?"OK":"failed");
 	return ret;
 }
 
@@ -348,7 +380,7 @@ void *servstat_thread(void *p)
 			if(minwait>0)
 				timeout.tv_sec += minwait;
 			timeout.tv_nsec = now.tv_usec * 1000 + 500000000;  /* wait at least half a second. */
-			if(timeout.tv_nsec>1000000000) {
+			if(timeout.tv_nsec>=1000000000) {
 				timeout.tv_nsec -= 1000000000;
 				++timeout.tv_sec;
 			}

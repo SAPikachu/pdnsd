@@ -51,13 +51,16 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(sbindir)"
 sbinPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(sbin_PROGRAMS)
-am_pdnsd_OBJECTS = conf-parser.$(OBJEXT) conff.$(OBJEXT) \
-	consts.$(OBJEXT) debug.$(OBJEXT) dns.$(OBJEXT) \
-	dns_answer.$(OBJEXT) dns_query.$(OBJEXT) error.$(OBJEXT) \
-	helpers.$(OBJEXT) icmp.$(OBJEXT) list.$(OBJEXT) main.$(OBJEXT) \
-	netdev.$(OBJEXT) rr_types.$(OBJEXT) status.$(OBJEXT) \
-	servers.$(OBJEXT) thread.$(OBJEXT) cache.$(OBJEXT) \
-	hash.$(OBJEXT)
+am_pdnsd_OBJECTS = pdnsd-conf-parser.$(OBJEXT) pdnsd-conff.$(OBJEXT) \
+	pdnsd-consts.$(OBJEXT) pdnsd-debug.$(OBJEXT) \
+	pdnsd-dns.$(OBJEXT) pdnsd-dns_answer.$(OBJEXT) \
+	pdnsd-dns_query.$(OBJEXT) pdnsd-error.$(OBJEXT) \
+	pdnsd-helpers.$(OBJEXT) pdnsd-icmp.$(OBJEXT) \
+	pdnsd-list.$(OBJEXT) pdnsd-main.$(OBJEXT) \
+	pdnsd-netdev.$(OBJEXT) pdnsd-rr_types.$(OBJEXT) \
+	pdnsd-status.$(OBJEXT) pdnsd-servers.$(OBJEXT) \
+	pdnsd-thread.$(OBJEXT) pdnsd-cache.$(OBJEXT) \
+	pdnsd-hash.$(OBJEXT)
 pdnsd_OBJECTS = $(am_pdnsd_OBJECTS)
 pdnsd_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -152,12 +155,16 @@ mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
+rpmspecrelease = @rpmspecrelease@
+rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
+thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
+pdnsd_CFLAGS = -DCONFDIR="\"@sysconfdir@\"" @thread_CFLAGS@
 pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c \
 	dns_query.c error.c helpers.c icmp.c list.c main.c netdev.c rr_types.c \
 	status.c servers.c thread.c cache.c hash.c conf-parser.h \
@@ -233,25 +240,25 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cache.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/conf-parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/conff.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/consts.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns_answer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns_query.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/error.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/helpers.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/icmp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/list.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netdev.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rr_types.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/servers.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/status.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-cache.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-conf-parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-conff.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-consts.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-dns.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-dns_answer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-dns_query.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-hash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-helpers.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-icmp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-list.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-netdev.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-rr_types.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-servers.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-status.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pdnsd-thread.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -266,6 +273,272 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+pdnsd-conf-parser.o: conf-parser.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-conf-parser.o -MD -MP -MF "$(DEPDIR)/pdnsd-conf-parser.Tpo" -c -o pdnsd-conf-parser.o `test -f 'conf-parser.c' || echo '$(srcdir)/'`conf-parser.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-conf-parser.Tpo" "$(DEPDIR)/pdnsd-conf-parser.Po"; else rm -f "$(DEPDIR)/pdnsd-conf-parser.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conf-parser.c' object='pdnsd-conf-parser.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-conf-parser.o `test -f 'conf-parser.c' || echo '$(srcdir)/'`conf-parser.c
+
+pdnsd-conf-parser.obj: conf-parser.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-conf-parser.obj -MD -MP -MF "$(DEPDIR)/pdnsd-conf-parser.Tpo" -c -o pdnsd-conf-parser.obj `if test -f 'conf-parser.c'; then $(CYGPATH_W) 'conf-parser.c'; else $(CYGPATH_W) '$(srcdir)/conf-parser.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-conf-parser.Tpo" "$(DEPDIR)/pdnsd-conf-parser.Po"; else rm -f "$(DEPDIR)/pdnsd-conf-parser.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conf-parser.c' object='pdnsd-conf-parser.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-conf-parser.obj `if test -f 'conf-parser.c'; then $(CYGPATH_W) 'conf-parser.c'; else $(CYGPATH_W) '$(srcdir)/conf-parser.c'; fi`
+
+pdnsd-conff.o: conff.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-conff.o -MD -MP -MF "$(DEPDIR)/pdnsd-conff.Tpo" -c -o pdnsd-conff.o `test -f 'conff.c' || echo '$(srcdir)/'`conff.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-conff.Tpo" "$(DEPDIR)/pdnsd-conff.Po"; else rm -f "$(DEPDIR)/pdnsd-conff.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conff.c' object='pdnsd-conff.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-conff.o `test -f 'conff.c' || echo '$(srcdir)/'`conff.c
+
+pdnsd-conff.obj: conff.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-conff.obj -MD -MP -MF "$(DEPDIR)/pdnsd-conff.Tpo" -c -o pdnsd-conff.obj `if test -f 'conff.c'; then $(CYGPATH_W) 'conff.c'; else $(CYGPATH_W) '$(srcdir)/conff.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-conff.Tpo" "$(DEPDIR)/pdnsd-conff.Po"; else rm -f "$(DEPDIR)/pdnsd-conff.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='conff.c' object='pdnsd-conff.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-conff.obj `if test -f 'conff.c'; then $(CYGPATH_W) 'conff.c'; else $(CYGPATH_W) '$(srcdir)/conff.c'; fi`
+
+pdnsd-consts.o: consts.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-consts.o -MD -MP -MF "$(DEPDIR)/pdnsd-consts.Tpo" -c -o pdnsd-consts.o `test -f 'consts.c' || echo '$(srcdir)/'`consts.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-consts.Tpo" "$(DEPDIR)/pdnsd-consts.Po"; else rm -f "$(DEPDIR)/pdnsd-consts.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='consts.c' object='pdnsd-consts.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-consts.o `test -f 'consts.c' || echo '$(srcdir)/'`consts.c
+
+pdnsd-consts.obj: consts.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-consts.obj -MD -MP -MF "$(DEPDIR)/pdnsd-consts.Tpo" -c -o pdnsd-consts.obj `if test -f 'consts.c'; then $(CYGPATH_W) 'consts.c'; else $(CYGPATH_W) '$(srcdir)/consts.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-consts.Tpo" "$(DEPDIR)/pdnsd-consts.Po"; else rm -f "$(DEPDIR)/pdnsd-consts.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='consts.c' object='pdnsd-consts.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-consts.obj `if test -f 'consts.c'; then $(CYGPATH_W) 'consts.c'; else $(CYGPATH_W) '$(srcdir)/consts.c'; fi`
+
+pdnsd-debug.o: debug.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-debug.o -MD -MP -MF "$(DEPDIR)/pdnsd-debug.Tpo" -c -o pdnsd-debug.o `test -f 'debug.c' || echo '$(srcdir)/'`debug.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-debug.Tpo" "$(DEPDIR)/pdnsd-debug.Po"; else rm -f "$(DEPDIR)/pdnsd-debug.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='debug.c' object='pdnsd-debug.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-debug.o `test -f 'debug.c' || echo '$(srcdir)/'`debug.c
+
+pdnsd-debug.obj: debug.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-debug.obj -MD -MP -MF "$(DEPDIR)/pdnsd-debug.Tpo" -c -o pdnsd-debug.obj `if test -f 'debug.c'; then $(CYGPATH_W) 'debug.c'; else $(CYGPATH_W) '$(srcdir)/debug.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-debug.Tpo" "$(DEPDIR)/pdnsd-debug.Po"; else rm -f "$(DEPDIR)/pdnsd-debug.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='debug.c' object='pdnsd-debug.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-debug.obj `if test -f 'debug.c'; then $(CYGPATH_W) 'debug.c'; else $(CYGPATH_W) '$(srcdir)/debug.c'; fi`
+
+pdnsd-dns.o: dns.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns.o -MD -MP -MF "$(DEPDIR)/pdnsd-dns.Tpo" -c -o pdnsd-dns.o `test -f 'dns.c' || echo '$(srcdir)/'`dns.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns.Tpo" "$(DEPDIR)/pdnsd-dns.Po"; else rm -f "$(DEPDIR)/pdnsd-dns.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns.c' object='pdnsd-dns.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns.o `test -f 'dns.c' || echo '$(srcdir)/'`dns.c
+
+pdnsd-dns.obj: dns.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns.obj -MD -MP -MF "$(DEPDIR)/pdnsd-dns.Tpo" -c -o pdnsd-dns.obj `if test -f 'dns.c'; then $(CYGPATH_W) 'dns.c'; else $(CYGPATH_W) '$(srcdir)/dns.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns.Tpo" "$(DEPDIR)/pdnsd-dns.Po"; else rm -f "$(DEPDIR)/pdnsd-dns.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns.c' object='pdnsd-dns.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns.obj `if test -f 'dns.c'; then $(CYGPATH_W) 'dns.c'; else $(CYGPATH_W) '$(srcdir)/dns.c'; fi`
+
+pdnsd-dns_answer.o: dns_answer.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns_answer.o -MD -MP -MF "$(DEPDIR)/pdnsd-dns_answer.Tpo" -c -o pdnsd-dns_answer.o `test -f 'dns_answer.c' || echo '$(srcdir)/'`dns_answer.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns_answer.Tpo" "$(DEPDIR)/pdnsd-dns_answer.Po"; else rm -f "$(DEPDIR)/pdnsd-dns_answer.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns_answer.c' object='pdnsd-dns_answer.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns_answer.o `test -f 'dns_answer.c' || echo '$(srcdir)/'`dns_answer.c
+
+pdnsd-dns_answer.obj: dns_answer.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns_answer.obj -MD -MP -MF "$(DEPDIR)/pdnsd-dns_answer.Tpo" -c -o pdnsd-dns_answer.obj `if test -f 'dns_answer.c'; then $(CYGPATH_W) 'dns_answer.c'; else $(CYGPATH_W) '$(srcdir)/dns_answer.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns_answer.Tpo" "$(DEPDIR)/pdnsd-dns_answer.Po"; else rm -f "$(DEPDIR)/pdnsd-dns_answer.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns_answer.c' object='pdnsd-dns_answer.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns_answer.obj `if test -f 'dns_answer.c'; then $(CYGPATH_W) 'dns_answer.c'; else $(CYGPATH_W) '$(srcdir)/dns_answer.c'; fi`
+
+pdnsd-dns_query.o: dns_query.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns_query.o -MD -MP -MF "$(DEPDIR)/pdnsd-dns_query.Tpo" -c -o pdnsd-dns_query.o `test -f 'dns_query.c' || echo '$(srcdir)/'`dns_query.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns_query.Tpo" "$(DEPDIR)/pdnsd-dns_query.Po"; else rm -f "$(DEPDIR)/pdnsd-dns_query.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns_query.c' object='pdnsd-dns_query.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns_query.o `test -f 'dns_query.c' || echo '$(srcdir)/'`dns_query.c
+
+pdnsd-dns_query.obj: dns_query.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-dns_query.obj -MD -MP -MF "$(DEPDIR)/pdnsd-dns_query.Tpo" -c -o pdnsd-dns_query.obj `if test -f 'dns_query.c'; then $(CYGPATH_W) 'dns_query.c'; else $(CYGPATH_W) '$(srcdir)/dns_query.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-dns_query.Tpo" "$(DEPDIR)/pdnsd-dns_query.Po"; else rm -f "$(DEPDIR)/pdnsd-dns_query.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dns_query.c' object='pdnsd-dns_query.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-dns_query.obj `if test -f 'dns_query.c'; then $(CYGPATH_W) 'dns_query.c'; else $(CYGPATH_W) '$(srcdir)/dns_query.c'; fi`
+
+pdnsd-error.o: error.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-error.o -MD -MP -MF "$(DEPDIR)/pdnsd-error.Tpo" -c -o pdnsd-error.o `test -f 'error.c' || echo '$(srcdir)/'`error.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-error.Tpo" "$(DEPDIR)/pdnsd-error.Po"; else rm -f "$(DEPDIR)/pdnsd-error.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='error.c' object='pdnsd-error.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-error.o `test -f 'error.c' || echo '$(srcdir)/'`error.c
+
+pdnsd-error.obj: error.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-error.obj -MD -MP -MF "$(DEPDIR)/pdnsd-error.Tpo" -c -o pdnsd-error.obj `if test -f 'error.c'; then $(CYGPATH_W) 'error.c'; else $(CYGPATH_W) '$(srcdir)/error.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-error.Tpo" "$(DEPDIR)/pdnsd-error.Po"; else rm -f "$(DEPDIR)/pdnsd-error.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='error.c' object='pdnsd-error.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-error.obj `if test -f 'error.c'; then $(CYGPATH_W) 'error.c'; else $(CYGPATH_W) '$(srcdir)/error.c'; fi`
+
+pdnsd-helpers.o: helpers.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-helpers.o -MD -MP -MF "$(DEPDIR)/pdnsd-helpers.Tpo" -c -o pdnsd-helpers.o `test -f 'helpers.c' || echo '$(srcdir)/'`helpers.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-helpers.Tpo" "$(DEPDIR)/pdnsd-helpers.Po"; else rm -f "$(DEPDIR)/pdnsd-helpers.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='helpers.c' object='pdnsd-helpers.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-helpers.o `test -f 'helpers.c' || echo '$(srcdir)/'`helpers.c
+
+pdnsd-helpers.obj: helpers.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-helpers.obj -MD -MP -MF "$(DEPDIR)/pdnsd-helpers.Tpo" -c -o pdnsd-helpers.obj `if test -f 'helpers.c'; then $(CYGPATH_W) 'helpers.c'; else $(CYGPATH_W) '$(srcdir)/helpers.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-helpers.Tpo" "$(DEPDIR)/pdnsd-helpers.Po"; else rm -f "$(DEPDIR)/pdnsd-helpers.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='helpers.c' object='pdnsd-helpers.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-helpers.obj `if test -f 'helpers.c'; then $(CYGPATH_W) 'helpers.c'; else $(CYGPATH_W) '$(srcdir)/helpers.c'; fi`
+
+pdnsd-icmp.o: icmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-icmp.o -MD -MP -MF "$(DEPDIR)/pdnsd-icmp.Tpo" -c -o pdnsd-icmp.o `test -f 'icmp.c' || echo '$(srcdir)/'`icmp.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-icmp.Tpo" "$(DEPDIR)/pdnsd-icmp.Po"; else rm -f "$(DEPDIR)/pdnsd-icmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='icmp.c' object='pdnsd-icmp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-icmp.o `test -f 'icmp.c' || echo '$(srcdir)/'`icmp.c
+
+pdnsd-icmp.obj: icmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-icmp.obj -MD -MP -MF "$(DEPDIR)/pdnsd-icmp.Tpo" -c -o pdnsd-icmp.obj `if test -f 'icmp.c'; then $(CYGPATH_W) 'icmp.c'; else $(CYGPATH_W) '$(srcdir)/icmp.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-icmp.Tpo" "$(DEPDIR)/pdnsd-icmp.Po"; else rm -f "$(DEPDIR)/pdnsd-icmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='icmp.c' object='pdnsd-icmp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-icmp.obj `if test -f 'icmp.c'; then $(CYGPATH_W) 'icmp.c'; else $(CYGPATH_W) '$(srcdir)/icmp.c'; fi`
+
+pdnsd-list.o: list.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-list.o -MD -MP -MF "$(DEPDIR)/pdnsd-list.Tpo" -c -o pdnsd-list.o `test -f 'list.c' || echo '$(srcdir)/'`list.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-list.Tpo" "$(DEPDIR)/pdnsd-list.Po"; else rm -f "$(DEPDIR)/pdnsd-list.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='list.c' object='pdnsd-list.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-list.o `test -f 'list.c' || echo '$(srcdir)/'`list.c
+
+pdnsd-list.obj: list.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-list.obj -MD -MP -MF "$(DEPDIR)/pdnsd-list.Tpo" -c -o pdnsd-list.obj `if test -f 'list.c'; then $(CYGPATH_W) 'list.c'; else $(CYGPATH_W) '$(srcdir)/list.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-list.Tpo" "$(DEPDIR)/pdnsd-list.Po"; else rm -f "$(DEPDIR)/pdnsd-list.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='list.c' object='pdnsd-list.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-list.obj `if test -f 'list.c'; then $(CYGPATH_W) 'list.c'; else $(CYGPATH_W) '$(srcdir)/list.c'; fi`
+
+pdnsd-main.o: main.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-main.o -MD -MP -MF "$(DEPDIR)/pdnsd-main.Tpo" -c -o pdnsd-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-main.Tpo" "$(DEPDIR)/pdnsd-main.Po"; else rm -f "$(DEPDIR)/pdnsd-main.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='pdnsd-main.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+
+pdnsd-main.obj: main.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-main.obj -MD -MP -MF "$(DEPDIR)/pdnsd-main.Tpo" -c -o pdnsd-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-main.Tpo" "$(DEPDIR)/pdnsd-main.Po"; else rm -f "$(DEPDIR)/pdnsd-main.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='pdnsd-main.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+
+pdnsd-netdev.o: netdev.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-netdev.o -MD -MP -MF "$(DEPDIR)/pdnsd-netdev.Tpo" -c -o pdnsd-netdev.o `test -f 'netdev.c' || echo '$(srcdir)/'`netdev.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-netdev.Tpo" "$(DEPDIR)/pdnsd-netdev.Po"; else rm -f "$(DEPDIR)/pdnsd-netdev.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='netdev.c' object='pdnsd-netdev.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-netdev.o `test -f 'netdev.c' || echo '$(srcdir)/'`netdev.c
+
+pdnsd-netdev.obj: netdev.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-netdev.obj -MD -MP -MF "$(DEPDIR)/pdnsd-netdev.Tpo" -c -o pdnsd-netdev.obj `if test -f 'netdev.c'; then $(CYGPATH_W) 'netdev.c'; else $(CYGPATH_W) '$(srcdir)/netdev.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-netdev.Tpo" "$(DEPDIR)/pdnsd-netdev.Po"; else rm -f "$(DEPDIR)/pdnsd-netdev.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='netdev.c' object='pdnsd-netdev.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-netdev.obj `if test -f 'netdev.c'; then $(CYGPATH_W) 'netdev.c'; else $(CYGPATH_W) '$(srcdir)/netdev.c'; fi`
+
+pdnsd-rr_types.o: rr_types.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-rr_types.o -MD -MP -MF "$(DEPDIR)/pdnsd-rr_types.Tpo" -c -o pdnsd-rr_types.o `test -f 'rr_types.c' || echo '$(srcdir)/'`rr_types.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-rr_types.Tpo" "$(DEPDIR)/pdnsd-rr_types.Po"; else rm -f "$(DEPDIR)/pdnsd-rr_types.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rr_types.c' object='pdnsd-rr_types.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-rr_types.o `test -f 'rr_types.c' || echo '$(srcdir)/'`rr_types.c
+
+pdnsd-rr_types.obj: rr_types.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-rr_types.obj -MD -MP -MF "$(DEPDIR)/pdnsd-rr_types.Tpo" -c -o pdnsd-rr_types.obj `if test -f 'rr_types.c'; then $(CYGPATH_W) 'rr_types.c'; else $(CYGPATH_W) '$(srcdir)/rr_types.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-rr_types.Tpo" "$(DEPDIR)/pdnsd-rr_types.Po"; else rm -f "$(DEPDIR)/pdnsd-rr_types.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rr_types.c' object='pdnsd-rr_types.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-rr_types.obj `if test -f 'rr_types.c'; then $(CYGPATH_W) 'rr_types.c'; else $(CYGPATH_W) '$(srcdir)/rr_types.c'; fi`
+
+pdnsd-status.o: status.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-status.o -MD -MP -MF "$(DEPDIR)/pdnsd-status.Tpo" -c -o pdnsd-status.o `test -f 'status.c' || echo '$(srcdir)/'`status.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-status.Tpo" "$(DEPDIR)/pdnsd-status.Po"; else rm -f "$(DEPDIR)/pdnsd-status.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='status.c' object='pdnsd-status.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-status.o `test -f 'status.c' || echo '$(srcdir)/'`status.c
+
+pdnsd-status.obj: status.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-status.obj -MD -MP -MF "$(DEPDIR)/pdnsd-status.Tpo" -c -o pdnsd-status.obj `if test -f 'status.c'; then $(CYGPATH_W) 'status.c'; else $(CYGPATH_W) '$(srcdir)/status.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-status.Tpo" "$(DEPDIR)/pdnsd-status.Po"; else rm -f "$(DEPDIR)/pdnsd-status.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='status.c' object='pdnsd-status.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-status.obj `if test -f 'status.c'; then $(CYGPATH_W) 'status.c'; else $(CYGPATH_W) '$(srcdir)/status.c'; fi`
+
+pdnsd-servers.o: servers.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-servers.o -MD -MP -MF "$(DEPDIR)/pdnsd-servers.Tpo" -c -o pdnsd-servers.o `test -f 'servers.c' || echo '$(srcdir)/'`servers.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-servers.Tpo" "$(DEPDIR)/pdnsd-servers.Po"; else rm -f "$(DEPDIR)/pdnsd-servers.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='servers.c' object='pdnsd-servers.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-servers.o `test -f 'servers.c' || echo '$(srcdir)/'`servers.c
+
+pdnsd-servers.obj: servers.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-servers.obj -MD -MP -MF "$(DEPDIR)/pdnsd-servers.Tpo" -c -o pdnsd-servers.obj `if test -f 'servers.c'; then $(CYGPATH_W) 'servers.c'; else $(CYGPATH_W) '$(srcdir)/servers.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-servers.Tpo" "$(DEPDIR)/pdnsd-servers.Po"; else rm -f "$(DEPDIR)/pdnsd-servers.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='servers.c' object='pdnsd-servers.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-servers.obj `if test -f 'servers.c'; then $(CYGPATH_W) 'servers.c'; else $(CYGPATH_W) '$(srcdir)/servers.c'; fi`
+
+pdnsd-thread.o: thread.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-thread.o -MD -MP -MF "$(DEPDIR)/pdnsd-thread.Tpo" -c -o pdnsd-thread.o `test -f 'thread.c' || echo '$(srcdir)/'`thread.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-thread.Tpo" "$(DEPDIR)/pdnsd-thread.Po"; else rm -f "$(DEPDIR)/pdnsd-thread.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='thread.c' object='pdnsd-thread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-thread.o `test -f 'thread.c' || echo '$(srcdir)/'`thread.c
+
+pdnsd-thread.obj: thread.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-thread.obj -MD -MP -MF "$(DEPDIR)/pdnsd-thread.Tpo" -c -o pdnsd-thread.obj `if test -f 'thread.c'; then $(CYGPATH_W) 'thread.c'; else $(CYGPATH_W) '$(srcdir)/thread.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-thread.Tpo" "$(DEPDIR)/pdnsd-thread.Po"; else rm -f "$(DEPDIR)/pdnsd-thread.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='thread.c' object='pdnsd-thread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-thread.obj `if test -f 'thread.c'; then $(CYGPATH_W) 'thread.c'; else $(CYGPATH_W) '$(srcdir)/thread.c'; fi`
+
+pdnsd-cache.o: cache.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-cache.o -MD -MP -MF "$(DEPDIR)/pdnsd-cache.Tpo" -c -o pdnsd-cache.o `test -f 'cache.c' || echo '$(srcdir)/'`cache.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-cache.Tpo" "$(DEPDIR)/pdnsd-cache.Po"; else rm -f "$(DEPDIR)/pdnsd-cache.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cache.c' object='pdnsd-cache.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-cache.o `test -f 'cache.c' || echo '$(srcdir)/'`cache.c
+
+pdnsd-cache.obj: cache.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-cache.obj -MD -MP -MF "$(DEPDIR)/pdnsd-cache.Tpo" -c -o pdnsd-cache.obj `if test -f 'cache.c'; then $(CYGPATH_W) 'cache.c'; else $(CYGPATH_W) '$(srcdir)/cache.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-cache.Tpo" "$(DEPDIR)/pdnsd-cache.Po"; else rm -f "$(DEPDIR)/pdnsd-cache.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cache.c' object='pdnsd-cache.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-cache.obj `if test -f 'cache.c'; then $(CYGPATH_W) 'cache.c'; else $(CYGPATH_W) '$(srcdir)/cache.c'; fi`
+
+pdnsd-hash.o: hash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-hash.o -MD -MP -MF "$(DEPDIR)/pdnsd-hash.Tpo" -c -o pdnsd-hash.o `test -f 'hash.c' || echo '$(srcdir)/'`hash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-hash.Tpo" "$(DEPDIR)/pdnsd-hash.Po"; else rm -f "$(DEPDIR)/pdnsd-hash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='hash.c' object='pdnsd-hash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-hash.o `test -f 'hash.c' || echo '$(srcdir)/'`hash.c
+
+pdnsd-hash.obj: hash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -MT pdnsd-hash.obj -MD -MP -MF "$(DEPDIR)/pdnsd-hash.Tpo" -c -o pdnsd-hash.obj `if test -f 'hash.c'; then $(CYGPATH_W) 'hash.c'; else $(CYGPATH_W) '$(srcdir)/hash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pdnsd-hash.Tpo" "$(DEPDIR)/pdnsd-hash.Po"; else rm -f "$(DEPDIR)/pdnsd-hash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='hash.c' object='pdnsd-hash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pdnsd_CFLAGS) $(CFLAGS) -c -o pdnsd-hash.obj `if test -f 'hash.c'; then $(CYGPATH_W) 'hash.c'; else $(CYGPATH_W) '$(srcdir)/hash.c'; fi`
 uninstall-info-am:
 
 # This directory's subdirectories are mostly independent; you can cd

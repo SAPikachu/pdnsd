@@ -1,24 +1,24 @@
 /* list.c - Dynamic array and list handling
   
    Copyright (C) 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2007 Paul A. Rombouts
   
-   This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdlib.h>
@@ -31,6 +31,7 @@ Boston, MA 02111-1307, USA.  */
 static char rcsid[]="$Id: list.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
 #endif
 
+#if 0
 #ifdef ALLOC_DEBUG
 darray DBGda_create(size_t sz, char *file, int line)
 {
@@ -40,7 +41,6 @@ darray DBGda_create(size_t sz, char *file, int line)
 }
 #endif
 
-#if 0
 darray Dda_create(size_t sz)
 {
 	darray a;
@@ -51,16 +51,16 @@ darray Dda_create(size_t sz)
 }
 #endif
 
-darray da_grow1(darray a, size_t sz, void (*cleanuproutine) (void *))
+darray da_grow1(darray a, size_t headsz, size_t elemsz, void (*cleanuproutine) (void *))
 {
-	unsigned int k = (a?a->nel:0);
+	size_t k = (a?a->nel:0);
 	if(!a || (k!=0 && (k&7)==0)) {
-		darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*(k+8));
+		darray tmp=(darray)realloc(a, headsz+elemsz*(k+8));
 		if (!tmp && a) {
 			if(cleanuproutine) {
-				unsigned int i;
+				size_t i;
 				for(i=0;i<k;++i)
-					cleanuproutine(((char *)a->elem)+sz*i);
+					cleanuproutine(((char *)a)+headsz+elemsz*i);
 			}
 			free(a);
 		}
@@ -70,23 +70,23 @@ darray da_grow1(darray a, size_t sz, void (*cleanuproutine) (void *))
 	return a;
 }
 
-inline static unsigned int alloc_nel(unsigned int n)
+inline static size_t alloc_nel(size_t n)
 {
   return n==0 ? 8 : (n+7)&(~7);
 }
 
-darray da_resize(darray a, size_t sz, unsigned int n, void (*cleanuproutine) (void *))
+darray da_resize(darray a, size_t headsz, size_t elemsz, size_t n, void (*cleanuproutine) (void *))
 {
-	unsigned int ael = (a?alloc_nel(a->nel):0);
-	unsigned int new_ael = alloc_nel(n);
+	size_t ael = (a?alloc_nel(a->nel):0);
+	size_t new_ael = alloc_nel(n);
 	if(new_ael != ael) {
 		/* adjust alloced space. */
-		darray tmp=(darray)realloc(a, sizeof(struct _dynamic_array_dummy_head)+sz*new_ael);
+		darray tmp=(darray)realloc(a, headsz+elemsz*new_ael);
 		if (!tmp && a) {
 			if(cleanuproutine) {
-				unsigned int i,k=a->nel;
+				size_t i,k=a->nel;
 				for(i=0;i<k;++i)
-					cleanuproutine(((char *)a->elem)+sz*i);
+					cleanuproutine(((char *)a)+headsz+elemsz*i);
 			}
 			free(a);
 		}
@@ -97,13 +97,13 @@ darray da_resize(darray a, size_t sz, unsigned int n, void (*cleanuproutine) (vo
 }
 
 #ifdef ALLOC_DEBUG
-void DBGda_free(darray a, size_t sz, char *file, int line)
+void DBGda_free(darray a, size_t headsz, size_t elemsz, char *file, int line)
 {
 	if (a==NULL)
 		{DEBUG_MSG("- da_free, %s:%d, not initialized\n", file, line);}
 	else
-		{DEBUG_MSG("- da_free, %s:%d, %u bytes\n", file, line,
-			   (unsigned int)(sizeof(struct _dynamic_array_dummy_head)+sz*alloc_nel(a->nel)));}
+		{DEBUG_MSG("- da_free, %s:%d, %lu bytes\n", file, line,
+			   (unsigned long)(headsz+elemsz*alloc_nel(a->nel)));}
 	free(a);
 }
 #endif

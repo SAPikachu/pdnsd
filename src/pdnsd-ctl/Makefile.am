@@ -10,4 +10,4 @@ pdnsd_ctl_DEPENDENCIES = rr_types.o
 #EXTRA_DIST = rr_types.h
 
 rr_types.o: %.o: ../%.c
-	$(COMPILE) -c $<
+	$(COMPILE) -DCLIENT_ONLY -c $<

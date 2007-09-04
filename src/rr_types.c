@@ -2,25 +2,26 @@
                 all rr types known to pdnsd
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
+#include <config.h>
 #include <string.h>
 #include <stdio.h>
 #include "helpers.h"
@@ -80,7 +81,7 @@ struct rr_infos rr_info[]= {
 };
 
 /*
- * OK, this is ineffective. But it is used _really_ seldom (only in some cases while parsing the
+ * OK, this is inefficient. But it is used _really_ seldom (only in some cases while parsing the
  * config file or by pdnsd-ctl), so it is much more effective to sort by id.
  */
 int rr_tp_byname(char *name)
@@ -94,6 +95,8 @@ int rr_tp_byname(char *name)
 	return -1; /* invalid */
 }
 
+/* The following is not needed by pdnsd-ctl. */
+#ifndef CLIENT_ONLY
 
 static const unsigned int poweroften[8] = {1, 10, 100, 1000, 10000, 100000,
 					   1000000,10000000};
@@ -213,3 +216,5 @@ const char *loc2str(const void *binary, char *ascii, size_t asclen)
 	
 	return (ascii);
 }
+
+#endif

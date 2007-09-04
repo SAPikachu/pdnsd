@@ -1,28 +1,27 @@
 /* conf-parser.c - Parser for pdnsd config files.
-   Copyright (C) 2004, 2005, 2006 Paul A. Rombouts.
-
    Based on the files conf-lex.l and conf-parse.y written by 
    Thomas Moestl.
    This version was rewritten in C from scratch and doesn't require (f)lex
    or yacc/bison.
 
+   Copyright (C) 2004, 2005, 2006, 2007 Paul A. Rombouts.
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include "ipvers.h"
@@ -127,6 +126,22 @@ static char* getnextp(char **buf, size_t *n, FILE* in, char *p, char **errstr)
   return p;
 }
 
+
+/* Scan a buffer for a string.
+
+   A string either begins after and ends before a double-quote ("),
+   or simply consists of a sequence of "non-special" characters,
+   starting at the current position.
+
+   char **curp should point to the position in the buffer where
+               the scanning should begin. It will be updated to point
+               to the first character past the scanned string.
+
+   char **startp is used to return the position in the buffer where the scanned
+               string starts.
+
+   size_t *lenp is used to return the length of the scanned string.
+*/
 static int scan_string(char **startp,char **curp,size_t *lenp)
 {
   char *start,*cur=*curp;
@@ -213,6 +228,7 @@ static time_t strtotime(char *nptr, char **endptr, char **errstr)
 #define lookup_keyword(name,len,dic) binsearch_keyword(name,len,dic,sizeof(dic)/sizeof(namevalue_t))
 static const char *parse_ip(const char *ipstr,size_t len, pdnsd_a *a);
 static const char *addr_add(atup_array *ata, const char *ipstr, size_t len);
+static const char *reject_add(servparm_t *serv, const char *ipstr, size_t len);
 static void check_localaddrs(servparm_t *serv);
 static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr);
 static const char *slist_add(slist_array *sla, const char *nm, size_t len, int tp);
@@ -934,6 +950,10 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    ASSIGN_ON_OFF(server.rootserver,p,C_ON,"bad qualifier in root_server= option.");
 	    break;
 
+	  case RANDOMIZE_SERVERS:
+	    ASSIGN_ON_OFF(server.rand_servers,p,C_ON,"bad qualifier in randomize_servers= option.");
+	    break;
+
 	  case POLICY: {
 	    int cnst;
 	    ASSIGN_CONST(cnst,p,cnst==C_INCLUDED || cnst==C_EXCLUDED || cnst==C_SIMPLE_ONLY || cnst==C_FQDN_ONLY,"bad qualifier in policy= option.");
@@ -947,6 +967,21 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 	  case EXCLUDE:
 	    SCAN_STRING_LIST(&server.alist,p,exclude_list_add)
+	    break;
+
+	  case REJECTLIST:
+	    SCAN_STRING_LIST(&server,p,reject_add);
+	    break;
+
+	  case REJECTPOLICY: {
+	    int cnst;
+	    ASSIGN_CONST(cnst,p,cnst==C_FAIL || cnst==C_NEGATE,"bad qualifier in reject_policy= option.");
+	    server.rejectpolicy=cnst;
+	  }
+	    break;
+
+	  case REJECTRECURSIVELY:
+	    ASSIGN_ON_OFF(server.rejectrecursively,p,C_ON,"bad qualifier in reject_recursively= option.");
 	    break;
 
 	  case LABEL:
@@ -1006,8 +1041,8 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	break;
 
       case RR: {
-	 /* Initialize c_cent to all zeros.
-	    Then it should be safe to call free_cent() on it, even before calling init_cent(). */
+	/* Initialize c_cent to all zeros.
+	   Then it should be safe to call free_cent() on it, even before calling init_cent(). */
 	dns_cent_t c_cent={0};
 	time_t c_ttl=86400;
 	unsigned c_flags=DF_LOCAL;
@@ -1076,7 +1111,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 		sz=sizeof(struct in_addr);
 	      }
 	      else
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+#if ALLOW_LOCAL_AAAA
 		if (inet_pton(AF_INET6,buf,&c_a.ipv6)>0) {
 		  tp=T_AAAA;
 		  sz=sizeof(struct in6_addr);
@@ -1477,6 +1512,8 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 #undef CLEANUP_GOTO
 }
 
+
+/* Convert a string representation of an IP address into a binary format. */
 static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
 {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
@@ -1507,6 +1544,7 @@ static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
   return NULL;
 }
 
+/* Add an IP address to the list of name servers. */
 static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
 {
   atup_t *at;
@@ -1536,6 +1574,82 @@ static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
   at->is_up=0;
   at->i_ts=0;
   return NULL;
+}
+
+
+/* Helper functions for making netmasks */
+inline static uint32_t mk_netmask4(int len)
+{
+  uint32_t m;
+
+  if(len<=0)
+    return 0;
+
+  m= ~(uint32_t)0;
+  return (len<32)? htonl(m<<(32-len)): m;
+}
+
+#if ALLOW_LOCAL_AAAA
+inline static void mk_netmask6(struct in6_addr *m, int len)
+{
+  uint32_t *ma = (uint32_t *)m;
+  ma[0] = mk_netmask4(len);
+  ma[1] = mk_netmask4(len -= 32);
+  ma[2] = mk_netmask4(len -= 32);
+  ma[3] = mk_netmask4(len -= 32);
+}		
+#endif
+
+/* Add an IP address/mask to the reject lists. */
+static const char *reject_add(servparm_t *serv, const char *ipstr, size_t len)
+{
+  TEMPSTRNCPY(buf,ipstr,len);
+  {
+    char *slash=strchr(buf,'/'); int mlen=0;
+
+    if(slash) {
+      *slash++=0;
+
+      if(*slash && isdigit(*slash)) {
+	char *endptr;
+	int l = strtol(slash,&endptr,10);
+	if(!*endptr) {
+	  mlen=l;
+	  slash=NULL;
+	}
+      }
+    }
+    else
+      mlen=128; /* Works for both IPv4 and IPv6 */
+
+    {
+      addr4maskpair_t am;
+
+      am.mask.s_addr = mk_netmask4(mlen);
+      if(inet_aton(buf,&am.a) && (!slash || inet_aton(slash,&am.mask))) {
+	if(!(serv->reject_a4=DA_GROW1(serv->reject_a4)))
+	  return "out of memory!";
+
+	DA_LAST(serv->reject_a4) = am;
+	return NULL;
+      }
+    }
+#if ALLOW_LOCAL_AAAA
+    {
+      addr6maskpair_t am;
+
+      mk_netmask6(&am.mask,mlen);
+      if(inet_pton(AF_INET6,buf,&am.a)>0 && (!slash || inet_pton(AF_INET6,slash,&am.mask)>0)) {
+	if(!(serv->reject_a6=DA_GROW1(serv->reject_a6)))
+	  return "out of memory!";
+
+	DA_LAST(serv->reject_a6) = am;
+	return NULL;
+      }
+    }
+#endif
+  }
+  return "bad IP address";
 }
 
 /* Try to avoid the possibility that pdnsd will query itself. */

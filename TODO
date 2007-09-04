@@ -1,5 +1,3 @@
-$Id: TODO,v 1.28 2001/12/30 18:54:48 tmm Exp $
-
 - Implement a reference counter to ensure that newly entered records are not
   purged immediately (really needed?)
 - Perhaps do a two-step form of recursive query: first query those servers we

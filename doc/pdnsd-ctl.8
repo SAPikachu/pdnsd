@@ -4,7 +4,7 @@
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
 .\" This manpage has been edited manually by Paul Rombouts.
-.TH "PDNSD\-CTL" "8" "Sep 2006" "pdnsd 1.2.5a-par" ""
+.TH "PDNSD\-CTL" "8" "Jul 2007" "pdnsd 1.2.6-par" ""
 .SH NAME
 \fBpdnsd\-ctl\fP \- controls pdnsd
 .SH SYNOPSIS
@@ -35,7 +35,7 @@ Print a command summary.
 \fBversion\fP
 [no options]
 
-Print version info.
+Print version and license info.
 .TP
 \fBstatus\fP
 [no options]
@@ -100,7 +100,9 @@ fn is the name of the file, which must be readable by pdnsd.
 Add a record of the given type to the pdnsd cache, replacing existing
 records for the same name and type. The 2nd argument corresponds
 to the argument of the option in the rr section that is named like
-the first option. The ttl is optional, the default is 900 seconds.
+the first option. The addr argument may be a list of IP addresses,
+separated by commas or white space.
+The ttl is optional, the default is 900 seconds.
 \fBnoauth\fP is used to make the domains non-authoritative
 (this is similar to setting authrec=off in the config file,
 please consult the
@@ -187,7 +189,7 @@ Paul Rombouts
 .UE
 (for versions 1.1.8b1\-par and later)
 .PP
-Last revised: 01 Sep 2006 by Paul Rombouts.
+Last revised: 22 Jul 2007 by Paul Rombouts.
 .SH "SEE ALSO"
 .PP
 .BR pdnsd (8),

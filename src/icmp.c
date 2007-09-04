@@ -1,24 +1,24 @@
 /* icmp.c - Server response tests using ICMP echo requests
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2005 Paul A. Rombouts
+   Copyright (C) 2003, 2005, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 /*
  * This should now work on both Linux and FreeBSD (and CYGWIN?). If anyone
@@ -176,10 +176,6 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #if (TARGET==TARGET_LINUX)
 	struct icmp_filter f;
 #endif
-	struct sockaddr_in from,to;
-	struct icmphdr icmpd;
-	unsigned long sum;
-	unsigned short *ptr;
 	unsigned short id=(unsigned short)get_rand16(); /* randomize a ping id */
 
 	isock=ping_isocket;
@@ -201,17 +197,22 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 #endif
 
 	for (i=0;i<rep;i++) {
+		struct sockaddr_in from,to;
+		struct icmphdr icmpd;
+		unsigned long sum;
+		uint16_t *ptr;
 		long tm,tpassed;
 		int j;
+
 		icmpd.icmp_type=ICMP_ECHO;
 		icmpd.icmp_code=0;
 		icmpd.icmp_cksum=0;
-		icmpd.icmp_id=htons((short)id);
-		icmpd.icmp_seq=htons((short)i);
+		icmpd.icmp_id=htons((uint16_t)id);
+		icmpd.icmp_seq=htons((uint16_t)i);
 
 		/* Checksumming - Algorithm taken from nmap. Thanks... */
 
-		ptr=(unsigned short *)&icmpd;
+		ptr=(uint16_t *)&icmpd;
 		sum=0;
 
 		for (j=0;j<4;j++) {
@@ -299,7 +300,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 						if (len-iph.ip_hl*4>=ICMP_BASEHDR_LEN) {
 							struct icmphdr icmpp;
 
-							memcpy(&icmpp, ((unsigned long int *)buf)+iph.ip_hl, sizeof(icmpp));
+							memcpy(&icmpp, ((uint32_t *)buf)+iph.ip_hl, sizeof(icmpp));
 							if (iph.ip_saddr==addr.s_addr && icmpp.icmp_type==ICMP_ECHOREPLY &&
 							    ntohs(icmpp.icmp_id)==id && ntohs(icmpp.icmp_seq)<=i) {
 								return (i-ntohs(icmpp.icmp_seq))*timeout+(time(NULL)-tm); /* return the number of ticks */
@@ -385,8 +386,6 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 /*	int ck_offs=2;*/
 	int isock;
 	struct icmp6_filter f;
-	struct sockaddr_in6 from;
-	struct icmp6_hdr icmpd;
 	unsigned short id=(unsigned short)(rand()&0xffff); /* randomize a ping id */
 
 	isock=ping6_isocket;
@@ -404,12 +403,15 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 	}
 	
 	for (i=0;i<rep;i++) {
+		struct sockaddr_in6 from;
+		struct icmp6_hdr icmpd;
 		long tm,tpassed;
+
 		icmpd.icmp6_type=ICMP6_ECHO_REQUEST;
 		icmpd.icmp6_code=0;
 		icmpd.icmp6_cksum=0; /* The friendly kernel does fill that in for us. */
-		icmpd.icmp6_id=htons((short)id);
-		icmpd.icmp6_seq=htons((short)i);
+		icmpd.icmp6_id=htons((uint16_t)id);
+		icmpd.icmp6_seq=htons((uint16_t)i);
 		
 		memset(&from,0,sizeof(from));
 		from.sin6_family=AF_INET6;
@@ -532,19 +534,23 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 		return -1;
 #endif
 
+	/* We were given a timeout in 10ths of seconds,
+	   but ping4 and ping6 want a timeout in seconds. */
+	timeout /= 10;
+
 #ifdef ENABLE_IPV4
 	if (run_ipv4)
-		return ping4(addr->ipv4,timeout/10,rep);
+		return ping4(addr->ipv4,timeout,rep);
 #endif
 #ifdef ENABLE_IPV6
 	ELSE_IPV6 {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
 		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			struct in_addr v4;
-			v4.s_addr=((long *)&addr->ipv6)[3];
-			return ping4(v4,timeout/10,rep);
+			v4.s_addr=((uint32_t *)&addr->ipv6)[3];
+			return ping4(v4,timeout,rep);
 		} else 
-			return ping6(addr->ipv6,timeout/10,rep);
+			return ping6(addr->ipv6,timeout,rep);
 	}
 #endif
 	return -1;

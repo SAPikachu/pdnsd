@@ -1,24 +1,24 @@
 /* status.c - Allow control of a running server using a socket
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -126,14 +126,14 @@ static int read_allocstring(int fh, char **res, unsigned *len)
 {
 	uint16_t count;
 	char *buf;
-	int nread;
+	unsigned int nread;
 
 	if(!read_short(fh,&count)) return 0;
 	if(count==(uint16_t)(~0)) {*res=NULL; return -1;}
 	if(!(buf=malloc(count+1))) return 0;
 	nread=0;
 	while(nread<count) {
-		int m=read(fh,buf+nread,count-nread);
+		ssize_t m=read(fh,buf+nread,count-nread);
 		if(m<=0) {free(buf); return 0;}
 		nread+=m;
 	}
@@ -152,7 +152,7 @@ static int read_allocstring(int fh, char **res, unsigned *len)
 static int read_domain(int fh, char *buf, int buflen)
 {
 	uint16_t count;
-	int nread;
+	unsigned int nread;
 
 	/* PDNSD_ASSERT(buflen>0, "bad read_domain call"); */
 	if(!read_short(fh,&count)) return 0;
@@ -160,15 +160,17 @@ static int read_domain(int fh, char *buf, int buflen)
 	if(count >=buflen) return 0;
 	nread=0;
 	while(nread<count) {
-		int m=read(fh,buf+nread,count-nread);
+		ssize_t m=read(fh,buf+nread,count-nread);
 		if(m<=0) return 0;
 		nread+=m;
 	}
 	buf[count]=0;
-	/* if(count==0 || buf[count-1]!='.') {
+#if 0
+	if(count==0 || buf[count-1]!='.') {
 		if(count+1>=buflen) return 0;
 		buf[count]='.'; buf[count+1]=0;
-	} */
+	}
+#endif
 	return 1;
 }
 
@@ -408,9 +410,11 @@ static void *status_thread (void *p)
 				    break;
 			    case CTL_ADD: {
 				    uint32_t ttl;
-				    int sz;
-				    uint16_t tp,flags;
+				    unsigned sz;
+				    uint16_t tp,flags,nadr=0;
 				    unsigned char name[256],buf[256],dbuf[260];
+				    size_t adrbufsz=0;
+				    unsigned char *adrbuf=NULL;
 
 				    DEBUG_MSG("Received ADD command.\n");
 				    if (!read_short(rs,&tp))
@@ -428,17 +432,30 @@ static void *status_thread (void *p)
 
 				    switch (tp) {
 				    case T_A:
-					    if (read(rs,dbuf,sizeof(struct in_addr))!=sizeof(struct in_addr))
-						    goto bad_arg;
 					    sz=sizeof(struct in_addr);
-					    break;
-#ifdef ENABLE_IPV6
+#if ALLOW_LOCAL_AAAA
+					    goto read_adress_list;
 				    case T_AAAA:
-					    if (read(rs,dbuf,sizeof(struct in6_addr))!=sizeof(struct in6_addr))
-						    goto bad_arg;
 					    sz=sizeof(struct in6_addr);
-					    break;
+				    read_adress_list:
 #endif
+					    if (!read_short(rs,&nadr))
+						    goto incomplete_command;
+					    if (!nadr)
+						    goto bad_arg;
+					    adrbufsz= nadr * (size_t)sz;
+					    adrbuf= malloc(adrbufsz);
+					    if(!adrbuf)
+						    goto out_of_memory;
+					    {
+						    size_t nread=0;
+						    while(nread<adrbufsz) {
+							    ssize_t m=read(rs,adrbuf+nread,adrbufsz-nread);
+							    if(m<=0) {free(adrbuf); goto bad_arg;}
+							    nread += m;
+						    }
+					    }
+					    break;
 				    case T_CNAME:
 				    case T_PTR:
 					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
@@ -462,9 +479,22 @@ static void *status_thread (void *p)
 				    {
 					    dns_cent_t cent;
 
-					    if (!init_cent(&cent, name, 0, 0, flags  DBG1))
+					    if (!init_cent(&cent, name, 0, 0, flags  DBG1)) {
+						    free(adrbuf);
 						    goto out_of_memory;
-					    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf  DBG1)) {
+					    }
+					    if(adrbuf) {
+						    unsigned char *adrp; int i;
+						    for(adrp=adrbuf,i=0; i<nadr; adrp += sz,++i) {
+							    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,adrp  DBG1)) {
+								    free_cent(&cent  DBG1);
+								    free(adrbuf);
+								    goto out_of_memory;
+							    }
+						    }
+						    free(adrbuf);
+					    }
+					    else if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf  DBG1)) {
 						    free_cent(&cent  DBG1);
 						    goto out_of_memory;
 					    }

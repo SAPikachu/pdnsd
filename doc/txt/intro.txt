@@ -82,7 +82,7 @@ executable space):
   * LOC (location, RFC 1876)
   * EID (Nimrod EID)
   * NIMLOC (Nimrod locator)
-  * SRV (service record, RFC 2052)
+  * SRV (service record, RFC 2782)
   * ATMA (ATM address)
   * NAPTR (URI mapping, RFC 2168)
   * KX (key exchange, RFC 2230)
@@ -287,5 +287,5 @@ Eelco Vriezekolk
 Thomas Moestl and Paul Rombouts
 
 
-Last revised: 02 Sep 2006 by Paul Rombouts
+Last revised: 03 Sep 2007 by Paul Rombouts
 

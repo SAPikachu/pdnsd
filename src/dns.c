@@ -1,24 +1,24 @@
 /* dns.c - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <ctype.h>
@@ -310,18 +310,18 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 			return 0;
 	}
 	else 
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6)
+#if ALLOW_LOCAL_AAAA
 	if(tp==T_AAAA) {
 		unsigned char *p=(unsigned char *)&a->ipv6;
 		int i,offs=0;
 		for (i=15;i>=0;--i) {
 			unsigned char bt=p[i];
-			int n=snprintf(buf+offs, 256-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
+			int n=snprintf(charp(buf+offs), 256-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
 			if(n<0) return 0;
 			offs+=n;
 			if(offs>=256) return 0;
 		}
-		if(!strncp(buf+offs,"ip6.arpa.",256-offs))
+		if(!strncp(charp(buf+offs),"ip6.arpa.",256-offs))
 			return 0;
 	}
 	else
@@ -424,8 +424,8 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 			tp=T_A;
 			sz=sizeof(struct in_addr);
 		} else {
-#if defined(DNS_NEW_RRS) && defined(ENABLE_IPV6) /* We don't read them otherwise, as the C library may not be able to to that.*/
-			if (inet_pton(AF_INET6,pi,&a.ipv6)>0) {
+#if ALLOW_LOCAL_AAAA    /* We don't read them otherwise, as the C library may not be able to to that.*/
+			if (inet_pton(AF_INET6,charp pi,&a.ipv6)>0) {
 				tp=T_AAAA;
 				sz=sizeof(struct in6_addr);
 			} else

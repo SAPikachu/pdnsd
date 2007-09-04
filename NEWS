@@ -1,3 +1,16 @@
+Version 1.2.6-par has an upgraded license: GPL version 3.
+A bug has been fixed which which caused pdnsd to handle NXDOMAIN replies
+inefficiently when configured with neg_domain_pol=on.  Also the code for the
+ping test has been fixed, which was broken for 64-bit systems.  A new option
+randomize_servers can be used to give each server in a section of the
+configuration file an equal chance of being queried.  The new options reject,
+reject_policy and reject_recursively make it possible to check for the presence
+of certain IP addresses in the replies of name servers and to correct some types
+of unwanted replies or to censor these IP addresses.
+The pdnsd-ctl 'add a' and 'add aaaa' commands now allow multiple IP addresses to
+be specified for the same name. There are some further improvements to pdnsd's
+recursive resolver.
+
 Version 1.2.5-par introduces a new query method: udp_tcp. With this method a UDP
 query is tried first and, if the UDP answer is truncated, the query is repeated
 using TCP, which is the behaviour that seems to be recommended by the DNS
@@ -45,16 +58,17 @@ Version 1.2.1-par has improved support for non-Linux platforms. This release has
 compilation glitches that have been reported by FreeBSD users.
 
 Version 1.2-par is a new and improved version of pdnsd! Most of the changes
-effect the internal workings of pdnsd, but there also a number of interesting
-new features (well, I think they are interesting). Among the bugs fixed are two
-rather nasty ones which involve the handling of NXT and NAPTR records and which
-can cause pdnsd to crash or abort. The new features include a new server
-availability test which can be specified with uptest=query, support for reading
-the DNS configuration from resolv.conf files, a new option for optimizing the
-use of root servers, a new option that makes defining local records for reverse
-resolving easier, support for defining wildcard records, a new pdnsd-ctl command
-for reloading the config file without restarting pdnsd, and a new pdnsd-ctl
-command for dumping information about the names stored in the cache.
+effect the internal workings of pdnsd, but there are also a number of
+interesting new features (well, I think they are interesting). Among the bugs
+fixed are two rather nasty ones which involve the handling of NXT and NAPTR
+records and which can cause pdnsd to crash or abort. The new features include a
+new server availability test which can be specified with uptest=query, support
+for reading the DNS configuration from resolv.conf files, a new option for
+optimizing the use of root servers, a new option that makes defining local
+records for reverse resolving easier, support for defining wildcard records, a
+new pdnsd-ctl command for reloading the config file without restarting pdnsd,
+and a new pdnsd-ctl command for dumping information about the names stored in
+the cache.
 The documentation has also been updated: there is now a pdnsd.conf man page. For
 a more complete list of the changes I'll have to refer you to README.par and the
 ChangeLog.

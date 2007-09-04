@@ -309,7 +309,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar distribution cachedir def_id specbuild threadlib CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB CPP EGREP ALLOCA LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar distribution cachedir def_id specbuild rpmspecversion rpmspecrelease threadlib CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB thread_CFLAGS CPP EGREP ALLOCA LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -1351,12 +1351,10 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-test -z "$CFLAGS" && CFLAGS="-O2 -g -Wall -Winline"
-
-CFLAGS="$CFLAGS -D_REENTRANT -D_THREAD_SAFE -D_GNU_SOURCE -DCONFDIR=\"\\\"$sysconfdir\\\"\""
-
 PACKAGE="pdnsd"
 VERSION=`cat $srcdir/version`
+rpmspecversion=`cut -d - -f 1  $srcdir/version`
+rpmspecrelease=`cut -d - -f 2- $srcdir/version`
 
 distribution="Generic"
 target="autodetect"
@@ -1815,8 +1813,13 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
-
           ac_config_headers="$ac_config_headers config.h"
+
+
+cat >>confdefs.h <<\_ACEOF
+#define _GNU_SOURCE 1
+_ACEOF
+
 
 
 
@@ -2205,6 +2208,8 @@ if test "${enable_specbuild+set}" = set; then
   enableval="$enable_specbuild"
   specbuild=$enableval
 fi;
+
+
 
 
 
@@ -4484,7 +4489,7 @@ fi
 fi
 if test "$target" = "BSD" -a `uname` != Darwin ; then
 #  if test $freebsd_pthread = 4 ; then
-    CFLAGS="$CFLAGS -pthread"
+    thread_CFLAGS="-pthread"
 
 #  else
 #    AC_CHECK_LIB(c_r, pthread_kill, ,
@@ -5822,6 +5827,74 @@ _ACEOF
 
 fi
 
+echo "$as_me:$LINENO: checking for struct in6_addr" >&5
+echo $ECHO_N "checking for struct in6_addr... $ECHO_C" >&6
+if test "${ac_cv_type_struct_in6_addr+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+
+int
+main ()
+{
+if ((struct in6_addr *) 0)
+  return 0;
+if (sizeof (struct in6_addr))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_struct_in6_addr=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_struct_in6_addr=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_struct_in6_addr" >&5
+echo "${ECHO_T}$ac_cv_type_struct_in6_addr" >&6
+if test $ac_cv_type_struct_in6_addr = yes; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_IN6_ADDR 1
+_ACEOF
+
+
+fi
 echo "$as_me:$LINENO: checking for struct in_pktinfo" >&5
 echo $ECHO_N "checking for struct in_pktinfo... $ECHO_C" >&6
 if test "${ac_cv_type_struct_in_pktinfo+set}" = set; then
@@ -7390,7 +7463,8 @@ done
 
 
 
-for ac_func in strdup strndup stpcpy stpncpy strlcpy mempcpy getline asprintf vasprintf getpwnam_r inet_ntop
+
+for ac_func in strdup strndup stpcpy stpncpy strlcpy mempcpy getline asprintf vasprintf getpwnam_r inet_ntop inet_pton
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -8184,6 +8258,8 @@ s,@distribution@,$distribution,;t t
 s,@cachedir@,$cachedir,;t t
 s,@def_id@,$def_id,;t t
 s,@specbuild@,$specbuild,;t t
+s,@rpmspecversion@,$rpmspecversion,;t t
+s,@rpmspecrelease@,$rpmspecrelease,;t t
 s,@threadlib@,$threadlib,;t t
 s,@CC@,$CC,;t t
 s,@CFLAGS@,$CFLAGS,;t t
@@ -8203,6 +8279,7 @@ s,@am__fastdepCC_TRUE@,$am__fastdepCC_TRUE,;t t
 s,@am__fastdepCC_FALSE@,$am__fastdepCC_FALSE,;t t
 s,@RANLIB@,$RANLIB,;t t
 s,@ac_ct_RANLIB@,$ac_ct_RANLIB,;t t
+s,@thread_CFLAGS@,$thread_CFLAGS,;t t
 s,@CPP@,$CPP,;t t
 s,@EGREP@,$EGREP,;t t
 s,@ALLOCA@,$ALLOCA,;t t

@@ -1,24 +1,24 @@
 /* dns_query.c - Execute outgoing dns queries and write entries to cache
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 #include <config.h>
 #include <sys/types.h>
@@ -70,6 +70,22 @@ typedef struct {
 # define hdroffset 2
 #endif
 
+/* data type to hold lists of IP addresses (both v4 and v6)
+   The allocated size should be:
+     sizeof(rejectlist_t) + na4*sizeof(addr4maskpair_t) + na6*sizeof(addr6maskpair_t)
+*/
+typedef struct rejectlist_s {
+	struct rejectlist_s *next;
+	short               policy;
+	short               inherit;
+	int                 na4;
+#if ALLOW_LOCAL_AAAA
+	int                 na6;
+	addr6maskpair_t     rdata[0];  /* dummy array for alignment */
+#else
+	addr4maskpair_t     rdata[0];
+#endif
+} rejectlist_t;
 
 /* --- structures and state constants for parallel query */
 typedef struct {
@@ -81,6 +97,9 @@ typedef struct {
 		struct sockaddr_in6 sin6;
 #endif
 	}                   a;
+#ifdef ENABLE_IPV6
+	struct in_addr      a4fallback;
+#endif
 	time_t              timeout;
 	unsigned short      flags;
 	short               nocache;
@@ -89,13 +108,17 @@ typedef struct {
         char                auth_serv;
 	char                lean_query;
 	char                needs_testing;
+	char                trusted;
 	char                aa;
 	char                tc;
 	unsigned char       *nsdomain;
+	rejectlist_t        *rejectlist;
 	/* internal state for p_exec_query */
 	int                 sock;
-/*	dns_cent_t          nent;
-	dns_cent_t          servent;*/
+#if 0
+	dns_cent_t          nent;
+	dns_cent_t          servent;
+#endif
 	unsigned short      transl;
 	unsigned short      recvl;
 #ifndef NO_TCP_QUERIES
@@ -108,6 +131,20 @@ typedef struct {
 } query_stat_t;
 typedef DYNAMIC_ARRAY(query_stat_t) *query_stat_array;
 
+/* Some macros for handling data in reject lists
+   Perhaps we should use inline functions instead of macros.
+*/
+#define have_rejectlist(st) ((st)->rejectlist!=NULL)
+#define inherit_rejectlist(st) ((st)->rejectlist && (st)->rejectlist->inherit)
+#define reject_policy(st)   ((st)->rejectlist->policy)
+#define nreject_a4(st)      ((st)->rejectlist->na4)
+#if ALLOW_LOCAL_AAAA
+#define nreject_a6(st)      ((st)->rejectlist->na6)
+#define rejectlist_a6(st)   ((addr6maskpair_t *)(st)->rejectlist->rdata)
+#define rejectlist_a4(st)   ((addr4maskpair_t *)(rejectlist_a6(st)+nreject_a6(st)))
+#else
+#define rejectlist_a4(st)   ((addr4maskpair_t *)(st)->rejectlist->rdata)
+#endif
 
 #define QS_INITIAL       0  /* This is the initial state. Set this before starting. */
 
@@ -160,11 +197,88 @@ static volatile unsigned long poll_errs=0;
 
 typedef DYNAMIC_ARRAY(dns_cent_t) *dns_cent_array;
 
+
+/* The pdnsd_a2 type is very similar to pdnsd_a, but can hold
+   both an IPv4 and an IPv6 address at the same time,
+   i.e. a struct instead of a union.
+*/
+typedef struct {
+#ifdef ENABLE_IPV6
+	struct in6_addr  ipv6;
+#endif
+	struct in_addr   ipv4;
+} pdnsd_a2;
+
+typedef DYNAMIC_ARRAY(pdnsd_a2) *addr2_array;
+
+/* Same as is_inaddr_any(), but for the pdnsd_a2 type. */
+inline static int is_inaddr2_any(pdnsd_a2 *a)
+{
+	return
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+		run_ipv4? a->ipv4.s_addr==INADDR_ANY:
+# else
+		a->ipv4.s_addr==INADDR_ANY
+# endif
+#endif
+#ifdef ENABLE_IPV6
+		IN6_IS_ADDR_UNSPECIFIED(&a->ipv6)
+#endif
+		;
+}
+
+/* Macros/functions for converting a pdnsd_a* into a pdnsd_a2* type,
+   and vice versa.
+*/
+#ifdef ENABLE_IPV6
+inline static pdnsd_a2 *PDNSD_A_TO_A2(pdnsd_a *a,pdnsd_a2 *a2)
+{
+#ifdef ENABLE_IPV4
+	if(run_ipv4)
+		a2->ipv4=a->ipv4;
+	else
+#endif
+	{
+		a2->ipv6=a->ipv6;
+		a2->ipv4.s_addr=INADDR_ANY;
+	}
+	return a2;
+}
+#else
+# define PDNSD_A_TO_A2(a,a2) ((pdnsd_a2 *)&(a)->ipv4)
+#endif
+
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+#  define PDNSD_A2_TO_A(a2) (run_ipv4?((pdnsd_a *)&(a2)->ipv4):((pdnsd_a *)&(a2)->ipv6))
+# else
+#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv4)
+# endif
+#else
+#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv6)
+#endif
+
+/* Compare a pdnsd_a*  with a pdnsd_a2*. */
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+#  define ADDR_EQUIV2(a,a2) ((run_ipv4 && ADDR_EQUIV4(a,&(a2)->ipv4)) || \
+			     (!run_ipv4 && (ADDR_EQUIV6(a,&(a2)->ipv6) || \
+					    ((a2)->ipv4.s_addr!=INADDR_ANY && ADDR_EQUIV6_4(a,&(a2)->ipv4)))))
+# else
+#  define ADDR_EQUIV2(a,a2) ADDR_EQUIV4(a,&(a2)->ipv4)
+# endif
+#else
+# define ADDR_EQUIV2(a,a2) (ADDR_EQUIV6(a,&(a2)->ipv6) || \
+			    ((a2)->ipv4.s_addr!=INADDR_ANY && ADDR_EQUIV6_4(a,&(a2)->ipv4)))
+#endif
+
+
 /*
  * Take the data from an RR and add it to an array of cache entries.
  */
-static int rr_to_cache(dns_cent_array *centa, time_t ttl, unsigned char *oname, unsigned dlen, void *data,
-		       int tp, unsigned flags, time_t queryts)
+static int rr_to_cache(dns_cent_array *centa, unsigned char *oname, int tp, time_t ttl,
+		       unsigned dlen, void *data, unsigned flags, time_t queryts)
 {
 	int i,n;
 	dns_cent_t *cent;
@@ -227,13 +341,22 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 		if (!(type<T_MIN || type>T_MAX || class!=C_IN)) {
 			/* skip otherwise */
 			/* Some types contain names that may be compressed, so these need to be processed.
-			 * the other records are taken as they are
+			 * The other records are taken as they are.
 			 * The maximum lenth for a decompression buffer is 530 bytes (maximum SOA record length) */
 
+			long blcnt=rdlength;
+			unsigned char *bptr=*ptr;  /* make backup for decompression, because rdlength is the
+						      authoritative record length and pointer and size will be
+						      modified by decompress_name. */
+			unsigned char *nptr;
+			int slen;
+
 			switch (type) {
-				unsigned char *bptr,*nptr;
-				long blcnt;
-				int slen;
+			case T_A:
+				/* Validate types we use internally */
+				if(rdlength!=4) goto invalid_length;
+				goto default_case;
+
 			case T_CNAME:
 			case T_MB:
 			case T_MD:
@@ -244,25 +367,21 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 			case T_PTR:
 			{
 				unsigned char db[256];
-				blcnt=rdlength;
-				bptr=*ptr;  /* make backup for decompression, because rdlength is the authoritative
-					       record length and pointer and size will by modified by that */
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, db, &len))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, len, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, len, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_MINFO:
 #ifdef DNS_NEW_RRS
 			case T_RP:
 #endif
 			{
 				unsigned char db[256+256];
-				blcnt=rdlength;
-				bptr=*ptr;
 				nptr=db;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
@@ -275,10 +394,11 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_MX:
 #ifdef DNS_NEW_RRS
 			case T_AFSDB:
@@ -287,12 +407,11 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 #endif
 			{
 				unsigned char db[2+256];
-				blcnt=rdlength;
 				if (blcnt<2)
 					goto record_too_short;
-				memcpy(db,*ptr,2); /* copy the preference field*/
+				memcpy(db,bptr,2); /* copy the preference field*/
 				blcnt-=2;
-				bptr=*ptr+2;
+				bptr+=2;
 				nptr=db+2;
 				slen=2;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
@@ -301,15 +420,14 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_SOA:
 			{
 				unsigned char db[256+256+20];
-				blcnt=rdlength;
-				bptr=*ptr;
 				nptr=db;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
@@ -328,20 +446,24 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=20;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
 #ifdef DNS_NEW_RRS
+			case T_AAAA:
+				/* Validate types we use internally */
+				if(rdlength!=16) goto invalid_length;
+				goto default_case;
+
 			case T_PX:
 			{
 				unsigned char db[2+256+256];
-				blcnt=rdlength;
 				if (blcnt<2)
 					goto record_too_short;
-				memcpy(db,*ptr,2); /* copy the preference field*/
+				memcpy(db,bptr,2); /* copy the preference field*/
 				blcnt-=2;
-				bptr=*ptr+2;
+				bptr+=2;
 				nptr=db+2;
 				slen=2;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
@@ -355,19 +477,19 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_SRV:
 			{
 				unsigned char db[6+256];
-				blcnt=rdlength;
 				if (blcnt<6)
 					goto record_too_short;
-				memcpy(db,*ptr,6);
+				memcpy(db,bptr,6);
 				blcnt-=6;
-				bptr=*ptr+6;
+				bptr+=6;
 				nptr=db+6;
 				slen=6;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
@@ -376,15 +498,14 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_NXT:
 			{
 				unsigned char db[1040];
-				blcnt=rdlength;
-				bptr=*ptr;
 				nptr=db;
 				if ((rc=decompress_name(msg, msgsz, &bptr, &blcnt, nptr, &len))!=RC_OK)
 					return rc==RC_TRUNC?RC_FORMAT:rc;
@@ -393,16 +514,15 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				if (slen > sizeof(db))
 					goto buffer_overflow;
 				memcpy(nptr,bptr,blcnt);
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
+
 			case T_NAPTR:
 			{
 				int j;
 				unsigned char db[4 + 4*256];
-				blcnt=rdlength;
-				bptr=*ptr;
 				nptr=db;
 				/*
 				 * After the preference field, three text strings follow, the maximum length being 255
@@ -433,20 +553,14 @@ static int rrs2cent(dns_cent_array *centa, unsigned char **ptr, long *lcnt, int 
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, ttl, oname, slen, db, type,flags,queryts))
+				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
 					return RC_FATALERR;
 			}
 				break;
 #endif
 			default:
-				/* Validate types we use internally */
-				if (type==T_A && rdlength!=4)
-					goto invalid_length;
-#ifdef DNS_NEW_RRS
-				if (type==T_AAAA && rdlength!=16)
-					goto invalid_length;
-#endif
-				if (!rr_to_cache(centa, ttl, oname, rdlength, *ptr, type,flags,queryts))
+			default_case:
+				if (!rr_to_cache(centa, oname, type, ttl, rdlength, bptr, flags,queryts))
 					return RC_FATALERR;
 			}
 		}
@@ -636,6 +750,9 @@ static int p_query_sm(query_stat_t *st)
 			}
  		}
 		st->iolen=0;
+#ifdef ENABLE_IPV6
+	retry_tcp_connect:
+#endif
 		if (connect(st->sock,SOCK_ADDR(st),SIN_LEN)==-1) {
 			if (errno==EINPROGRESS || errno==EPIPE) {
 				st->state=QS_TCPWRITE;
@@ -649,6 +766,23 @@ static int p_query_sm(query_stat_t *st)
 			} else {
 				/* Since immediate connect() errors do not cost any time, we do not try to switch the
 				 * server status to offline */
+#ifdef ENABLE_IPV6
+				/* if IPv6 connectivity is for some reason unavailable, perhaps the
+				   IPv4 fallback address can still be reached. */
+				if(!run_ipv4 && (errno==ENETUNREACH || errno==ENETDOWN)
+				   && st->a4fallback.s_addr!=INADDR_ANY)
+				{
+#if DEBUG>0
+					char abuf[ADDRSTR_MAXLEN];
+					DEBUG_PDNSDA_MSG("Connecting to %s failed: %s, retrying with IPv4 address %s\n",
+							 PDNSDA2STR(PDNSD_A(st)),strerror(errno),
+							 inet_ntop(AF_INET,&st->a4fallback,abuf,sizeof(abuf)));
+#endif
+					IPV6_MAPIPV4(&st->a4fallback,&st->a.sin6.sin6_addr);
+					st->a4fallback.s_addr=INADDR_ANY;
+					goto retry_tcp_connect;
+				}
+#endif
 				DEBUG_PDNSDA_MSG("Error while connecting to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
 				close(st->sock);
 				break;
@@ -755,8 +889,28 @@ static int p_query_sm(query_stat_t *st)
 		}
 
 		/* connect */
+#ifdef ENABLE_IPV6
+	retry_udp_connect:
+#endif
 		if (connect(st->sock,SOCK_ADDR(st),SIN_LEN)==-1) {
 			if (errno==ECONNREFUSED) st->s_errno=errno;
+#ifdef ENABLE_IPV6
+			/* if IPv6 connectivity is for some reason unavailable, perhaps the
+			   IPv4 fallback address can still be reached. */
+			else if(!run_ipv4 && (errno==ENETUNREACH || errno==ENETDOWN)
+				   && st->a4fallback.s_addr!=INADDR_ANY)
+			{
+#if DEBUG>0
+				char abuf[ADDRSTR_MAXLEN];
+				DEBUG_PDNSDA_MSG("Connecting to %s failed: %s, retrying with IPv4 address %s\n",
+						 PDNSDA2STR(PDNSD_A(st)),strerror(errno),
+						 inet_ntop(AF_INET,&st->a4fallback,abuf,sizeof(abuf)));
+#endif
+				IPV6_MAPIPV4(&st->a4fallback,&st->a.sin6.sin6_addr);
+				st->a4fallback.s_addr=INADDR_ANY;
+				goto retry_udp_connect;
+			}
+#endif
 			DEBUG_PDNSDA_MSG("Error while connecting to %s: %s\n", PDNSDA2STR(PDNSD_A(st)),strerror(errno));
 			close(st->sock);
 			break;
@@ -821,7 +975,7 @@ inline static dns_cent_t *lookup_cent_array(dns_cent_array ca, const unsigned ch
 static time_t soa_minimum(rr_bucket_t *rrs)
 {
 	uint32_t minimum;
-	unsigned char *p=(unsigned char *)(rrs+1);
+	unsigned char *p=(unsigned char *)(rrs->data);
 
 	/* Skip owner and maintainer. Lengths are validated in cache */
 	p=skiprhn(skiprhn(p));
@@ -876,8 +1030,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 		st->msg->hdr.opcode=OP_QUERY;
 		st->msg->hdr.aa=0;
 		st->msg->hdr.tc=0;
-		/* If nsdomain is NULL, it means we trust this nameserver. */
-		st->msg->hdr.rd=(name && !st->nsdomain);
+		st->msg->hdr.rd=(name && st->trusted);
 		st->msg->hdr.ra=0;
 		st->msg->hdr.z1=0;
 		st->msg->hdr.au=0;
@@ -1164,6 +1317,86 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 				}
 			}
 		}
+
+		/* Check whether the answer section contains an IP address
+		   that should be rejected. */
+		if(have_rejectlist(st)) {
+			int i;
+			int na4=nreject_a4(st);
+			addr4maskpair_t *a4arr=rejectlist_a4(st);
+#if ALLOW_LOCAL_AAAA
+			int na6=nreject_a6(st);
+			addr6maskpair_t *a6arr=rejectlist_a6(st);
+#endif
+			/* Check addresses in the answer, authority and additional sections. */
+			for(i=0;i<3;++i) {
+				dns_cent_array sec=secs[i];
+				int j,nce=DA_NEL(sec);
+				for(j=0;j<nce;++j) {
+					dns_cent_t *cent=&DA_INDEX(sec,j);
+					rr_set_t *rrset=cent->rr[T_A-T_MIN];
+					if(rrset && na4) {
+						/* This is far from the world's most efficient matching algorithm,
+						   but it should work OK as long as the numbers involved are small.
+						*/
+						rr_bucket_t *rr;
+						for(rr=rrset->rrs; rr; rr=rr->next) {
+							struct in_addr *a=(struct in_addr *)(rr->data);
+							int k;
+							for(k=0;k<na4;++k) {
+								addr4maskpair_t *am = &a4arr[k];
+								if(ADDR4MASK_EQUIV(a,&am->a,&am->mask)) {
+#if DEBUG>0
+									unsigned char nmbuf[256]; char abuf[ADDRSTR_MAXLEN];
+									DEBUG_PDNSDA_MSG("Rejecting answer from server %s because it contains an A record"
+											 " for \"%s\" with an address in the reject list: %s\n",
+											 PDNSDA2STR(PDNSD_A(st)),
+											 rhn2str(cent->qname,nmbuf,sizeof(nmbuf)),
+											 inet_ntop(AF_INET,a,abuf,sizeof(abuf)));
+#endif
+									goto reject_addr;
+								}
+							}
+						}
+					}
+#if ALLOW_LOCAL_AAAA
+					rrset=cent->rr[T_AAAA-T_MIN];
+					if(rrset && na6) {
+						rr_bucket_t *rr;
+						for(rr=rrset->rrs; rr; rr=rr->next) {
+							struct in6_addr *a=(struct in6_addr *)(rr->data);
+							int k;
+							for(k=0;k<na6;++k) {
+								addr6maskpair_t *am = &a6arr[k];
+								if(ADDR6MASK_EQUIV(a,&am->a,&am->mask)) {
+#if DEBUG>0
+									unsigned char nmbuf[256]; char abuf[INET6_ADDRSTRLEN];
+									DEBUG_PDNSDA_MSG("Rejecting answer from server %s because it contains an AAAA record"
+											 " for \"%s\" with an address in the reject list: %s\n",
+											 PDNSDA2STR(PDNSD_A(st)),
+											 rhn2str(cent->qname,nmbuf,sizeof(nmbuf)),
+											 inet_ntop(AF_INET6,a,abuf,sizeof(abuf)));
+#endif
+									goto reject_addr;
+								}
+							}
+						}
+					}
+#endif
+				}
+			}
+			goto not_rejected;
+
+		reject_addr:
+			if(reject_policy(st)==C_NEGATE)
+				goto name_error;
+			else {
+				rv=RC_SERVFAIL;
+				goto free_ent_centarrays_recvbuf_return;
+			}
+		not_rejected:;
+		}
+
 		if(global.deleg_only_zones && st->auth_serv<3) { /* st->auth_serv==3 means this server is a root-server. */
 			int missingdelegation,authcnt;
 			/* The deleg_only_zones data may change due to runtime reconfiguration,
@@ -1280,7 +1513,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 					   that were not listed in the configuration file. */
 					if((*(cent->qname) || st->auth_serv!=2) &&
 					   /* Don't accept possibly poisoning nameserver entries in paranoid mode */
-					   (!st->nsdomain || (domain_match(st->nsdomain, cent->qname, &rem,NULL),rem==0))) {
+					   (st->trusted || !st->nsdomain || (domain_match(st->nsdomain, cent->qname, &rem,NULL),rem==0))) {
 						/* Some nameservers obviously choose to send SOA records instead of NS ones.
 						 * Although I think that this is poor behaviour, we'll have to work around that. */
 						static const unsigned short nstypes[2]={T_NS,T_SOA};
@@ -1288,18 +1521,18 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 						for(k=0;k<2;++k) {
 							rr_set_t *rrset=cent->rr[nstypes[k]-T_MIN];
 							if(rrset) {
-								rr_bucket_t *rr=rrset->rrs;
-								while(rr) {
+								rr_bucket_t *rr;
+								for(rr=rrset->rrs; rr; rr=rr->next) {
 									size_t sz1,sz2;
 									unsigned char *p;
 									/* Skip duplicate records */
 									for(p=dlist_first(*ns); p; p=dlist_next(p)) {
-										if(rhnicmp(skiprhn(p),(unsigned char *)(rr+1)))
+										if(rhnicmp(skiprhn(p),(unsigned char *)(rr->data)))
 											goto next_nsr;
 									}
 									/* add to the nameserver list. */
 									sz1=rhnlen(cent->qname);
-									sz2=rhnlen((unsigned char *)(rr+1));
+									sz2=rhnlen((unsigned char *)(rr->data));
 									if (!(*ns=dlist_grow(*ns,sz1+sz2))) {
 										rv=RC_FATALERR;
 										goto free_ent_centarrays_recvbuf_return;
@@ -1307,9 +1540,8 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 									p=dlist_last(*ns);
 									p=mempcpy(p,cent->qname,sz1);
 									/* This will only copy the first name, which is the NS */
-									memcpy(p,(unsigned char *)(rr+1),sz2);
-								next_nsr:
-									rr=rr->next;
+									memcpy(p,(unsigned char *)(rr->data),sz2);
+								next_nsr:;
 								}
 							}
 						}
@@ -1337,7 +1569,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 					dns_cent_t *cent=&DA_INDEX(sec,j);
 					if(*(cent->qname) || st->auth_serv!=2) {
 						int rem;
-						if(!st->nsdomain || (domain_match(st->nsdomain, cent->qname, &rem, NULL),rem==0))
+						if(st->trusted || !st->nsdomain || (domain_match(st->nsdomain, cent->qname, &rem, NULL),rem==0))
 							add_cache(cent);
 						else {
 #if DEBUG>0
@@ -1420,8 +1652,9 @@ inline static void init_qserv(query_stat_array *q)
  * Note: only a reference to nsdomain is copied, not the name itself.
  * Be sure to free the q-list before freeing the name.
  */
-static int add_qserv(query_stat_array *q, pdnsd_a *a, int port, time_t timeout, unsigned flags,
-		     int nocache, char lean_query, char auth_s, char needs_testing, unsigned char *nsdomain)
+static int add_qserv(query_stat_array *q, pdnsd_a2 *a, int port, time_t timeout, unsigned flags,
+		     int nocache, char lean_query, char auth_s, char needs_testing, char trusted,
+		     unsigned char *nsdomain, rejectlist_t *rejectlist)
 {
 	query_stat_t *qs;
 
@@ -1446,17 +1679,22 @@ static int add_qserv(query_stat_array *q, pdnsd_a *a, int port, time_t timeout, 
 		qs->a.sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		qs->a.sin6.sin6_addr=a->ipv6;
 		SET_SOCKA_LEN6(qs->a.sin6);
+
+		qs->a4fallback=a->ipv4;
 	}
 #endif
 	qs->timeout=timeout;
 	qs->flags=flags;
 	qs->nocache=nocache;
-	qs->lean_query=lean_query;
 	qs->auth_serv=auth_s;
+	qs->lean_query=lean_query;
 	qs->needs_testing=needs_testing;
+	qs->trusted=trusted;
 	qs->aa=0;
 	qs->tc=0;
 	qs->nsdomain=nsdomain; /* Note: only a reference is copied, not the name itself! */
+	qs->rejectlist=rejectlist;
+
 	qs->state=QS_INITIAL;
 	qs->qm=global.query_method;
 	qs->s_errno=0;
@@ -1967,148 +2205,198 @@ static int p_recursive_query(query_stat_array q, unsigned char *name, int thint,
 /* auth_ok returns 1 if we don't need an authoritative answer or
    if we can find servers to ask for an authoritative answer.
    In the latter case these servers will be added to the *serv list.
+   A return value of 0 means the answer is not satisfactory in the
+   previous sense.
    A return value of -1 indicates an error.
 */
 static int auth_ok(query_stat_array q, unsigned char *name, int thint, dns_cent_t *ent,
 		   int hops, qstatnode_t *qslist, qhintnode_t *qhlist,
 		   query_stat_t *qse, dlist ns, query_stat_array *serv)
 {
+	int retval=0;
 	/*
-	 * Look into the query type hint. If it is a wildcard (QT_*), we need an authoritative answer.
-	 * Same if there is no record that answers the query.
-	 */
-
-	/* This test will also fail if we have a negative cached record. This is done purposely. */
+	  Look into the query type hint. If it is a wildcard (QT_*), we need an authoritative answer.
+	  Same if there is no record that answers the query.
+	  This test will also succeed if we have a negative cached record. This is done purposely.
+	*/
 #define aa_needed ((thint>=QT_MIN && thint<=QT_MAX) || \
-	           ((thint>=T_MIN && thint<=T_MAX) && (!ent->rr[thint-T_MIN] && !ent->rr[T_CNAME-T_MIN])))
+	           ((thint>=T_MIN && thint<=T_MAX) && \
+		    (!have_rr(ent,thint) && !have_rr(ent,T_CNAME))))
 
-	if (!qse->aa && qse->auth_serv && aa_needed) {
-		/* The answer was non-authoritative. Try to build a list of addresses of authoritative servers. */
-		if (hops>0) {
-			int retval=0;
-			unsigned char *nsdomain;
-			for (nsdomain=dlist_first(ns);nsdomain;nsdomain=dlist_next(nsdomain)) {
-				unsigned char *nsname=skiprhn(nsdomain);
-				pdnsd_a serva;
-				
-				if (global.paranoid) {
-					int rem;
-					/* paranoia mode: don't query name servers that are not responsible */
-					domain_match(nsdomain,name,&rem,NULL);
-					if (rem!=0) {
+	/* We will want to query authoritative servers if all of the following conditions apply:
+
+	   1) The server from which we got the answer was not configured as "proxy only".
+	   2) The answer is not a negatively cached domain (i.e. the server did not reply with NXDOMAIN).
+	   3) The query type is a wild card (QT_*), or no record answers the query.
+	   4) The answer that we have is non-authoritative.
+	*/
+	if(!(qse->auth_serv && !(ent->flags&DF_NEGATIVE) && aa_needed))
+		return 1;
+
+	if(qse->aa) {
+		/* The reply we have claims to be authoritative.
+		   However, I have seen cases where name servers raise the authority flag incorrectly (groan...),
+		   so as a work-around, we will check whether the domains for which the servers in the ns
+		   list are responsible, match the queried name better than the domain for which the
+		   last server was responsible. */
+		unsigned char *nsdomain;
+
+		if(!qse->nsdomain)
+			return 1;
+
+		nsdomain=dlist_first(ns);
+		if(!nsdomain)
+			return 1;
+		do {
+			int rem,crem;
+			domain_match(nsdomain,qse->nsdomain,&rem,&crem);
+			if(!(rem>0 && crem==0))
+				return 1;
+			domain_match(nsdomain,name,&rem,NULL);
+			if(rem!=0)
+				return 1;
+		}
+		while((nsdomain=dlist_next(nsdomain)));
+
+		/* The name servers in the ns list are a better match for the queried name than
+		   the server from which we got the last reply, so ignore the aa flag.
+		*/
 #if DEBUG>0
-						unsigned char nmbuf[256],dbuf[256],nsbuf[256];
-						DEBUG_MSG("The name server %s is responsible for the %s domain, which does not match %s\n",
-							  rhn2str(nsname,nsbuf,sizeof(nsbuf)),
-							  rhn2str(nsdomain,dbuf,sizeof(dbuf)),
-							  rhn2str(name,nmbuf,sizeof(nmbuf)));
+		if(debug_p) {
+			unsigned char dbuf[256],sdbuf[256];
+			nsdomain=dlist_first(ns);
+			DEBUG_PDNSDA_MSG("The name server %s which is responsible for the %s domain, raised the aa flag, but appears to delegate to the sub-domain %s\n",
+					 PDNSDA2STR(PDNSD_A(qse)),
+					 rhn2str(qse->nsdomain,dbuf,sizeof(dbuf)),
+					 rhn2str(nsdomain,sdbuf,sizeof(sdbuf)));
+		}
 #endif
-						continue;
-					}
+	}
+
+	/* The answer was non-authoritative. Try to build a list of addresses of authoritative servers. */
+	if (hops>0) {
+		unsigned char *nsdomain;
+		for (nsdomain=dlist_first(ns);nsdomain;nsdomain=dlist_next(nsdomain)) {
+			unsigned char *nsname=skiprhn(nsdomain);
+			pdnsd_a2 serva;
+				
+			if (global.paranoid) {
+				int rem;
+				/* paranoia mode: don't query name servers that are not responsible */
+				domain_match(nsdomain,name,&rem,NULL);
+				if (rem!=0) {
+#if DEBUG>0
+					unsigned char nmbuf[256],dbuf[256],nsbuf[256];
+					DEBUG_MSG("The name server %s is responsible for the %s domain, which does not match %s\n",
+						  rhn2str(nsname,nsbuf,sizeof(nsbuf)),
+						  rhn2str(nsdomain,dbuf,sizeof(dbuf)),
+						  rhn2str(name,nmbuf,sizeof(nmbuf)));
+#endif
+					continue;
 				}
-				/* look it up in the cache or resolve it if needed.
-				   The records received should be in the cache now, so it's ok.
-				*/
+			}
+			/* look it up in the cache or resolve it if needed.
+			   The records received should be in the cache now, so it's ok.
+			*/
+#ifdef ENABLE_IPV6
+			if(!run_ipv4)
+				serva.ipv6=in6addr_any;
+#endif
+			serva.ipv4.s_addr=INADDR_ANY;
+			{
+				unsigned char *nm=name;
+				int tp=thint;
+				qhintnode_t *ql=qhlist;
+
+				for(;;) {
+					if(rhnicmp(nm,nsname) && tp==T_A) {
+						DEBUG_RHN_MSG("Not looking up address for name server \"%s\": "
+							      "risk of infinite recursion.\n",RHN2STR(nsname));
+						goto skip_server;
+					}
+					if(!ql) break;
+					nm=ql->nm;
+					tp=ql->tp;
+					ql=ql->next;
+				}
+				{
+					qhintnode_t qhn={name,thint,qhlist};
+					dns_cent_t *servent;
+					if (r_dns_cached_resolve(nsname,T_A, &servent, hops-1, &qhn,time(NULL),NULL)==RC_OK) {
 #ifdef ENABLE_IPV4
-				if (run_ipv4)
-					serva.ipv4.s_addr=INADDR_ANY;
+						if (run_ipv4) {
+							rr_set_t *rrset=servent->rr[T_A-T_MIN];
+							if (rrset && rrset->rrs)
+								serva.ipv4 = *((struct in_addr *)rrset->rrs->data);
+						}
 #endif
 #ifdef ENABLE_IPV6
-				ELSE_IPV6
-					serva.ipv6=in6addr_any;
-#endif
-				{
-					unsigned char *nm=name;
-					int tp=thint;
-					qhintnode_t *ql=qhlist;
+						ELSE_IPV6 {
+							rr_set_t *rrset;
+# ifdef DNS_NEW_RRS
+							if ((rrset=servent->rr[T_AAAA-T_MIN]) && rrset->rrs) {
+								serva.ipv6 = *((struct in6_addr *)rrset->rrs->data);
+								if ((rrset=servent->rr[T_A-T_MIN]) && rrset->rrs) {
+									/* Store IPv4 address as fallback. */
+									serva.ipv4 = *((struct in_addr *)rrset->rrs->data);
+								}
+							}
+							else
+# endif
+								if ((rrset=servent->rr[T_A-T_MIN]) && rrset->rrs) {
+									struct in_addr *ina = (struct in_addr *)rrset->rrs->data;
+									IPV6_MAPIPV4(ina,&serva.ipv6);
+								}
 
-					for(;;) {
-						if(rhnicmp(nm,nsname) && tp==T_A) {
-							DEBUG_RHN_MSG("Not looking up address for name server \"%s\": risk of infinite recursion.\n",RHN2STR(nsname));
+						}
+#endif
+						free_cent(servent  DBG1);
+						pdnsd_free(servent);
+					}
+				}
+			}
+
+			if (!is_inaddr2_any(&serva) && !is_local_addr(PDNSD_A2_TO_A(&serva))) {
+				/* We've got an address. Add it to the list if it wasn't one of the servers we queried,
+				   nor a local address (as defined in netdev.c) */
+				query_stat_array qa=q;
+				qstatnode_t *ql=qslist;
+				for(;;) {
+					int i,n=DA_NEL(qa);
+					for (i=0;i<n;i++) {
+						/* If qa[i].state == QS_DONE, then p_exec_query() has been called,
+						   and we should not query this server again */
+						query_stat_t *qs=&DA_INDEX(qa,i);
+						if (qs->state==QS_DONE && ADDR_EQUIV2(PDNSD_A(qs),&serva)) {
+							DEBUG_PDNSDA_MSG("Not trying name server %s, already queried.\n", PDNSDA2STR(PDNSD_A2_TO_A(&serva)));
 							goto skip_server;
 						}
-						if(!ql) break;
-						nm=ql->nm;
-						tp=ql->tp;
-						ql=ql->next;
 					}
-					{
-						qhintnode_t qhn={name,thint,qhlist};
-						dns_cent_t *servent;
-						if (r_dns_cached_resolve(nsname,T_A, &servent, hops-1, &qhn,time(NULL),NULL)==RC_OK) {
-#ifdef ENABLE_IPV4
-							if (run_ipv4) {
-								rr_set_t *rrset=servent->rr[T_A-T_MIN];
-								if (rrset && rrset->rrs)
-									memcpy(&serva.ipv4,rrset->rrs+1,sizeof(serva.ipv4));
-							}
-#endif
-#ifdef ENABLE_IPV6
-							ELSE_IPV6 {
-								rr_set_t *rrset;
-# ifdef DNS_NEW_RRS
-								if ((rrset=servent->rr[T_AAAA-T_MIN]) && rrset->rrs)
-									memcpy(&serva.ipv6,rrset->rrs+1,sizeof(serva.ipv6));
-								else
-# endif
-									if ((rrset=servent->rr[T_A-T_MIN]) && rrset->rrs) {
-										struct in_addr ina;
-										/* XXX: memcpy for alpha (unaligned access) */
-										memcpy(&ina,rrset->rrs+1,sizeof(ina));
-										IPV6_MAPIPV4(&ina,&serva.ipv6);
-									}
-
-							}
-#endif
-							free_cent(servent  DBG1);
-							pdnsd_free(servent);
-						}
-					}
+					if(!ql) break;
+					qa=ql->qa;
+					ql=ql->next;
 				}
-
-				if (!is_inaddr_any(&serva) && !is_local_addr(&serva)) {
-					/* We've got an address. Add it to the list if it wasn't one of the servers we queried,
-					   nor a local address (as defined in netdev.c) */
-					query_stat_array qa=q;
-					qstatnode_t *ql=qslist;
-					for(;;) {
-						int i,n=DA_NEL(qa);
-						for (i=0;i<n;i++) {
-							/* If qa[i].state == QS_DONE, then p_exec_query() has been called,
-							   and we should not query this server again */
-							query_stat_t *qs=&DA_INDEX(qa,i);
-							if (qs->state==QS_DONE && ADDR_EQUIV(PDNSD_A(qs),&serva)) {
-								DEBUG_PDNSDA_MSG("Not trying name server %s, already queried.\n", PDNSDA2STR(&serva));
-								goto skip_server;
-							}
-						}
-						if(!ql) break;
-						qa=ql->qa;
-						ql=ql->next;
-					}
-					/* lean query mode is inherited. CF_AUTH and CF_ADDITIONAL are not (as specified
-					 * in CFF_NOINHERIT). */
-					if (!add_qserv(serv, &serva, 53, qse->timeout, qse->flags&~CFF_NOINHERIT, 0,
-						       qse->lean_query,2,0,global.paranoid?nsdomain:NULL))
-					{
-						return -1;
-					}
-					retval=1;
+				/* lean query mode is inherited. CF_AUTH and CF_ADDITIONAL are not (as specified
+				 * in CFF_NOINHERIT). */
+				if (!add_qserv(serv, &serva, 53, qse->timeout, qse->flags&~CFF_NOINHERIT, 0,
+					       qse->lean_query,2,0,!global.paranoid,nsdomain,
+					       inherit_rejectlist(qse)?qse->rejectlist:NULL))
+				{
+					return -1;
 				}
-			skip_server:;						
+				retval=1;
 			}
-			if(!retval) {
-				DEBUG_PDNSDA_MSG("No remaining authoritative name servers to try in authority section from %s.\n", PDNSDA2STR(PDNSD_A(qse)));
-			}
-			return retval;
+		skip_server:;						
 		}
-		else {
-			DEBUG_MSG("Maximum hops count reached; not trying any more name servers.\n");
-			return 0;
+		if(!retval) {
+			DEBUG_PDNSDA_MSG("No remaining authoritative name servers to try in authority section from %s.\n", PDNSDA2STR(PDNSD_A(qse)));
 		}
 	}
-	else
-		return 1;
+	else {
+		DEBUG_MSG("Maximum hops count reached; not trying any more name servers.\n");
+	}
+
+	return retval;
 
 #undef  aa_needed
 }
@@ -2139,70 +2427,129 @@ static int use_server(servparm_t *s, const unsigned char *name)
 	return s->policy==C_INCLUDED;
 }
 
+#if ALLOW_LOCAL_AAAA
+#define serv_has_rejectlist(s) ((s)->reject_a4!=NULL || (s)->reject_a6!=NULL)
+#else
+#define serv_has_rejectlist(s) ((s)->reject_a4!=NULL)
+#endif
+
+/* Take the lists of IP addresses from a server section sp and
+   convert them into a form that can be used by p_exec_query().
+   If successful, add_rejectlist returns a new list which is added to the old list rl,
+   otherwise the return value is NULL.
+*/
+static rejectlist_t *add_rejectlist(rejectlist_t *rl, servparm_t *sp)
+{
+	int i,na4=DA_NEL(sp->reject_a4);
+	addr4maskpair_t *a4p;
+#if ALLOW_LOCAL_AAAA
+	int na6=DA_NEL(sp->reject_a6);
+	addr6maskpair_t *a6p;
+#endif
+	rejectlist_t *rlist = malloc(sizeof(rejectlist_t) + na4*sizeof(addr4maskpair_t)
+#if ALLOW_LOCAL_AAAA
+				     + na6*sizeof(addr6maskpair_t)
+#endif
+				     );
+
+	if(rlist) {
+#if ALLOW_LOCAL_AAAA
+		/* Store the larger IPv6 addresses first to avoid possible alignment problems. */
+		rlist->na6 = na6;
+		a6p = (addr6maskpair_t *)rlist->rdata;
+		for(i=0;i<na6;++i)
+			*a6p++ = DA_INDEX(sp->reject_a6,i);
+#endif
+		rlist->na4 = na4;
+#if ALLOW_LOCAL_AAAA
+		a4p = (addr4maskpair_t *)a6p;
+#else
+		a4p = (addr4maskpair_t *)rlist->rdata;
+#endif
+		for(i=0;i<na4;++i)
+			*a4p++ = DA_INDEX(sp->reject_a4,i);
+
+		rlist->policy = sp->rejectpolicy;
+		rlist->inherit = sp->rejectrecursively;
+		rlist->next = rl;
+	}
+
+	return rlist;
+}
+
+inline static void free_rejectlist(rejectlist_t *rl)
+{
+	while(rl) {
+		rejectlist_t *next = rl->next;
+		free(rl);
+		rl=next;
+	}
+}
 
 /* Lookup addresses of nameservers provided by root servers for a given domain in the cache.
    Returns NULL if unsuccessful (or the cache entries have timed out).
 */
-static addr_array lookup_ns(const unsigned char *domain)
+static addr2_array lookup_ns(const unsigned char *domain)
 {
-	addr_array res=NULL;
+	addr2_array res=NULL;
 
 	dns_cent_t *cent=lookup_cache(domain,NULL);
 	if(cent) {
 		rr_set_t *rrset=cent->rr[T_NS-T_MIN];
 		if(rrset && (rrset->flags&CF_ROOTSERV) && !timedout(rrset)) {
-			rr_bucket_t *rr=rrset->rrs;
-			while(rr) {
-				pdnsd_a *serva;
+			rr_bucket_t *rr;
+			for(rr=rrset->rrs; rr; rr=rr->next) {
+				pdnsd_a2 *serva;
 				dns_cent_t *servent;
 				if(!(res=DA_GROW1(res)))
 						break;
 				serva=&DA_LAST(res);
-#ifdef ENABLE_IPV4
-				if (run_ipv4)
-					serva->ipv4.s_addr=INADDR_ANY;
-#endif
 #ifdef ENABLE_IPV6
-				ELSE_IPV6
+				if(!run_ipv4)
 					serva->ipv6=in6addr_any;
 #endif
-				servent=lookup_cache((unsigned char*)(rr+1),NULL);
+				serva->ipv4.s_addr=INADDR_ANY;
+
+				servent=lookup_cache((unsigned char*)(rr->data),NULL);
 				if(servent) {
 #ifdef ENABLE_IPV4
 					if (run_ipv4) {
 						rr_set_t *rrset=servent->rr[T_A-T_MIN];
 						if (rrset && !timedout(rrset) && rrset->rrs)
-							memcpy(&serva->ipv4,rrset->rrs+1,sizeof(serva->ipv4));
+							serva->ipv4 = *((struct in_addr *)rrset->rrs->data);
 					}
 #endif
 #ifdef ENABLE_IPV6
 					ELSE_IPV6 {
 						rr_set_t *rrset;
 # ifdef DNS_NEW_RRS
-						int tmdout;
-						if ((rrset=servent->rr[T_AAAA-T_MIN]) && ((tmdout=timedout(rrset)) || !(rrset->flags&CF_NEGATIVE))) {
-							if(!tmdout && rrset->rrs)
-								memcpy(&serva->ipv6,rrset->rrs+1,sizeof(serva->ipv6));
+						if ((rrset=servent->rr[T_AAAA-T_MIN]) && !(rrset->flags&CF_NEGATIVE)) {
+							if(!timedout(rrset) && rrset->rrs) {
+								serva->ipv6 = *((struct in6_addr *)rrset->rrs->data);
+								if ((rrset=servent->rr[T_A-T_MIN]) && !(rrset->flags&CF_NEGATIVE)) {
+									if(!timedout(rrset) && rrset->rrs)
+										serva->ipv4 = *((struct in_addr *)rrset->rrs->data);
+									else /* Treat this as a failure. */
+										serva->ipv6=in6addr_any;
+								}
+							}
 						}
 						else
 # endif
 							if ((rrset=servent->rr[T_A-T_MIN]) && !timedout(rrset) && rrset->rrs) {
-								struct in_addr ina;
-								/* XXX: memcpy for alpha (unaligned access) */
-								memcpy(&ina,rrset->rrs+1,sizeof(ina));
-								IPV6_MAPIPV4(&ina,&serva->ipv6);
+								struct in_addr *ina = (struct in_addr *)rrset->rrs->data;
+								IPV6_MAPIPV4(ina,&serva->ipv6);
 							}
 					}
 #endif
 					free_cent(servent  DBG1);
 					pdnsd_free(servent);
 				}
-				if(is_inaddr_any(serva)) {
+				if(is_inaddr2_any(serva)) {
 					/* Address lookup failed. */
 					da_free(res); res=NULL;
 					break;
 				}
-				rr=rr->next;
 			}
 		}
 		free_cent(cent  DBG1);
@@ -2214,58 +2561,88 @@ static addr_array lookup_ns(const unsigned char *domain)
 
 static int p_dns_resolve(unsigned char *name, int thint, dns_cent_t **cachedp, int hops, qhintnode_t *qhlist, unsigned char *c_soa)
 {
-	int i,rc;
+  int i,n,rc;
 	int one_up=0,seenrootserv=0;
 	query_stat_array serv=NULL;
+	rejectlist_t *rejectlist=NULL;
 
 	/* try the servers in the order of their definition */
 	lock_server_data();
-	for (i=0;i<DA_NEL(servers);i++) {
+	n=DA_NEL(servers);
+	for (i=0;i<n;i++) {
 		servparm_t *sp=&DA_INDEX(servers,i);
 		if(use_server(sp,name)) {
-			int j;
-			for(j=0;j<DA_NEL(sp->atup_a);++j) {
-				atup_t *at=&DA_INDEX(sp->atup_a,j);
-				if (at->is_up) {
-					if(sp->rootserver) {
-						if(!seenrootserv) {
-							int nseg;
-							seenrootserv=1;
-							nseg=rhnsegcnt(name);
-							if(nseg>=2) {
-								unsigned char *topdomain=skipsegs(name,nseg-1);
-								addr_array adrs=lookup_ns(topdomain);
-								if(adrs) {
-									/* The name servers for this top level domain have been found in the cache.
-									   Instead of asking the root server, we will use this cached information.
-									*/
-									int k;
-									for(k=0;k<DA_NEL(adrs);++k) {
-										one_up=add_qserv(&serv, &DA_INDEX(adrs,k), 53, sp->timeout,
-												 mk_flag_val(sp)&~CFF_NOINHERIT, sp->nocache,
-												 sp->lean_query,2,0,
-												 global.paranoid?topdomain:NULL);
-										if(!one_up) {
-											da_free(adrs);
-											goto done;
+			int m=DA_NEL(sp->atup_a);
+			if(m>0) {
+				rejectlist_t *rjl=NULL;
+				int j=0, jstart=0;
+				if(sp->rand_servers) j=jstart=random()%m;
+				do {
+					atup_t *at=&DA_INDEX(sp->atup_a,j);
+					if (at->is_up) {
+						if(sp->rootserver) {
+							if(!seenrootserv) {
+								int nseg;
+								seenrootserv=1;
+								nseg=rhnsegcnt(name);
+								if(nseg>=2) {
+									unsigned char *topdomain=skipsegs(name,nseg-1);
+									addr2_array adrs=lookup_ns(topdomain);
+									int l=DA_NEL(adrs);
+									if(l>0) {
+										/* The name servers for this top level domain have been found in the cache.
+										   Instead of asking the root server, we will use this cached information.
+										*/
+										int k=0, kstart=0;
+										if(sp->rand_servers) k=kstart=random()%l;
+										if(serv_has_rejectlist(sp) && sp->rejectrecursively && !rjl) {
+											rjl=add_rejectlist(rejectlist,sp);
+											if(!rjl) {one_up=0; da_free(adrs); goto done;}
+											rejectlist=rjl;
 										}
+										do {
+											one_up=add_qserv(&serv, &DA_INDEX(adrs,k), 53, sp->timeout,
+													 mk_flag_val(sp)&~CFF_NOINHERIT, sp->nocache,
+													 sp->lean_query,2,0,
+													 !global.paranoid,topdomain, rjl);
+											if(!one_up) {
+												da_free(adrs);
+												goto done;
+											}
+											if(++k==l) k=0;
+										} while(k!=kstart);
+										da_free(adrs);
+										DEBUG_PDNSDA_MSG("Not querying root-server %s, using cached information instead.\n",
+												 PDNSDA2STR(&at->a));
+										seenrootserv=2;
+										break;
 									}
-									da_free(adrs);
-									DEBUG_PDNSDA_MSG("Not querying root-server %s, using cached information instead.\n", PDNSDA2STR(&at->a));
-									seenrootserv=2;
-									break;
+									else if(adrs)
+										da_free(adrs);
 								}
 							}
+							else if(seenrootserv==2)
+								break;
 						}
-						else if(seenrootserv==2)
-							break;
+						if(serv_has_rejectlist(sp) && !rjl) {
+							rjl=add_rejectlist(rejectlist,sp);
+							if(!rjl) {one_up=0; goto done;}
+							rejectlist=rjl;
+						}
+						{
+#ifdef ENABLE_IPV6
+							pdnsd_a2 a2;
+#endif
+							one_up=add_qserv(&serv, PDNSD_A_TO_A2(&at->a,&a2), sp->port, sp->timeout,
+									 mk_flag_val(sp), sp->nocache, sp->lean_query,
+									 sp->rootserver?3:(!sp->is_proxy),
+									 needs_testing(sp), 1, NULL, rjl);
+						}
+						if(!one_up)
+							goto done;
 					}
-					one_up=add_qserv(&serv, &at->a, sp->port, sp->timeout, mk_flag_val(sp),sp->nocache,
-							 sp->lean_query,sp->rootserver?3:(!sp->is_proxy),
-							 needs_testing(sp),NULL);
-					if(!one_up)
-						goto done;
-				}
+					if(++j==m) j=0;
+				} while(j!=jstart);
 			}
 		}
 	}
@@ -2286,9 +2663,9 @@ static int p_dns_resolve(unsigned char *name, int thint, dns_cent_t **cachedp, i
 					pdnsd_free(cached);
 					cached=tc;
 				} else
-					DEBUG_MSG("p_dns_resolve: using local cent copy.\n");
+					DEBUG_MSG("p_dns_resolve: merging answer with cache failed, using local cent copy.\n");
 			} else
-				DEBUG_MSG("p_dns_resolve: nocache\n");
+				DEBUG_MSG("p_dns_resolve: nocache.\n");
 
 			*cachedp=cached;
 		}
@@ -2298,6 +2675,7 @@ static int p_dns_resolve(unsigned char *name, int thint, dns_cent_t **cachedp, i
 		rc=RC_SERVFAIL; /* No server up */
 	}
 	del_qserv(serv);
+	free_rejectlist(rejectlist);
 	return rc;
 }
 
@@ -2522,15 +2900,21 @@ int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep)
 		qs.a.sin6.sin6_flowinfo=IPV6_FLOWINFO;
 		qs.a.sin6.sin6_addr=addr->ipv6;
 		SET_SOCKA_LEN6(qs.a.sin6);
+
+		qs.a4fallback.s_addr=INADDR_ANY;
 	}
 #endif
 	qs.timeout=timeout;
 	qs.flags=0;
 	qs.nocache=0;
-	qs.lean_query=1;
 	qs.auth_serv=0;
+	qs.lean_query=1;
 	qs.needs_testing=0;
+	qs.trusted=1;
+	qs.aa=0;
+	qs.tc=0;
 	qs.nsdomain=NULL;
+	qs.rejectlist=NULL;
 
  try_again:
 	qs.state=QS_INITIAL;

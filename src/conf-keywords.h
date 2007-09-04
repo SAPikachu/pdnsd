@@ -1,10 +1,23 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
-
-   Copyright (C) 2004,2005,2006 Paul A. Rombouts
-
    Based on information previously contained in conf-lex.y and conf-parse.y
-   This file is part of the pdnsd package.
 
+   Copyright (C) 2004,2005,2006,2007 Paul A. Rombouts
+
+  This file is part of the pdnsd package.
+
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
+
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
 */
 
 enum {
@@ -67,9 +80,13 @@ enum {
 	PRESET,
 	PROXY_ONLY,
 	ROOT_SERVER,
+	RANDOMIZE_SERVERS,
 	INCLUDE,
 	EXCLUDE,
 	POLICY,
+	REJECTLIST,
+	REJECTPOLICY,
+	REJECTRECURSIVELY,
 	LABEL,
 	
 	A,
@@ -138,28 +155,32 @@ static const namevalue_t global_options[]= {
 
 /* Table for looking up server options. Order alphabetically! */
 static const namevalue_t server_options[]= {
-	{"caching",      CACHING},
-	{"device",       DEVICE},
-	{"exclude",      EXCLUDE},
-	{"file",         FILET},
-	{"include",      INCLUDE},
-	{"interface",    INTERFACE},
-	{"interval",     INTERVAL},
-	{"ip",           IP},
-	{"label",        LABEL},
-	{"lean_query",   LEAN_QUERY},
-	{"ping_ip",      PING_IP},
-	{"ping_timeout", PING_TIMEOUT},
-	{"policy",       POLICY},
-	{"port",         PORT},
-	{"preset",       PRESET},
-	{"proxy_only",   PROXY_ONLY},
-	{"purge_cache",  PURGE_CACHE},
-	{"root_server",  ROOT_SERVER},
-	{"scheme",       SCHEME},
-	{"timeout",      TIMEOUT},
-	{"uptest",       UPTEST},
-	{"uptest_cmd",   UPTEST_CMD}
+	{"caching",            CACHING},
+	{"device",             DEVICE},
+	{"exclude",            EXCLUDE},
+	{"file",               FILET},
+	{"include",            INCLUDE},
+	{"interface",          INTERFACE},
+	{"interval",           INTERVAL},
+	{"ip",                 IP},
+	{"label",              LABEL},
+	{"lean_query",         LEAN_QUERY},
+	{"ping_ip",            PING_IP},
+	{"ping_timeout",       PING_TIMEOUT},
+	{"policy",             POLICY},
+	{"port",               PORT},
+	{"preset",             PRESET},
+	{"proxy_only",         PROXY_ONLY},
+	{"purge_cache",        PURGE_CACHE},
+	{"randomize_servers",  RANDOMIZE_SERVERS},
+	{"reject",             REJECTLIST},
+	{"reject_policy",      REJECTPOLICY},
+	{"reject_recursively", REJECTRECURSIVELY},
+	{"root_server",        ROOT_SERVER},
+	{"scheme",             SCHEME},
+	{"timeout",            TIMEOUT},
+	{"uptest",             UPTEST},
+	{"uptest_cmd",         UPTEST_CMD}
 };
 
 /* Table for looking up rr options. Order alphabetically! */

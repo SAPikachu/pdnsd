@@ -1,24 +1,24 @@
 /* conff.h - Definiton for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2007 Paul A. Rombouts
 
-This file is part of the pdnsd package.
+  This file is part of the pdnsd package.
 
-pdnsd is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+  pdnsd is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
 
-pdnsd is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  pdnsd is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with pdsnd; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+  You should have received a copy of the GNU General Public License
+  along with pdnsd; see the file COPYING. If not, see
+  <http://www.gnu.org/licenses/>.
+*/
 
 /* $Id: conff.h,v 1.20 2002/01/29 23:49:47 tmm Exp $ */
 
@@ -67,6 +67,20 @@ typedef struct {
 typedef DYNAMIC_ARRAY(slist_t) *slist_array;
 
 typedef struct {
+	struct in_addr   a,mask;	
+} addr4maskpair_t;
+
+typedef DYNAMIC_ARRAY(addr4maskpair_t) *a4_array;
+
+#if ALLOW_LOCAL_AAAA
+typedef struct {
+	struct in6_addr  a,mask;
+} addr6maskpair_t;
+
+typedef DYNAMIC_ARRAY(addr6maskpair_t) *a6_array;
+#endif
+
+typedef struct {
 	unsigned short   port;
 	short            uptest;
 	time_t           timeout;
@@ -83,10 +97,17 @@ typedef struct {
 	char             lean_query;
 	char             is_proxy;
 	char             rootserver;
+	char             rand_servers;
 	char             preset;
+	char             rejectrecursively;
+	short            rejectpolicy;
 	short            policy;
 	slist_array      alist;
 	atup_array       atup_a;
+	a4_array         reject_a4;
+#if ALLOW_LOCAL_AAAA
+	a6_array         reject_a6;
+#endif
 	pdnsd_a          ping_a;
 } servparm_t;
 typedef DYNAMIC_ARRAY(servparm_t) *servparm_array;
