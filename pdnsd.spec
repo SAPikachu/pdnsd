@@ -51,7 +51,7 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: pdnsd
-Version: 1.2.6
+Version: 1.2.6a
 Release: par
 License: GPLv3
 Group:  Daemons

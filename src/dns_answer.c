@@ -126,10 +126,10 @@ typedef struct {
 
 typedef struct {
 #ifndef NO_TCP_SERVER
-	uint16_t len        __attribute__((packed));
+	uint16_t len;
 #endif
-	dns_hdr_t hdr       __attribute__((packed));
-} dns_ans_t;
+	dns_hdr_t hdr;
+} __attribute__((packed)) dns_ans_t;
 
 #ifdef NO_TCP_SERVER
 # define ansoffset 0

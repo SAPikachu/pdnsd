@@ -122,32 +122,36 @@
 
 typedef struct {
 	/* the name is the first field. It has variable length, so it can't be put in the struct */
-	uint16_t type      __attribute__((packed));
-	uint16_t class     __attribute__((packed)); 
-	uint32_t ttl       __attribute__((packed));
-	uint16_t rdlength  __attribute__((packed));
+	uint16_t type;
+	uint16_t class; 
+	uint32_t ttl;
+	uint16_t rdlength;
 	/* rdata follows */
-} rr_hdr_t;
+} __attribute__((packed)) rr_hdr_t;
 
+
+#if 0
 typedef struct {
 	/* The server name and maintainer mailbox are the first two fields. It has variable length, */
 	/* so they can't be put in the struct */
-	uint32_t serial    __attribute__((packed));
-	uint32_t refresh   __attribute__((packed));
-	uint32_t retry     __attribute__((packed));
-	uint32_t expire    __attribute__((packed));
-	uint32_t minimum   __attribute__((packed));
-} soa_r_t;
+	uint32_t serial;
+	uint32_t refresh;
+	uint32_t retry;
+	uint32_t expire;
+	uint32_t minimum;
+} __attribute__((packed)) soa_r_t;
 
 
 typedef struct {
 /*	char           qname[];*/
-	uint16_t qtype     __attribute__((packed));
-	uint16_t qclass    __attribute__((packed));
-} std_query_t;
+	uint16_t qtype;
+	uint16_t qclass;
+} __attribute__((packed)) std_query_t;
+#endif
+
 
 typedef struct {
-	uint16_t id        __attribute__((packed));
+	uint16_t id;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	unsigned int   rd:1;
 	unsigned int   tc:1;
@@ -173,11 +177,11 @@ typedef struct {
 #else
 # error	"Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN"
 #endif
-	uint16_t qdcount   __attribute__((packed));
-	uint16_t ancount   __attribute__((packed));
-	uint16_t nscount   __attribute__((packed));
-	uint16_t arcount   __attribute__((packed));
-} dns_hdr_t;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+} __attribute__((packed)) dns_hdr_t;
 
 
 /* Macros to retrieve or store integer data that is not necessarily aligned.

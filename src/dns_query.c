@@ -59,10 +59,10 @@ static char rcsid[]="$Id: dns_query.c,v 1.59 2002/08/07 08:55:33 tmm Exp $";
 
 typedef struct {
 #ifndef NO_TCP_QUERIES
-	uint16_t len        __attribute__((packed));
+	uint16_t len;
 #endif
-	dns_hdr_t hdr       __attribute__((packed));
-} dns_msg_t;
+	dns_hdr_t hdr;
+} __attribute__((packed)) dns_msg_t;
 
 #ifdef NO_TCP_QUERIES
 # define hdroffset 0
