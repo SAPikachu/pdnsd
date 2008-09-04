@@ -41,12 +41,12 @@
     License,  as  published by the Free Software Foundation; either version
     3, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.6-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.7-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
     For Apple Mac users, Brian Wells has published a good HOWTO at
-    <a href="http://web.mac.com/brianwells/iWeb/main/pdnsd.html">http://web.mac.com/brianwells/iWeb/main/pdnsd.html</a>.
+    <a href="http://web.mac.com/brianwells/main/pdnsd.html">http://web.mac.com/brianwells/main/pdnsd.html</a>.
 
 
     <h2>0. Installation</h2>
@@ -223,7 +223,7 @@
 	</td>
 	<td>
 	  Default directory for pdnsd cache (default=/var/cache/pdnsd)<br>
-	  This setting can be changed via config file settings when pdnsd was built.
+	  This setting can be changed via config file settings when pdnsd has been built.
 	</td>
       </tr>
       <tr>
@@ -1160,27 +1160,31 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>query_port_start=<i>number</i>;</code></b><br>
-	  If given, defines the start of the port range used for queries of pdnsd. The
+	  <b><code><a name="queryportstart">query_port_start=(<i>number</i>|none);</a></code></b><br>
+	  If a number is given, this defines the start of the port range used for queries of pdnsd. The
 	  value given must be &gt;= 1024. The purpose of this option is to aid certain firewall
 	  configurations that are based on the source port. Please keep in mind that another application
 	  may bind a port in that range, so a stateful firewall using target port and/or process uid may
 	  be more effective. In case a query start port is given pdnsd uses this port as the first port of a
-	  specified port range (see <code>query_port_end</code>) used for queries.
+	  specified port range (see <a href="#queryportend"><code>query_port_end</code></a>) used for queries.
 	  pdnsd will try to randomly select a free port from this range as local port for the query.<br>
-	  To ensure that there are enough ports for pdnsd to use, the range between query_port_start and
-	  query_port_end should be adjusted to at least (<code>par_queries</code> * <code>proc_limit</code>).
-	  A higher value is highly recommended, because other applications may also allocate ports in that
-	  range. If possible, this range should be kept out of the space that other applications usually
-	  use.
+	  To ensure that there are enough ports for pdnsd to use, the range between <code>query_port_start</code> and
+	  <code>query_port_end</code> should be adjusted to at least (<code>par_queries</code> * <code>proc_limit</code>).
+	  A larger range is highly recommended for security reasons, and also because other applications may
+	  allocate ports in that range. If possible, this range should be kept out of the space
+	  that other applications usually use.<br>
+	  The default for this option is 1024. Together with the default value of <code>query_port_end</code>,
+	  this makes it the hardest for an attacker to guess the source port used by the pdnsd resolver.
+	  If you specify <code>none</code> here, pdnsd will let the kernel choose the source port, but
+	  this may leave pdnsd more vulnerable to an attack.
 	</td>
       </tr>
       <tr>
 	<td>
-	  <b><code>query_port_end=<i>number</i>;</code></b><br>
-	  Only used if query_port_start is given. Defines the last port of the range started by query_port_start
+	  <b><code><a name="queryportend">query_port_end=<i>number</i>;</a></code></b><br>
+	  Used if <code>query_port_start</code> is not <code>none</code>. Defines the last port of the range started by query_port_start
 	  used for querys by pdnsd. The default is 65535, which is also the maximum legal value for this option.
-	  For details see the description of <code>query_port_start</code>.
+	  For details see the description of <a href="#queryportstart"><code>query_port_start</code></a>.
 	</td>
       </tr>
       <tr>
@@ -1523,7 +1527,7 @@
 	  will cause pdnsd to try to use cached information about top-level domains to reduce to number
 	  of queries to root servers, making the resolving of new names more efficient.
 	  You can get a list of available root servers by running the command
-	  <code>"dig&nbsp;-t&nbsp;ns&nbsp;."</code>.<br>
+	  <code>"dig&nbsp;.&nbsp;ns"</code>.<br>
 	  This option is also necessary if you use the <a href="#delegationonly"><code>delegation_only</code></a> option.<br>
 	  Default is <code>off</code>.
 	</td>
@@ -1603,8 +1607,8 @@
 	   lookup for that domain name; when <code>included</code> is given, the server will
 	   be asked, and when <code>excluded</code> is given, it will not.
 	   If <code>simple_only</code> is given the server will be used if the name to lookup
-	   is a simple host name, on the other hand if <code>fqdn_only</code> is given the server
-	   will be used only  for fully qualified domain names
+	   is a simple (single-label) domain name, on the other hand if <code>fqdn_only</code>
+	   is given the server will be used only  for names consisting of two or more labels
 	   (i.e. the name has at least one dot in-between).<br>
 	   If no server is available for a queried domain, pdnsd will return an error message
 	   to the client that usually will stop the client's attempts to resolve a specific
@@ -1614,7 +1618,11 @@
 	   <em>Note</em>: the <code>simple_only</code> and <code>fqdn_only</code> constants
 	   were added by Paul Rombouts.
 	   They are useful for controlling which name servers (if any) will be used by
-	   pdnsd for simple host names.<br>
+	   pdnsd for resolving simple (single-label) host names.
+	   <code>fqdn_only</code> used to stand for "fully qualified domain name only", but this is
+	   actually a misnomer. The names in queries received by pdnsd are always considered to be
+	   fully qualified. If you do not exactly understand what the options <code>simple_only</code> and
+	   <code>fqdn_only</code> are good for, you are probably better off not using them.<br>
 	   The default for this option is <code>included</code>.
 	</td>
       </tr>
@@ -2001,22 +2009,47 @@
       </tr>
     </table>
     <br>
+    <h3>2.1.6 <a name="includesection"><code>include</code> Section</a></h3>
+    A configuration file may include other configuration files.
+    However, only the top-level configuration file may contain <a href="#globalsection"><code>global</code></a>
+    and <a href="#serversection"><code>server</code></a> sections,
+    thus include files are effectively limited to sections that add local definitions to the cache.<br>
+    Include sections currently only have one type of option, which may be given multiple times within a single section.
+    <br><br>
+    <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
+      <tr>
+	<td>
+	  <b><code>file=<i>string</i>;</code></b><br>
+	  The string specifies a file name. For every <code>file</code> option in an include section, 
+	  pdnsd will parse the given file as described above. The file may contain include sections itself,
+	  but as a precaution pdnsd checks that a certain maximum depth is not exceeded to guard against
+	  the possibility of infinite recursion.
+	</td>
+      </tr>
+    </table>
+    <br>
     <h2>3 <a name="pdnsdctl">pdnsd-ctl</a></h2>
-    pdnsd-ctl allows you to run-time configure pdnsd. To make this work, you have to start pdnsd with the <code>-s</code>
+    <p>
+    pdnsd-ctl allows you to configure pdnsd at run time. To make this work, you have to start pdnsd with the <code>-s</code>
     option (or use the <code><a href="#statusctl">status_ctl</a></code> option in the config file). You also should make sure that you
     have appropriate permissions on the control socket (use the <code>ctl_perms</code> option to make this sure) and of your pdnsd
-    cache directory (pdnsd keeps it's socket there). Please make sure the pdnsd cache directory is not writeable for untrusted users!<br>
-    pdnsd-ctl takes one optional command line argument, <code>-c</code>. It is used to specify the cache directory (and takes this as argument).
-    The default for this settings is the pdnsd default cache directory (specified at compile time). The cache directory for pdnsd-ctl must
-    be the same pdnsd uses!<br>
-    The following table lists the command line options that pdnsd-ctl supports. The command must always be
-    the first option, the options to the command must follow in the given order.<br>
+    cache directory (pdnsd keeps its socket there). Please make sure the pdnsd cache directory is not writeable for untrusted users!</p>
+    <p>
+    pdnsd-ctl accepts two command-line options starting with a dash.<br>
+    <code>-c</code> may be used to specify the cache directory (and takes this as argument).
+    The default for this setting is the pdnsd default cache directory (specified at compile time).
+    The cache directory for pdnsd-ctl must be the same pdnsd uses!<br>
+    <code>-q</code> can be used to make the output of pdnsd-ctl less verbose.</p>
+    <p>
+    The following table lists the commands that pdnsd-ctl supports. The command must always be
+    the first command-line option (not starting with a dash), the arguments to the command must follow in the given order.<br>
     In the following table, keywords are in a normal font, while placeholders are in italics.<br>
-    Alternatives are specified like (alt1|alt2|alt3).<br>
+    Alternatives are specified like (alt1|alt2|alt3).
+    Optional arguments are placed between square brackets [].</p>
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
       <tr>
 	<td><b>Command</b></td>
-	<td><b>Options</b></td>
+	<td><b>Arguments</b></td>
 	<td><b>Description</b></td>
       </tr>
       <tr>
@@ -2080,9 +2113,10 @@
 	<td valign=top>source</td>
 	<td valign=top><i>fn</i>&nbsp;&nbsp;<i>owner</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[(on|off)]&nbsp;&nbsp;[noauth]</td>
 	<td>
-	  Load a hosts-style file. Works like using the pdnsd source option.
+	  Load a hosts-style file. Works like using the pdnsd
+	  <a href="#sourcesection">source configuration section</a>.
 	  <i>owner</i> and <i>ttl</i> are used as in the source section. <i>ttl</i> has a default
-	  of 900 (it does not need to be specified). The next to last option corresponds
+	  of 900 (it does not need to be specified). The next to last argument corresponds
 	  to the serve_aliases option, and is off by default (i.e. if it is not specified).
 	  <code>noauth</code> is used to make the domains non-authoritative - please see
 	  the description of the <code>authrec</code> config file options for a description of what
@@ -2094,11 +2128,11 @@
       <tr>
 	<td valign=top>add</td>
 	<td valign=top>a&nbsp;&nbsp;<i>addr</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
-	<td rowspan=5>
+	<td rowspan=6>
 	  Add a record of the given type to the pdnsd cache, replacing existing
 	  records for the same <i>name</i> and type. The 2nd argument corresponds
-	  to the argument of the option in the rr section that is named like
-	  the first option: a is a record for hostname-to-address mapping,
+	  to the value of the option in the rr section that is named like
+	  the first argument: a is a record for hostname-to-address mapping,
 	  aaaa is the same thing for IPv6 addresses, and ptr is for address-to-hostname
 	  mapping. See the documentation for the <code>rr</code> section for more details.
 	  In case of A and AAAA records, the <i>addr</i> argument may be a list of IP addresses,
@@ -2131,6 +2165,10 @@
 	<td valign=top>mx&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;<i>pref</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
       </tr>
       <tr>
+	<td valign=top>add</td>
+	<td valign=top>ns&nbsp;&nbsp;<i>host</i>&nbsp;&nbsp;<i>name</i>&nbsp;&nbsp;[<i>ttl</i>]&nbsp;&nbsp;[noauth]</td>
+      </tr>
+      <tr>
 	<td valign=top>neg</td>
 	<td valign=top><i>name</i>&nbsp;&nbsp;[<i>type</i>]&nbsp;&nbsp;[<i>ttl</i>]</td>
 	<td>
@@ -2160,6 +2198,32 @@
 	</td>
       </tr>
       <tr>
+	<td valign=top>include</td>
+	<td valign=top><i>filename</i></td>
+	<td>
+	  Parse the given file as an include file, see the documentation on
+	  <a href="#includesection">include sections</a> for a description
+	  what this file may contain.<br>
+	  This command is useful for adding definitions to the cache without reconfiguring pdnsd.
+	</td>
+      </tr>
+      <tr>
+	<td valign=top>eval</td>
+	<td valign=top><i>string</i></td>
+	<td>
+	  Parse the given string as if it were part of pdnsd's configuration file.
+	  The string should hold one or more complete configuration sections.
+	  However, <a href="#globalsection"><code>global</code></a> and
+	  <a href="#serversection"><code>server</code></a> sections are not allowed,
+	  just as in <a href="#includesection">include files</a>.
+	  If multiple strings are given, they will be joined using newline chars
+	  and parsed together.<br>
+	  This command is useful for adding records interactively to the cache
+	  that cannot be defined using the "<code>pdnsd-ctl&nbsp;add</code>" command,
+	  (e.g. soa records).
+	</td>
+      </tr>
+      <tr>
 	<td valign=top>empty-cache</td>
 	<td valign=top>[[+|-]<i>name</i> ...]</td>
 	<td>
@@ -2167,8 +2231,8 @@
 	  freeing all existing entries.
 	  Note that this also removes local records, as defined by the config file.
 	  To restore local records, run <code>"pdnsd-ctl&nbsp;config"</code> immediately afterwards.<br>
-	  The <code>"pdnsd-ctl&nbsp;empty-cache"</code> now accepts additional arguments; these are
-	  interpreted as include/exclude names. If an argument starts with a '+'
+	  The <code>"pdnsd-ctl&nbsp;empty-cache"</code> command now accepts additional arguments;
+	  these are interpreted as include/exclude names. If an argument starts with a '+'
 	  the name will be included. If an argument starts with a '-' it will be
 	  excluded. If an argument does not begin with '+' or '-', a '+' is
 	  assumed. If the domain name of a cache entry ends in one of the names in
@@ -2234,13 +2298,18 @@
     <h2>5 Problems...</h2>
     If you have problems with configuring or running pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
     If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
-    <em>Note added by Paul Rombouts</em>: Thomas Moestl no longer maintains the code. I have revised the code and added new features.
-    See <code>README.par</code> and the <code>ChangeLog</code> in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed a binary package) for more details.
-    If you have questions about my modifications, you can find my email address at the end of <code>README.par</code>.
+    <em>Note added by <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a></em>:
+    Thomas Moestl no longer maintains the code. I have revised the code and added new features.
+    See <a href="../../README.par"><code>README.par</code></a> and the
+    <a href="../../ChangeLog"><code>ChangeLog</code></a> in the source directory
+    (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code> if you have installed a binary package)
+    for more details.
+    If you have questions about my modifications, you can find my email address at the end of
+    <a href="../../README.par"><code>README.par</code></a>.
     <br>
     <br>
     <h2>6 Hacking</h2>
-    Here comes some information you might find useful for hacking on pdnsd.
+    Here comes some information you might find useful for hacking pdnsd.
     <br>
     <h3>6.1 Source files</h3>
     <table width="100%" cellspacing=1 cellpadding=7>
@@ -2405,10 +2474,10 @@
     <hr>
     <address>
     Copyright&nbsp;(C)&nbsp;2000,&nbsp;2001&nbsp;<a href="mailto:tmoestl@gmx.net">Thomas&nbsp;Moestl</a><br>
-    Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007&nbsp;<a href="index.html#currentmaintainer">Paul&nbsp;Rombouts</a>
+    Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007,&nbsp;2008&nbsp;<a href="mailto:p.a.rombouts@home.nl">Paul&nbsp;Rombouts</a>
     </address>
     <p>
-      <i>Last revised: 20 Aug 2007 by Paul Rombouts</i>
+      <i>Last revised: 04 September 2008 by Paul Rombouts</i>
     </p>
   </body>
 </html>

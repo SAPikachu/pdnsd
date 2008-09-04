@@ -2,7 +2,7 @@
    The parser was rewritten in C from scratch and doesn't require (f)lex
    or yacc/bison.
 
-   Copyright (C) 2004 Paul A. Rombouts.
+   Copyright (C) 2004,2008 Paul A. Rombouts.
 
   This file is part of the pdnsd package.
 
@@ -24,6 +24,6 @@
 #ifndef CONF_PARSER_H
 #define CONF_PARSER_H
 
-int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errstr);
+int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *servers, int includedepth, char **errstr);
 
 #endif /* CONF_PARSER_H */

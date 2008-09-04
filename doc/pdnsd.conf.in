@@ -114,6 +114,10 @@ source {
 	file="/etc/hosts";
 }
 
+/*
+include {file="/etc/pdnsd.include";}	# Read additional definitions from /etc/pdnsd.include.
+*/
+
 rr {
 	name=localhost;
 	reverse=on;

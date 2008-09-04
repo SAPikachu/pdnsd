@@ -8,12 +8,12 @@ the Free Software Foundation; either version 3, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.6-par. For older documentation,
+This manual is up-to-date for version 1.2.7-par. For older documentation,
 please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/. For
 Apple Mac users, Brian Wells has published a good HOWTO at http://web.mac.com/
-brianwells/iWeb/main/pdnsd.html.
+brianwells/main/pdnsd.html.
 
 0. Installation
 
@@ -128,7 +128,7 @@ distro                    RedHat, SuSE, Debian)
                           Default directory for pdnsd cache (default=/var/cache
 --with-cachedir=dir       /pdnsd)
                           This setting can be changed via config file settings
-                          when pdnsd was built.
+                          when pdnsd has been built.
 
                           Number of hash buckets to use (default=1024). The
                           default should be sufficient for most purposes, but
@@ -853,23 +853,28 @@ increases fail safety for hosts with multiple IP addresses, so this is usually
 a good idea.
 On by default.
 
-query_port_start=number;
-If given, defines the start of the port range used for queries of pdnsd. The
-value given must be >= 1024. The purpose of this option is to aid certain
-firewall configurations that are based on the source port. Please keep in mind
-that another application may bind a port in that range, so a stateful firewall
-using target port and/or process uid may be more effective. In case a query
-start port is given pdnsd uses this port as the first port of a specified port
-range (see query_port_end) used for queries. pdnsd will try to randomly select
-a free port from this range as local port for the query.
+query_port_start=(number|none);
+If a number is given, this defines the start of the port range used for queries
+of pdnsd. The value given must be >= 1024. The purpose of this option is to aid
+certain firewall configurations that are based on the source port. Please keep
+in mind that another application may bind a port in that range, so a stateful
+firewall using target port and/or process uid may be more effective. In case a
+query start port is given pdnsd uses this port as the first port of a specified
+port range (see query_port_end) used for queries. pdnsd will try to randomly
+select a free port from this range as local port for the query.
 To ensure that there are enough ports for pdnsd to use, the range between
 query_port_start and query_port_end should be adjusted to at least (par_queries
-* proc_limit). A higher value is highly recommended, because other applications
-may also allocate ports in that range. If possible, this range should be kept
-out of the space that other applications usually use.
+* proc_limit). A larger range is highly recommended for security reasons, and
+also because other applications may allocate ports in that range. If possible,
+this range should be kept out of the space that other applications usually use.
+The default for this option is 1024. Together with the default value of
+query_port_end, this makes it the hardest for an attacker to guess the source
+port used by the pdnsd resolver. If you specify none here, pdnsd will let the
+kernel choose the source port, but this may leave pdnsd more vulnerable to an
+attack.
 
 query_port_end=number;
-Only used if query_port_start is given. Defines the last port of the range
+Used if query_port_start is not none. Defines the last port of the range
 started by query_port_start used for querys by pdnsd. The default is 65535,
 which is also the maximum legal value for this option. For details see the
 description of query_port_start.
@@ -1143,7 +1148,7 @@ are root servers. A root server will typically only give the name servers for
 the top-level domain in its reply. Setting root_server=on will cause pdnsd to
 try to use cached information about top-level domains to reduce to number of
 queries to root servers, making the resolving of new names more efficient. You
-can get a list of available root servers by running the command "dig -t ns .".
+can get a list of available root servers by running the command "dig . ns".
 This option is also necessary if you use the delegation_only option.
 Default is off.
 
@@ -1208,9 +1213,9 @@ search for other rules is terminated). If no rule matched a given domain name,
 the policy= option determines whether this server is used for the lookup for
 that domain name; when included is given, the server will be asked, and when
 excluded is given, it will not. If simple_only is given the server will be used
-if the name to lookup is a simple host name, on the other hand if fqdn_only is
-given the server will be used only for fully qualified domain names (i.e. the
-name has at least one dot in-between).
+if the name to lookup is a simple (single-label) domain name, on the other hand
+if fqdn_only is given the server will be used only for names consisting of two
+or more labels (i.e. the name has at least one dot in-between).
 If no server is available for a queried domain, pdnsd will return an error
 message to the client that usually will stop the client's attempts to resolve a
 specific domain from this server (the libc resolver will e.g. return an error
@@ -1218,7 +1223,11 @@ to the application that tried to resolve the domain if no other servers are
 available in the resolv.conf). This may be of use sometimes.
 Note: the simple_only and fqdn_only constants were added by Paul Rombouts. They
 are useful for controlling which name servers (if any) will be used by pdnsd
-for simple host names.
+for resolving simple (single-label) host names. fqdn_only used to stand for
+"fully qualified domain name only", but this is actually a misnomer. The names
+in queries received by pdnsd are always considered to be fully qualified. If
+you do not exactly understand what the options simple_only and fqdn_only are
+good for, you are probably better off not using them.
 The default for this option is included.
 
 include=string;
@@ -1547,26 +1556,48 @@ this option.
 This is on by default.
 
 
+2.1.6 include Section
+
+A configuration file may include other configuration files. However, only the
+top-level configuration file may contain global and server sections, thus
+include files are effectively limited to sections that add local definitions to
+the cache.
+Include sections currently only have one type of option, which may be given
+multiple times within a single section.
+
+
+file=string;
+The string specifies a file name. For every file option in an include section,
+pdnsd will parse the given file as described above. The file may contain
+include sections itself, but as a precaution pdnsd checks that a certain
+maximum depth is not exceeded to guard against the possibility of infinite
+recursion.
+
+
 3 pdnsd-ctl
 
-pdnsd-ctl allows you to run-time configure pdnsd. To make this work, you have
-to start pdnsd with the -s option (or use the status_ctl option in the config
-file). You also should make sure that you have appropriate permissions on the
-control socket (use the ctl_perms option to make this sure) and of your pdnsd
-cache directory (pdnsd keeps it's socket there). Please make sure the pdnsd
-cache directory is not writeable for untrusted users!
-pdnsd-ctl takes one optional command line argument, -c. It is used to specify
-the cache directory (and takes this as argument). The default for this settings
-is the pdnsd default cache directory (specified at compile time). The cache
-directory for pdnsd-ctl must be the same pdnsd uses!
-The following table lists the command line options that pdnsd-ctl supports. The
-command must always be the first option, the options to the command must follow
-in the given order.
+pdnsd-ctl allows you to configure pdnsd at run time. To make this work, you
+have to start pdnsd with the -s option (or use the status_ctl option in the
+config file). You also should make sure that you have appropriate permissions
+on the control socket (use the ctl_perms option to make this sure) and of your
+pdnsd cache directory (pdnsd keeps its socket there). Please make sure the
+pdnsd cache directory is not writeable for untrusted users!
+
+pdnsd-ctl accepts two command-line options starting with a dash.
+-c may be used to specify the cache directory (and takes this as argument). The
+default for this setting is the pdnsd default cache directory (specified at
+compile time). The cache directory for pdnsd-ctl must be the same pdnsd uses!
+-q can be used to make the output of pdnsd-ctl less verbose.
+
+The following table lists the commands that pdnsd-ctl supports. The command
+must always be the first command-line option (not starting with a dash), the
+arguments to the command must follow in the given order.
 In the following table, keywords are in a normal font, while placeholders are
 in italics.
-Alternatives are specified like (alt1|alt2|alt3).
+Alternatives are specified like (alt1|alt2|alt3). Optional arguments are placed
+between square brackets [].
 
-Command        Options                  Description
+Command        Arguments                Description
 
 help                                    Print a command summary.
 
@@ -1614,36 +1645,40 @@ record         name  (delete|           Delete or invalidate the records of the 
                                         pdnsd-ctl record localhost. delete
 
 source         fn  owner  [ttl]  [(on   Load a hosts-style file. Works like using the pdnsd source
-               |off)]  [noauth]         option. owner and ttl are used as in the source section.
-                                        ttl has a default of 900 (it does not need to be
-                                        specified). The next to last option corresponds to the
-                                        serve_aliases option, and is off by default (i.e. if it is
-                                        not specified). noauth is used to make the domains
+               |off)]  [noauth]         configuration section. owner and ttl are used as in the
+                                        source section. ttl has a default of 900 (it does not need
+                                        to be specified). The next to last argument corresponds to
+                                        the serve_aliases option, and is off by default (i.e. if
+                                        it is not specified). noauth is used to make the domains
                                         non-authoritative - please see the description of the
                                         authrec config file options for a description of what that
                                         means. fn is the filename. The file must be readable by
                                         pdnsd! Example:
                                         pdnsd-ctl source /etc/hosts localhost. 900 off
 
-add            a  addr  name  [ttl]     Add a record of the given type to the pdnsd cache,
-               [noauth]                 replacing existing records for the same name and type. The
-                                        2nd argument corresponds to the argument of the option in
-                                        the rr section that is named like the first option: a is a
-add            aaaa  addr  name         record for hostname-to-address mapping, aaaa is the same
-               [ttl]  [noauth]          thing for IPv6 addresses, and ptr is for
-                                        address-to-hostname mapping. See the documentation for the
-                                        rr section for more details. In case of A and AAAA
-add            ptr  host  name  [ttl]   records, the addr argument may be a list of IP addresses,
-                 [noauth]               separated by commas or white space, causing multiple
-                                        addresses to be defined for the same name. The ttl is
-                                        optional, the default is 900 seconds. noauth is used to
-add            cname  host  name        make the domains non-authoritative - please see the
-               [ttl]  [noauth]          description of the authrec config file options for a
-                                        description of what that means. If you want no other
-                                        record than the newly added in the cache, do
-add            mx  host  name  pref     pdnsd-ctl record name delete before adding records. This
-               [ttl]  [noauth]          is also better when overwriting local records. Example:
-                                        pdnsd-ctl add a 127.0.0.1 localhost. 900
+add            a  addr  name  [ttl]
+               [noauth]
+                                        Add a record of the given type to the pdnsd cache,
+                                        replacing existing records for the same name and type. The
+add            aaaa  addr  name         2nd argument corresponds to the value of the option in the
+               [ttl]  [noauth]          rr section that is named like the first argument: a is a
+                                        record for hostname-to-address mapping, aaaa is the same
+                                        thing for IPv6 addresses, and ptr is for
+add            ptr  host  name  [ttl]   address-to-hostname mapping. See the documentation for the
+                 [noauth]               rr section for more details. In case of A and AAAA
+                                        records, the addr argument may be a list of IP addresses,
+                                        separated by commas or white space, causing multiple
+add            cname  host  name        addresses to be defined for the same name. The ttl is
+               [ttl]  [noauth]          optional, the default is 900 seconds. noauth is used to
+                                        make the domains non-authoritative - please see the
+                                        description of the authrec config file options for a
+add            mx  host  name  pref     description of what that means. If you want no other
+               [ttl]  [noauth]          record than the newly added in the cache, do
+                                        pdnsd-ctl record name delete before adding records. This
+                                        is also better when overwriting local records. Example:
+add            ns  host  name  [ttl]    pdnsd-ctl add a 127.0.0.1 localhost. 900
+                 [noauth]
+
 
 neg            name  [type]  [ttl]      Add a negatively cached record to pdnsd's cache, replacing
                                         existing records for the same name and type. If no type is
@@ -1667,12 +1702,28 @@ config         [filename]               Reload pdnsd's configuration file.
                                         will receive an error message. In these cases, you will
                                         have to restart pdnsd instead.
 
+include        filename                 Parse the given file as an include file, see the
+                                        documentation on include sections for a description what
+                                        this file may contain.
+                                        This command is useful for adding definitions to the cache
+                                        without reconfiguring pdnsd.
+
+eval           string                   Parse the given string as if it were part of pdnsd's
+                                        configuration file. The string should hold one or more
+                                        complete configuration sections. However, global and
+                                        server sections are not allowed, just as in include files.
+                                        If multiple strings are given, they will be joined using
+                                        newline chars and parsed together.
+                                        This command is useful for adding records interactively to
+                                        the cache that cannot be defined using the "pdnsd-ctl add"
+                                        command, (e.g. soa records).
+
 empty-cache    [[+|-]name ...]          If no arguments are provided, the cache will be completely
                                         emptied, freeing all existing entries. Note that this also
                                         removes local records, as defined by the config file. To
                                         restore local records, run "pdnsd-ctl config" immediately
                                         afterwards.
-                                        The "pdnsd-ctl empty-cache" now accepts additional
+                                        The "pdnsd-ctl empty-cache" command now accepts additional
                                         arguments; these are interpreted as include/exclude names.
                                         If an argument starts with a '+' the name will be
                                         included. If an argument starts with a '-' it will be
@@ -1747,7 +1798,7 @@ you can find my email address at the end of README.par.
 
 6 Hacking
 
-Here comes some information you might find useful for hacking on pdnsd.
+Here comes some information you might find useful for hacking pdnsd.
 
 6.1 Source files
 
@@ -1837,7 +1888,7 @@ status.h              pdnsd's interface to pdnsd-ctl.
 -------------------------------------------------------------------------------
 
 Copyright (C) 2000, 2001 Thomas Moestl
-Copyright (C) 2003, 2004, 2005, 2006, 2007 Paul Rombouts
+Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul Rombouts
 
-Last revised: 20 Aug 2007 by Paul Rombouts
+Last revised: 04 September 2008 by Paul Rombouts
 

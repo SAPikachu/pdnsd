@@ -1,7 +1,7 @@
 /* dns_query.c - Execute outgoing dns queries and write entries to cache
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -594,10 +594,10 @@ static int bind_socket(int s)
 	int query_port_start=global.query_port_start,query_port_end=global.query_port_end;
 
 	/*
-	 * 0, as a special value, denotes that we let the kernel select an address when we
-	 * first use the socket, which is the default.
+	 * -1, as a special value for query_port_start, denotes that we let the kernel select
+	 * a port when we first use the socket, which used to be the default.
 	 */
-	if (query_port_start > 0) {
+	if (query_port_start >= 0) {
 		union {
 #ifdef ENABLE_IPV4
 			struct sockaddr_in sin4;
@@ -607,50 +607,84 @@ static int bind_socket(int s)
 #endif
 		} sin;
 		socklen_t sinl;
-		int i,j, range = query_port_end-query_port_start+1;
+		int prt, pstart, range = query_port_end-query_port_start+1, m=0xffff;
+		unsigned try1,try2, maxtry2;
 
-		if (range<=0) {
+		if (range<=0 || range>0x10000) {
 			log_warn("Illegal port range in %s line %d, dropping query!\n",__FILE__,__LINE__);
 			return 0;
 		}
-		for (j=i=(get_rand16()%range)+query_port_start;;) {
-#ifdef ENABLE_IPV4
-			if (run_ipv4) {
-				memset(&sin.sin4,0,sizeof(struct sockaddr_in));
-				sin.sin4.sin_family=AF_INET;
-				sin.sin4.sin_port=htons(i);
-				SET_SOCKA_LEN4(sin.sin4);
-				sinl=sizeof(struct sockaddr_in);
-			}
-#endif
-#ifdef ENABLE_IPV6
-			ELSE_IPV6 {
-				memset(&sin.sin6,0,sizeof(struct sockaddr_in6));
-				sin.sin6.sin6_family=AF_INET6;
-				sin.sin6.sin6_port=htons(global.port);
-				sin.sin6.sin6_flowinfo=IPV6_FLOWINFO;
-				SET_SOCKA_LEN6(sin.sin6);
-				sinl=sizeof(struct sockaddr_in6);
-			}
-#endif
-			if (bind(s,(struct sockaddr *)&sin,sinl)==-1) {
-				if (errno!=EADDRINUSE &&
-				    errno!=EADDRNOTAVAIL) { /* EADDRNOTAVAIL should not happen here... */
-					log_warn("Could not bind to socket: %s\n", strerror(errno));
+		if(range<=0x8000) {
+			/* Find the smallest power of 2 >= range. */
+			for(m=1; m<range; m <<= 1);
+			/* Convert into a bit mask. */
+			--m;
+		}		
+
+		for (try2=0,maxtry2=range*2;;) {
+			/* Get a random number < range, by rejecting those >= range. */
+			for(try1=0;;) {
+				prt= get_rand16()&m;
+				if(prt<range) break;
+				if(++try1>=0x10000) {
+					log_warn("Cannot get random number < range"
+						 " after %d tries in %s line %d,"
+						 " bad random number generator?\n",
+						 try1,__FILE__,__LINE__);
 					return 0;
 				}
-				/* If the address is in use, we continue. */
-			} else
-				break;	/* done. */
-			if (++i>query_port_end)
-				i=query_port_start;
-			if (i==j) {
-				/* Wraparound, scanned the whole range. Give up. */
-				log_warn("Out of ports in the given range, dropping query!\n");
-				return 0;
+			}
+			prt += query_port_start;
+
+			for(pstart=prt;;) {
+#ifdef ENABLE_IPV4
+				if (run_ipv4) {
+					memset(&sin.sin4,0,sizeof(struct sockaddr_in));
+					sin.sin4.sin_family=AF_INET;
+					sin.sin4.sin_port=htons(prt);
+					SET_SOCKA_LEN4(sin.sin4);
+					sinl=sizeof(struct sockaddr_in);
+				}
+#endif
+#ifdef ENABLE_IPV6
+				ELSE_IPV6 {
+					memset(&sin.sin6,0,sizeof(struct sockaddr_in6));
+					sin.sin6.sin6_family=AF_INET6;
+					sin.sin6.sin6_port=htons(global.port);
+					sin.sin6.sin6_flowinfo=IPV6_FLOWINFO;
+					SET_SOCKA_LEN6(sin.sin6);
+					sinl=sizeof(struct sockaddr_in6);
+				}
+#endif
+				if (bind(s,(struct sockaddr *)&sin,sinl)==-1) {
+					if (errno!=EADDRINUSE &&
+					    errno!=EADDRNOTAVAIL) { /* EADDRNOTAVAIL should not happen here... */
+						log_warn("Could not bind to socket: %s\n", strerror(errno));
+						return 0;
+					}
+					/* If the address is in use, we continue. */
+				} else
+					goto done;
+
+				if(++try2>=maxtry2) {
+					/* It is possible we missed the free ports by chance,
+					   try scanning the whole range. */
+					if (++prt>query_port_end)
+						prt=query_port_start;
+					if (prt==pstart) {
+						/* Wrapped around, scanned the whole range. Give up. */
+						log_warn("Out of ports in the range"
+							 " %d-%d, dropping query!\n",
+							 query_port_start,query_port_end);
+						return 0;
+					}
+				}
+				else    /* Try new random number */
+					break;
 			}
 		}
 	}
+done:
 	return 1;
 }
 
@@ -1140,8 +1174,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 #		define ans_sec  secs[0]
 #		define auth_sec secs[1]
 #		define add_sec  secs[2]
-		dns_cent_t *ent;
-		unsigned short qtype,flags,aa;
+		unsigned short qtype,flags,aa,neg_ans=0;
 
 		lcnt-=sizeof(dns_hdr_t);
 		if (ntohs(st->recvbuf->qdcount)!=1) {
@@ -1201,9 +1234,8 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 			rv=RC_FATALERR; /* unrecoverable error */
 			goto free_recvbuf_return;
 		}
-		ent=&DA_INDEX(ans_sec,0);
 		/* By marking DF_AUTH, we mean authoritative AND complete. */
-		if (!init_cent(ent,name, 0, queryts, (aa && qtype==QT_ALL)?DF_AUTH:0  DBG1)) {
+		if (!init_cent(&DA_INDEX(ans_sec,0), name, 0, queryts, (aa && qtype==QT_ALL)?DF_AUTH:0  DBG1)) {
 			rv=RC_FATALERR; /* unrecoverable error */
 			goto free_centarrays_recvbuf_return;
 		}
@@ -1284,8 +1316,10 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 		if ((rv=st->recvbuf->rcode)==RC_NAMEERR) {
 			DEBUG_PDNSDA_MSG("Server %s returned error code: %s\n", PDNSDA2STR(PDNSD_A(st)),get_ename(rv));
 		name_error:
+			neg_ans=1;
 			{
 				/* We did not get what we wanted. Cache according to policy */
+				dns_cent_t *ent=&DA_INDEX(ans_sec,0);
 				int neg_domain_pol=global.neg_domain_pol;
 				if (neg_domain_pol==C_ON || (neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
 					time_t ttl=global.neg_ttl;
@@ -1468,33 +1502,39 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 			}
 		}
 
-		/* Negative caching of rr sets */
-		if (thint>=T_MIN && thint<=T_MAX && !ent->rr[thint-T_MIN] && !st->tc) {
-			/* We did not get what we wanted. Cache according to policy */
-			int neg_rrs_pol=global.neg_rrs_pol;
-			if (neg_rrs_pol==C_ON || (neg_rrs_pol==C_AUTH && aa)) {
-				time_t ttl=global.neg_ttl;
-				rr_set_t *rrset=ent->rr[T_SOA-T_MIN];
-				dns_cent_t *cent;
-				unsigned scnt;
-				/* If we received a SOA, we should take the ttl of that record. */
-				if ((rrset && rrset->rrs) ||
-				    /* Try to find a SOA record higher up the hierarchy that came with the reply. */
-				    ((cent=lookup_cent_array(auth_sec,
-							     (ent->c_soa!=cundef && ent->c_soa<(scnt=rhnsegcnt(name)))?
-							     skipsegs(name,scnt-ent->c_soa):
-							     name)) && 
-				     (rrset=cent->rr[T_SOA-T_MIN]) && rrset->rrs))
-				{
-					time_t min=soa_minimum(rrset->rrs);
-					ttl=rrset->ttl;
-					if(ttl>min)
-						ttl=min;
-				}
-				DEBUG_RHN_MSG("Caching type %s for domain %s negative with ttl %li\n",get_tname(thint),RHN2STR(name),(long)ttl);
-				if (!add_cent_rrset(ent, thint, ttl, queryts, CF_NEGATIVE|flags  DBG1)) {
-					rv=RC_FATALERR;
-					goto free_ent_centarrays_recvbuf_return;
+		{
+			/* Negative caching of rr sets */
+			dns_cent_t *ent=&DA_INDEX(ans_sec,0);
+
+			if(!ent->num_rrs) neg_ans=1;
+
+			if (thint>=T_MIN && thint<=T_MAX && !ent->rr[thint-T_MIN] && !st->tc) {
+				/* We did not get what we wanted. Cache according to policy */
+				int neg_rrs_pol=global.neg_rrs_pol;
+				if (neg_rrs_pol==C_ON || (neg_rrs_pol==C_AUTH && aa)) {
+					time_t ttl=global.neg_ttl;
+					rr_set_t *rrset=ent->rr[T_SOA-T_MIN];
+					dns_cent_t *cent;
+					unsigned scnt;
+					/* If we received a SOA, we should take the ttl of that record. */
+					if ((rrset && rrset->rrs) ||
+					    /* Try to find a SOA record higher up the hierarchy that came with the reply. */
+					    ((cent=lookup_cent_array(auth_sec,
+								     (ent->c_soa!=cundef && ent->c_soa<(scnt=rhnsegcnt(name)))?
+								     skipsegs(name,scnt-ent->c_soa):
+								     name)) && 
+					     (rrset=cent->rr[T_SOA-T_MIN]) && rrset->rrs))
+					{
+						time_t min=soa_minimum(rrset->rrs);
+						ttl=rrset->ttl;
+						if(ttl>min)
+							ttl=min;
+					}
+					DEBUG_RHN_MSG("Caching type %s for domain %s negative with ttl %li\n",get_tname(thint),RHN2STR(name),(long)ttl);
+					if (!add_cent_rrset(ent, thint, ttl, queryts, CF_NEGATIVE|flags  DBG1)) {
+						rv=RC_FATALERR;
+						goto free_ent_centarrays_recvbuf_return;
+					}
 				}
 			}
 		}
@@ -1554,14 +1594,26 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 			rv=RC_FATALERR;
 			goto free_ns_ent_centarrays_recvbuf_return;
 		}
-		**entp=*ent;
+		**entp=DA_INDEX(ans_sec,0);
 		rv=RC_OK;
 	add_additional:
 		{
 			/* Add the additional RRs to the cache. */
 			/* dns_cent_array secs[3]={ans_sec,auth_sec,add_sec}; */
 			int i;
-			for(i=0;i<3;++i) {
+#if DEBUG>0
+			if(debug_p && neg_ans) {
+				int j,n=DA_NEL(ans_sec);
+				for(j=1; j<n; ++j) {
+					unsigned char nmbuf[256],nmbuf2[256];
+					DEBUG_PDNSDA_MSG("Reply from %s is negative for %s, dropping record(s) for %s in answer section.\n",
+							 PDNSDA2STR(PDNSD_A(st)),
+							 rhn2str(name,nmbuf,sizeof(nmbuf)),
+							 rhn2str(DA_INDEX(ans_sec,j).qname,nmbuf2,sizeof(nmbuf2)));
+				}
+			}
+#endif
+			for(i=neg_ans; i<3; ++i) {
 				dns_cent_array sec=secs[i];
 				int j,n=DA_NEL(sec);
 				/* The first entry in the answer section is treated separately, so skip that one. */
@@ -1593,7 +1645,7 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 	free_ns_ent_centarrays_recvbuf_return:
 		dlist_free(*ns); *ns=NULL;
 	free_ent_centarrays_recvbuf_return:
-		if(DA_NEL(ans_sec)>=1) free_cent(ent  DBG1);
+		if(DA_NEL(ans_sec)>=1) free_cent(&DA_INDEX(ans_sec,0)  DBG1);
 	free_centarrays_recvbuf_return:
 		{
 			/* dns_cent_array secs[3]={ans_sec,auth_sec,add_sec}; */
@@ -1604,9 +1656,10 @@ static int p_exec_query(dns_cent_t **entp, unsigned char *name, int thint,
 				/* The first entry in the answer section is treated separately, so skip that one. */
 				for(j= !i; j<n; ++j)
 					free_cent(&DA_INDEX(sec,j)  DBG1);
+
+				da_free(sec);
 			}
 		}
-		da_free(ans_sec); da_free(auth_sec); da_free(add_sec);
 #undef          ans_sec
 #undef          auth_sec
 #undef          add_sec
@@ -2582,43 +2635,55 @@ static int p_dns_resolve(unsigned char *name, int thint, dns_cent_t **cachedp, i
 					if (at->is_up) {
 						if(sp->rootserver) {
 							if(!seenrootserv) {
-								int nseg;
+								int nseg,mseg=1,l=0;
+								unsigned char *topdomain=NULL;
+								addr2_array adrs=NULL;
 								seenrootserv=1;
 								nseg=rhnsegcnt(name);
 								if(nseg>=2) {
-									unsigned char *topdomain=skipsegs(name,nseg-1);
-									addr2_array adrs=lookup_ns(topdomain);
-									int l=DA_NEL(adrs);
-									if(l>0) {
-										/* The name servers for this top level domain have been found in the cache.
-										   Instead of asking the root server, we will use this cached information.
-										*/
-										int k=0, kstart=0;
-										if(sp->rand_servers) k=kstart=random()%l;
-										if(serv_has_rejectlist(sp) && sp->rejectrecursively && !rjl) {
-											rjl=add_rejectlist(rejectlist,sp);
-											if(!rjl) {one_up=0; da_free(adrs); goto done;}
-											rejectlist=rjl;
-										}
-										do {
-											one_up=add_qserv(&serv, &DA_INDEX(adrs,k), 53, sp->timeout,
-													 mk_flag_val(sp)&~CFF_NOINHERIT, sp->nocache,
-													 sp->lean_query,2,0,
-													 !global.paranoid,topdomain, rjl);
-											if(!one_up) {
-												da_free(adrs);
-												goto done;
-											}
-											if(++k==l) k=0;
-										} while(k!=kstart);
-										da_free(adrs);
-										DEBUG_PDNSDA_MSG("Not querying root-server %s, using cached information instead.\n",
-												 PDNSDA2STR(&at->a));
-										seenrootserv=2;
-										break;
+									const char *rhn_arpa="\4""arpa";
+									int rem;
+									/* Check if the queried name ends in "arpa" */
+									domain_match((const unsigned char *)rhn_arpa, name, &rem,NULL);
+									if(rem==0) mseg=3;
+								}
+								if(nseg<=mseg) {
+									if(nseg>0) mseg=nseg-1; else mseg=0;
+								}
+								for(;mseg>=1; --mseg) {
+									topdomain=skipsegs(name,nseg-mseg);
+									adrs=lookup_ns(topdomain);
+									l=DA_NEL(adrs);
+									if(l>0) break;
+									if(adrs) da_free(adrs);
+								}
+								if(l>0) {
+									/* The name servers for this top level domain have been found in the cache.
+									   Instead of asking the root server, we will use this cached information.
+									*/
+									int k=0, kstart=0;
+									if(sp->rand_servers) k=kstart=random()%l;
+									if(serv_has_rejectlist(sp) && sp->rejectrecursively && !rjl) {
+										rjl=add_rejectlist(rejectlist,sp);
+										if(!rjl) {one_up=0; da_free(adrs); goto done;}
+										rejectlist=rjl;
 									}
-									else if(adrs)
-										da_free(adrs);
+									do {
+										one_up=add_qserv(&serv, &DA_INDEX(adrs,k), 53, sp->timeout,
+												 mk_flag_val(sp)&~CFF_NOINHERIT, sp->nocache,
+												 sp->lean_query,2,0,
+												 !global.paranoid,topdomain, rjl);
+										if(!one_up) {
+											da_free(adrs);
+											goto done;
+										}
+										if(++k==l) k=0;
+									} while(k!=kstart);
+									da_free(adrs);
+									DEBUG_PDNSDA_MSG("Not querying root-server %s, using cached information instead.\n",
+											 PDNSDA2STR(&at->a));
+									seenrootserv=2;
+									break;
 								}
 							}
 							else if(seenrootserv==2)

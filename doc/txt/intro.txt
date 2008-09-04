@@ -251,12 +251,14 @@ Mahesh T. Pai contributed the pdnsd.8 man page.
 Nikola Kotur contributed the Slackware start-up script.
 Kiyo Kelvin Lee contributed a patch for Cygwin support.
 Rodney Brown contributed a patch for Darwin (Apple Mac OS X) support.
+Jan-Marek Glogowski contributed a patch implementing the use_nss option.
 
 Special thanks to Bert Frederiks for letting me do a late-night debugging run
 on his machine to spot obscure bugs!
 
 Thanks to the following persons for reporting bugs and being helpful:
 David G. Andersen,
+Dirk Armbrust,
 Daniel Black,
 Kevin A. Burton,
 Juliusz Chroboczek,
@@ -279,7 +281,7 @@ Norbert Steinl,
 Markus Storm,
 Michael Str?der,
 Alan Swanson,
-Eelco Vriezekolk
+Eelco Vriezekolk.
 
 
 -------------------------------------------------------------------------------
@@ -287,5 +289,5 @@ Eelco Vriezekolk
 Thomas Moestl and Paul Rombouts
 
 
-Last revised: 03 Sep 2007 by Paul Rombouts
+Last revised: 03 September 2008 by Paul Rombouts
 

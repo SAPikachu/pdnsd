@@ -260,7 +260,7 @@
 	  <i>
 	    Bad config file permissions: the file must be only writeable by the user
 	  </i><br>
-	  Why that?
+	  Why is that?
 	</td>
       </tr>
       <tr>
@@ -351,8 +351,41 @@
 	</td>
       </tr>
     </table>
-<!--<hr>
+    <hr>
     <a name="q013"></a>
+    <table width="100%" cellspacing=1 cellpadding=7>
+     <tr>
+        <td bgcolor="#FFCCFF"><b>Q:</b></td>
+	<td bgcolor="#CCFFFF">
+	  Is pdnsd vulnerable to DNS cache poisoning as described in
+	  <a href="http://www.kb.cert.org/vuls/id/800113">CERT vulnerability note VU#800113</a>?
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF"><b>A:</b></td>
+	<td bgcolor="#DDFFEE">
+	  Short answer: Yes.<br>
+	  Somewhat longer answer: The problem is not so much that pdnsd's implementation is flawed
+	  but rather that the DNS protocol currently being used is fundamentally flawed from
+	  a security viewpoint. As long as a more secure protocol is not in place,
+	  all that the developers of pdnsd can do is to try to tweak the current implementation
+	  to make it as difficult as possible for an attacker to succeed.<br>
+	  From version 1.2.7 onwards, the default for the <code>query_port_start</code> option
+	  is 1024, which means that the pdnsd resolver will randomly select source ports
+	  in the range 1024-65535. (In previous versions the default was to let the kernel select
+	  the source ports, which will often result in a more or less predictable sequence of ports.)
+	  It also helps to use a good quality source of random numbers. On platforms where this is
+	  supported, it is preferable to configure with <code>--with-random-device=/dev/urandom</code>.
+	  There is still more that can be done to make pdnsd less vulnerable, but this remains
+	  (as of this writing) a work in progress.
+	  <br>
+	  Please note that pdnsd was designed for small (private) networks, and that it is generally
+	  not recommended to let untrusted users access pdnsd.
+	</td>
+      </tr>
+    </table>
+<!--<hr>
+    <a name="q014"></a>
     <table width="100%" cellspacing=1 cellpadding=7>
      <tr>
         <td bgcolor="#FFCCFF"><b>Q:</b></td>
@@ -367,11 +400,11 @@
     </table>-->
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
-      and <a href="index.html#currentmaintainer">Paul Rombouts</a>
+      and <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a>
     </address>
     <br>
     <p>
-      <i>Last revised: 31 Aug 2006 by Paul Rombouts</i>
+      <i>Last revised: 18 August 2008 by Paul Rombouts</i>
     </p>
 <!--<p>
       $Id: faq.html,v 1.9 2003/04/06 23:19:14 tmm Exp $

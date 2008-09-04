@@ -1,3 +1,86 @@
+2008-09-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	In p_dns_resolve(), try to reduce the burden on root servers further for
+	names ending in "arpa".
+
+2008-08-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	In p_exec_query(), if the reply from a remote name server is negative
+	(either because the rcode is NXDOMAIN or because the answer section
+	contains no records for the queried name), ignore the remaining records
+	in the answer section (in particular do not add them to the cache).
+
+2008-07-29  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/dns_query.c
+	Made the default of the configuration option query_port_start equal to
+	1024.  Also improved the algorithm used by pdnsd to select random source
+	ports to ensure that each (free) port gets an equal chance of being
+	selected.  This should guarantee random source ports in the range
+	1024-65535, making pdnsd less vulnerable to some of the issues described
+	in CERT VU#800113.
+	The old situation, where pdnsd lets the kernel select the source ports,
+	is still available by specifying query_port_start=none.
+	
+
+2008-07-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Fixed a dangling pointer bug in p_exec_query(), which could cause pdnsd
+	to crash when processing a long reply with many entries in the answer
+	section.
+
+2008-05-12  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c,src/conff.c
+	Added a recursive-depth counter to the read_config_file() and
+	confparse() functions to prevent the possibility of infinite
+	recursion when processing include files.
+	In confparse(), warn when in a server section the root_server option is
+	set in combination with policy=simple_only or policy=fqdn_only.
+
+2008-05-10  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/ipvers.h
+	Included a patch contributed by Georg Schwarz which selectively undoes
+	a Debian patch contributed by Juliusz Chroboczek on platforms for which
+	the IPV6_RECVPKTINFO macro is not defined (e.g. MacOS X).
+
+2008-05-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	The pdnsd-ctl add command can now also be used to define NS records.
+	A wildcard record defined with this command now behaves the same way as
+	one defined in the config file.
+
+2008-05-07  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c,src/conf-keywords.h,src/conff.c
+	Added the ability to process "include" sections in the configuration
+	file.  This makes it possible to place local definitions in separate
+	files and include them from the main configuration file.
+
+2008-05-05  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conf-parser.c,src/status.c,src/pdnsd-ctl/pdnsd-ctl.c
+	Implemented two new pdnsd-ctl commands, which make it easier to add
+	definitions to the pdnsd cache at run time. "pdnsd-ctl include" is
+	similar to "pdnsd-ctl config" but only processes configuration sections
+	that effect the cache and disallows global and server sections.
+	"pdnsd-ctl eval" directly parses its string arguments as if they were
+	part of a configuration (include) file.
+
+2007-09-15  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.h,src/dns_answer.c,src/dns_query.c
+	Changed the declarations of various packed structs, by moving the
+	__attribute__((packed)) specifiers from the field level to the struct level.
+	This was necessary to get the correct value for sizeof(rr_hdr_t) when
+	compiling with gcc for the ARM architecture.
+	Thanks to Dirk Armbrust for reporting the problem and supplying the solution.
+
 2007-08-10  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c

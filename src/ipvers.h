@@ -235,6 +235,13 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # define SOL_IPV6 IPPROTO_IPV6
 #endif
 
+#ifdef ENABLE_IPV6
+# ifndef IPV6_RECVPKTINFO
+/* This appears to be needed e.g. on Darwin (Mac OS X). */
+#  define IPV6_RECVPKTINFO IPV6_PKTINFO
+# endif 
+#endif
+
 typedef union {
 #ifdef ENABLE_IPV4
 	struct in_addr   ipv4;

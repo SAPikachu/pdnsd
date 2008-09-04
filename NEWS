@@ -1,3 +1,15 @@
+Version 1.2.7-par fixes some security problems. It contains a fix for a
+"dangling pointer" bug that could cause pdnsd to crash when it received a long
+reply. It also addresses some of the issues raised in the CERT vulnerability
+note VU#800113 by making the default of query_port_start equal to 1024, thereby
+ensuring that source ports are randomly selected by the pdnsd resolver in the
+range 1024-65535. This release also fixes problems with compiling pdnsd for the
+ARM architecture and for the Darwin platform (Max OS X).  There are a number of
+(minor) new features. pdnsd now supports "include" files, essentially
+configuration files that only contain definitions for local records. It is now
+possible to define interactively, using pdnsd-ctl, any local record that can be
+defined in a configuration file.
+
 Version 1.2.6-par has an upgraded license: GPL version 3.
 A bug has been fixed which which caused pdnsd to handle NXDOMAIN replies
 inefficiently when configured with neg_domain_pol=on.  Also the code for the

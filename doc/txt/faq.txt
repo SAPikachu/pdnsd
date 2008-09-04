@@ -141,7 +141,7 @@ A:  anyway). The reason is clear: if you install the pdnsd executable as setuid
 
     At startup, I get an error saying:
 Q:  Bad config file permissions: the file must be only writeable by the user
-    Why that?
+    Why is that?
 
     pdnsd has an option (uptest=exec) that allows the execution of arbitrary
     shell code (for testing whether an interface is up). This must be of course
@@ -196,8 +196,32 @@ A:  servers sections of the configuration file. This will prevent pdnsd from
 
 -------------------------------------------------------------------------------
 
+Q:  Is pdnsd vulnerable to DNS cache poisoning as described in CERT
+    vulnerability note VU#800113?
+
+    Short answer: Yes.
+    Somewhat longer answer: The problem is not so much that pdnsd's
+    implementation is flawed but rather that the DNS protocol currently being
+    used is fundamentally flawed from a security viewpoint. As long as a more
+    secure protocol is not in place, all that the developers of pdnsd can do is
+    to try to tweak the current implementation to make it as difficult as
+    possible for an attacker to succeed.
+    From version 1.2.7 onwards, the default for the query_port_start option is
+A:  1024, which means that the pdnsd resolver will randomly select source ports
+    in the range 1024-65535. (In previous versions the default was to let the
+    kernel select the source ports, which will often result in a more or less
+    predictable sequence of ports.) It also helps to use a good quality source
+    of random numbers. On platforms where this is supported, it is preferable
+    to configure with --with-random-device=/dev/urandom. There is still more
+    that can be done to make pdnsd less vulnerable, but this remains (as of
+    this writing) a work in progress.
+    Please note that pdnsd was designed for small (private) networks, and that
+    it is generally not recommended to let untrusted users access pdnsd.
+
+-------------------------------------------------------------------------------
+
 Thomas Moestl and Paul Rombouts
 
 
-Last revised: 31 Aug 2006 by Paul Rombouts
+Last revised: 18 August 2008 by Paul Rombouts
 

@@ -78,7 +78,7 @@ globparm_t global={
   timeout:           0,
   par_queries:       PAR_QUERIES,
   query_method:      M_PRESET,
-  query_port_start:  0,
+  query_port_start:  1024,
   query_port_end:    65535,
   deleg_only_zones:  NULL
 };
@@ -126,63 +126,94 @@ static int report_server_stat(int f,int i);
 
 
 /*
- * Read a configuration file and save the result.
- * Return 1 on success, 0 on failure.
- * In case of failure, **errstr will refer to a newly allocated string containing an error message.
- * If we are multi-threaded, call with locks applied.
+ * Read a configuration file, saving the results in a (separate) global section and servers array,
+ * and the cache.
+ *
+ * char *nm should contain the name of the file to read. If it is NULL, the name of the config file
+ *          read during startup is used.
+ *
+ * globparm_t *global should point to a struct which will be used to store the data of the
+ *                    global section(s). If it is NULL, no global sections are allowed in the
+ *		      file.
+ *
+ * servparm_array *servers should point to a dynamic array which will be grown to store the data
+ *                         of the server sections. If it is NULL, no server sections are allowed
+ *			   in the file.
+ *
+ * char **errstr is used to return a possible error message.
+ *               In case of failure, *errstr will refer to a newly allocated string.
+ *
+ * read_config_file returns 1 on success, 0 on failure.
  */
-int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, char **errstr)
+int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, int includedepth, char **errstr)
 {
-	int retval=0,fd;
+	int retval=0;
+	const char *conftype= (global?"config":"include");
 	FILE *in;
-	struct stat sb;
 
 	if (nm==NULL)
 		nm=conf_file;
 
 	if (!(in=fopen(nm,"r"))) {
-		if(asprintf(errstr,"Error: Could not open config file %s: %s",nm,strerror(errno))<0)
+		if(asprintf(errstr,"Error: Could not open %s file %s: %s",conftype,nm,strerror(errno))<0)
 			*errstr=NULL;
 		return 0;
 	}
-	fd=fileno(in);
-	/* Note by Paul Rombouts: I am using fstat() instead of stat() here to
-	   prevent a possible exploitable race condition */
-	if (fd==-1 || fstat(fd,&sb)!=0) {
-		if(asprintf(errstr, "Error: Could not stat config file %s: %s",nm,strerror(errno))<0)
-			*errstr=NULL;
-	}
-	else if (sb.st_uid!=init_uid) {
-		/* Note by Paul Rombouts:
-		   Perhaps we should use getpwuid_r() instead of getpwuid(), which is not necessarily thread safe.
-		   As long as getpwuid() is only used by only one thread, it should be OK,
-		   but it is something to keep in mind.
-		*/		   
-		struct passwd *pws;
-		char owner[24],user[24];
-		if((pws=getpwuid(sb.st_uid)))
-			strncp(owner,pws->pw_name,sizeof(owner));
-		else
-			sprintf(owner,"%i",sb.st_uid);
-		if((pws=getpwuid(init_uid)))
-			strncp(user,pws->pw_name,sizeof(user));
-		else
-			sprintf(user,"%i",init_uid);
-		if(asprintf(errstr,
-			    "Error: Config file %s is owned by '%s', but pdnsd was started as user '%s'.",
-			    nm,owner,user)<0)
-			*errstr=NULL;
-	}
-	else if ((sb.st_mode&(S_IWGRP|S_IWOTH))) {
-		if(asprintf(errstr,
-			    "Error: Bad config file permissions: file %s must be only writeable by the user.",nm)<0)
-			*errstr=NULL;
-	}
-	else
-		retval=confparse(in,global,servers,errstr);
+	if(global || servers) {
+		/* Check restrictions on ownership and permissions of config file. */
+		int fd=fileno(in);
+		struct stat sb;
 
+		/* Note by Paul Rombouts: I am using fstat() instead of stat() here to
+		   prevent a possible exploitable race condition */
+		if (fd==-1 || fstat(fd,&sb)!=0) {
+			if(asprintf(errstr,
+				    "Error: Could not stat %s file %s: %s",
+				    conftype,nm,strerror(errno))<0)
+				*errstr=NULL;
+			goto close_file;
+		}
+		else if (sb.st_uid!=init_uid) {
+			/* Note by Paul Rombouts:
+			   Perhaps we should use getpwuid_r() instead of getpwuid(), which is not necessarily thread safe.
+			   As long as getpwuid() is only used by only one thread, it should be OK,
+			   but it is something to keep in mind.
+			*/		   
+			struct passwd *pws;
+			char owner[24],user[24];
+			if((pws=getpwuid(sb.st_uid)))
+				strncp(owner,pws->pw_name,sizeof(owner));
+			else
+				sprintf(owner,"%i",sb.st_uid);
+			if((pws=getpwuid(init_uid)))
+				strncp(user,pws->pw_name,sizeof(user));
+			else
+				sprintf(user,"%i",init_uid);
+			if(asprintf(errstr,
+				    "Error: %s file %s is owned by '%s', but pdnsd was started as user '%s'.",
+				    conftype,nm,owner,user)<0)
+				*errstr=NULL;
+			goto close_file;
+		}
+		else if ((sb.st_mode&(S_IWGRP|S_IWOTH))) {
+			if(asprintf(errstr,
+				    "Error: Bad %s file permissions: file %s must be only writeable by the user.",
+				    conftype,nm)<0)
+				*errstr=NULL;
+			goto close_file;
+		}
+	}
+
+	retval=confparse(in,NULL,global,servers,includedepth,errstr);
+close_file:
 	if(fclose(in) && retval) {
-		if(asprintf(errstr,"Error: Could not close config file %s: %s",nm,strerror(errno))<0)
+		if(asprintf(errstr,"Error: Could not close %s file %s: %s",
+			    conftype,nm,strerror(errno))<0)
+			*errstr=NULL;
+		return 0;
+	}
+	if(retval && servers && !DA_NEL(*servers)) {
+		if(asprintf(errstr,"Error: no server sections defined in config file %s",nm)<0)
 			*errstr=NULL;
 		return 0;
 	}
@@ -207,7 +238,7 @@ int reload_config_file(const char *nm, char **errstr)
 	global_new.deleg_only_zones=NULL;
 	global_new.onquery=0;
 	servers_new=NULL;
-	if(read_config_file(nm,&global_new,&servers_new,errstr)) {
+	if(read_config_file(nm,&global_new,&servers_new,0,errstr)) {
 		if(global_new.cache_dir && strcmp(global_new.cache_dir,global.cache_dir)) {
 			*errstr=strdup("Cannot reload config file: the specified cache_dir directory has changed.\n"
 				       "Try restarting pdnsd instead.");
@@ -407,8 +438,16 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tParallel queries increment: %i\n",global.par_queries);
 	fsprintf_or_return(f,"\tRandomize records in answer: %s\n",global.rnd_recs?"on":"off");
 	fsprintf_or_return(f,"\tQuery method: %s\n",const_name(global.query_method));
-	fsprintf_or_return(f,"\tQuery port start: %i\n",global.query_port_start);
-	fsprintf_or_return(f,"\tQuery port end: %i\n",global.query_port_end);
+	{
+		int query_port_start=global.query_port_start;
+		if(query_port_start==-1) {
+			fsprintf_or_return(f,"\tQuery port start: (let kernel choose)\n");
+		}
+		else {
+			fsprintf_or_return(f,"\tQuery port start: %i\n",query_port_start);
+			fsprintf_or_return(f,"\tQuery port end: %i\n",global.query_port_end);
+		}
+	}
 #ifndef NO_TCP_SERVER
 	fsprintf_or_return(f,"\tTCP server thread: %s\n",global.notcp?"off":"on");
 	if(!global.notcp)

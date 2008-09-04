@@ -1,7 +1,7 @@
 /* pdnsd-ctl.c - Control pdnsd through a pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -72,7 +72,8 @@ static const cmd_s top_cmds[]={
 	{"help",CMD_HELP},{"version",CMD_VERSION},{"list-rrtypes",CMD_LIST_RRTYPES},
 	{"status",CTL_STATS},{"server",CTL_SERVER},{"record",CTL_RECORD},
 	{"source",CTL_SOURCE},{"add",CTL_ADD},{"neg",CTL_NEG},
-	{"config",CTL_CONFIG},{"empty-cache",CTL_EMPTY}, {"dump",CTL_DUMP},
+	{"config",CTL_CONFIG},{"include",CTL_INCLUDE},{"eval",CTL_EVAL},
+	{"empty-cache",CTL_EMPTY}, {"dump",CTL_DUMP},
 	{NULL,0}
 };
 static const cmd_s server_cmds[]= {{"up",CTL_S_UP},{"down",CTL_S_DOWN},{"retest",CTL_S_RETEST},{NULL,0}};
@@ -82,7 +83,7 @@ static const cmd_s rectype_cmds[]= {{"a",T_A},
 #if ALLOW_AAAA
 				    {"aaaa",T_AAAA},
 #endif
-				    {"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{NULL,0}};
+				    {"ptr",T_PTR},{"cname",T_CNAME},{"mx",T_MX},{"ns",T_NS},{NULL,0}};
 
 static const char version_message[] =
 	"pdnsd-ctl, version pdnsd-" VERSION "\n\n";
@@ -105,19 +106,19 @@ static const char license_statement[] =
 
 static const char *help_messages[] =
 {
-	"Usage: pdnsd-ctl [-c cachedir] [-q] <command> [options]\n\n"
+	"Usage: pdnsd-ctl [-c cachedir] [-q] <command> [arguments]\n\n"
 
-	"Command line options:\n"
+	"Command-line options:\n"
 
 	"-c\tcachedir\n\tSet the cache directory to cachedir (must match pdnsd setting).\n"
 	"-q\n\tBe quiet unless output is specified by command or something goes wrong.\n\n"
 
-	"Commands and needed options are:\n"
+	"Commands and needed arguments are:\n"
 
-	"help\t[no options]\n\tPrint this help.\n"
-	"version\t[no options]\n\tPrint version and license info.\n",
+	"help\t[no arguments]\n\tPrint this help.\n"
+	"version\t[no arguments]\n\tPrint version and license info.\n",
 
-	"status\t[no options]\n\tPrint pdnsd's status.\n",
+	"status\t[no arguments]\n\tPrint pdnsd's status.\n",
 
 	"server\t(index|label)\t(up|down|retest)\t[dns1[,dns2[,...]]]\n"
 	"\tSet the status of the server with the given index to up or down, or\n"
@@ -142,9 +143,10 @@ static const char *help_messages[] =
 	"\tcache.\n",
 
 	"source\tfn\towner\t[ttl]\t[(on|off)]\t[noauth]\n"
-	"\tLoad a hosts-style file. Works like using the pdnsd source option.\n"
+	"\tLoad a hosts-style file. Works like using the pdnsd source\n"
+	"\tconfiguration section.\n"
 	"\tOwner and ttl are used as in the source section. ttl has a default\n"
-	"\tof 900 (it does not need to be specified). The next to last option\n"
+	"\tof 900 (it does not need to be specified). The next to last argument\n"
 	"\tcorresponds to the serve_aliases option, and is off by default.\n"
 	"\tnoauth is used to make the domains non-authoritative (please\n"
 	"\tconsult the pdnsd manual for what that means).\n"
@@ -157,10 +159,11 @@ static const char *help_messages[] =
 	"add\tptr\thost\tname\t[ttl]\t[noauth]\n"
 	"add\tcname\thost\tname\t[ttl]\t[noauth]\n"
 	"add\tmx\thost\tname\tpref\t[ttl]\t[noauth]\n"
+	"add\tns\thost\tname\t[ttl]\t[noauth]\n"
 	"\tAdd a record of the given type to the pdnsd cache, replacing existing\n"
 	"\trecords for the same name and type. The 2nd argument corresponds\n"
- 	"\tto the argument of the option in the rr section that is named like\n"
- 	"\tthe first option. The addr argument may be a list of IP addresses,\n"
+ 	"\tto the value of the option in the rr section that is named like\n"
+ 	"\tthe first argument. The addr argument may be a list of IP addresses,\n"
 	"\tseparated by commas or white space. The ttl is optional, the default is\n"
 	"\t900 seconds. noauth is used to make the domains non-authoritative.\n"
  	"\tIf you want no other record than the newly added in the cache, do\n"
@@ -179,6 +182,19 @@ static const char *help_messages[] =
 	"\tThe config file must be owned by the uid that pdnsd had when it was\n"
 	"\tstarted, and be readable by pdnsd's run_as uid. If no file name is\n"
 	"\tspecified, the config file used at start up is reloaded.\n",
+
+	"include\tfilename\n"
+	"\tParse the given file as an include file, which may contain the same\n"
+	"\ttype of sections as a config file, expect for global and server\n"
+	"\tsections, which are not allowed. This command can be used to add data\n"
+	"\tto the cache without reconfiguring pdnsd.\n",
+
+	"eval\tstring\n"
+	"\tParse string as if it were part of pdnsd's configuration file.\n"
+	"\tThe string should hold one or more complete configuration sections,\n"
+	"\tbut no global and server sections, which are not allowed.\n"
+	"\tIf multiple strings are given, they will be joined using newline chars\n"
+	"\tand parsed together.\n",
 
 	"empty-cache\t[[+|-]name ...]\n"
 	"\tDelete all entries in the cache matching include/exclude rules.\n"
@@ -202,7 +218,7 @@ static const char *help_messages[] =
 	"\tthe leading dot) will be printed. If name is missing, information about\n"
 	"\tall the names in the cache will be printed.\n",
 
-	"list-rrtypes\t[no options]\n"
+	"list-rrtypes\t[no arguments]\n"
 	"\tList available rr types for the neg command. Note that those are only\n"
 	"\tused for the neg command, not for add!\n"
 };
@@ -578,13 +594,13 @@ int main(int argc, char *argv[])
 						perror("Error: could not send IP address(es)");
 						exit(2);
 					}
-				break;
-				case T_PTR:
-				case T_CNAME:
-					send_string(pf,argv[2]);
 					break;
 				case T_MX:
 					send_short(pf,pref);
+					/* fall through */
+				case T_PTR:
+				case T_CNAME:
+				case T_NS:
 					send_string(pf,argv[2]);
 					break;
 				}
@@ -634,6 +650,42 @@ int main(int argc, char *argv[])
 			pf=open_sock(cache_dir);
 			send_short(pf,cmd);
 			send_string(pf,argc<2?NULL:argv[1]);
+			goto read_retval;
+
+		case CTL_INCLUDE:
+			if (argc!=2)
+				goto wrong_args;
+			pf=open_sock(cache_dir);
+			send_short(pf,cmd);
+			send_string(pf,argv[1]);
+			goto read_retval;
+
+		case CTL_EVAL: {
+			int i; size_t bufsz;
+
+			if (argc<2)
+				goto wrong_args;
+			pf=open_sock(cache_dir);
+			send_short(pf,cmd);
+			bufsz=0;
+			for(i=1;i<argc;++i)
+				bufsz += strlen(argv[i])+1;
+
+			send_short(pf,bufsz);
+			{
+				/* Variable-size array for storing the joined strings. */
+				char buf[bufsz];
+				char *p=buf;
+				for(i=1;i<argc;++i) {
+					p=stpcpy(p,argv[i]);
+					*p++ = '\n';
+				}
+				if(write_all(pf,buf,bufsz)!=bufsz) {
+					perror("Error: could not write string");
+					exit(2);
+				}
+			}	
+		}
 			goto read_retval;
 
 		case CTL_EMPTY:

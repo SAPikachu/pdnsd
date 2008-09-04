@@ -42,6 +42,26 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2008-09-04</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.7-par has been released.</b>
+	Foremost, this release fixes some security problems.
+	It contains a fix for a "dangling pointer" bug that could cause pdnsd to
+	crash when it received a long reply. It also addresses some of the issues
+	raised in the <a href="http://www.kb.cert.org/vuls/id/800113">CERT
+	vulnerability note VU#800113</a> by making the default of
+	<code>query_port_start</code> equal to 1024, thereby ensuring that source
+	ports are randomly selected by the pdnsd resolver in the range 1024-65535.
+	This release also fixes problems with compiling pdnsd for the ARM architecture
+	and for the Darwin platform (Max OS X).
+	<br>
+	There are a number of (minor) new features.
+	pdnsd now supports "include" files, essentially configuration files that
+	only contain definitions for local records.
+	It is now possible to define interactively, using <code>pdnsd-ctl</code>,
+	any local record that can be defined in a configuration file.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2007-09-04</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.6-par has been released.</b>
 	pdnsd's license has been upgraded to GPL version 3.
@@ -501,8 +521,8 @@
     <h1><a name="authors">Authors</a></h1>
     <p>
       pdnsd was originally written by <a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>,
-      but is no longer maintained by him. Paul Rombouts has revised large portions of the code
-      and has added a number of new features.
+      but is no longer maintained by him. <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a>
+      has revised large portions of the code and has added a number of new features.
       See <a href="../../README.par"><code>README.par</code></a> and the <a href="../../ChangeLog"><code>ChangeLog</code></a>
       in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code>
       if you have installed a binary package) for more details.
@@ -516,7 +536,7 @@
       Soenke J. Peters contributed patches and suggestions for Red Hat compatability.<br>
       Wolfgang Ocker has contributed the code and documentation for the <code>server_ip</code> option.<br>
       Markus Mohr contributed a Debian rc script.<br>
-      Nikita V. Youschenko contributed extensions to the "if" uptest.<br>
+      Nikita V. Youschenko contributed extensions to the "<code>if</code>" uptest.<br>
       Lyonel Vincent extended the serve_aliases option to support an arbitrary number of aliases.<br>
       Sourav K. Mandal wrote the autoconf scripts and contributed many fixes and suggestions.<br>
       Stephan Boettcher contributed the SCHEME= option.<br>
@@ -536,11 +556,12 @@
       Marko Stolle contributed the contrib/pdnsd_update.pl script that makes pdnsd usable in a DHCP setup.<br>
       Andrew M. Bishop contributed the support for the label server option and the pdnsd-ctl interface for using it.<br>
       Frank Elsner contributed rc script fixes. <br>
-      Andreas Steinmetz contributed the code for query_port_start and query_port_end options.<br>
+      Andreas Steinmetz contributed the code for <code>query_port_start</code> and <code>query_port_end</code> options.<br>
       Mahesh T. Pai contributed the pdnsd.8 man page.<br>
       Nikola Kotur contributed the Slackware start-up script.<br>
       Kiyo Kelvin Lee contributed a patch for Cygwin support.<br>
-      Rodney Brown contributed a patch for Darwin (Apple Mac OS X) support.
+      Rodney Brown contributed a patch for Darwin (Apple Mac OS X) support.<br>
+      Jan-Marek Glogowski contributed a patch implementing the <code>use_nss</code> option.
     </p>
     <p>
       Special thanks to Bert Frederiks for letting me do a late-night debugging run on his machine to
@@ -549,6 +570,7 @@
     <p>
       Thanks to the following persons for reporting bugs and being helpful:<br>
       David G. Andersen,<br>
+      Dirk Armbrust,<br>
       Daniel Black,<br>
       Kevin A. Burton,<br>
       Juliusz Chroboczek,<br>
@@ -571,7 +593,7 @@
       Markus Storm,<br>
       Michael Ströder,<br>
       Alan Swanson,<br>
-      Eelco Vriezekolk
+      Eelco Vriezekolk.
     </p>
     <!--nodoc(-->
     <h1>Links</h1>
@@ -606,11 +628,11 @@
     <br>
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
-      and <a href="#currentmaintainer">Paul Rombouts</a>
+      and <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a>
     </address>
     <br>
     <p>
-      <i>Last revised: 03 Sep 2007 by Paul Rombouts</i>
+      <i>Last revised: 03 September 2008 by Paul Rombouts</i>
     </p>
   </body>
 </html>

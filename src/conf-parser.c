@@ -1,10 +1,10 @@
 /* conf-parser.c - Parser for pdnsd config files.
    Based on the files conf-lex.l and conf-parse.y written by 
    Thomas Moestl.
-   This version was rewritten in C from scratch and doesn't require (f)lex
-   or yacc/bison.
+   This version was rewritten in C from scratch by Paul A. Rombouts
+   and doesn't require (f)lex or yacc/bison.
 
-   Copyright (C) 2004, 2005, 2006, 2007 Paul A. Rombouts.
+   Copyright (C) 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts.
 
   This file is part of the pdnsd package.
 
@@ -46,20 +46,28 @@
 #include "conf-keywords.h"
 #include "conf-parser.h"
 
-static unsigned int linenr=0;
 
+/* Check that include files are not nested deeper than MAXINCLUDEDEPTH,
+   as a precaution against infinite recursion. */
+#define MAXINCLUDEDEPTH 100
 
-static char *report_error (const char *msg)
+static char *report_error (const char *conftype, unsigned linenr, const char *msg)
 {
   char *retval;
-  if(asprintf(&retval, "Error in config file (line %u): %s",linenr,msg)<0)
-    retval=NULL;
+  if(linenr) {
+    if(asprintf(&retval, "Error in %s (line %u): %s",conftype,linenr,msg)<0)
+      retval=NULL;
+  }
+  else {
+    if(asprintf(&retval, "Error in %s: %s",conftype,msg)<0)
+      retval=NULL;
+  }
 
   return retval;
 }
 
-static char *report_errorf (const char *frm,...) printfunc(1, 2);
-static char *report_errorf (const char *frm,...)
+static char *report_errorf (const char *conftype, unsigned linenr, const char *frm,...) printfunc(3, 4);
+static char *report_errorf (const char *conftype, unsigned linenr, const char *frm,...)
 {
   char *msg,*retval; int mlen;
   va_list va;
@@ -67,35 +75,47 @@ static char *report_errorf (const char *frm,...)
   mlen=vasprintf(&msg,frm,va);
   va_end(va);
   if(mlen<0) return NULL;
-  retval=report_error(msg);
+  retval=report_error(conftype,linenr,msg);
   free(msg);
   return retval;
 }
 
 /* return pointer to next character in linebuffer after skipping blanks and comments */
-static char* getnextp(char **buf, size_t *n, FILE* in, char *p, char **errstr)
+static char* getnextp(char **buf, size_t *n, FILE* in, char *p, unsigned *linenr, char **errstr)
 {
   if(!p) goto nextline;
  tryagain:
   if(!*p) {
   nextline:
     do {
-      if(getline(buf,n,in)<0) {
+      if(!in || getline(buf,n,in)<0) {
 	*errstr=NULL;
 	return NULL;
       }
-      ++linenr;
+      ++*linenr;
       p=*buf;
     } while(!*p);
   }
   if(isspace(*p)) {
     ++p; goto tryagain;
   }
-  if(*p=='#')
-    goto nextline;
+  if(*p=='#') {
+  skip_rest_of_line:
+    if(*linenr)
+      goto nextline;
+    else {
+      p=strchr(p,'\n');
+      if(p) {
+	++p;
+	goto tryagain;
+      }
+      else
+	goto nextline;
+    }
+  }
   if(*p=='/') {
     if(*(p+1)=='/')
-      goto nextline;
+      goto skip_rest_of_line;
     if(*(p+1)=='*') {
       int lev=1;
       p +=2;
@@ -113,11 +133,11 @@ static char* getnextp(char **buf, size_t *n, FILE* in, char *p, char **errstr)
 	  }
 	  ++p;
 	}
-	if(getline(buf,n,in)<0) {
+	if(!in || getline(buf,n,in)<0) {
 	  *errstr="comment without closing */";
 	  return NULL;
 	}
-	++linenr;
+	++*linenr;
 	p=*buf;
       }
     }
@@ -184,7 +204,7 @@ static int scan_string(char **startp,char **curp,size_t *lenp)
    The position where the scanning stops is returned in endptr.
    If an error is detected during scanning, a pointer to a
    (static) error message is returned in errstr.
-*/   
+*/
 static time_t strtotime(char *nptr, char **endptr, char **errstr)
 {
   time_t retval=0,t;
@@ -381,6 +401,7 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
 }
 
 
+#if 0
 /* Copy a domain name, adding a dot at the end if necessary.
    The format of the name (including the length) is checked with parsestr2rhn()
 */
@@ -394,6 +415,7 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
     (dst)[len]='.'; (dst)[(len)+1]=0;		\
   }						\
 }
+#endif
 
 # define SKIP_COMMA(cur,errmsg)			\
 {						\
@@ -407,43 +429,71 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
 }
 
 
-/* Parse configuration file, adding data to the global section and servers array, and the cache.
-   Return 1 on success, 0 on failure.
-   In case of failure, *errstr will refer to a newly allocated string containing an error message.
+/* Parse a configuration file, adding data to a (separate) global section and servers array,
+   and the cache.
+
+   FILE *in should point to the input stream. It may be NULL, in which case no file is read.
+
+   char *prestr may be NULL or point to a string which will be parsed before the input file.
+
+   globparm_t *global should point to a struct which will be used to store the data of the
+                      global section(s). If it is NULL, no global sections are allowed in the
+		      input.
+
+   servparm_array *servers should point to a dynamic array which will be grown to store the data
+                           of the server sections. If it is NULL, no server sections are allowed
+			   in the input.
+
+   int includedepth is used to track how deeply recursive calls of confparse are nested.
+                    Should be 0 for a top-level call.
+
+   char **errstr is used to return a possible error message.
+                 In case of failure, *errstr will refer to a newly allocated string.
+
+   confparse returns 1 on success, 0 on failure.
 */
-int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errstr)
+int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *servers, int includedepth, char **errstr)
 {
-  char *linebuf,*p,*ps,*getnextperr=NULL;
+  char *linebuf=NULL,*p,*ps,*getnextperr=NULL;
+  const char *conftype;
   size_t buflen=256,len;
+  unsigned linenr=0;
   int retval=0,sechdr,option;
 # define CLEANUP_HANDLER
-# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,&getnextperr))) {CLEANUP_HANDLER; goto unexpected_eof;}}
-# define REPORT_ERROR(msg) (*errstr=report_error(msg))
+# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,&linenr,&getnextperr))) {CLEANUP_HANDLER; goto unexpected_eof;}}
+# define REPORT_ERROR(msg) (*errstr=report_error(conftype,linenr,msg))
 # if !defined(CPP_C99_VARIADIC_MACROS)
    /* GNU C Macro Varargs style. */
-#  define REPORT_ERRORF(args...) (*errstr=report_errorf(args))
+#  define REPORT_ERRORF(args...) (*errstr=report_errorf(conftype,linenr,args))
 #else
    /* ANSI C99 style. */
-#  define REPORT_ERRORF(...) (*errstr=report_errorf(__VA_ARGS__))
+#  define REPORT_ERRORF(...) (*errstr=report_errorf(conftype,linenr,__VA_ARGS__))
 # endif
 # define PARSERROR {CLEANUP_HANDLER; goto free_linebuf_return;}
 # define CLEANUP_GOTO(lab) {CLEANUP_HANDLER; goto lab;}
 
   *errstr=NULL;
-  linebuf=malloc(buflen);
-  if(!linebuf) {
-    /* If malloc() just failed, allocating space for an error message is unlikely to succeed. */
-    return 0;
+  if(in) {
+    linebuf=malloc(buflen);
+    if(!linebuf) {
+      /* If malloc() just failed, allocating space for an error message is unlikely to succeed. */
+      return 0;
+    }
+    if(global)
+      conftype="config file";
+    else
+      conftype="include file";
   }
+  else
+    conftype="config string";
 
-  linenr=0;
-  p=NULL;
-  while((p=getnextp(&linebuf,&buflen,in,p,&getnextperr))) {
+  p=prestr;
+  while((p=getnextp(&linebuf,&buflen,in,p,&linenr,&getnextperr))) {
     if(isalpha(*p)) {
       SCAN_ALPHANUM(ps,p,len);
       sechdr=lookup_keyword(ps,len,section_headers);
       if(!sechdr) {
-	*errstr=report_errorf("invalid section header: %.*s",(int)len,ps);
+	REPORT_ERRORF("invalid section header: %.*s",(int)len,ps);
 	PARSERROR;
       }
       SKIP_BLANKS(p);
@@ -453,11 +503,17 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
       switch(sechdr) {
       case GLOBAL:
+	if(!global) {
+	  REPORT_ERROR(in?"global section not allowed in include file":
+		       "global section not allowed in eval string");
+	  PARSERROR;
+	}
+
 	while(isalpha(*p)) {
 	  SCAN_ALPHANUM(ps,p,len);
 	  option=lookup_keyword(ps,len,global_options);
 	  if(!option) {
-	    *errstr=report_errorf("invalid option for global section: %.*s",(int)len,ps);
+	    REPORT_ERRORF("invalid option for global section: %.*s",(int)len,ps);
 	    PARSERROR;
 	  }
 	  SKIP_BLANKS(p);
@@ -482,7 +538,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    }
 	    else {
 	    bad_perm_cache_option:
-	      *errstr=report_error("bad qualifier in perm_cache= option.");
+	      REPORT_ERROR("bad qualifier in perm_cache= option.");
 	      PARSERROR;
 	    }
 	    break;
@@ -525,7 +581,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 		    close(fd);
 		  }
 		  else {
-		    *errstr=report_errorf("Failed to get IP address of %s: %s",req.ifr_name,strerror(errno));
+		    REPORT_ERRORF("Failed to get IP address of %s: %s",req.ifr_name,strerror(errno));
 		    if(fd!=-1) close(fd);
 		    PARSERROR;
 		  }
@@ -533,7 +589,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 		else
 #endif
 		  {
-		    *errstr=report_errorf("%s for the server_ip= option.",err);
+		    REPORT_ERRORF("%s for the server_ip= option.",err);
 		    PARSERROR;
 		  }
 	      }
@@ -595,7 +651,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      global->notcp=(cnst==C_OFF);
 #ifdef NO_TCP_SERVER
 	      if(!global->notcp) {
-		*errstr=report_error("pdnsd was compiled without TCP server support. tcp_server=on is not allowed.");
+		REPORT_ERROR("pdnsd was compiled without TCP server support. tcp_server=on is not allowed.");
 		PARSERROR;
 	      }
 #endif
@@ -620,25 +676,25 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    ASSIGN_CONST(cnst,p,cnst==TCP_ONLY || cnst==UDP_ONLY || cnst==TCP_UDP || cnst==UDP_TCP,"bad qualifier in query_method= option.");
 #ifdef NO_TCP_QUERIES
 	    if (cnst==TCP_ONLY) {
-	      *errstr=report_error("the tcp_only option is only available when pdnsd is compiled with TCP support.");
+	      REPORT_ERROR("the tcp_only option is only available when pdnsd is compiled with TCP support.");
 	      PARSERROR;
 	    }
 	    else
 #endif
 #ifdef NO_UDP_QUERIES
 	      if (cnst==UDP_ONLY) {
-		*errstr=report_error("the udp_only option is only available when pdnsd is compiled with UDP support.");
+		REPORT_ERROR("the udp_only option is only available when pdnsd is compiled with UDP support.");
 		PARSERROR;
 	      }
 	      else
 #endif
 #if defined(NO_TCP_QUERIES) || defined(NO_UDP_QUERIES)
 		if (cnst==TCP_UDP) {
-		  *errstr=report_error("the tcp_udp option is only available when pdnsd is compiled with both TCP and UDP support.");
+		  REPORT_ERROR("the tcp_udp option is only available when pdnsd is compiled with both TCP and UDP support.");
 		  PARSERROR;
 		}
 		else if (cnst==UDP_TCP) {
-		  *errstr=report_error("the udp_tcp option is only available when pdnsd is compiled with both TCP and UDP support.");
+		  REPORT_ERROR("the udp_tcp option is only available when pdnsd is compiled with both TCP and UDP support.");
 		  PARSERROR;
 		}
 		else
@@ -652,13 +708,13 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF,"bad qualifier in run_ipv4= option.");
 #ifndef ENABLE_IPV4
 	    if(cnst==C_ON) {
-	      *errstr=report_error("You can only set run_ipv4=on when pdnsd is compiled with IPv4 support.");
+	      REPORT_ERROR("You can only set run_ipv4=on when pdnsd is compiled with IPv4 support.");
 	      PARSERROR;
 	    }
 #endif
 #ifndef ENABLE_IPV6
 	    if(cnst==C_OFF) {
-	      *errstr=report_error("You can only set run_ipv4=off when pdnsd is compiled with IPv6 support.");
+	      REPORT_ERROR("You can only set run_ipv4=off when pdnsd is compiled with IPv6 support.");
 	      PARSERROR;
 	    }
 #endif
@@ -667,7 +723,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      run_ipv4=(cnst==C_ON); cmdlineipv=-1;
 	    }
 	    else if(cmdlineipv<0 && run_ipv4!=(cnst==C_ON)) {
-	      *errstr=report_error(cmdlineipv==-1?
+	      REPORT_ERROR(cmdlineipv==-1?
 			   "IPv4/IPv6 conflict: you are trying to set run_ipv4 to a value that conflicts with a previous run_ipv4 setting.":
 			   "You must set the run_ipv4 option before specifying IP addresses.");
 	      PARSERROR;
@@ -682,7 +738,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    if(!cmdline.prefix) {
 	      TEMPSTRNCPY(buf,ps,len);
 	      if(inet_pton(AF_INET6,buf,&global->ipv4_6_prefix)<=0) {
-		*errstr=report_error("ipv4_6_prefix: argument not a valid IPv6 address.");
+		REPORT_ERROR("ipv4_6_prefix: argument not a valid IPv6 address.");
 		PARSERROR;
 	      }
 	    }
@@ -728,7 +784,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    int val;
 	    SCAN_UNSIGNED_NUM(val, p,"par_queries option");
 	    if(val<=0) {
-	      *errstr=report_error("bad value for par_queries.");
+	      REPORT_ERROR("bad value for par_queries.");
 	      PARSERROR;
 	    } else {
 	      global->par_queries=val;
@@ -760,35 +816,42 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 	  case QUERY_PORT_START: {
 	    int val;
-	    SCAN_UNSIGNED_NUM(val,p,"query_port_start option");
-	    if(val<1024||val>65535) {
-	      *errstr=report_error("value for query_port_start out of range.");
-	      PARSERROR;
+	    if(isalpha(*p)) {
+	      int cnst;
+	      SCAN_ALPHANUM(ps,p,len);
+	      cnst=lookup_const(ps,len);
+	      if(cnst==C_NONE)
+		val=-1;
+	      else
+		goto bad_port_start_option;
 	    }
-	    else if (global->query_port_end <= val) {
-	      *errstr=report_error("query_port_end must be greater than query_port_start.");
-	      PARSERROR;
+	    else if(isdigit(*p)) {
+	      val=strtol(p,&p,0);
+	      if(val>65535) {
+		REPORT_ERROR("value for query_port_start out of range.");
+		PARSERROR;
+	      }
+	      else if(val<1024)
+		fprintf(stderr,"Warning: query_port_start=%i but source ports <1204 can only be used as root.\n",
+			val);
 	    }
 	    else {
-	      global->query_port_start=val;
+	    bad_port_start_option:
+	      REPORT_ERROR("bad qualifier in query_port_start= option.");
+	      PARSERROR;
 	    }
+	    global->query_port_start=val;
 	  }
 	    break;
 
 	  case QUERY_PORT_END: {
 	    int val;
 	    SCAN_UNSIGNED_NUM(val,p,"query_port_end option");
-	    if(val<1024||val>65535) {
-	      *errstr=report_error("value for query_port_end out of range.");
+	    if(val>65535) {
+	      REPORT_ERROR("value for query_port_end out of range.");
 	      PARSERROR;
 	    }
-	    else if (global->query_port_start >= val) {
-	      *errstr=report_error("query_port_end must be greater than query_port_start.");
-	      PARSERROR;
-	    }
-	    else {
-	      global->query_port_end=val;
-	    }
+	    global->query_port_end=val;
 	  }
 	    break;
 
@@ -805,10 +868,24 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  ++p;
 	  SKIP_BLANKS(p);
 	}
+
+	if(*p!='}') goto expected_closing_brace;
+	if (global->query_port_end < global->query_port_start) {
+	  REPORT_ERROR("query_port_end may not be smaller than query_port_start.");
+	  PARSERROR;
+	}
 	break;
 
       case SERVER: {
-	servparm_t server=serv_presets;
+	servparm_t server;
+
+	if(!servers) {
+	  REPORT_ERROR(in?"server section not allowed in include file":
+		       "server section not allowed in eval string");
+	  PARSERROR;
+	}
+
+	server=serv_presets;
 #	undef  CLEANUP_HANDLER
 #	define CLEANUP_HANDLER (free_servparm(&server))
 
@@ -816,7 +893,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  SCAN_ALPHANUM(ps,p,len);
 	  option=lookup_keyword(ps,len,server_options);
 	  if(!option) {
-	    *errstr=report_errorf("invalid option for server section: %.*s",(int)len,ps);
+	    REPORT_ERRORF("invalid option for server section: %.*s",(int)len,ps);
 	    PARSERROR;
 	  }
 	  SKIP_BLANKS(p);
@@ -832,8 +909,11 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  case FILET:
 	    SCAN_STRING(ps,p,len);
 	    {
+	      char *errmsg;
 	      TEMPSTRNCPY(fn,ps,len);
-	      if (!read_resolv_conf(fn, &server.atup_a, errstr)) {
+	      if (!read_resolv_conf(fn, &server.atup_a, &errmsg)) {
+		if(errmsg) {REPORT_ERROR(errmsg); free(errmsg);}
+		else *errstr=NULL;
 		PARSERROR;
 	      }
 	    }
@@ -868,7 +948,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    {
 	      const char *err;
 	      if ((err=parse_ip(ps,len,&server.ping_a))) {
-		*errstr=report_errorf("%s for the ping_ip= option.",err);
+		REPORT_ERRORF("%s for the ping_ip= option.",err);
 		PARSERROR;
 	      }
 	    }
@@ -905,13 +985,13 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      char *err;
 	      server.interval=strtotime(p,&p,&err);
 	      if(err) {
-		*errstr=report_errorf("bad time specification in interval= option: %s",err);
+		REPORT_ERRORF("bad time specification in interval= option: %s",err);
 		PARSERROR;
 	      }
 	    }
 	    else {
 	    bad_interval_option:
-	      *errstr=report_error("bad qualifier in interval= option.");
+	      REPORT_ERROR("bad qualifier in interval= option.");
 	      PARSERROR;
 	    }
 	    break;
@@ -1002,21 +1082,24 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	if(*p!='}') CLEANUP_GOTO(expected_closing_brace);
 	if (server.uptest==C_EXEC) {
 	  if (!server.uptest_cmd) {
-	    *errstr=report_error("you must specify uptest_cmd if you specify uptest=exec!");
+	    REPORT_ERROR("you must specify uptest_cmd if you specify uptest=exec!");
 	    PARSERROR;
 	  }
 	}
 	if (server.is_proxy && server.rootserver) {
-	  *errstr=report_error("A server may not be specified as both a proxy and a root-server.");
+	  REPORT_ERROR("A server may not be specified as both a proxy and a root-server.");
 	  PARSERROR;
 	}
+	if(server.rootserver && (server.policy==C_SIMPLE_ONLY || server.policy==C_FQDN_ONLY))
+	  fprintf(stderr,"Warning: using policy=%s with a root-server usually makes no sense.",
+		  const_name(server.policy));
 	if (DA_NEL(server.atup_a)) {
 	  check_localaddrs(&server);
 	  if(!DA_NEL(server.atup_a)) {
-	    *errstr=report_error("Server section contains only local IP addresses.\n"
-				 "Bind pdnsd to a different local IP address or specify different port numbers"
-				 " in global section and server section if you want pdnsd to query servers on"
-				 " the same machine.");
+	    REPORT_ERROR("Server section contains only local IP addresses.\n"
+			 "Bind pdnsd to a different local IP address or specify different port numbers"
+			 " in global section and server section if you want pdnsd to query servers on"
+			 " the same machine.");
 	    PARSERROR;
 	  }
 	}
@@ -1055,7 +1138,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  SCAN_ALPHANUM(ps,p,len);
 	  option=lookup_keyword(ps,len,rr_options);
 	  if(!option) {
-	    *errstr=report_errorf("invalid option for rr section: %.*s",(int)len,ps);
+	    REPORT_ERRORF("invalid option for rr section: %.*s",(int)len,ps);
 	    PARSERROR;
 	  }
 	  SKIP_BLANKS(p);
@@ -1068,7 +1151,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  case NAME: {
 	    unsigned char c_name[256];
 	    if (c_cent.qname) {
-	      *errstr=report_error("You may specify only one name in a rr section.");
+	      REPORT_ERROR("You may specify only one name in a rr section.");
 	      PARSERROR;
 	    }
 	    SCAN_STRING(ps,p,len);
@@ -1085,7 +1168,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  case AUTHREC: {
 	    int cnst;
 	    if (c_cent.qname) {
-	      *errstr=report_error("The authrec= option has no effect unless it precedes name= in a rr section.");
+	      REPORT_ERROR("The authrec= option has no effect unless it precedes name= in a rr section.");
 	      PARSERROR;
 	    }
 	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF,"Bad qualifier in authrec= option.");
@@ -1119,7 +1202,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 		else
 #endif
 		  {
-		    *errstr=report_error("bad IP address in a= option.");
+		    REPORT_ERROR("bad IP address in a= option.");
 		    PARSERROR;
 		  }
 	    }
@@ -1226,9 +1309,9 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  if(!set_cent_flags(&c_cent.qname[2],DF_WILD)) {
 	    unsigned char buf[256];
 	    rhn2str(c_cent.qname,buf,sizeof(buf));
-	    *errstr=report_errorf("You must define some records for '%s'"
-				  " before you can define records for the wildcard name '%s'",
-				  &buf[2],buf);
+	    REPORT_ERRORF("You must define some records for '%s'"
+			  " before you can define records for the wildcard name '%s'",
+			  &buf[2],buf);
 	    PARSERROR;
 	  }
 	}
@@ -1236,8 +1319,8 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	add_cache(&c_cent);
 	if(reverse) {
 	  if(!add_reverse_cache(&c_cent)) {
-		    *errstr=report_error("Can't convert IP address in a= option"
-					 " into form suitable for reverse resolving.");
+		    REPORT_ERROR("Can't convert IP address in a= option"
+				 " into form suitable for reverse resolving.");
 		    PARSERROR;
 	  }
 	}
@@ -1266,7 +1349,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  SCAN_ALPHANUM(ps,p,len);
 	  option=lookup_keyword(ps,len,source_options);
 	  if(!option) {
-	    *errstr=report_errorf("invalid option for source section: %.*s",(int)len,ps);
+	    REPORT_ERRORF("invalid option for source section: %.*s",(int)len,ps);
 	    PARSERROR;
 	  }
 	  SKIP_BLANKS(p);
@@ -1286,7 +1369,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 	  case FILET:
 	    if (!c_owner[0]) {
-	      *errstr=report_error("you must specify owner before file= in source records.");
+	      REPORT_ERROR("you must specify owner before file= in source records.");
 	      PARSERROR;
 	    }
 	    SCAN_STRING(ps,p,len);
@@ -1294,7 +1377,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      char *errmsg;
 	      TEMPSTRNCPY(fn,ps,len);
 	      if (!read_hosts(fn, c_owner, c_ttl, c_flags, c_aliases, &errmsg)) {
-		if(errmsg) { *errstr=report_error(errmsg); free(errmsg); }
+		if(errmsg) { REPORT_ERROR(errmsg); free(errmsg); }
 		else *errstr=NULL;
 		PARSERROR;
 	      }
@@ -1321,8 +1404,60 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  ++p;
 	  SKIP_BLANKS(p);
 	}
+      }
+	break;
 
-	if(*p!='}') goto expected_closing_brace;
+      case INCLUDE_F: {
+	while(isalpha(*p)) {
+	  SCAN_ALPHANUM(ps,p,len);
+	  option=lookup_keyword(ps,len,include_options);
+	  if(!option) {
+	    REPORT_ERRORF("invalid option for include section: %.*s",(int)len,ps);
+	    PARSERROR;
+	  }
+	  SKIP_BLANKS(p);
+	  if(*p!='=') goto expected_equals;
+	  ++p;
+	  SKIP_BLANKS(p);
+
+	  switch(option) {
+	  case FILET:
+	    if(includedepth>=MAXINCLUDEDEPTH) {
+	      REPORT_ERRORF("maximum include depth (%d) exceeded.",MAXINCLUDEDEPTH);
+	      PARSERROR;
+	    }
+	    SCAN_STRING(ps,p,len);
+	    {
+	      char *errmsg;
+	      TEMPSTRNCPY(fn,ps,len);
+	      if (!read_config_file(fn, NULL, NULL, includedepth+1, &errmsg)) {
+		if(errmsg) {
+		  if(linenr) {
+		    if(asprintf(errstr, "In file %s included at line %u:\n%s",fn,linenr,errmsg)<0)
+		      *errstr=NULL;
+		  }
+		  else {
+		    if(asprintf(errstr, "In file %s:\n%s",fn,errmsg)<0)
+		      *errstr=NULL;
+		  }
+		  free(errmsg);
+		}
+		else
+		  *errstr=NULL;
+		PARSERROR;
+	      }
+	    }
+	    break;
+
+	  default: /* we should never get here */
+	    goto internal_parse_error;
+	  } /* end of switch(option) */
+
+	  SKIP_BLANKS(p);
+	  if(*p!=';') goto expected_semicolon;
+	  ++p;
+	  SKIP_BLANKS(p);
+	}
       }
 	break;
 
@@ -1340,7 +1475,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	  SCAN_ALPHANUM(ps,p,len);
 	  option=lookup_keyword(ps,len,neg_options);
 	  if(!option) {
-	    *errstr=report_errorf("invalid option for neg section: %.*s",(int)len,ps);
+	    REPORT_ERRORF("invalid option for neg section: %.*s",(int)len,ps);
 	    PARSERROR;
 	  }
 	  SKIP_BLANKS(p);
@@ -1360,7 +1495,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 
 	  case TYPES:
 	    if (!c_name[0]) {
-	      *errstr=report_error("you must specify a name before the types= option.");
+	      REPORT_ERROR("you must specify a name before the types= option.");
 	      PARSERROR;
 	    }
 	    if (isalpha(*p)) {
@@ -1370,7 +1505,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      cnst=lookup_const(ps,len);
 	      if(cnst==C_DOMAIN) {
 		if (htp) {
-		  *errstr=report_error("You may not specify types=domain together with other types!");
+		  REPORT_ERROR("You may not specify types=domain together with other types!");
 		  PARSERROR;
 		}
 		hdtp=1;
@@ -1379,7 +1514,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	      }
 	      else if(cnst==0) {
 		if (hdtp) {
-		  *errstr=report_error("You may not specify types=domain together with other types!");
+		  REPORT_ERROR("You may not specify types=domain together with other types!");
 		  PARSERROR;
 		}
 		htp=1;
@@ -1393,7 +1528,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 		    cnst=rr_tp_byname(buf);
 		  }
 		  if(cnst==-1) {
-		    *errstr=report_errorf("unrecognized rr type '%.*s' used as argument for types= option.",(int)len,ps);
+		    REPORT_ERRORF("unrecognized rr type '%.*s' used as argument for types= option.",(int)len,ps);
 		    PARSERROR;
 		  }
 		  if (!c_cent.rr[cnst-T_MIN] && !add_cent_rrset(&c_cent,cnst,c_ttl,0,CF_LOCAL|CF_NEGATIVE  DBG0)) {
@@ -1418,7 +1553,7 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
 	    }
 	    else {
 	    bad_types_option:
-	      *errstr=report_error("Bad argument for types= option.");
+	      REPORT_ERROR("Bad argument for types= option.");
 	      PARSERROR;
 	    }
 	    break;
@@ -1443,14 +1578,14 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
       ++p;
     }
     else {
-      *errstr=report_error("expected section header");
+      REPORT_ERROR("expected section header");
       PARSERROR;
     }
   }
 
-  if(feof(in)) {
+  if(!in || feof(in)) {
     if(getnextperr) {
-      *errstr=report_error(getnextperr);
+      REPORT_ERROR(getnextperr);
       PARSERROR;
     }
     retval=1; /* success */
@@ -1461,28 +1596,28 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
   goto free_linebuf_return;
 
  expected_bropen:
-  *errstr=report_error("expected opening brace after section name");
+  REPORT_ERROR("expected opening brace after section name");
   PARSERROR;
 
  expected_closing_brace:
-  *errstr=report_error("expected beginning of new option or closing brace");
+  REPORT_ERROR("expected beginning of new option or closing brace");
   PARSERROR;
 
  expected_equals:
-  *errstr=report_error("expected equals sign after option name");
+  REPORT_ERROR("expected equals sign after option name");
   PARSERROR;
 
  expected_semicolon:
-  *errstr=report_error("too many arguments to option or missing semicolon");
+  REPORT_ERROR("too many arguments to option or missing semicolon");
   PARSERROR;
 
  no_name_spec:
-  *errstr=report_error("you must specify a name before a,ptr,cname,mx,ns(owner) and soa records.");
+  REPORT_ERROR("you must specify a name before a,ptr,cname,mx,ns(owner) and soa records.");
   PARSERROR;
 
  internal_parse_error:
-  if(asprintf(errstr,"Internal inconsistency detected while parsing line %u of config file.\n"
-	      "Please consider reporting this error to one of the maintainers.\n",linenr)<0)
+  if(asprintf(errstr,"Internal inconsistency detected while parsing line %u of %s.\n"
+	      "Please consider reporting this error to one of the maintainers.\n",linenr,conftype)<0)
     *errstr=NULL;
   PARSERROR;
 
@@ -1492,8 +1627,8 @@ int confparse(FILE* in, globparm_t *global, servparm_array *servers, char **errs
   PARSERROR;
 
  unexpected_eof:
-  if(feof(in)) {
-    *errstr=report_error(getnextperr?getnextperr:"unexpected end of file");
+  if(!in || feof(in)) {
+    REPORT_ERROR(getnextperr?getnextperr:in?"unexpected end of file":"unexpected end of input string");
   }
   else
     input_error: {
@@ -1558,7 +1693,7 @@ static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
     if(!str2pdnsd_a(buf,&addr)) {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
       if(run_ipv4 && inet_pton(AF_INET6,buf,&addr.ipv6)>0) {
-	fprintf(stderr,"IPv6 address \"%s\" in line %u of config file ignored while running in IPv4 mode.\n",buf,linenr);
+	fprintf(stderr,"IPv6 address \"%s\" in config file ignored while running in IPv4 mode.\n",buf);
 	return NULL;
       }
 #endif
@@ -1597,7 +1732,7 @@ inline static void mk_netmask6(struct in6_addr *m, int len)
   ma[1] = mk_netmask4(len -= 32);
   ma[2] = mk_netmask4(len -= 32);
   ma[3] = mk_netmask4(len -= 32);
-}		
+}
 #endif
 
 /* Add an IP address/mask to the reject lists. */
@@ -1679,7 +1814,7 @@ static void check_localaddrs(servparm_t *serv)
       if(j<i)
 	DA_INDEX(ata,j)=*at;
       ++j;
-    }      
+    }
     if(j<n)
       serv->atup_a=DA_RESIZE(ata,j);
   }
@@ -1695,7 +1830,8 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
   unsigned linenr=0;
 
   if (!(f=fopen(fn,"r"))) {
-    *errstr=report_errorf("Failed to open %s: %s", fn, strerror(errno));
+    if(asprintf(errstr, "Failed to open %s: %s", fn, strerror(errno))<0)
+      *errstr=NULL;
     return 0;
   }
   buf=malloc(buflen);
@@ -1728,7 +1864,8 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
       } while(*p && !isspace(*p));
       len=p-ps;
       if((errmsg=addr_add(ata, ps, len))) {
-	*errstr=report_errorf("%s in line %u of file %s", errmsg,linenr,fn);
+	if(asprintf(errstr, "%s in line %u of file %s", errmsg,linenr,fn)<0)
+	  *errstr=NULL;
 	goto cleanup_return;
       }
     }
@@ -1736,8 +1873,8 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
   }
   if (feof(f))
     rv=1;
-  else
-    *errstr=report_errorf("Failed to read %s: %s", fn, strerror(errno));
+  else if(asprintf(errstr, "Failed to read %s: %s", fn, strerror(errno))<0)
+    *errstr=NULL;
  cleanup_return:
   free(buf);
  fclose_return:

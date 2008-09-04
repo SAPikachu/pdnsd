@@ -1,7 +1,7 @@
 /* status.h - Make server status information accessible through a named pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2004 Paul A. Rombouts
+   Copyright (C) 2002, 2004, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -40,9 +40,11 @@ extern int stat_sock;
 #define CTL_ADD      5 /* Add a record of the given type */
 #define CTL_NEG      6 /* Add a negative cached record */
 #define CTL_CONFIG   7 /* Re-read config file */
-#define CTL_EMPTY    8 /* Empty the cache */
-#define CTL_DUMP     9 /* Dump cache contents */
-#define CTL_MAX      9
+#define CTL_INCLUDE  8 /* Read file as config file, disregarding global and server sections */
+#define CTL_EVAL     9 /* Parse string as if part of config file */
+#define CTL_EMPTY   10 /* Empty the cache */
+#define CTL_DUMP    11 /* Dump cache contents */
+#define CTL_MAX     11
 
 #define CTL_S_UP     1
 #define CTL_S_DOWN   2

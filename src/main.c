@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -78,7 +78,7 @@ static const char info_message[] =
 	
 	"pdnsd - dns proxy daemon, version " VERSION "\n\n"
 	"Copyright (C) 2000, 2001 Thomas Moestl\n"
-	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts\n\n"
+	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts\n\n"
 	"pdnsd is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
 	"the Free Software Foundation; either version 3 of the License, or\n"
@@ -419,7 +419,7 @@ int main(int argc,char *argv[])
 	init_cache();
 	{
 		char *errmsg;
-		if(!read_config_file(conf_file,&global,&servers,&errmsg)) {
+		if(!read_config_file(conf_file,&global,&servers,0,&errmsg)) {
 			fputs(errmsg?:"Out of memory.",stderr);
 			fputc('\n',stderr);
 			exit(3);

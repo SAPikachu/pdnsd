@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Sep 2007" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Sep 2008" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -381,8 +381,8 @@ safety for hosts with multiple IP addresses, so this is usually a good idea.
 .br
 On by default.
 .TP
-.B query_port_start=\fInumber\fP;
-If given, defines the start of the port range used for queries of pdnsd. The
+.B query_port_start=(\fInumber\fP|none);
+If a number is given, this defines the start of the port range used for queries of pdnsd. The
 value given must be >= 1024. The purpose of this option is to aid certain firewall
 configurations that are based on the source port. Please keep in mind that another application
 may bind a port in that range, so a stateful firewall using target port and/or process uid may
@@ -392,12 +392,17 @@ pdnsd will try to randomly select a free port from this range as local port for 
 .br
 To ensure that there are enough ports for pdnsd to use, the range between query_port_start and
 query_port_end should be adjusted to at least (par_queries * proc_limit).
-A higher value is highly recommended, because other applications may also allocate ports in that
-range. If possible, this range should be kept out of the space that other applications usually
-use.
+A larger range is highly recommended for security reasons, and also because other applications may
+allocate ports in that range. If possible, this range should be kept out of the space
+that other applications usually use.
+.br
+The default for this option is 1024. Together with the default value of query_port_end,
+this makes it the hardest for an attacker to guess the source port used by the pdnsd resolver.
+If you specify none here, pdnsd will let the kernel choose the source port, but
+this may leave pdnsd more vulnerable to an attack.
 .TP
 .B query_port_end=\fInumber\fP;
-Only used if query_port_start is given. Defines the last port of the range started by query_port_start
+Used if query_port_start is not none. Defines the last port of the range started by query_port_start
 used for querys by pdnsd. The default is 65535, which is also the maximum legal value for this option.
 For details see the description of query_port_start.
 .TP
@@ -711,7 +716,7 @@ the name servers for the top-level domain in its reply. Setting root_server=on
 will cause pdnsd to try to use cached information about top-level domains to reduce to number
 of queries to root servers, making the resolving of new names more efficient.
 You can get a list of available root servers by running the command
-"dig\ \-t\ ns\ .".
+"dig\ .\ ns".
 .br
 This option is also necessary if you use the delegation_only option.
 .br
@@ -785,8 +790,8 @@ the policy= option determines whether this server is used for the
 lookup for that domain name; when included is given, the server will
 be asked, and when excluded is given, it will not.
 If simple_only is given the server will be used if the name to lookup
-is a simple host name, on the other hand if fqdn_only is given the server
-will be used only  for fully qualified domain names
+is a simple (single-label) domain name, on the other hand if fqdn_only
+is given the server will be used only  for names consisting of two or more labels
 (i.e. the name has at least one dot in-between).
 .br
 If no server is available for a queried domain, pdnsd will return an error message
@@ -798,7 +803,11 @@ This may be of use sometimes.
 \fINote\fP: the simple_only and fqdn_only constants
 were added by Paul Rombouts.
 They are useful for controlling which name servers (if any) will be used by
-pdnsd for simple host names.
+pdnsd for resolving simple (single-label) host names.
+fqdn_only used to stand for "fully qualified domain name only", but this is
+actually a misnomer. The names in queries received by pdnsd are always considered to be
+fully qualified. If you do not exactly understand what the options simple_only and
+fqdn_only are good for, you are probably better off not using them.
 .br
 The default for this option is included.
 .TP
@@ -1183,6 +1192,21 @@ subsequent to this option.
 .br
 This is on by default.
 
+.SS include Section
+A configuration file may include other configuration files.
+However, only the top-level configuration file may contain global
+and server sections,
+thus include files are effectively limited to sections that add local definitions to the cache.
+.br
+Include sections currently only have one type of option, which may be given multiple times within a single section.
+
+.TP
+.B file=\fIstring\fP;
+The string specifies a file name. For every file option in an include section, 
+pdnsd will parse the given file as described above. The file may contain include sections itself,
+but as a precaution pdnsd checks that a certain maximum depth is not exceeded to guard against
+the possibility of infinite recursion.
+
 .SH "VERSION"
 .PP
 This man page is correct for version @VERSION@ of pdnsd.
@@ -1212,4 +1236,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 20 Aug 2007 by Paul Rombouts
+Last revised: 04 September 2008 by Paul Rombouts

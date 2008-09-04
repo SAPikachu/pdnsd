@@ -1,7 +1,7 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
    Based on information previously contained in conf-lex.y and conf-parse.y
 
-   Copyright (C) 2004,2005,2006,2007 Paul A. Rombouts
+   Copyright (C) 2004,2005,2006,2007,2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -28,6 +28,7 @@ enum {
 	RR,
 	NEG,
 	SOURCE,
+	INCLUDE_F,
 	
 	PERM_CACHE,
 	CACHE_DIR,
@@ -107,11 +108,12 @@ enum {
 
 /* Table for looking up section headers. Order alphabetically! */
 static const namevalue_t section_headers[]= {
-	{"global", GLOBAL},
-	{"neg",    NEG},
-	{"rr",     RR},
-	{"server", SERVER},
-	{"source", SOURCE}
+	{"global",  GLOBAL},
+	{"include", INCLUDE_F},
+	{"neg",     NEG},
+	{"rr",      RR},
+	{"server",  SERVER},
+	{"source",  SOURCE}
 };
 
 /* Table for looking up global options. Order alphabetically! */
@@ -206,6 +208,11 @@ static const namevalue_t source_options[]= {
 	{"owner",         OWNER},
 	{"serve_aliases", SERVE_ALIASES},
 	{"ttl",           TTL}
+};
+
+/* Table for looking up include options. Order alphabetically! */
+static const namevalue_t include_options[]= {
+	{"file",          FILET}
 };
 
 /* Table for looking up neg options. Order alphabetically! */

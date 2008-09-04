@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.6-par by Paul Rombouts
+	        pdnsd version 1.2.7-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -24,6 +24,10 @@ The main new feature of version 1.2.5 is the new query method "udp_tcp".
 Version 1.2.6 has an updated license: GPL version 3. The main new feature of
 version 1.2.6 is the "reject" option, which makes it possible to censor or
 correct for unwanted IP addresses in replies.
+Version 1.2.7 contains an important fix for a "dangling pointer" bug and
+attempts to make pdnsd less vulnerable to the issues raised in CERT
+vulnerability note VU#800113. It also contains some improvements for defining
+local records interactively using the pdnsd-ctl utility.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -169,6 +173,13 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   servers, for instance. The "reject" option can be used to censor certain IP
   addresses or correct for unwanted replies from servers you don't completely
   trust.
+
+- Version 1.2.7 contains support for "include" files which can be referenced
+  from configuration files or read interactively using pdnsd-ctl. These files
+  can be used to add local definitions to the cache without reconfiguring pdnsd.
+  The new "pdnsd-ctl eval" command can be used to interactively define local
+  records that could previously only be defined in configuration files but not
+  with the "pdnsd-ctl add" command.
 
 The new features are described in greater detail in the manual doc/html/doc.html
 or doc/txt/manual.txt.

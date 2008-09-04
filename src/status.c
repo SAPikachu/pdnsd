@@ -1,7 +1,7 @@
 /* status.c - Allow control of a running server using a socket
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -46,6 +46,7 @@
 #include "servers.h"
 #include "dns_answer.h"
 #include "helpers.h"
+#include "conf-parser.h"
 
 #if !defined(HAVE_ALLOCA) && !defined(alloca)
 #define alloca malloc
@@ -144,8 +145,7 @@ static int read_allocstring(int fh, char **res, unsigned *len)
 }
 
 /* Read a string preceded by a char count.
-   Place it in a buffer of size buflen and terminate by a dot (if it is missing)
-   and a null char.
+   Place it in a buffer of size buflen and terminate with a null char.
    A return value of 1 means success, -1 means not defined,
    0 means error (read error, buffer too small).
 */
@@ -458,6 +458,7 @@ static void *status_thread (void *p)
 					    break;
 				    case T_CNAME:
 				    case T_PTR:
+				    case T_NS:
 					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
 						    goto incomplete_command;
 					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
@@ -498,10 +499,24 @@ static void *status_thread (void *p)
 						    free_cent(&cent  DBG1);
 						    goto out_of_memory;
 					    }
+
+					    if(cent.qname[0]==1 && cent.qname[1]=='*') {
+						    /* Wild card record.
+						       Set the DF_WILD flag for the name with '*.' removed. */
+						    if(!set_cent_flags(&cent.qname[2],DF_WILD)) {
+							    print_serr(rs,
+								       "Before defining records for a name with a wildcard"
+								       " you must first define some records for the name"
+								       " with '*.' removed.");
+							    goto cleanup_cent;
+						    }
+					    }
+
 					    add_cache(&cent);
+					    print_succ(rs);
+				    cleanup_cent:
 					    free_cent(&cent  DBG1);
 				    }
-				    print_succ(rs);
 			    }
 				    break;
 			    case CTL_NEG: {
@@ -561,6 +576,38 @@ static void *status_thread (void *p)
 					    free(errmsg);
 				    }
 				    free(fn);
+			    }
+				    break;
+			    case CTL_INCLUDE: {
+				    char *fn,*errmsg;
+				    DEBUG_MSG("Received INCLUDE command.\n");
+				    if (read_allocstring(rs,&fn,NULL)<=0) {
+					    print_serr(rs,"Bad filename name.");
+					    break;
+				    }
+				    if (read_config_file(fn,NULL,NULL,0,&errmsg))
+					    print_succ(rs);
+				    else {
+					    print_serr(rs,errmsg?:"Out of memory.");
+					    free(errmsg);
+				    }
+				    free(fn);
+			    }
+				    break;
+			    case CTL_EVAL: {
+				    char *str,*errmsg;
+				    DEBUG_MSG("Received EVAL command.\n");
+				    if (!read_allocstring(rs,&str,NULL)) {
+					    print_serr(rs,"Bad input string.");
+					    break;
+				    }
+				    if (confparse(NULL,str,NULL,NULL,0,&errmsg))
+					    print_succ(rs);
+				    else {
+					    print_serr(rs,errmsg?:"Out of memory.");
+					    free(errmsg);
+				    }
+				    free(str);
 			    }
 				    break;
 			    case CTL_EMPTY: {

@@ -1,7 +1,7 @@
 /* conff.h - Definiton for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -172,7 +172,7 @@ extern servparm_t serv_presets;
 
 extern servparm_array servers;
 
-int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, char **errstr);
+int read_config_file(const char *nm, globparm_t *global, servparm_array *servers, int includedepth, char **errstr);
 int reload_config_file(const char *nm, char **errstr);
 void free_zone(void *ptr);
 void free_slist_domain(void *ptr);

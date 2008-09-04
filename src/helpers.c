@@ -480,7 +480,7 @@ void free_rng()
 }
 #endif
 
-/* generate a (more or less) random number. */
+/* generate a (more or less) random number 16 bits long. */
 unsigned short get_rand16()
 {
 #ifdef RANDOM_DEVICE
@@ -491,7 +491,7 @@ unsigned short get_rand16()
 			log_error("Error while reading from random device: %s", strerror(errno));
 			pdnsd_exit();
 		}
-		return rv;
+		return rv&0xffff;
 	} else
 		return random()&0xffff;
 #endif
