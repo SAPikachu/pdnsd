@@ -38,10 +38,6 @@
 void pdnsd_exit(void);
 
 
-/* Originally in error.h */
-
-void log_error(char *s,...) printfunc(1, 2);
-
 /*
  * Assert macro, used in some places. For now, it should be always defined, not
  * only in the DEBUG case, to be on the safe side security-wise.

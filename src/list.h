@@ -1,7 +1,7 @@
 /* list.h - Dynamic array and list handling
   
    Copyright (C) 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -45,9 +45,10 @@ typedef struct {size_t nel;} *darray;
 
 /* used in type declarations */
 #define DYNAMIC_ARRAY(typ)  struct {size_t nel; typ elem[0];} 
-#define DA_OFFSET(a) ((size_t)((typeof (a))0)->elem)
+#define DA_TYP_OFFSET(atyp) ((size_t)((atyp)0)->elem)
+#define DA_OFFSET(a) DA_TYP_OFFSET(typeof (a))
 
-/* #define DA_CREATE(typ) ((struct {size_t nel; typ elem[0];} *)(da_create(sizeof(typ)))) */
+#define DA_CREATE(atyp,n) ((atyp)da_resize(NULL,DA_TYP_OFFSET(atyp),sizeof(((atyp)0)->elem[0]),n,NULL))
 #define DA_INDEX(a,i) ((a)->elem[i])
 /* Used often, so make special-case macro here */
 #define DA_LAST(a) ((a)->elem[(a)->nel-1])
@@ -75,6 +76,8 @@ inline static darray Dda_create(size_t sz)
 darray da_grow1(darray a, size_t headsz, size_t elemsz, void (*cleanuproutine) (void *));
 darray da_resize(darray a, size_t headsz, size_t elemsz, size_t n, void (*cleanuproutine) (void *));
 
+inline static unsigned int da_nel(darray a)
+  __attribute__((always_inline));
 inline static unsigned int da_nel(darray a)
 {
   if (a==NULL)
@@ -106,6 +109,8 @@ struct _dynamic_list_head {
 typedef struct _dynamic_list_head  *dlist;
 
 inline static void *dlist_first(dlist a)
+  __attribute__((always_inline));
+inline static void *dlist_first(dlist a)
 {
   return a?&a->data[sizeof(size_t)]:NULL;
 }
@@ -115,12 +120,16 @@ inline static void *dlist_first(dlist a)
    If the dlist was grown with dlist_grow(), this should be OK.
 */
 inline static void *dlist_next(void *ref)
+  __attribute__((always_inline));
+inline static void *dlist_next(void *ref)
 {
   size_t incr= *(((size_t *)ref)-1);
   return incr?((char *)ref)+incr:NULL;
 }
 
 /* dlist_last() returns a reference to the last item. */
+inline static void *dlist_last(dlist a)
+  __attribute__((always_inline));
 inline static void *dlist_last(dlist a)
 {
   return a?&a->data[a->last+sizeof(size_t)]:NULL;

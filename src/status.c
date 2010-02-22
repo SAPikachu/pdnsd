@@ -1,7 +1,7 @@
 /* status.c - Allow control of a running server using a socket
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -197,534 +197,544 @@ static void *status_thread (void *p)
 			uint16_t cmd;
 			DEBUG_MSG("Status socket query pending.\n");
 			if (read_short(rs,&cmd)) {
-			    const char *errmsg;
-			    switch(cmd) {
-			    case CTL_STATS: {
-				    struct utsname nm;
-				    DEBUG_MSG("Received STATUS query.\n");
-				    uname(&nm);
-				    if(fsprintf(rs,"pdnsd-%s running on %s.\n",VERSION,nm.nodename)<0 ||
-				       report_cache_stat(rs)<0 ||
-				       report_thread_stat(rs)<0 ||
-				       report_conf_stat(rs)<0)
-				    {
-					    DEBUG_MSG("Error writing to control socket: %s\n"
-						      "Failed to send status report.\n",strerror(errno));
-				    }					    
-			    }
-				    break;
-			    case CTL_SERVER: {
-				    char *label,*dnsaddr;
-				    int indx;
-				    uint16_t cmd2;
-				    DEBUG_MSG("Received SERVER command.\n");
-				    if (read_allocstring(rs,&label,NULL)<=0) {
-					print_serr(rs,"Error reading server label.");
+			    /* Check magic number in command */
+				if((cmd & 0xff00) == CTL_CMDVERNR) {
+				const char *errmsg;
+				cmd &= 0xff;
+				switch(cmd) {
+				case CTL_STATS: {
+					struct utsname nm;
+					DEBUG_MSG("Received STATUS query.\n");
+					if(!print_succ(rs))
+						break;
+					uname(&nm);
+					if(fsprintf(rs,"pdnsd-%s running on %s.\n",VERSION,nm.nodename)<0 ||
+					   report_cache_stat(rs)<0 ||
+					   report_thread_stat(rs)<0 ||
+					   report_conf_stat(rs)<0)
+					{
+						DEBUG_MSG("Error writing to control socket: %s\n"
+							  "Failed to send status report.\n",strerror(errno));
+					}					    
+				}
 					break;
-				    }
-				    if (!read_short(rs,&cmd2)) {
-					print_serr(rs,"Missing up|down|retest.");
-					goto free_label_break;
-				    }
-				    if(!read_allocstring(rs, &dnsaddr,NULL)) {
-					print_serr(rs,"Error reading DNS addresses.");
-					goto free_label_break;
-				    }
-				    /* Note by Paul Rombouts:
-				       We are about to access server configuration data.
-				       Now that the configuration can be changed during run time,
-				       we should be using locks before accessing server config data, even if it
-				       is read-only access.
-				       However, as long as this is the only thread that calls reload_config_file()
-				       it should be OK to read the server config without locks, but it is
-				       something to keep in mind.
-				    */
-				    {
-					char *endptr;
-					indx=strtol(label,&endptr,0);
-					if(!*endptr) {
-					    if (indx<0 || indx>=DA_NEL(servers)) {
-						print_serr(rs,"Server index out of range.");
-						goto free_dnsaddr_label_break;
-					    }
+				case CTL_SERVER: {
+					char *label,*dnsaddr;
+					int indx;
+					uint16_t cmd2;
+					DEBUG_MSG("Received SERVER command.\n");
+					if (read_allocstring(rs,&label,NULL)<=0) {
+					    print_serr(rs,"Error reading server label.");
+					    break;
 					}
-					else {
-					    if (!strcmp(label, "all"))
-						indx=-2; /* all servers */
-					    else
-						indx=-1; /* compare names */
+					if (!read_short(rs,&cmd2)) {
+					    print_serr(rs,"Missing up|down|retest.");
+					    goto free_label_break;
 					}
-				    }
-				    if(cmd2==CTL_S_UP || cmd2==CTL_S_DOWN || cmd2==CTL_S_RETEST) {
-					if(!dnsaddr) {
-					    if (indx==-1) {
-						int i;
-						for (i=0;i<DA_NEL(servers);++i) {
-						    char *servlabel=DA_INDEX(servers,i).label;
-						    if (servlabel && !strcmp(servlabel,label))
-							goto found_label;
-						}
-						print_serr(rs,"Bad server label.");
-						goto free_dnsaddr_label_break;
-					    found_label:;
-					    }
-					    if(mark_servers(indx,(indx==-1)?label:NULL,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP))==0)
-						print_succ(rs);
-					    else
-						print_serr(rs,"Could not start up or signal server status thread.");
+					if(!read_allocstring(rs, &dnsaddr,NULL)) {
+					    print_serr(rs,"Error reading DNS addresses.");
+					    goto free_label_break;
 					}
-					else { /* Change server addresses */
-					    if(indx==-2) {
-						print_serr(rs,"Can't use label \"all\" to change server addresses.");
-						goto free_dnsaddr_label_break;
-					    }
-					    if(indx==-1) {
-						int i;
-						for(i=0;i<DA_NEL(servers);++i) {
-						    char *servlabel=DA_INDEX(servers,i).label;
-						    if (servlabel && !strcmp(servlabel,label)) {
-							if(indx!=-1) {
-							    print_serr(rs,"server label must be unique to change server addresses.");
-							    goto free_dnsaddr_label_break;
-							}
-							indx=i;
-						    }
-						}
-						if(indx==-1) {
-						    print_serr(rs,"Bad server label.");
+					/* Note by Paul Rombouts:
+					   We are about to access server configuration data.
+					   Now that the configuration can be changed during run time,
+					   we should be using locks before accessing server config data, even if it
+					   is read-only access.
+					   However, as long as this is the only thread that calls reload_config_file()
+					   it should be OK to read the server config without locks, but it is
+					   something to keep in mind.
+					*/
+					{
+					    char *endptr;
+					    indx=strtol(label,&endptr,0);
+					    if(!*endptr) {
+						if (indx<0 || indx>=DA_NEL(servers)) {
+						    print_serr(rs,"Server index out of range.");
 						    goto free_dnsaddr_label_break;
 						}
 					    }
-					    {
-						char *ipstr,*q=dnsaddr;
-						addr_array ar=NULL;
-						pdnsd_a addr;
-						int err;
-						for(;;) {
-						    for(;;) {
-							if(!*q) goto change_servs;
-							if(*q!=',' && !isspace(*q)) break;
-							++q;
-						    }
-						    ipstr=q;
-						    for(;;) {
-							++q;
-							if(!*q) break;
-							if(*q==',' || isspace(*q)) {*q++=0; break; }
-						    }
-						    if(!str2pdnsd_a(ipstr,&addr)) {
-							print_serr(rs,"Bad server ip");
-							goto free_ar;
-						    }
-						    if(!(ar=DA_GROW1(ar))) {
-							print_serr(rs,"Out of memory.");
-							goto free_dnsaddr_label_break;
-						    }
-						    DA_LAST(ar)=addr;
-						}
-					    change_servs:
-						err=change_servers(indx,ar,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP));
-						if(err==0)
-						    print_succ(rs);
+					    else {
+						if (!strcmp(label, "all"))
+						    indx=-2; /* all servers */
 						else
-						    print_serr(rs,err==ETIMEDOUT?"Timed out while trying to gain access to server data.":
-							          err==ENOMEM?"Out of memory.":
-							          "Could not start up or signal server status thread.");
-					    free_ar:
-						da_free(ar);
+						    indx=-1; /* compare names */
 					    }
 					}
-				    }
-				    else
-					print_serr(rs,"Bad command.");
-
-			    free_dnsaddr_label_break:
-				    free(dnsaddr);
-			    free_label_break:
-				    free(label);
-			    }
-				    break;
-			    case CTL_RECORD: {
-				    uint16_t cmd2;
-				    unsigned char name[256],buf[256];
-				    DEBUG_MSG("Received RECORD command.\n");
-				    if (!read_short(rs,&cmd2))
-					    goto incomplete_command;
-				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
-					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
-					    goto bad_domain_name;
-				    switch (cmd2) {
-				    case CTL_R_DELETE:
-					    del_cache(name);
-					    print_succ(rs);
-					    break;
-				    case CTL_R_INVAL:
-					    invalidate_record(name);
-					    print_succ(rs);
-					    break;
-				    default:
-					    print_serr(rs,"Bad command.");
-				    }
-			    }
-				    break;
-			    case CTL_SOURCE: {
-				    uint32_t ttl;
-				    char *fn;
-				    uint16_t servaliases,flags;
-				    unsigned char buf[256],owner[256];
-
-				    DEBUG_MSG("Received SOURCE command.\n");
-				    if (read_allocstring(rs,&fn,NULL)<=0) {
-					    print_serr(rs,"Bad filename name.");
-					    break;
-				    }
-				    if (read_domain(rs, charp buf, sizeof(buf))<=0 ||
-					!read_long(rs,&ttl) ||
-					!read_short(rs,&servaliases) ||	/* serve aliases */
-					!read_short(rs,&flags))		/* caching flags */
-				    {
-					    print_serr(rs,"Malformed or incomplete command.");
-					    goto free_fn;
-				    }
-				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),owner))!=NULL) {
-					    print_serr(rs,errmsg);
-					    goto free_fn;
-				    }
-				    if (ttl < 0) {
-					    print_serr(rs, "Bad TTL.");
-					    goto free_fn;
-				    }
-				    {
-					    char *errmsg;
-					    if (read_hosts(fn,owner,ttl,flags,servaliases,&errmsg))
+					if(cmd2==CTL_S_UP || cmd2==CTL_S_DOWN || cmd2==CTL_S_RETEST) {
+					    if(!dnsaddr) {
+						if (indx==-1) {
+						    int i;
+						    for (i=0;i<DA_NEL(servers);++i) {
+							char *servlabel=DA_INDEX(servers,i).label;
+							if (servlabel && !strcmp(servlabel,label))
+							    goto found_label;
+						    }
+						    print_serr(rs,"Bad server label.");
+						    goto free_dnsaddr_label_break;
+						found_label:;
+						}
+						if(mark_servers(indx,(indx==-1)?label:NULL,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP))==0)
 						    print_succ(rs);
-					    else {
-						    print_serr(rs,errmsg?:"Out of memory.");
-						    free(errmsg);
+						else
+						    print_serr(rs,"Could not start up or signal server status thread.");
 					    }
-				    }
-			    free_fn:
-				    free(fn);
-			    }
-				    break;
-			    case CTL_ADD: {
-				    uint32_t ttl;
-				    unsigned sz;
-				    uint16_t tp,flags,nadr=0;
-				    unsigned char name[256],buf[256],dbuf[260];
-				    size_t adrbufsz=0;
-				    unsigned char *adrbuf=NULL;
-
-				    DEBUG_MSG("Received ADD command.\n");
-				    if (!read_short(rs,&tp))
-					    goto incomplete_command;
-				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
-					    goto incomplete_command;
-				    if (!read_long(rs,&ttl))
-					    goto incomplete_command;
-				    if (!read_short(rs,&flags))	/* caching flags */
-					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
-					    goto bad_domain_name;
-				    if (ttl < 0)
-					    goto bad_ttl;
-
-				    switch (tp) {
-				    case T_A:
-					    sz=sizeof(struct in_addr);
-#if ALLOW_LOCAL_AAAA
-					    goto read_adress_list;
-				    case T_AAAA:
-					    sz=sizeof(struct in6_addr);
-				    read_adress_list:
-#endif
-					    if (!read_short(rs,&nadr))
-						    goto incomplete_command;
-					    if (!nadr)
-						    goto bad_arg;
-					    adrbufsz= nadr * (size_t)sz;
-					    adrbuf= malloc(adrbufsz);
-					    if(!adrbuf)
-						    goto out_of_memory;
-					    {
-						    size_t nread=0;
-						    while(nread<adrbufsz) {
-							    ssize_t m=read(rs,adrbuf+nread,adrbufsz-nread);
-							    if(m<=0) {free(adrbuf); goto bad_arg;}
-							    nread += m;
-						    }
-					    }
-					    break;
-				    case T_CNAME:
-				    case T_PTR:
-				    case T_NS:
-					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
-						    goto incomplete_command;
-					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
-						    goto bad_domain_name;
-					    sz=rhnlen(dbuf);
-					    break;
-				    case T_MX:
-					    if (read(rs,dbuf,2)!=2)
-						    goto bad_arg;
-					    if (read_domain(rs, charp buf, sizeof(buf))<=0)
-						    goto incomplete_command;
-					    if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf+2))!=NULL)
-						    goto bad_domain_name;
-					    sz=rhnlen(dbuf+2)+2;
-					    break;
-				    default:
-					    goto bad_arg;
-				    }
-				    {
-					    dns_cent_t cent;
-
-					    if (!init_cent(&cent, name, 0, 0, flags  DBG1)) {
-						    free(adrbuf);
-						    goto out_of_memory;
-					    }
-					    if(adrbuf) {
-						    unsigned char *adrp; int i;
-						    for(adrp=adrbuf,i=0; i<nadr; adrp += sz,++i) {
-							    if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,adrp  DBG1)) {
-								    free_cent(&cent  DBG1);
-								    free(adrbuf);
-								    goto out_of_memory;
+					    else { /* Change server addresses */
+						if(indx==-2) {
+						    print_serr(rs,"Can't use label \"all\" to change server addresses.");
+						    goto free_dnsaddr_label_break;
+						}
+						if(indx==-1) {
+						    int i;
+						    for(i=0;i<DA_NEL(servers);++i) {
+							char *servlabel=DA_INDEX(servers,i).label;
+							if (servlabel && !strcmp(servlabel,label)) {
+							    if(indx!=-1) {
+								print_serr(rs,"server label must be unique to change server addresses.");
+								goto free_dnsaddr_label_break;
 							    }
+							    indx=i;
+							}
 						    }
-						    free(adrbuf);
-					    }
-					    else if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf  DBG1)) {
-						    free_cent(&cent  DBG1);
-						    goto out_of_memory;
-					    }
-
-					    if(cent.qname[0]==1 && cent.qname[1]=='*') {
-						    /* Wild card record.
-						       Set the DF_WILD flag for the name with '*.' removed. */
-						    if(!set_cent_flags(&cent.qname[2],DF_WILD)) {
-							    print_serr(rs,
-								       "Before defining records for a name with a wildcard"
-								       " you must first define some records for the name"
-								       " with '*.' removed.");
-							    goto cleanup_cent;
+						    if(indx==-1) {
+							print_serr(rs,"Bad server label.");
+							goto free_dnsaddr_label_break;
 						    }
-					    }
-
-					    add_cache(&cent);
-					    print_succ(rs);
-				    cleanup_cent:
-					    free_cent(&cent  DBG1);
-				    }
-			    }
-				    break;
-			    case CTL_NEG: {
-				    uint32_t ttl;
-				    uint16_t tp;
-				    unsigned char name[256],buf[256];
-
-				    DEBUG_MSG("Received NEG command.\n");
-				    if (read_domain(rs, charp buf, sizeof(buf))<=0)
-					    goto incomplete_command;
-				    if (!read_short(rs,&tp))
-					    goto incomplete_command;
-				    if (!read_long(rs,&ttl))
-					    goto incomplete_command;
-				    if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL) {
-					    DEBUG_MSG("NEG: received bad domain name.\n");
-					    goto bad_domain_name;
-				    }
-				    if (tp!=255 && (tp<T_MIN || tp>T_MAX)) {
-					    DEBUG_MSG("NEG: received bad record type.\n");
-					    print_serr(rs,"Bad record type.");
-					    break;
-				    }
-				    if (ttl < 0)
-					    goto bad_ttl;
-				    {
-					    dns_cent_t cent;
-
-					    if (tp==255) {
-						    if (!init_cent(&cent, name, ttl, 0, DF_LOCAL|DF_NEGATIVE  DBG1))
-							    goto out_of_memory;
-					    } else {
-						    if (!init_cent(&cent, name, 0, 0, 0  DBG1))
-							    goto out_of_memory;
-						    if (!add_cent_rrset(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE  DBG1)) {
-							    free_cent(&cent  DBG1);
-							    goto out_of_memory;
-						    }
-					    }
-					    add_cache(&cent);
-					    free_cent(&cent DBG1);
-				    }
-				    print_succ(rs);
-			    }
-				    break;
-			    case CTL_CONFIG: {
-				    char *fn,*errmsg;
-				    DEBUG_MSG("Received CONFIG command.\n");
-				    if (!read_allocstring(rs,&fn,NULL)) {
-					    print_serr(rs,"Bad filename name.");
-					    break;
-				    }
-				    if (reload_config_file(fn,&errmsg))
-					    print_succ(rs);
-				    else {
-					    print_serr(rs,errmsg?:"Out of memory.");
-					    free(errmsg);
-				    }
-				    free(fn);
-			    }
-				    break;
-			    case CTL_INCLUDE: {
-				    char *fn,*errmsg;
-				    DEBUG_MSG("Received INCLUDE command.\n");
-				    if (read_allocstring(rs,&fn,NULL)<=0) {
-					    print_serr(rs,"Bad filename name.");
-					    break;
-				    }
-				    if (read_config_file(fn,NULL,NULL,0,&errmsg))
-					    print_succ(rs);
-				    else {
-					    print_serr(rs,errmsg?:"Out of memory.");
-					    free(errmsg);
-				    }
-				    free(fn);
-			    }
-				    break;
-			    case CTL_EVAL: {
-				    char *str,*errmsg;
-				    DEBUG_MSG("Received EVAL command.\n");
-				    if (!read_allocstring(rs,&str,NULL)) {
-					    print_serr(rs,"Bad input string.");
-					    break;
-				    }
-				    if (confparse(NULL,str,NULL,NULL,0,&errmsg))
-					    print_succ(rs);
-				    else {
-					    print_serr(rs,errmsg?:"Out of memory.");
-					    free(errmsg);
-				    }
-				    free(str);
-			    }
-				    break;
-			    case CTL_EMPTY: {
-				    slist_array sla=NULL;
-				    char *names; unsigned len;
-
-				    DEBUG_MSG("Received EMPTY command.\n");
-				    if (!read_allocstring(rs,&names,&len)) {
-					    print_serr(rs,"Bad arguments.");
-					    break;
-				    }
-				    if(names) {
-					    char *p=names, *last=names+len;
-					    
-					    while(p<last) {
-						    int tp;
-						    char *q;
-						    slist_t *sl;
-						    unsigned sz;
-						    unsigned char rhn[256];
-
-						    if(*p=='-') {
-							    tp=C_EXCLUDED;
-							    ++p;
-						    }
-						    else {
-							    tp=C_INCLUDED;
-							    if(*p=='+') ++p;
-						    }
-						    /* skip a possible leading dot. */
-						    if(p+1<last && *p=='.' && *(p+1)) ++p;
-						    q=p;
-						    while(q<last && *q) ++q;
-						    if ((errmsg=parsestr2rhn(ucharp p,q-p,rhn))!=NULL) {
-							    DEBUG_MSG("EMPTY: received bad domain name: %s\n",p);
-							    print_serr(rs,errmsg);
-							    goto free_sla_names_break;
-						    }
-						    sz=rhnlen(rhn);
-						    if (!(sla=DA_GROW1_F(sla,free_slist_domain))) {
+						}
+						{
+						    char *ipstr,*q=dnsaddr;
+						    addr_array ar=NULL;
+						    pdnsd_a addr;
+						    int err;
+						    for(;;) {
+							for(;;) {
+							    if(!*q) goto change_servs;
+							    if(*q!=',' && !isspace(*q)) break;
+							    ++q;
+							}
+							ipstr=q;
+							for(;;) {
+							    ++q;
+							    if(!*q) break;
+							    if(*q==',' || isspace(*q)) {*q++=0; break; }
+							}
+							if(!str2pdnsd_a(ipstr,&addr)) {
+							    print_serr(rs,"Bad server ip");
+							    goto free_ar;
+							}
+							if(!(ar=DA_GROW1(ar))) {
 							    print_serr(rs,"Out of memory.");
-							    goto free_names_break;
+							    goto free_dnsaddr_label_break;
+							}
+							DA_LAST(ar)=addr;
 						    }
-						    sl=&DA_LAST(sla);
+						change_servs:
+						    err=change_servers(indx,ar,(cmd2==CTL_S_RETEST)?-1:(cmd2==CTL_S_UP));
+						    if(err==0)
+							print_succ(rs);
+						    else
+							print_serr(rs,err==ETIMEDOUT?"Timed out while trying to gain access to server data.":
+								      err==ENOMEM?"Out of memory.":
+								      "Could not start up or signal server status thread.");
+						free_ar:
+						    da_free(ar);
+						}
+					    }
+					}
+					else
+					    print_serr(rs,"Bad command.");
 
-						    if (!(sl->domain=malloc(sz))) {
-							    print_serr(rs,"Out of memory.");
-							    goto free_sla_names_break;
-						    }
-						    memcpy(sl->domain,rhn,sz);
-						    sl->exact=0;
-						    sl->rule=tp;
-						    p = q+1;
-					    }
-				    }
-				    if(empty_cache(sla))
-					    print_succ(rs);
-				    else
-					    print_serr(rs,"Could not lock the cache.");
-			    free_sla_names_break:
-				    free_slist_array(sla);
-			    free_names_break:
-				    free(names);
+				free_dnsaddr_label_break:
+					free(dnsaddr);
+				free_label_break:
+					free(label);
+				}
+					break;
+				case CTL_RECORD: {
+					uint16_t cmd2;
+					unsigned char name[256],buf[256];
+					DEBUG_MSG("Received RECORD command.\n");
+					if (!read_short(rs,&cmd2))
+						goto incomplete_command;
+					if (read_domain(rs, charp buf, sizeof(buf))<=0)
+						goto incomplete_command;
+					if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
+						goto bad_domain_name;
+					switch (cmd2) {
+					case CTL_R_DELETE:
+						del_cache(name);
+						print_succ(rs);
+						break;
+					case CTL_R_INVAL:
+						invalidate_record(name);
+						print_succ(rs);
+						break;
+					default:
+						print_serr(rs,"Bad command.");
+					}
+				}
+					break;
+				case CTL_SOURCE: {
+					uint32_t ttl;
+					char *fn;
+					uint16_t servaliases,flags;
+					unsigned char buf[256],owner[256];
+
+					DEBUG_MSG("Received SOURCE command.\n");
+					if (read_allocstring(rs,&fn,NULL)<=0) {
+						print_serr(rs,"Bad filename name.");
+						break;
+					}
+					if (read_domain(rs, charp buf, sizeof(buf))<=0 ||
+					    !read_long(rs,&ttl) ||
+					    !read_short(rs,&servaliases) ||	/* serve aliases */
+					    !read_short(rs,&flags))		/* caching flags */
+					{
+						print_serr(rs,"Malformed or incomplete command.");
+						goto free_fn;
+					}
+					if ((errmsg=parsestr2rhn(buf,sizeof(buf),owner))!=NULL) {
+						print_serr(rs,errmsg);
+						goto free_fn;
+					}
+					if (ttl < 0) {
+						print_serr(rs, "Bad TTL.");
+						goto free_fn;
+					}
+					{
+						char *errmsg;
+						if (read_hosts(fn,owner,ttl,flags,servaliases,&errmsg))
+							print_succ(rs);
+						else {
+							print_serr(rs,errmsg?:"Out of memory.");
+							free(errmsg);
+						}
+					}
+				free_fn:
+					free(fn);
+				}
+					break;
+				case CTL_ADD: {
+					uint32_t ttl;
+					unsigned sz;
+					uint16_t tp,flags,nadr=0;
+					unsigned char name[256],buf[256],dbuf[260];
+					size_t adrbufsz=0;
+					unsigned char *adrbuf=NULL;
+
+					DEBUG_MSG("Received ADD command.\n");
+					if (!read_short(rs,&tp))
+						goto incomplete_command;
+					if (read_domain(rs, charp buf, sizeof(buf))<=0)
+						goto incomplete_command;
+					if (!read_long(rs,&ttl))
+						goto incomplete_command;
+					if (!read_short(rs,&flags))	/* caching flags */
+						goto incomplete_command;
+					if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL)
+						goto bad_domain_name;
+					if (ttl < 0)
+						goto bad_ttl;
+
+					switch (tp) {
+					case T_A:
+						sz=sizeof(struct in_addr);
+    #if ALLOW_LOCAL_AAAA
+						goto read_adress_list;
+					case T_AAAA:
+						sz=sizeof(struct in6_addr);
+					read_adress_list:
+    #endif
+						if (!read_short(rs,&nadr))
+							goto incomplete_command;
+						if (!nadr)
+							goto bad_arg;
+						adrbufsz= nadr * (size_t)sz;
+						adrbuf= malloc(adrbufsz);
+						if(!adrbuf)
+							goto out_of_memory;
+						{
+							size_t nread=0;
+							while(nread<adrbufsz) {
+								ssize_t m=read(rs,adrbuf+nread,adrbufsz-nread);
+								if(m<=0) {free(adrbuf); goto bad_arg;}
+								nread += m;
+							}
+						}
+						break;
+					case T_CNAME:
+					case T_PTR:
+					case T_NS:
+						if (read_domain(rs, charp buf, sizeof(buf))<=0)
+							goto incomplete_command;
+						if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf))!=NULL)
+							goto bad_domain_name;
+						sz=rhnlen(dbuf);
+						break;
+					case T_MX:
+						if (read(rs,dbuf,2)!=2)
+							goto bad_arg;
+						if (read_domain(rs, charp buf, sizeof(buf))<=0)
+							goto incomplete_command;
+						if ((errmsg=parsestr2rhn(buf,sizeof(buf),dbuf+2))!=NULL)
+							goto bad_domain_name;
+						sz=rhnlen(dbuf+2)+2;
+						break;
+					default:
+						goto bad_arg;
+					}
+					{
+						dns_cent_t cent;
+
+						if (!init_cent(&cent, name, 0, 0, flags  DBG1)) {
+							free(adrbuf);
+							goto out_of_memory;
+						}
+						if(adrbuf) {
+							unsigned char *adrp; int i;
+							for(adrp=adrbuf,i=0; i<nadr; adrp += sz,++i) {
+								if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,adrp  DBG1)) {
+									free_cent(&cent  DBG1);
+									free(adrbuf);
+									goto out_of_memory;
+								}
+							}
+							free(adrbuf);
+						}
+						else if (!add_cent_rr(&cent,tp,ttl,0,CF_LOCAL,sz,dbuf  DBG1)) {
+							free_cent(&cent  DBG1);
+							goto out_of_memory;
+						}
+
+						if(cent.qname[0]==1 && cent.qname[1]=='*') {
+							/* Wild card record.
+							   Set the DF_WILD flag for the name with '*.' removed. */
+							if(!set_cent_flags(&cent.qname[2],DF_WILD)) {
+								print_serr(rs,
+									   "Before defining records for a name with a wildcard"
+									   " you must first define some records for the name"
+									   " with '*.' removed.");
+								goto cleanup_cent;
+							}
+						}
+
+						add_cache(&cent);
+						print_succ(rs);
+					cleanup_cent:
+						free_cent(&cent  DBG1);
+					}
+				}
+					break;
+				case CTL_NEG: {
+					uint32_t ttl;
+					uint16_t tp;
+					unsigned char name[256],buf[256];
+
+					DEBUG_MSG("Received NEG command.\n");
+					if (read_domain(rs, charp buf, sizeof(buf))<=0)
+						goto incomplete_command;
+					if (!read_short(rs,&tp))
+						goto incomplete_command;
+					if (!read_long(rs,&ttl))
+						goto incomplete_command;
+					if ((errmsg=parsestr2rhn(buf,sizeof(buf),name))!=NULL) {
+						DEBUG_MSG("NEG: received bad domain name.\n");
+						goto bad_domain_name;
+					}
+					if (tp!=255 && (tp<T_MIN || tp>T_MAX)) {
+						DEBUG_MSG("NEG: received bad record type.\n");
+						print_serr(rs,"Bad record type.");
+						break;
+					}
+					if (ttl < 0)
+						goto bad_ttl;
+					{
+						dns_cent_t cent;
+
+						if (tp==255) {
+							if (!init_cent(&cent, name, ttl, 0, DF_LOCAL|DF_NEGATIVE  DBG1))
+								goto out_of_memory;
+						} else {
+							if (!init_cent(&cent, name, 0, 0, 0  DBG1))
+								goto out_of_memory;
+							if (!add_cent_rrset(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE  DBG1)) {
+								free_cent(&cent  DBG1);
+								goto out_of_memory;
+							}
+						}
+						add_cache(&cent);
+						free_cent(&cent DBG1);
+					}
+					print_succ(rs);
+				}
+					break;
+				case CTL_CONFIG: {
+					char *fn,*errmsg;
+					DEBUG_MSG("Received CONFIG command.\n");
+					if (!read_allocstring(rs,&fn,NULL)) {
+						print_serr(rs,"Bad filename name.");
+						break;
+					}
+					if (reload_config_file(fn,&errmsg))
+						print_succ(rs);
+					else {
+						print_serr(rs,errmsg?:"Out of memory.");
+						free(errmsg);
+					}
+					free(fn);
+				}
+					break;
+				case CTL_INCLUDE: {
+					char *fn,*errmsg;
+					DEBUG_MSG("Received INCLUDE command.\n");
+					if (read_allocstring(rs,&fn,NULL)<=0) {
+						print_serr(rs,"Bad filename name.");
+						break;
+					}
+					if (read_config_file(fn,NULL,NULL,0,&errmsg))
+						print_succ(rs);
+					else {
+						print_serr(rs,errmsg?:"Out of memory.");
+						free(errmsg);
+					}
+					free(fn);
+				}
+					break;
+				case CTL_EVAL: {
+					char *str,*errmsg;
+					DEBUG_MSG("Received EVAL command.\n");
+					if (!read_allocstring(rs,&str,NULL)) {
+						print_serr(rs,"Bad input string.");
+						break;
+					}
+					if (confparse(NULL,str,NULL,NULL,0,&errmsg))
+						print_succ(rs);
+					else {
+						print_serr(rs,errmsg?:"Out of memory.");
+						free(errmsg);
+					}
+					free(str);
+				}
+					break;
+				case CTL_EMPTY: {
+					slist_array sla=NULL;
+					char *names; unsigned len;
+
+					DEBUG_MSG("Received EMPTY command.\n");
+					if (!read_allocstring(rs,&names,&len)) {
+						print_serr(rs,"Bad arguments.");
+						break;
+					}
+					if(names) {
+						char *p=names, *last=names+len;
+
+						while(p<last) {
+							int tp;
+							char *q;
+							slist_t *sl;
+							unsigned sz;
+							unsigned char rhn[256];
+
+							if(*p=='-') {
+								tp=C_EXCLUDED;
+								++p;
+							}
+							else {
+								tp=C_INCLUDED;
+								if(*p=='+') ++p;
+							}
+							/* skip a possible leading dot. */
+							if(p+1<last && *p=='.' && *(p+1)) ++p;
+							q=p;
+							while(q<last && *q) ++q;
+							if ((errmsg=parsestr2rhn(ucharp p,q-p,rhn))!=NULL) {
+								DEBUG_MSG("EMPTY: received bad domain name: %s\n",p);
+								print_serr(rs,errmsg);
+								goto free_sla_names_break;
+							}
+							sz=rhnlen(rhn);
+							if (!(sla=DA_GROW1_F(sla,free_slist_domain))) {
+								print_serr(rs,"Out of memory.");
+								goto free_names_break;
+							}
+							sl=&DA_LAST(sla);
+
+							if (!(sl->domain=malloc(sz))) {
+								print_serr(rs,"Out of memory.");
+								goto free_sla_names_break;
+							}
+							memcpy(sl->domain,rhn,sz);
+							sl->exact=0;
+							sl->rule=tp;
+							p = q+1;
+						}
+					}
+					if(empty_cache(sla))
+						print_succ(rs);
+					else
+						print_serr(rs,"Could not lock the cache.");
+				free_sla_names_break:
+					free_slist_array(sla);
+				free_names_break:
+					free(names);
+				}
+					break;
+				case CTL_DUMP: {
+					int rv,exact=0;
+					unsigned char *nm=NULL;
+					char buf[256];
+					unsigned char rhn[256];
+					DEBUG_MSG("Received DUMP command.\n");
+					if (!(rv=read_domain(rs,buf,sizeof(buf)))) {
+						print_serr(rs,"Bad domain name.");
+						break;
+					}
+					if(rv>0) {
+						int sz;
+						exact=1; nm= ucharp buf; sz=sizeof(buf);
+						if(buf[0]=='.' && buf[1]) {
+							exact=0; ++nm; --sz;
+						}
+						if ((errmsg=parsestr2rhn(nm,sz,rhn))!=NULL)
+							goto bad_domain_name;
+						nm=rhn;
+					}
+					if(!print_succ(rs))
+						break;
+					if((rv=dump_cache(rs,nm,exact))<0 ||
+					   (!rv && fsprintf(rs,"Could not find %s%s in the cache.\n",
+							    exact?"":nm?"any entries matching ":"any entries",
+							    nm?buf:"")<0))
+					{
+						DEBUG_MSG("Error writing to control socket: %s\n",strerror(errno));
+					}
+				}
+					break;
+				incomplete_command:
+					print_serr(rs,"Malformed or incomplete command.");
+					break;
+				bad_arg:
+					print_serr(rs,"Bad arg.");
+					break;
+				bad_domain_name:
+					print_serr(rs,errmsg);
+					break;
+				bad_ttl:
+					print_serr(rs, "Bad TTL.");
+					break;
+				out_of_memory:
+					print_serr(rs,"Out of memory.");
+					break;
+				default:
+					print_serr(rs,"Unknown command.");
+				}
 			    }
-				    break;
-			    case CTL_DUMP: {
-				    int rv,exact=0;
-				    unsigned char *nm=NULL;
-				    char buf[256];
-				    unsigned char rhn[256];
-				    DEBUG_MSG("Received DUMP command.\n");
-				    if (!(rv=read_domain(rs,buf,sizeof(buf)))) {
-					    print_serr(rs,"Bad domain name.");
-					    break;
-				    }
-				    if(rv>0) {
-					    int sz;
-					    exact=1; nm= ucharp buf; sz=sizeof(buf);
-					    if(buf[0]=='.' && buf[1]) {
-						    exact=0; ++nm; --sz;
-					    }
-					    if ((errmsg=parsestr2rhn(nm,sz,rhn))!=NULL)
-						    goto bad_domain_name;
-					    nm=rhn;
-				    }
-				    if(!print_succ(rs))
-					    break;
-				    if((rv=dump_cache(rs,nm,exact))<0 ||
-				       (!rv && fsprintf(rs,"Could not find %s%s in the cache.\n",
-							exact?"":nm?"any entries matching ":"any entries",
-							nm?buf:"")<0))
-				    {
-					    DEBUG_MSG("Error writing to control socket: %s\n",strerror(errno));
-				    }
-			    }
-				    break;
-			    incomplete_command:
-				    print_serr(rs,"Malformed or incomplete command.");
-				    break;
-			    bad_arg:
-				    print_serr(rs,"Bad arg.");
-				    break;
-			    bad_domain_name:
-				    print_serr(rs,errmsg);
-				    break;
-			    bad_ttl:
-				    print_serr(rs, "Bad TTL.");
-				    break;
-			    out_of_memory:
-				    print_serr(rs,"Out of memory.");
-				    break;
-			    default:
-				    print_serr(rs,"Unknown command.");
+			    else {
+				    DEBUG_MSG("Incorrect magic number in status-socket command code: %02x\n",cmd>>8);
+				    print_serr(rs,"Command code contains incompatible version number.");
 			    }
 			}
 			else {
-				DEBUG_MSG("short status socket query");
+				DEBUG_MSG("short status-socket query\n");
 				print_serr(rs,"Command code missing or too short.");
 			}
 			close(rs);

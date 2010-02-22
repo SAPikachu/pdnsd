@@ -17,6 +17,7 @@ global {
 	min_ttl=15m;       # Retain cached entries at least 15 minutes.
 	max_ttl=1w;        # One week.
 	timeout=10;        # Global timeout option (10 seconds).
+	neg_domain_pol=on;
 }
 
 # The following section is most appropriate if you have a fixed connection to
@@ -47,7 +48,7 @@ server {
 	timeout=4;
 	uptest=if;
 	interface = ppp0;
-	interval=10;       # Check if the interface every 10 seconds.
+	interval=10;       # Check the interface every 10 seconds.
 	purge_cache=off;
 	preset=off;
 }
@@ -80,23 +81,12 @@ server {
 # This section is meant for resolving from root servers.
 server {
 	label = "root-servers";
-	root_server = on;
+	root_server = discover; # Query the name servers listed below
+				# to obtain a full list of root servers.
 	randomize_servers = on; # Give every root server an equal chance
-				# of being queried.
-	ip = 	198.41.0.4
-	,	192.228.79.201
-	,	192.33.4.12
-	,	128.8.10.90
-	,	192.203.230.10
-	,	192.5.5.241
-	,	192.112.36.4
-	,	128.63.2.53
-	,	192.36.148.17
-	,	192.58.128.30
-	,	193.0.14.129
-	,	198.32.64.12
-	,	202.12.27.33
-	;
+	                        # of being queried.
+	ip = 	198.41.0.4,     # This list will be expanded to the full
+		192.228.79.201; # list on start up.
 	timeout = 5;
 	uptest = query;         # Test availability using empty DNS queries.
 	interval = 30m;         # Test every half hour.

@@ -1,7 +1,7 @@
 /* dns.c - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -573,9 +573,9 @@ void debug_dump_dns_msg(pdnsd_a *a, void *data, size_t len)
 
 		DEBUG_MSG(
 			"id=%04x qr=%x opcode=%x aa=%x tc=%x rd=%x "
-			"ra=%x z2=%x au=%x z1=%x rcode=%x\n",
+			"ra=%x z=%x ad=%x cd=%x rcode=%x\n",
 			ntohs(hdr->id), hdr->qr, hdr->opcode, hdr->aa, hdr->tc, hdr->rd,
-			hdr->ra, hdr->z2, hdr->au, hdr->z1, hdr->rcode);
+			hdr->ra, hdr->z, hdr->ad, hdr->cd, hdr->rcode);
 		DEBUG_MSG(
 			"qdcount=%04x ancount=%04x nscount=%04x arcount=%04x\n",
 			ntohs(hdr->qdcount), ntohs(hdr->ancount), ntohs(hdr->nscount), ntohs(hdr->arcount));

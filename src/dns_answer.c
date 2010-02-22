@@ -1,7 +1,7 @@
 /* dns_answer.c - Receive and process incoming dns queries.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -239,7 +239,7 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		/* This buffer is over-allocated usually due to compression. Never mind, just a few bytes,
 		 * and the buffer is freed soon*/
 		{
-			dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(*ans,ansoffset+*sz+nlen+sizeof(rr_hdr_t)+dlen);
+			dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(*ans,ansoffset+*sz+nlen+sizeof_rr_hdr_t+dlen);
 			if (!nans)
 				return 0;
 			*ans=nans;
@@ -250,7 +250,7 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 
 	/* the rr header will be filled in later. Just reserve some space for it. */
 	rrht=((unsigned char *)(&(*ans)->hdr))+(*sz);
-	*sz+=sizeof(rr_hdr_t);
+	*sz+=sizeof_rr_hdr_t;
 	
 	switch (type) {
 	case T_CNAME:
@@ -532,8 +532,9 @@ static int add_rrset(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned tp,
 static int add_to_response(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned qtype, time_t queryts,
 			   dns_cent_t *cached, char udp, dlist *cb, dlist *sva, dlist *ar)
 {
-	/* first of all, add cnames. Well, actually, there should be at max one in the record. */
-	if (qtype!=T_CNAME && qtype!=QT_ALL)
+	/* First of all, unless we have records of qtype, add cnames.
+	   Well, actually, there should be at max one cname. */
+	if (qtype!=T_CNAME && qtype!=QT_ALL && !(qtype>=T_MIN && qtype<=T_MAX && have_rr(cached,qtype)))
 		if (!add_rrset(ans, sz, rrn, T_CNAME, queryts, cached, udp, cb, sva, ar))
 			return 0;
 
@@ -564,11 +565,11 @@ static int add_to_response(dns_ans_t **ans, long *sz, unsigned char *rrn, unsign
 			if (!add_rrset(ans, sz, rrn, i, queryts, cached, udp, cb, sva, ar))
 				return 0;
 		}
-	} else {
-		/* Unsupported elements have been filtered.*/
+	} else if (qtype>=T_MIN && qtype<=T_MAX) {
 		if (!add_rrset(ans, sz, rrn, qtype, queryts, cached, udp, cb, sva, ar))
 			return 0;
-	}
+	} else /* Shouldn't get here. */
+		return 0;
 #if 0
 	if (!ntohs((*ans)->hdr.ancount)) {
 		/* Add a SOA if we have one and no other records are present in the answer.
@@ -689,9 +690,9 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 	ans->hdr.tc=0; /* If tc is needed, it is set when the response is sent in udp_answer_thread. */
 	ans->hdr.rd=hdr->rd;
 	ans->hdr.ra=1;
-	ans->hdr.z1=0;
-	ans->hdr.au=0;
-	ans->hdr.z2=0;
+	ans->hdr.z=0;
+	ans->hdr.ad=0;
+	ans->hdr.cd=0;
 	ans->hdr.rcode=RC_OK;
 	ans->hdr.qdcount=0; /* this is first filled in and will be modified */
 	ans->hdr.ancount=0;
@@ -769,9 +770,11 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 
 			if (!add_to_response(&ans,rlen,qname,qe->qtype,queryts,cached,udp,&cb,&sva,&ar))
 				goto error_cached;
-			if (hdr->rd && qe->qtype!=T_CNAME && qe->qtype!=QT_ALL && follow_cname_chain(cached,qname))
-				/* The rd bit is set and the response contains a cname (while a different type was requested),
-				 * so repeat the inquiry with the cname.
+			if (hdr->rd && qe->qtype!=T_CNAME && qe->qtype!=QT_ALL &&
+			    !(qe->qtype>=T_MIN && qe->qtype<=T_MAX && have_rr(cached,qe->qtype)) &&
+			    follow_cname_chain(cached,qname))
+				/* The rd bit is set and the response does not contain records of the requested type,
+				 * but the response does contain a cname, so repeat the inquiry with the cname.
 				 * add_to_response() has already added the cname to the response.
 				 * Because of follow_cname_chain(), qname now contains the last cname in the chain. */
 				;
@@ -946,9 +949,9 @@ static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned sho
 	rep->tc=0;
 	rep->rd=0;
 	rep->ra=1;
-	rep->z1=0;
-	rep->au=0;
-	rep->z2=0;
+	rep->z=0;
+	rep->ad=0;
+	rep->cd=0;
 	rep->rcode=rescode;
 	rep->qdcount=0;
 	rep->ancount=0;
@@ -996,8 +999,13 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 		res=RC_NOTSUPP;
 		goto error_reply;
 	}
-	if (hdr->z1!=0 || hdr->z2!=0) {
-		DEBUG_MSG("Malformed query (nonzero Z bits).\n");
+	if (hdr->z!=0) {
+		DEBUG_MSG("Malformed query (nonzero Z bit).\n");
+		res=RC_FORMAT;
+		goto error_reply;
+	}
+	if (!global.ignore_cd && hdr->cd!=0) {
+		DEBUG_MSG("Malformed query (nonzero CD bit and ignore_cd=off).\n");
 		res=RC_FORMAT;
 		goto error_reply;
 	}

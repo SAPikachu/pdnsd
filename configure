@@ -856,7 +856,7 @@ Optional Features:
                               (default=IPv4)
   --disable-udp-queries       Disable udp as query method.
   --disable-tcp-queries       Disable tcp as query method.
-  --disable-tcp-server        Enable the TCP serving ability of pdnsd
+  --disable-tcp-server        Disable the TCP serving ability of pdnsd
   --disable-src-addr-disc     Disable the UDP source address discovery
   --enable-socket-locking     Enable the UDP socket locking
   --disable-poll              Disable poll(2) and use select(2)
@@ -864,13 +864,12 @@ Optional Features:
   --disable-new-rrs           Disable new DNS RR types, may cause problems
                               with some resolvers
   --enable-strict-rfc2181     Enforce strict RFC 2181 compliance
-  --enable-underscores        Allow _ in domain names
+  --enable-underscores        Allow _ in domain names (obsolete, currently ignored)
   --enable-hash-debug         Debug hash tables (warning: massive output)
-  --enable-yy-debug           Debug config file parser
   --enable-rcsids             Enable RCS IDs in executables (default=disabled)
   --enable-tcp-subseq         Enable multiple dns querys using one
                               tcp connection
-  --enable-specbuild          Only used when build pdnsd from spec files
+  --enable-specbuild          Only used when building pdnsd from spec files
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
 
@@ -2150,15 +2149,6 @@ if test "${enable_hash_debug+set}" = set; then
   enableval="$enable_hash_debug"
   test $enableval = "yes" && cat >>confdefs.h <<\_ACEOF
 #define DEBUG_HASH 1
-_ACEOF
-
-fi;
-
-# Check whether --enable-yy-debug or --disable-yy-debug was given.
-if test "${enable_yy_debug+set}" = set; then
-  enableval="$enable_yy_debug"
-  test $enableval = "yes" && cat >>confdefs.h <<\_ACEOF
-#define DEBUG_YY 1
 _ACEOF
 
 fi;

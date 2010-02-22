@@ -95,10 +95,10 @@ others.
 Additional info:
 1) put these lines in the /etc/rc.d/rc.M:
 	if [ -x /etc/rc.d/rc.pdnsd ]; then
-		. /etc/rc.d/rc.pdnsd start
+		/etc/rc.d/rc.pdnsd start
 	fi
 
 2) put these lines in the /etc/rc.d/rc.6 and /etc/rc.d/rc.K:
 	if [ -x /etc/rc.d/rc.pdnsd ]; then
-		. /etc/rc.d/rc.pdnsd stop
+		/etc/rc.d/rc.pdnsd stop
 	fi

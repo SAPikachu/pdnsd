@@ -42,7 +42,7 @@ void thread_sig(int sig);
  * are needed because the LinuxThreads implementation obviously has some
  * problems in signal handling, which makes the recommended solution (doing
  * sigwait() in one thread and blocking the signals in all threads) impossible.
- * So, for Linux, we have to install the fatal_sig handler. 
+ * So, for Linux, we have to install the fatal_sig handler.
  * It seems to me that signal handlers in fact aren't shared between threads
  * under Linux. Also, sigwait() does not seem to work as indicated in the docs */
 
@@ -106,9 +106,11 @@ void thread_sig(int sig);
 #endif
 
 
-/* This is a thread-safe usleep(). 
+/* This is a thread-safe usleep().
    Implementation of the BSD usleep function using nanosleep.
 */
+inline static int usleep_r(unsigned long useconds)
+  __attribute__((always_inline));
 inline static int usleep_r(unsigned long useconds)
 {
   struct timespec ts = { tv_sec: (useconds / 1000000),
@@ -122,12 +124,14 @@ inline static int usleep_r(unsigned long useconds)
    but it suits our purposes.
 */
 inline static int sleep_r (unsigned int seconds)
+  __attribute__((always_inline));
+inline static int sleep_r (unsigned int seconds)
 {
   struct timespec ts = { tv_sec: seconds, tv_nsec: 0 };
 
   return nanosleep(&ts, NULL);
 }
-  
+
 
 /* Used for creating detached threads */
 extern pthread_attr_t attr_detached;

@@ -1,7 +1,7 @@
 /* pdnsd-ctl.c - Control pdnsd through a pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -225,11 +225,17 @@ static const char *help_messages[] =
 
 #define num_help_messages (sizeof(help_messages)/sizeof(char*))
 
-static int open_sock(const char *cache_dir)
+
+/* Open connection to control socket and send command code.
+   If successful, open_sock returns a file descriptor for the new socket,
+   otherwise the program is aborted.
+*/
+static int open_sock(const char *cache_dir, uint16_t cmd)
 {
 	struct sockaddr_un *sa;
 	unsigned int sa_len;
 	int sock;
+	uint16_t nc;
 
 	if ((sock=socket(PF_UNIX,SOCK_STREAM,0))==-1) {
 		perror("Error: could not open socket");
@@ -247,6 +253,16 @@ static int open_sock(const char *cache_dir)
 		exit(2);
 	}
 	if(verbose) printf("Opening socket %s\n",sa->sun_path);
+
+	/* Send command code */
+
+	nc=htons(cmd|CTL_CMDVERNR); /* Add magic number, convert to network byte order. */
+
+	if (write(sock,&nc,sizeof(nc))!=sizeof(nc)) {
+		perror("Error: could not write command code");
+		exit(2);
+	}
+
 	return sock;
 }
 
@@ -388,8 +404,7 @@ int main(int argc, char *argv[])
 		case CTL_STATS:
 			if (argc!=1)
 				goto wrong_args;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			goto copy_pf;
 
 		case CTL_SERVER: {
@@ -399,8 +414,7 @@ int main(int argc, char *argv[])
 			acnt=2;
 			server_cmd=match_cmd(argv[2],server_cmds);
 			if(server_cmd==-1) goto bad_arg;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argv[1]);
 			send_short(pf,server_cmd);
 			send_string(pf,argc<4?NULL:argv[3]);
@@ -414,8 +428,7 @@ int main(int argc, char *argv[])
 			acnt=2;
 			record_cmd=match_cmd(argv[2],record_cmds);
 			if(record_cmd==-1) goto bad_arg;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_short(pf,record_cmd);
 			send_string(pf,argv[1]);
 		}
@@ -448,8 +461,7 @@ int main(int argc, char *argv[])
 				else
 					goto bad_arg;
 			}
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argv[1]);
 			send_string(pf,argv[2]);
 			send_long(pf,ttl);
@@ -577,8 +589,7 @@ int main(int argc, char *argv[])
 					break;
 				}
 
-				pf=open_sock(cache_dir);
-				send_short(pf,cmd);
+				pf=open_sock(cache_dir, cmd);
 				send_short(pf,tp);
 				send_string(pf,argv[3]);
 				send_long(pf,ttl);
@@ -636,8 +647,7 @@ int main(int argc, char *argv[])
 					goto bad_arg;
 				}
 			}
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argv[1]);
 			send_short(pf,tp);
 			send_long(pf,ttl);
@@ -647,16 +657,14 @@ int main(int argc, char *argv[])
 		case CTL_CONFIG:
 			if (argc>2)
 				goto wrong_args;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argc<2?NULL:argv[1]);
 			goto read_retval;
 
 		case CTL_INCLUDE:
 			if (argc!=2)
 				goto wrong_args;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argv[1]);
 			goto read_retval;
 
@@ -665,8 +673,7 @@ int main(int argc, char *argv[])
 
 			if (argc<2)
 				goto wrong_args;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			bufsz=0;
 			for(i=1;i<argc;++i)
 				bufsz += strlen(argv[i])+1;
@@ -689,8 +696,7 @@ int main(int argc, char *argv[])
 			goto read_retval;
 
 		case CTL_EMPTY:
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			if(argc>1) {
 				int i; size_t totsz=0;
 				for(i=1;i<argc;++i)
@@ -713,12 +719,11 @@ int main(int argc, char *argv[])
 		case CTL_DUMP:
 			if (argc>2)
 				goto wrong_args;
-			pf=open_sock(cache_dir);
-			send_short(pf,cmd);
+			pf=open_sock(cache_dir, cmd);
 			send_string(pf,argc<2?NULL:argv[1]);
+		copy_pf:
 			if((rv=read_short(pf)))
 				goto retval_failed;
-		copy_pf:
 			if(copymsgtofile(pf,stdout)<0) {
 				perror("Error while reading from socket");
 				exit(2);

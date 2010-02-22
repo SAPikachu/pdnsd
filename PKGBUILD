@@ -2,7 +2,7 @@
 # contributed by Alexander Drozdov.
 
 pkgname=pdnsd
-pkgver=1.2.7
+pkgver=1.2.8
 pkgrel=1
 pkgdesc="pdnsd is a proxy DNS server with permanent caching (the cache contents are written to hard disk on exit) that is designed to cope with unreachable or down DNS servers."
 url="http://www.phys.uu.nl/~rombouts/pdnsd.html"

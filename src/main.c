@@ -519,8 +519,13 @@ int main(int argc,char *argv[])
 			log_error("Could not become a daemon: fork #1 failed: %s",strerror(errno));
 			exit(1);
 		}
-		if (pid!=0)
+		if (pid!=0) {
+			/* This is the parent.
+			   The child is going to do another fork() and will exit quickly.
+			   Perhaps we should wait for the child and return
+			   its exit status? */
 			exit(0); /* exit parent */
+		}
 		/* dissociate from controlling terminal */
 		if (setsid()==-1) {
 			log_error("Could not become a daemon: setsid failed: %s",strerror(errno));
@@ -534,23 +539,15 @@ int main(int argc,char *argv[])
 		if (pid!=0) {
 			int exitval=0;
 			if (global.pidfile) {
-				FILE *pf=fdopen(pfd,"w");
-				if (!pf) {
-					log_error("Error: could not open pid file %s: %s",
+				if(fsprintf(pfd,"%i\n",pid)<0) {
+					log_error("Error: could not write to pid file %s: %s",
 						  global.pidfile, strerror(errno));
 					exitval=1;
 				}
-				else {
-					if(fprintf(pf,"%i\n",pid)<0) {
-						log_error("Error: could not write to pid file %s: %s",
-							  global.pidfile, strerror(errno));
-						exitval=1;
-					}
-					if(fclose(pf)<0) {
-						log_error("Error: could not close pid file %s: %s",
-							  global.pidfile, strerror(errno));
-						exitval=1;
-					}
+				if(close(pfd)<0) {
+					log_error("Error: could not close pid file %s: %s",
+						  global.pidfile, strerror(errno));
+					exitval=1;
 				}
 			}
 			_exit(exitval); /* exit parent, so we are no session group leader */

@@ -1,7 +1,7 @@
 /* helpers.c - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2008 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -503,7 +503,10 @@ unsigned short get_rand16()
 #endif
 }
 
-/* the following function has been rewritten by Paul Rombouts */
+/* fsprintf does formatted output to a file descriptor.
+   The functionality is similar to fprintf, but note that fd
+   is of type int instead of FILE*.
+   This function has been rewritten by Paul Rombouts */
 int fsprintf(int fd, const char *format, ...)
 {
 	int n;

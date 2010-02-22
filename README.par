@@ -1,4 +1,4 @@
-	        pdnsd version 1.2.7-par by Paul Rombouts
+	        pdnsd version 1.2.8-par by Paul Rombouts
                 ========================================
 
 This file describes the version of pdnsd that I maintain personally and am
@@ -28,6 +28,8 @@ Version 1.2.7 contains an important fix for a "dangling pointer" bug and
 attempts to make pdnsd less vulnerable to the issues raised in CERT
 vulnerability note VU#800113. It also contains some improvements for defining
 local records interactively using the pdnsd-ctl utility.
+The main new feature of version 1.2.8 is automatic discovery of root servers,
+as well as some minor improvements in the resolver.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -180,6 +182,14 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   The new "pdnsd-ctl eval" command can be used to interactively define local
   records that could previously only be defined in configuration files but not
   with the "pdnsd-ctl add" command.
+
+- Version 1.2.8 contains support for automatic discovery of root servers.
+  Instead of supplying a complete list of IP addresses of root servers in a
+  server section of the configuration file, you need only enter one or two
+  addresses of name servers which know the names and addresses of the root
+  servers and set "root_server=discover".
+  The "neg_rrs_pol" option has a new default setting, which should allow
+  sensible negative caching of RRs in most situations, even if "proxy_only=on".
 
 The new features are described in greater detail in the manual doc/html/doc.html
 or doc/txt/manual.txt.

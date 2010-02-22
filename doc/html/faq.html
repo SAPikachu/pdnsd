@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>The pdnsd FAQ</title>
+    <meta http-equiv="Content-type" content="text/html; charset=ISO-8859-1">
     <style type="text/css">
       <!--
       .small { font-family:helvetica; font-size:small; text-align:center; }
@@ -143,7 +144,7 @@
 	  same host on another port and cache it with pdnsd in addition to other (more
 	  distant) name servers.
 	  <br>
-	  The <code>source</code> source section allows you to let pdnsd read in your 
+	  The <code>source</code> section allows you to let pdnsd read in your 
 	  <code>/etc/hosts</code> file on startup and serve its contents. This file is used by your local 
 	  resolver before it even  tries the name servers and usually contains 
 	  fully-qualified domain names (FQDNs) for all of the internet addresses your host has. 
@@ -329,7 +330,7 @@
         <td bgcolor="#FFCCFF"><b>Q:</b></td>
 	<td bgcolor="#CCFFFF">
 	  I am behind some kind of firewall. In the configuration file
-	  I have only listed addresses of name servers on the local (ISP's) netwerk,
+	  I have only listed addresses of name servers on the local (ISP's) network,
 	  but pdnsd is slow and DNS queries frequently time out.
 	</td>
       </tr>

@@ -8,7 +8,7 @@ the Free Software Foundation; either version 3, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.7-par. For older documentation,
+This manual is up-to-date for version 1.2.8-par. For older documentation,
 please refer to the doc directory of the respective pdnsd package.
 A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
 setup instructions) is available at http://www.geocities.com/sunil_tt/. For
@@ -645,14 +645,17 @@ whole domains are being cached negatively, and additionally when record types
 are cached negatively for a domain for which no SOA record is known to pdnsd.
 If a SOA is present, the ttl of the SOA is taken.
 
-neg_rrs_pol=(on|off|auth);
+neg_rrs_pol=(on|off|auth|default);
 This sets the RR set policy for negative caching; this tells pdnsd under which
 circumstances it should cache a record type negatively for a certain domain.
 off will turn the negative caching of record types off, on will always add a
 negative cache entry when a name server did not return a record type we asked
 it for, and auth will only add such entries if the answer came from an
-authoritative name server for that domain. The preset is auth. This is normally
-the right thing, as some caching servers behave strangely.
+authoritative name server for that domain.
+New in version 1.2.8: The default setting will add a negatively cached record
+if either the answer was authoritive or the answer indicated the name server
+had "recursion available" while the query explicitly requested such recursion.
+The preset is "default" (used to be auth).
 
 neg_domain_pol=(on|off|auth);
 This is analogue to neg_rrs_pol for whole domain negative caching. It should be
@@ -715,6 +718,15 @@ This vulnerability is not pdnsd's fault, and is possible using any conventional
 name server (pdnsd is perhaps a little more secured against this type of
 attacks if you make it use TCP).
 The paranoid option is off by default.
+
+ignore_cd=(on|off);
+New in version 1.2.8: This option lets you specify that the CD bit of a DNS
+query will be ignored. Otherwise pdnsd will reply FORMERR to clients that set
+this bit in a query. It is safe to enable this option, as the CD bit refers to
+'Checking Disabled' which means that the client will accept non-authenticated
+data.
+This option is on by default. Turn it off if you want the old behaviour (before
+version 1.2.8).
 
 scheme_file=string;
 In addition to normal uptests, you may specify that some servers shall only be
@@ -1095,10 +1107,11 @@ global section for what that means.
 purge_cache=(on|off);
 In every fetched dns record, there is a cache timeout given, which specifies
 how long the fetched data may be cached until it needs to be reloaded. If
-purge_cache is set to off, the cached records are not purged (unless the cache
+purge_cache is set to off, the stale records are not purged (unless the cache
 size would be exceeded, in this case the oldest records are purged). Instead,
 they are still served if they cannot succesfully be updated (e.g. because all
 servers are down).
+Default is off.
 
 caching=(on|off);
 Specifies if caching shall be performed for this server at all. Default is on.
@@ -1142,14 +1155,22 @@ servers for some reasons (e.g. when a firewall is blocking such queries).
 I recommend that you turn on lean_query when using this option.
 Default is off.
 
-root_server=(on|off);
-New in version 1.2: Set this option to on if the servers specified in a section
-are root servers. A root server will typically only give the name servers for
-the top-level domain in its reply. Setting root_server=on will cause pdnsd to
-try to use cached information about top-level domains to reduce to number of
-queries to root servers, making the resolving of new names more efficient. You
-can get a list of available root servers by running the command "dig . ns".
+root_server=(on|off|discover);
+Set this option to on if the servers specified in a section are root servers. A
+root server will typically only give the name servers for the top-level domain
+in its reply. Setting root_server=on will cause pdnsd to try to use cached
+information about top-level domains to reduce to number of queries to root
+servers, making the resolving of new names more efficient. You can get a list
+of available root servers by running the command "dig . ns".
 This option is also necessary if you use the delegation_only option.
+New in version 1.2.8: This option may also be set to "discover". This will
+cause pdnsd to query the servers provided with the ip= option to obtain the
+full list of root servers. The root-server addresses will replace the addresses
+specified with the ip= option. This will only be done once on startup, or after
+a "pdnsd-ctl config" command. In this case the name servers specified with the
+ip= option don't have to be root servers, they just have to know the names and
+addresses of the root servers. After root-server discovery pdnsd will behave
+just as if root_server=on had been specified.
 Default is off.
 
 randomize_servers=(on|off);
@@ -1890,5 +1911,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 Copyright (C) 2000, 2001 Thomas Moestl
 Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul Rombouts
 
-Last revised: 04 September 2008 by Paul Rombouts
+Last revised: 24 December 2009 by Paul Rombouts
 

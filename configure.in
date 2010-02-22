@@ -149,7 +149,7 @@ test $udp_queries != "yes" && AC_DEFINE(NO_UDP_QUERIES)
 test $tcp_queries != "yes" && AC_DEFINE(NO_TCP_QUERIES)
 
 AC_ARG_ENABLE(tcp-server,
-[  --disable-tcp-server        Enable the TCP serving ability of pdnsd],
+[  --disable-tcp-server        Disable the TCP serving ability of pdnsd],
   have_tcp_server=$enableval)
 
 test $have_tcp_server != "yes" && AC_DEFINE(NO_TCP_SERVER)
@@ -198,7 +198,7 @@ else
 fi
 
 AC_ARG_ENABLE(underscores,
-[  --enable-underscores        Allow _ in domain names],
+[  --enable-underscores        Allow _ in domain names (obsolete, currently ignored)],
    test $enableval = "yes" && AC_DEFINE(UNDERSCORE))
 
 AC_ARG_WITH(default-id,
@@ -234,10 +234,6 @@ AC_ARG_ENABLE(hash-debug,
 [  --enable-hash-debug         Debug hash tables (warning: massive output)],
   test $enableval = "yes" && AC_DEFINE(DEBUG_HASH))
 
-AC_ARG_ENABLE(yy-debug,
-[  --enable-yy-debug           Debug config file parser],
-  test $enableval = "yes" && AC_DEFINE(DEBUG_YY))
-
 AC_ARG_ENABLE(rcsids,
 [  --enable-rcsids             Enable RCS IDs in executables (default=disabled)],
   have_rcsids=$enableval)
@@ -258,7 +254,7 @@ AC_ARG_WITH(par-queries,
   AC_DEFINE_UNQUOTED(PAR_QUERIES, $withval))
 
 AC_ARG_ENABLE(specbuild,
-[  --enable-specbuild          Only used when build pdnsd from spec files],
+[  --enable-specbuild          Only used when building pdnsd from spec files],
   specbuild=$enableval)
 
 AC_SUBST(specbuild)

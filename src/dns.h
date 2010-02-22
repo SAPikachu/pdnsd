@@ -1,7 +1,7 @@
 /* dns.h - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -107,6 +107,9 @@
 /*
  * special internal retvals
  */
+#define RC_NOTCACHED  250
+#define RC_CACHED     251
+#define RC_STALE      252
 #define RC_TCPREFUSED 253
 #define RC_TRUNC      254
 #define RC_FATALERR   255
@@ -120,6 +123,7 @@
 #define OP_IQUERY   1
 #define OP_STATUS   2
 
+#if 0
 typedef struct {
 	/* the name is the first field. It has variable length, so it can't be put in the struct */
 	uint16_t type;
@@ -129,6 +133,13 @@ typedef struct {
 	/* rdata follows */
 } __attribute__((packed)) rr_hdr_t;
 
+#define sizeof_rr_hdr_t (sizeof rr_hdr_t)
+#else
+
+/* We will not actually use the rr_hdr_t type, only its size:
+   sizeof(rr_hdr_t) = 2 + 2 + 4 + 2 */
+#define sizeof_rr_hdr_t 10
+#endif
 
 #if 0
 typedef struct {
@@ -159,9 +170,9 @@ typedef struct {
 	unsigned int   opcode:4;
 	unsigned int   qr:1;
 	unsigned int   rcode:4;
-	unsigned int   z1:1;
-	unsigned int   au:1;
-	unsigned int   z2:1;
+	unsigned int   cd:1;
+	unsigned int   ad:1;
+	unsigned int   z :1;
 	unsigned int   ra:1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
 	unsigned int   qr:1;
@@ -170,9 +181,9 @@ typedef struct {
 	unsigned int   tc:1;
 	unsigned int   rd:1;
 	unsigned int   ra:1;
-	unsigned int   z2:1;
-	unsigned int   au:1;
-	unsigned int   z1:1;
+	unsigned int   z :1;
+	unsigned int   ad:1;
+	unsigned int   cd:1;
 	unsigned int   rcode:4;
 #else
 # error	"Please define __BYTE_ORDER to be __LITTLE_ENDIAN or __BIG_ENDIAN"

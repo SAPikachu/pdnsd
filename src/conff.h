@@ -1,7 +1,7 @@
-/* conff.h - Definiton for configuration management.
+/* conff.h - Definitions for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -51,11 +51,12 @@ extern char *conf_file;
 /* ----------- */
 
 typedef DYNAMIC_ARRAY(pdnsd_a) *addr_array;
+typedef DYNAMIC_ARRAY(pdnsd_a2) *addr2_array;
 
 typedef struct {
   time_t     i_ts;
   char       is_up;
-  pdnsd_a    a;
+  pdnsd_a2   a;
 } atup_t;
 typedef DYNAMIC_ARRAY(atup_t) *atup_array;
 
@@ -138,6 +139,7 @@ typedef struct {
 	char          strict_suid;
 	char          use_nss;
 	char          paranoid;
+	char          ignore_cd;
 	char          lndown_kluge;
 	char	      onquery;
 	char          rnd_recs;
@@ -155,7 +157,10 @@ typedef struct {
 } globparm_t;
 
 typedef struct {
-	char	prefix,
+	char
+#ifdef ENABLE_IPV6
+		prefix,
+#endif
 		pidfile,
 		verbosity,
 		pdnsduser,

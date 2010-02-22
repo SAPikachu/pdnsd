@@ -1,7 +1,7 @@
 /* conff.c - Maintain configuration information
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -56,7 +56,7 @@ globparm_t global={
   max_ttl:           604800,
   min_ttl:           120,
   neg_ttl:           900,
-  neg_rrs_pol:       C_AUTH,
+  neg_rrs_pol:       C_DEFAULT,
   neg_domain_pol:    C_AUTH,
   verbosity:         VERBOSITY,
   run_as:            "",
@@ -67,6 +67,7 @@ globparm_t global={
   strict_suid:       1,
   use_nss:           1,
   paranoid:          0,
+  ignore_cd:         1,
   lndown_kluge:      0,
   onquery:           0,
   rnd_recs:          1,
@@ -404,7 +405,7 @@ static void free_server_data(servparm_array sa)
 /* Report the current configuration to the file descriptor f (for the status fifo, see status.c) */
 int report_conf_stat(int f)
 {
-	int i,retval=0;
+	int i,n,retval=0;
 	
 	fsprintf_or_return(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
 	fsprintf_or_return(f,"\tCache size: %li kB\n",global.perm_cache);
@@ -431,6 +432,7 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
 	fsprintf_or_return(f,"\tUse NSS: %s\n",global.use_nss?"on":"off");
 	fsprintf_or_return(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
+	fsprintf_or_return(f,"\tIgnore CD ('checking disabled') flag in queries: %s\n",global.ignore_cd?"on":"off");
 	fsprintf_or_return(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf_or_return(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
 	fsprintf_or_return(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
@@ -465,7 +467,8 @@ int report_conf_stat(int f)
 	}
 	else {
 		int rv;
-		for(i=0;i<DA_NEL(global.deleg_only_zones);++i) {
+		n=DA_NEL(global.deleg_only_zones);
+		for(i=0;i<n;++i) {
 			unsigned char buf[256];
 			rv=fsprintf(f,i==0?"%s":", %s",
 					rhn2str(DA_INDEX(global.deleg_only_zones,i),buf,sizeof(buf)));
@@ -475,7 +478,8 @@ int report_conf_stat(int f)
 		if(rv<0) {retval=rv; goto unlock_return;}
 	}
 
-	for(i=0;i<DA_NEL(servers);i++) {
+	n=DA_NEL(servers);
+	for(i=0;i<n;++i) {
 		int rv=report_server_stat(f,i);
 		if(rv<0) {retval=rv; goto unlock_return;}
 	}
@@ -499,14 +503,17 @@ int report_conf_stat(int f)
 static int report_server_stat(int f,int i)
 {
 	servparm_t *st=&DA_INDEX(servers,i);
-	int j;
+	int j,m;
 
 	fsprintf_or_return(f,"Server %i:\n------\n",i);
 	fsprintf_or_return(f,"\tlabel: %s\n",st->label?st->label:"(none)");
-	for(j=0;j<DA_NEL(st->atup_a);j++) {
+	m=DA_NEL(st->atup_a);
+	if(st->rootserver>1 && m)
+		fsprintf_or_return(f,"\tThe following name servers will be used for discovery of rootservers only:\n");
+	for(j=0;j<m;j++) {
 		atup_t *at=&DA_INDEX(st->atup_a,j);
 		{char buf[ADDRSTR_MAXLEN];
-		 fsprintf_or_return(f,"\tip: %s\n",pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));}
+		 fsprintf_or_return(f,"\tip: %s\n",pdnsd_a2str(PDNSD_A2_TO_A(&at->a),buf,ADDRSTR_MAXLEN));}
 		fsprintf_or_return(f,"\tserver assumed available: %s\n",at->is_up?"yes":"no");
 	}		  
 	fsprintf_or_return(f,"\tport: %hu\n",st->port);
@@ -534,7 +541,7 @@ static int report_server_stat(int f,int i)
 	fsprintf_or_return(f,"\tserver is cached: %s\n",st->nocache?"off":"on");
 	fsprintf_or_return(f,"\tlean query: %s\n",st->lean_query?"on":"off");
 	fsprintf_or_return(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
-	fsprintf_or_return(f,"\tAssumed root server: %s\n",st->rootserver?"yes":"no");
+	fsprintf_or_return(f,"\tAssumed root server: %s\n",st->rootserver?(st->rootserver==1?"yes":"discover"):"no");
 	fsprintf_or_return(f,"\tRandomize server query order: %s\n",st->rand_servers?"yes":"no");
 	fsprintf_or_return(f,"\tDefault policy: %s\n",const_name(st->policy));
 	fsprintf_or_return(f,"\tPolicies:%s\n", st->alist?"":" (none)");
@@ -548,14 +555,16 @@ static int report_server_stat(int f,int i)
 	}
 	if(serv_has_rejectlist(st)) {
 		fsprintf_or_return(f,"\tAddresses which should be rejected in replies:\n");
-		for (j=0;j<DA_NEL(st->reject_a4);++j) {
+		m=DA_NEL(st->reject_a4);
+		for (j=0;j<m;++j) {
 			addr4maskpair_t *am=&DA_INDEX(st->reject_a4,j);
 			char abuf[ADDRSTR_MAXLEN],mbuf[ADDRSTR_MAXLEN];
 			fsprintf_or_return(f,"\t\t%s/%s\n",inet_ntop(AF_INET,&am->a,abuf,sizeof(abuf)),
 					   inet_ntop(AF_INET,&am->mask,mbuf,sizeof(mbuf)));
 		}
 #if ALLOW_LOCAL_AAAA
-		for (j=0;j<DA_NEL(st->reject_a6);++j) {
+		m=DA_NEL(st->reject_a6);
+		for (j=0;j<m;++j) {
 			addr6maskpair_t *am=&DA_INDEX(st->reject_a6,j);
 			char abuf[INET6_ADDRSTRLEN],mbuf[INET6_ADDRSTRLEN];
 			fsprintf_or_return(f,"\t\t%s/%s\n",inet_ntop(AF_INET6,&am->a,abuf,sizeof(abuf)),

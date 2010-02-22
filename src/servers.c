@@ -1,7 +1,7 @@
 /* servers.c - manage a set of dns servers
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -76,8 +76,9 @@ static void sigint_handler(int signum);
 static int uptest (servparm_t *serv, int j)
 {
 	int ret=0, count_running_ping=0;
+	pdnsd_a *s_addr= PDNSD_A2_TO_A(&DA_INDEX(serv->atup_a,j).a);
 
-	DEBUG_PDNSDA_MSG("performing uptest (type=%s) for %s\n",const_name(serv->uptest),PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a));
+	DEBUG_PDNSDA_MSG("performing uptest (type=%s) for %s\n",const_name(serv->uptest),PDNSDA2STR(s_addr));
 
 	/* Unlock the mutex because some of the tests may take a while. */
 	++server_data_users;
@@ -94,7 +95,7 @@ static int uptest (servparm_t *serv, int j)
 		ret=DA_INDEX(serv->atup_a,j).is_up;
 		break;
 	case C_PING:
-		ret=ping(is_inaddr_any(&serv->ping_a) ? &DA_INDEX(serv->atup_a,j).a : &serv->ping_a, serv->ping_timeout,PINGREPEAT)!=-1;
+		ret=ping(is_inaddr_any(&serv->ping_a) ? s_addr : &serv->ping_a, serv->ping_timeout,PINGREPEAT)!=-1;
 		break;
 	case C_IF:
  	case C_DEV:
@@ -185,7 +186,7 @@ static int uptest (servparm_t *serv, int j)
 	}
 		break;
 	case C_QUERY:
-		ret=query_uptest(&DA_INDEX(serv->atup_a,j).a, serv->port,
+		ret=query_uptest(s_addr, serv->port,
 				 serv->timeout>=global.timeout?serv->timeout:global.timeout,
 				 PINGREPEAT);
 	} /* end of switch */
@@ -197,16 +198,16 @@ static int uptest (servparm_t *serv, int j)
 	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
 
 	DEBUG_PDNSDA_MSG("result of uptest for %s: %s\n",
-			 PDNSDA2STR(&DA_INDEX(serv->atup_a,j).a),
+			 PDNSDA2STR(s_addr),
 			 ret?"OK":"failed");
 	return ret;
 }
 
-inline static int scheme_ok(servparm_t *serv)
+static int scheme_ok(servparm_t *serv)
 {
 	if (serv->scheme[0]) {
 		if (!schm[0]) {
-		  	int nschm;
+		  	ssize_t nschm;
 			int sc = open(global.scheme_file, O_RDONLY);
 			char *s;
 			if (sc<0) 
@@ -247,8 +248,9 @@ static void retest(int i, int j)
     s_ts=time(NULL);
 
     for(;j<nsrvs;++j) {
-      DA_INDEX(srv->atup_a,j).is_up=0;
-      DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+      atup_t *at=&DA_INDEX(srv->atup_a,j);
+      at->is_up=0;
+      at->i_ts=s_ts;
     }
   }
   else if(srv->uptest==C_NONE) {
@@ -260,11 +262,12 @@ static void retest(int i, int j)
   }
   else if(srv->uptest==C_QUERY || (srv->uptest==C_PING && is_inaddr_any(&srv->ping_a))) {  /* test each ip address separately */
     for(;j<nsrvs;++j) {
+	atup_t *at=&DA_INDEX(srv->atup_a,j);
 	s_ts=time(NULL);
-	DA_INDEX(srv->atup_a,j).is_up=uptest(srv,j);
+	at->is_up=uptest(srv,j);
 	if(signal_interrupt)
 	  break;
-	DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+	at->i_ts=s_ts;
     }
   }
   else {  /* test ip addresses collectively */
@@ -273,12 +276,34 @@ static void retest(int i, int j)
     s_ts=time(NULL);
     res=uptest(srv,j);
     for(;j<nsrvs;++j) {
-      DA_INDEX(srv->atup_a,j).is_up=res;
+      atup_t *at=&DA_INDEX(srv->atup_a,j);
+      at->is_up=res;
       if(signal_interrupt && srv->uptest==C_PING)
 	continue;
-      DA_INDEX(srv->atup_a,j).i_ts=s_ts;
+      at->i_ts=s_ts;
     }
   }
+}
+
+
+/* This is called by the server status thread to discover the addresses of root servers.
+   Call with server_lock applied.
+*/
+static addr2_array resolv_rootserver_addrs(atup_array a, int port, time_t timeout)
+{
+	addr2_array retval=NULL;
+
+	/* Unlock the mutex because this may take a while. */
+	++server_data_users;
+	pthread_mutex_unlock(&servers_lock);
+
+	retval= dns_rootserver_resolv(a,port,timeout);
+
+	pthread_mutex_lock(&servers_lock);
+	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
+	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
+
+	return retval;	
 }
 
 /*
@@ -317,13 +342,103 @@ void *servstat_thread(void *p)
 
 	for(;;) {
 		do {
-			int i;
+			int i,n;
 			keep_testing=0;
 			retest_flag=0;
 			schm[0] = '\0';
-			for (i=0;i<DA_NEL(servers);++i) {
+			n=DA_NEL(servers);
+			for (i=0;i<n;++i) {
 				servparm_t *sp=&DA_INDEX(servers,i);
 				int j,m;
+				if(sp->rootserver==2) {
+					/* First get addresses of root servers. */
+					addr2_array adrs;
+					int l, one_up=0;
+
+					if(!scheme_ok(sp)) {
+						time_t now=time(NULL);
+						m=DA_NEL(sp->atup_a);
+						for(j=0;j<m;++j)
+							DA_INDEX(sp->atup_a,j).i_ts=now;
+					} else if(sp->uptest==C_PING || sp->uptest==C_QUERY) {
+						/* Skip ping or query tests until after discovery. */
+						if(sp->interval>0)
+							one_up= DA_NEL(sp->atup_a);
+						else {
+							time_t now=time(NULL);
+							m=DA_NEL(sp->atup_a);
+							for(j=0;j<m;++j) {
+								atup_t *at=&DA_INDEX(sp->atup_a,j);
+								if(at->is_up || at->i_ts==0)
+									one_up=1;
+								at->i_ts=now;
+							}
+						}
+					}
+					else {
+						retest(i,-1);
+
+						m=DA_NEL(sp->atup_a);
+						for(j=0;j<m;++j) {
+							if(DA_INDEX(sp->atup_a,j).is_up) {
+								one_up=1;
+								break;
+							}
+						}
+					}
+
+					if(!one_up) {
+						if (needs_intermittent_testing(sp)) keep_testing=1;
+						continue;
+					}
+
+					DEBUG_MSG("Attempting to discover root servers for server section #%d.\n",i);
+					adrs=resolv_rootserver_addrs(sp->atup_a,sp->port,sp->timeout);
+					l= DA_NEL(adrs);
+					if(l>0) {
+						struct timeval now;
+						struct timespec timeout;
+						atup_array ata;
+						DEBUG_MSG("Filling server section #%d with %d root server addresses.\n",i,l);
+						gettimeofday(&now,NULL);
+						timeout.tv_sec = now.tv_sec + 60;     /* time out after 60 seconds */
+						timeout.tv_nsec = now.tv_usec * 1000;
+						while (server_data_users>0) {
+							if(pthread_cond_timedwait(&server_data_cond, &servers_lock, &timeout) == ETIMEDOUT) {
+								DEBUG_MSG("Timed out while waiting for exclusive access to server data"
+									  " to set root server addresses of server section #%d\n",i);
+								da_free(adrs);
+								keep_testing=1;
+								continue;
+							}
+						}
+						ata = DA_CREATE(atup_array, l);
+						if(!ata) {
+							log_warn("Out of memory in servstat_thread() while discovering root servers.");
+							da_free(adrs);
+							keep_testing=1;
+							continue;
+						}
+						for(j=0; j<l; ++j) {
+							atup_t *at = &DA_INDEX(ata,j);
+							at->a = DA_INDEX(adrs,j);
+							at->is_up=sp->preset;
+							at->i_ts= sp->interval<0 ? time(NULL): 0;
+						}
+						da_free(sp->atup_a);
+						sp->atup_a=ata;
+						da_free(adrs);
+						/* Successfully set IP addresses for this server section. */
+						sp->rootserver=1;
+					}
+					else {
+						DEBUG_MSG("Failed to discover root servers in servstat_thread() (server section #%d).\n",i);
+						if(adrs) da_free(adrs);
+						if(DA_NEL(sp->atup_a)) keep_testing=1;
+						continue;
+					}
+				}
+
 				if (needs_testing(sp)) keep_testing=1;
 				m=DA_NEL(sp->atup_a);
 				for(j=0;j<m;++j)
@@ -357,11 +472,12 @@ void *servstat_thread(void *p)
 			struct timeval now;
 			struct timespec timeout;
 			time_t minwait;
-			int i,retval;
+			int i,n,retval;
 
 			gettimeofday(&now,NULL);
 			minwait=3600; /* Check at least once every hour. */
-			for (i=0;i<DA_NEL(servers);++i) {
+			n=DA_NEL(servers);
+			for (i=0;i<n;++i) {
 				servparm_t *sp=&DA_INDEX(servers,i);
 				int j,m=DA_NEL(sp->atup_a);
 				for(j=0;j<m;++j) {
@@ -435,13 +551,13 @@ void sched_server_test(pdnsd_a *sa, int nadr, int up)
 	   and anything else would introduce considerable overhead */
 	for(k=0;k<nadr;++k) {
 		pdnsd_a *sak= &sa[k];
-		int i;
-		for(i=0;i<DA_NEL(servers);++i) {
+		int i,n=DA_NEL(servers);
+		for(i=0;i<n;++i) {
 			servparm_t *sp=&DA_INDEX(servers,i);
 			int j,m=DA_NEL(sp->atup_a);
 			for(j=0;j<m;++j) {
 				atup_t *at=&DA_INDEX(sp->atup_a,j);
-				if(same_inaddr(&at->a,sak)) {
+				if(equiv_inaddr2(sak,&at->a)) {
 					if(up>=0) {
 						at->is_up=up;
 						at->i_ts=time(NULL);
@@ -493,6 +609,10 @@ int mark_servers(int i, char *label, int up)
 		servparm_t *sp=&DA_INDEX(servers,i);
 		if(!label || (sp->label && !strcmp(sp->label,label))) {
 			int j,m=DA_NEL(sp->atup_a);
+
+			/* If a section with undiscovered root servers is marked up, signal a test. */
+			if(m && sp->rootserver>1 && up>0) signal_test=1;
+
 			for(j=0;j<m;++j) {
 				atup_t *at=&DA_INDEX(sp->atup_a,j);
 				if(up>=0) {
@@ -529,15 +649,39 @@ int mark_servers(int i, char *label, int up)
  */
 void test_onquery()
 {
-	int i;
+	int i,n,signal_test;
 	
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
-	for (i=0;i<DA_NEL(servers);i++) {
-		if (DA_INDEX(servers,i).interval==-1) {
-			retest(i,-1);
+	signal_test=0;
+	n=DA_NEL(servers);
+	for (i=0;i<n;++i) {
+		servparm_t *sp=&DA_INDEX(servers,i);
+		if (sp->interval==-1) {
+			if(sp->rootserver<=1)
+				retest(i,-1);
+			else {
+				/* We leave root-server discovery to the server status thread */
+				int j,m=DA_NEL(sp->atup_a);
+				for(j=0;j<m;++j)
+					DA_INDEX(sp->atup_a,j).i_ts=0;
+				signal_test=1;
+			}
 		}
 	}
+
+	if(signal_test) {
+		int rv;
+		if(pthread_equal(servstat_thrid,main_thrid))
+			start_servstat_thread();
+		else {
+			retest_flag=1;
+			if((rv=pthread_cond_signal(&server_test_cond))) {
+				DEBUG_MSG("test_onquery(): couldn't signal server status thread: %s\n",strerror(rv));
+			}
+		}
+	}
+
 	pthread_mutex_unlock(&servers_lock);
 }
 
@@ -612,20 +756,21 @@ void exclusive_unlock_server_data(int retest)
 int change_servers(int i, addr_array ar, int up)
 {
 	int retval=0,j,change,signal_test;
-	int n=DA_NEL(ar);
+	int n;
 	servparm_t *sp;
 
 	pthread_mutex_lock(&servers_lock);
 
 	signal_test=0;
 	change=0;
+	n=DA_NEL(ar);
 	sp=&DA_INDEX(servers,i);
-	if(n != DA_NEL(sp->atup_a))
+	if(n != DA_NEL(sp->atup_a) || sp->rootserver>1)
 		change=1;
 	else {
 		int j;
 		for(j=0;j<n;++j)
-			if(!same_inaddr(&DA_INDEX(ar,j),&DA_INDEX(sp->atup_a,j).a)) {
+			if(!same_inaddr2(&DA_INDEX(ar,j),&DA_INDEX(sp->atup_a,j).a)) {
 				change=1;
 				break;
 			}
@@ -634,6 +779,7 @@ int change_servers(int i, addr_array ar, int up)
 		/* we need exclusive access to the server data to make the changes */
 		struct timeval now;
 		struct timespec timeout;
+		atup_array ata;
 
 		if(server_status_ping>0 && !pthread_equal(servstat_thrid,main_thrid)) {
 			int err;
@@ -655,17 +801,23 @@ int change_servers(int i, addr_array ar, int up)
 			}
 		}
 
-		if(!(sp->atup_a = DA_RESIZE(sp->atup_a, n))) {
+		ata= DA_CREATE(atup_array, n);
+		if(!ata) {
 			log_warn("Out of memory in change_servers().");
 			retval=ENOMEM;
 			goto unlock_mutex;
 		}
+		da_free(sp->atup_a);
+		sp->atup_a=ata;
+		/* Stop trying to discover rootservers
+		   if we set the addresses using this routine. */
+		if(sp->rootserver>1) sp->rootserver=1;
 	}
 
 	for(j=0; j<n; ++j) {
 		atup_t *at = &DA_INDEX(sp->atup_a,j);
 		if(change) {
-			at->a = DA_INDEX(ar,j);
+			SET_PDNSD_A2(&at->a, &DA_INDEX(ar,j));
 			at->is_up=sp->preset;
 		}
 		if(up>=0) {

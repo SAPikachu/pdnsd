@@ -70,15 +70,15 @@ Q:  What do I need local records (rr- and source-sections in the config file)
     but VERY small networks. Alternatively, you may start a named on another
     host or on the same host on another port and cache it with pdnsd in
     addition to other (more distant) name servers.
-A:  The source source section allows you to let pdnsd read in your /etc/hosts
-    file on startup and serve its contents. This file is used by your local
-    resolver before it even tries the name servers and usually contains
-    fully-qualified domain names (FQDNs) for all of the internet addresses your
-    host has. If you source this file, you usually won't need any additional rr
-    sections. Sourcing it also allows other hosts (eg. in your local network)
-    to access the names defined in your hosts file. You can of course just add
-    other hosts in your local network to the servers hosts file, thus making
-    them known to your server's resolver and pdnsd (if you sourced that file).
+A:  The source section allows you to let pdnsd read in your /etc/hosts file on
+    startup and serve its contents. This file is used by your local resolver
+    before it even tries the name servers and usually contains fully-qualified
+    domain names (FQDNs) for all of the internet addresses your host has. If
+    you source this file, you usually won't need any additional rr sections.
+    Sourcing it also allows other hosts (eg. in your local network) to access
+    the names defined in your hosts file. You can of course just add other
+    hosts in your local network to the servers hosts file, thus making them
+    known to your server's resolver and pdnsd (if you sourced that file).
     If you don't know what this answer was all about, you should just take the
     source section in the sample config file that comes with pdnsd, copy it
     into your config file and forget about it.
@@ -179,7 +179,7 @@ A:  truncated answer (the answer is truncated when it exceeds a length of 512
 -------------------------------------------------------------------------------
 
     I am behind some kind of firewall. In the configuration file I have only
-Q:  listed addresses of name servers on the local (ISP's) netwerk, but pdnsd is
+Q:  listed addresses of name servers on the local (ISP's) network, but pdnsd is
     slow and DNS queries frequently time out.
 
     In some cases pdnsd will not consider the answer of the local name server

@@ -1,7 +1,7 @@
 /* helpers.h - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -59,6 +59,8 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn);
    may yield a different result in certain error situations (when a domain name segment contains null byte).
 */
 inline static unsigned int rhnlen(const unsigned char *rhn)
+  __attribute__((always_inline));
+inline static unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0,lb;
 
@@ -68,7 +70,9 @@ inline static unsigned int rhnlen(const unsigned char *rhn)
 }
 
 /* Skip k segments in a name in length-byte string notation. */
-inline static unsigned char *skipsegs(unsigned char *nm, unsigned k)
+inline static const unsigned char *skipsegs(const unsigned char *nm, unsigned k)
+  __attribute__((always_inline));
+inline static const unsigned char *skipsegs(const unsigned char *nm, unsigned k)
 {
 	unsigned lb;
 	for(;k;--k) {
@@ -83,6 +87,8 @@ inline static unsigned char *skipsegs(unsigned char *nm, unsigned k)
    position right after the terminating null byte.
 */
 inline static unsigned char *skiprhn(unsigned char *rhn)
+  __attribute__((always_inline));
+inline static unsigned char *skiprhn(unsigned char *rhn)
 {
 	unsigned lb;
 
@@ -92,6 +98,8 @@ inline static unsigned char *skiprhn(unsigned char *rhn)
 }
 
 /* count the number of name segments of a name in length-byte string notation. */
+inline static unsigned int rhnsegcnt(const unsigned char *rhn)
+  __attribute__((always_inline));
 inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 {
 	unsigned int res=0,lb;
@@ -105,6 +113,7 @@ inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 
 unsigned int rhncpy(unsigned char *dst, const unsigned char *src);
 
+inline static int is_inaddr_any(pdnsd_a *a)  __attribute__((always_inline));
 inline static int is_inaddr_any(pdnsd_a *a)
 {
   return
@@ -121,6 +130,27 @@ inline static int is_inaddr_any(pdnsd_a *a)
     ;
 }
 
+/* Same as is_inaddr_any(), but for the pdnsd_a2 type. */
+inline static int is_inaddr2_any(pdnsd_a2 *a)  __attribute__((always_inline));
+inline static int is_inaddr2_any(pdnsd_a2 *a)
+{
+  return
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+    run_ipv4? a->ipv4.s_addr==INADDR_ANY:
+# else
+    a->ipv4.s_addr==INADDR_ANY
+# endif
+#endif
+#ifdef ENABLE_IPV6
+    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6)
+#endif
+    ;
+}
+
+
+inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
+  __attribute__((always_inline));
 inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
 {
   return
@@ -133,6 +163,44 @@ inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
 #endif
 #ifdef ENABLE_IPV6
     IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6)
+#endif
+    ;
+}
+
+/* Compare a pdnsd_a*  with a pdnsd_a2*. */
+inline static int same_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
+  __attribute__((always_inline));
+inline static int same_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
+{
+  return
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+    run_ipv4? a->ipv4.s_addr==b->ipv4.s_addr:
+# else
+    a->ipv4.s_addr==b->ipv4.s_addr
+# endif
+#endif
+#ifdef ENABLE_IPV6
+    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) && b->ipv4.s_addr==INADDR_ANY
+#endif
+    ;
+}
+
+inline static int equiv_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
+  __attribute__((always_inline));
+inline static int equiv_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
+{
+  return
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+    run_ipv4? a->ipv4.s_addr==b->ipv4.s_addr:
+# else
+    a->ipv4.s_addr==b->ipv4.s_addr
+# endif
+#endif
+#ifdef ENABLE_IPV6
+    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) ||
+    (b->ipv4.s_addr!=INADDR_ANY && ADDR_EQUIV6_4(&a->ipv6,&b->ipv4))
 #endif
     ;
 }
@@ -162,6 +230,8 @@ int fsprintf(int fd, const char *format, ...) printfunc(2, 3);
 
 /* Added by Paul Rombouts */
 inline static ssize_t write_all(int fd,const void *data,size_t n)
+  __attribute__((always_inline));
+inline static ssize_t write_all(int fd,const void *data,size_t n)
 {
   ssize_t written=0;
 
@@ -187,10 +257,15 @@ inline static int stricomp(const char *a, const char *b)
 }
 #endif
 
-/* compare two names in length byte - string format */
+/* compare two names in length byte - string format
+   rhnicmp returns 1 if the names are the same (ignoring upper/lower case),
+   0 otherwise.
+ */
+inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
+  __attribute__((always_inline));
 inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
 {
-	int i=0;
+	unsigned int i=0;
 	unsigned char lb;
 	for(;;) {
 		lb=a[i];
@@ -206,6 +281,8 @@ inline static int rhnicmp(const unsigned char *a, const unsigned char *b)
 }
 
 /* Bah. I want strlcpy. */
+inline static int strncp(char *dst, const char *src, size_t dstsz)
+  __attribute__((always_inline));
 inline static int strncp(char *dst, const char *src, size_t dstsz)
 {
 #ifdef HAVE_STRLCPY
@@ -227,6 +304,8 @@ inline static int strncp(char *dst, const char *src, size_t dstsz)
 
 #ifndef HAVE_STRDUP
 inline static char *strdup(const char *s)
+  __attribute__((always_inline));
+inline static char *strdup(const char *s)
 {
 	size_t sz=strlen(s)+1;
 	char *cp=malloc(sz);
@@ -241,6 +320,8 @@ inline static char *strdup(const char *s)
    but I'm always going to use it with n<strlen(s)
 */
 inline static char *strndup(const char *s, size_t n)
+  __attribute__((always_inline));
+inline static char *strndup(const char *s, size_t n)
 {
 	char *cp;
 	cp=malloc(n+1);
@@ -254,6 +335,8 @@ inline static char *strndup(const char *s, size_t n)
 
 #ifndef HAVE_STPCPY
 inline static char *stpcpy (char *dest, const char *src)
+  __attribute__((always_inline));
+inline static char *stpcpy (char *dest, const char *src)
 {
   register char *d = dest;
   register const char *s = src;
@@ -265,6 +348,8 @@ inline static char *stpcpy (char *dest, const char *src)
 #endif
 
 #ifndef HAVE_MEMPCPY
+inline static void *mempcpy(void *dest, const void *src, size_t len)
+  __attribute__((always_inline));
 inline static void *mempcpy(void *dest, const void *src, size_t len)
 {
   memcpy(dest,src,len);

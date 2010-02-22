@@ -4,7 +4,7 @@
    This version was rewritten in C from scratch by Paul A. Rombouts
    and doesn't require (f)lex or yacc/bison.
 
-   Copyright (C) 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts.
+   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Paul A. Rombouts.
 
   This file is part of the pdnsd package.
 
@@ -630,6 +630,10 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    ASSIGN_ON_OFF(global->paranoid, p,C_ON,"bad qualifier in paranoid= option.");
 	    break;
 
+	  case IGNORE_CD:
+	    ASSIGN_ON_OFF(global->ignore_cd, p,C_ON,"bad qualifier in ignore_cd= option.");
+	    break;
+
 	  case STATUS_CTL: {
 	    int cnst;
 	    ASSIGN_CONST(cnst, p,cnst==C_ON || cnst==C_OFF ,"bad qualifier in status_pipe= option.");
@@ -802,7 +806,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 
 	  case NEG_RRS_POL: {
 	    int cnst;
-	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF || cnst==C_AUTH,"bad qualifier in neg_rrs_pol= option.");
+	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF || cnst==C_DEFAULT || cnst==C_AUTH,
+			 "bad qualifier in neg_rrs_pol= option.");
 	    global->neg_rrs_pol=cnst;
 	  }
 	    break;
@@ -1026,8 +1031,11 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    ASSIGN_ON_OFF(server.is_proxy,p,C_ON,"bad qualifier in proxy_only= option.");
 	    break;
 
-	  case ROOT_SERVER:
-	    ASSIGN_ON_OFF(server.rootserver,p,C_ON,"bad qualifier in root_server= option.");
+	  case ROOT_SERVER: {
+	    int cnst;
+	    ASSIGN_CONST(cnst,p,cnst==C_ON || cnst==C_OFF || cnst==C_DISCOVER,"bad qualifier in root_server= option.");
+	    server.rootserver= (cnst==C_DISCOVER? 2: cnst==C_ON);
+	  }
 	    break;
 
 	  case RANDOMIZE_SERVERS:
@@ -1705,7 +1713,7 @@ static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
     return "out of memory!";
   }
   at=&DA_LAST(*ata);
-  at->a = addr;
+  SET_PDNSD_A2(&at->a, &addr);
   at->is_up=0;
   at->i_ts=0;
   return NULL;
@@ -1796,18 +1804,18 @@ static void check_localaddrs(servparm_t *serv)
     for(i=0;i<n;++i) {
       atup_t *at=&DA_INDEX(ata,i);
       if(is_inaddr_any(&global.a)) {
-	if(is_local_addr(&at->a)) {
+	if(is_local_addr(PDNSD_A2_TO_A(&at->a))) {
 	  char buf[ADDRSTR_MAXLEN];
 	  fprintf(stderr,"Local name-server address \"%s\" ignored in config file.\n",
-		  pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));
+		  pdnsd_a2str(PDNSD_A2_TO_A(&at->a),buf,ADDRSTR_MAXLEN));
 	  continue;
 	}
       }
       else {
-	if(ADDR_EQUIV(&global.a,&at->a)) {
+	if(equiv_inaddr2(&global.a,&at->a)) {
 	  char buf[ADDRSTR_MAXLEN];
 	  fprintf(stderr,"Ignoring name-server address \"%s\" in config file (identical to server_ip address).\n",
-		  pdnsd_a2str(&at->a,buf,ADDRSTR_MAXLEN));
+		  pdnsd_a2str(PDNSD_A2_TO_A(&at->a),buf,ADDRSTR_MAXLEN));
 	  continue;
 	}
       }

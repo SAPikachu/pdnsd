@@ -1,7 +1,7 @@
 /* ipvers.h - definitions for IPv4 and IPv6
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2007 Paul A. Rombouts
+   Copyright (C) 2003, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -64,7 +64,7 @@ extern short int cmdlineipv;
 #endif
 #ifdef ENABLE_IPV6
 #define DEFAULT_IPV4_6_PREFIX "::ffff:0.0.0.0"
-extern short int cmdlineprefix;
+/* extern short int cmdlineprefix; */
 #endif
 
 #if (TARGET==TARGET_LINUX) && !defined(HAVE_STRUCT_IN_PKTINFO)
@@ -186,7 +186,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #ifdef ENABLE_IPV4
 # ifdef ENABLE_IPV6
-#  define ADDR_EQUIV(a,b) ((run_ipv4 && ADDR_EQUIV4(a,b)) || (!run_ipv4 && ADDR_EQUIV6(a,b)))
+#  define ADDR_EQUIV(a,b) (run_ipv4? ADDR_EQUIV4(a,b): ADDR_EQUIV6(a,b))
 # else
 #  define ADDR_EQUIV(a,b) ADDR_EQUIV4(a,b)
 # endif
@@ -250,6 +250,48 @@ typedef union {
 	struct in6_addr  ipv6;
 #endif
 } pdnsd_a;
+
+/* The pdnsd_a2 type is very similar to pdnsd_a, but can hold
+   both an IPv4 and an IPv6 address at the same time,
+   i.e. a struct instead of a union.
+*/
+typedef struct {
+#ifdef ENABLE_IPV6
+	struct in6_addr  ipv6;
+#endif
+	struct in_addr   ipv4;
+} pdnsd_a2;
+
+/* Macros/functions for assigning/converting a pdnsd_a* to a pdnsd_a2* type,
+   and vice versa.
+*/
+#ifdef ENABLE_IPV6
+inline static void SET_PDNSD_A2(pdnsd_a2 *a2, pdnsd_a *a) __attribute__((always_inline));
+inline static void SET_PDNSD_A2(pdnsd_a2 *a2, pdnsd_a *a)
+{
+#ifdef ENABLE_IPV4
+	if(run_ipv4)
+		a2->ipv4=a->ipv4;
+	else
+#endif
+	{
+		a2->ipv6=a->ipv6;
+		a2->ipv4.s_addr=INADDR_ANY;
+	}
+}
+#else
+# define SET_PDNSD_A2(a2,a) ((a2)->ipv4=(a)->ipv4)
+#endif
+
+#ifdef ENABLE_IPV4
+# ifdef ENABLE_IPV6
+#  define PDNSD_A2_TO_A(a2) (run_ipv4?((pdnsd_a *)&(a2)->ipv4):((pdnsd_a *)&(a2)->ipv6))
+# else
+#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv4)
+# endif
+#else
+#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv6)
+#endif
 
 /* Do we have sufficient support in the C libraries to allow local AAAA records
    to be defined? */

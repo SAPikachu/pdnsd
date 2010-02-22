@@ -1,7 +1,7 @@
 /* dns_query.h - Execute outgoing dns queries and write entries to cache
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2006 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2006, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -36,6 +36,7 @@ int r_dns_cached_resolve(unsigned char *name, int thint, dns_cent_t **cachedp,
 #define dns_cached_resolve(name,thint,cachedp,hops,queryts,c_soa) \
         r_dns_cached_resolve(name,thint,cachedp,hops,NULL,queryts,c_soa)
 
+addr2_array dns_rootserver_resolv(atup_array atup_a, int port, time_t timeout);
 int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep);
 
 #endif

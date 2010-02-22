@@ -1,7 +1,7 @@
 /* consts.c - Common config constants & handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006, 2007 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -33,8 +33,10 @@ static char rcsid[]="$Id: consts.c,v 1.3 2001/05/09 17:51:52 tmm Exp $";
 /* Order alphabetically!! */
 static const namevalue_t const_dic[]={
 	{"auth",        C_AUTH},
+	{"default",     C_DEFAULT},
 	{"dev",         C_DEV},
 	{"diald",       C_DIALD},
+	{"discover",    C_DISCOVER},
 	{"domain",      C_DOMAIN},
 	{"excluded",    C_EXCLUDED},
 	{"exec",        C_EXEC},
@@ -66,10 +68,12 @@ static const char *const_names[]={
 	"error",
 	"on",
 	"off",
-	"ping",
+	"default",
+	"discover",
 	"none",
 	"if",
 	"exec",
+	"ping",
 	"query",
 	"onquery",
 	"ontimeout",
@@ -90,14 +94,15 @@ static const char *const_names[]={
 };
 
 /* compare two strings.
-   The first one is given as pointer to a char array of length len,
+   The first one is given as pointer to a char array of length len (which
+   should not contain any null chars),
    the second one as a pointer to a null terminated char array.
 */
 inline static int keyncmp(const char *key1, int len, const char *key2)
 {
 	int cmp=strncmp(key1,key2,len);
 	if(cmp) return cmp;
-	return len-(int)(strlen(key2));
+	return -(int)((unsigned char)(key2[len]));
 }
 
 int binsearch_keyword(const char *name, int len, const namevalue_t dic[], int range)

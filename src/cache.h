@@ -178,6 +178,7 @@ extern volatile short int use_cache_lock;
 #define init_cache mk_dns_hash
 
 /* Initialize the cache lock. Call only once. */
+inline static void init_cache_lock()  __attribute__((always_inline));
 inline static void init_cache_lock()
 {
 	use_cache_lock=1;
@@ -203,6 +204,8 @@ unsigned char *getlocalowner(unsigned char *name,int tp);
 dns_cent_t *lookup_cache(const unsigned char *name, int *wild);
 /* int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, unsigned flags, unsigned dlen, void *data, unsigned long serial); */
 
+inline static unsigned int mk_flag_val(servparm_t *server)
+  __attribute__((always_inline));
 inline static unsigned int mk_flag_val(servparm_t *server)
 {
 	unsigned int fl=0;
@@ -236,6 +239,8 @@ unsigned long get_serial(void);
 /* have_rr tests whether a cache entry has at least one record of type tp.
    Only use if T_MIN <= tp <=T_MAX
 */
+inline static int have_rr(dns_cent_t *cent, int tp)
+  __attribute__((always_inline));
 inline static int have_rr(dns_cent_t *cent, int tp)
 {
 	rr_set_t *rrset=cent->rr[tp-T_MIN];

@@ -1,7 +1,7 @@
 /* status.h - Make server status information accessible through a named pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2004, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2004, 2008, 2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -32,6 +32,8 @@ extern char *sock_path;
 extern int stat_sock;
 
 /* The commands for pdnsd-ctl */
+#define CTL_CMDVERNR 0x6800  /* pdnsd-ctl command version (magic number used to check compatibility) */
+
 #define CTL_MIN      1
 #define CTL_STATS    1 /* Give out stats (like the "traditional" status pipe) */
 #define CTL_SERVER   2 /* Enable or disable a server */

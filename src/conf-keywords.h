@@ -1,7 +1,7 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
    Based on information previously contained in conf-lex.y and conf-parse.y
 
-   Copyright (C) 2004,2005,2006,2007,2008 Paul A. Rombouts
+   Copyright (C) 2004,2005,2006,2007,2008,2009 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -42,6 +42,7 @@ enum {
 	STRICT_SETUID,
 	USE_NSS,
 	PARANOID,
+	IGNORE_CD,
 	STATUS_CTL,
 	DAEMON,
 	C_TCP_SERVER,
@@ -123,6 +124,7 @@ static const namevalue_t global_options[]= {
 	{"daemon",           DAEMON},
 	{"debug",            C_DEBUG},
 	{"delegation_only",  DELEGATION_ONLY},
+	{"ignore_cd",        IGNORE_CD},
 	{"interface",        SERVER_IP},
 	{"ipv4_6_prefix",    IPV4_6_PREFIX},
 	{"linkdown_kluge",   LINKDOWN_KLUGE},

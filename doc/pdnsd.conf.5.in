@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Sep 2008" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Feb 2010" "pdnsd @VERSION@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -159,14 +159,19 @@ domains are being cached negatively, and additionally when record types are cach
 negatively for a domain for which no SOA record is known to pdnsd. If a SOA is present,
 the ttl of the SOA is taken.
 .TP
-.B neg_rrs_pol=(on|off|auth);
+.B neg_rrs_pol=(on|off|auth|default);
 This sets the RR set policy for negative caching; this tells pdnsd under which circumstances
 it should cache a record type negatively for a certain domain. off will
 turn the negative caching of record types off, on will always add a negative
 cache entry when a name server did not return a record type we asked it for, and auth
 will only add such entries if the answer came from an authoritative name server for that
-domain. The preset is auth. This is normally the right thing, as some caching servers
-behave strangely.
+domain.
+.br
+\fINew in version 1.2.8:\fP The default setting will add a negatively cached record
+if either the answer was authoritive or the answer indicated the name server had "recursion available"
+while the query explicitly requested such recursion.
+.br
+The preset is "default" (used to be auth).
 .TP
 .B neg_domain_pol=(on|off|auth);
 This is analogue to neg_rrs_pol for whole domain negative caching. It should be safe
@@ -234,6 +239,14 @@ name server (pdnsd is perhaps a little more secured against this type of attacks
 .br
 The paranoid option is off by default.
 .br
+.TP
+.B ignore_cd=(on|off);
+\fINew in version 1.2.8:\fP This option lets you specify that the CD bit of a DNS query will be ignored.
+Otherwise pdnsd will reply FORMERR to clients that set this bit in a query.
+It is safe to enable this option, as the CD bit refers to 'Checking Disabled'
+which means that the client will accept non-authenticated data.
+.br
+This option is on by default. Turn it off if you want the old behaviour (before version 1.2.8).
 .TP
 .B scheme_file=\fIstring\fP;
 In addition to normal uptests, you may specify that some servers shall only be queried when a certain
@@ -655,10 +668,12 @@ section for what that means.
 .B purge_cache=(on|off);
 In every fetched dns record, there is a cache timeout given, which 
 specifies how long the fetched data may be cached until it needs to be 
-reloaded. If purge_cache is set to off, the cached records are not purged 
+reloaded. If purge_cache is set to off, the stale records are not purged 
 (unless the cache size would be exceeded, in this case the oldest records are purged). 
 Instead, they are still served if they cannot succesfully be
 updated (e.g. because all servers are down).
+.br
+Default is off.
 .TP
 .B caching=(on|off);
 Specifies if caching shall be performed for this server at all. Default is
@@ -709,16 +724,26 @@ I recommend that you turn on lean_query when using this option.
 .br
 Default is off.
 .TP
-.B root_server=(on|off);
-\fINew in version 1.2:\fP Set this option to on if the servers
-specified in a section are root servers. A root server will typically only give
-the name servers for the top-level domain in its reply. Setting root_server=on
-will cause pdnsd to try to use cached information about top-level domains to reduce to number
-of queries to root servers, making the resolving of new names more efficient.
+.B root_server=(on|off|discover);
+Set this option to on if the servers specified in a section are root servers.
+A root server will typically only give the name servers for the top-level domain in its reply.
+Setting root_server=on will cause pdnsd to try to use cached information about
+top-level domains to reduce to number of queries to root servers, making the resolving of
+new names more efficient.
 You can get a list of available root servers by running the command
 "dig\ .\ ns".
 .br
 This option is also necessary if you use the delegation_only option.
+.br
+\fINew in version 1.2.8:\fP This option may also be set to "discover".
+This will cause pdnsd to query the servers provided with the ip= option
+to obtain the full list of root servers. The root-server addresses will replace the addresses
+specified with the ip= option.
+This will only be done once on startup, or after a "pdnsd\-ctl\ config" command.
+In this case the name servers specified with the ip= option don't have to be
+root servers, they just have to know the names and addresses of the root servers.
+After root-server discovery pdnsd will behave just as if root_server=on
+had been specified.
 .br
 Default is off.
 .TP
@@ -1236,4 +1261,4 @@ Several others have contributed to \fBpdnsd\fP; see files in the source or
 This man page was automatically generated from the html documentation for \fBpdnsd\fP,
 using a customized Perl script written by Paul Rombouts.
 .PP
-Last revised: 04 September 2008 by Paul Rombouts
+Last revised: 24 December 2009 by Paul Rombouts

@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>pdnsd Documentation</title>
+    <meta http-equiv="Content-type" content="text/html; charset=ISO-8859-1">
     <style type="text/css">
       <!--
       .small { font-family:helvetica; font-size:small; text-align:center; }
@@ -41,7 +42,7 @@
     License,  as  published by the Free Software Foundation; either version
     3, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.7-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.8-par. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
     A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
     is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
@@ -901,14 +902,17 @@
       </tr>
       <tr>
 	<td>
-	  <b><code>neg_rrs_pol=(on|off|auth);</code></b><br>
+	  <b><code>neg_rrs_pol=(on|off|auth|default);</code></b><br>
 	  This sets the RR set policy for negative caching; this tells pdnsd under which circumstances
 	  it should cache a record type negatively for a certain domain. <code>off</code> will
 	  turn the negative caching of record types off, <code>on</code> will always add a negative
 	  cache entry when a name server did not return a record type we asked it for, and <code>auth</code>
 	  will only add such entries if the answer came from an authoritative name server for that
-	  domain. The preset is <code>auth</code>. This is normally the right thing, as some caching servers
-	  behave strangely.
+	  domain.<br>
+	  <em>New in version 1.2.8:</em> The <code>default</code> setting will add a negatively cached record
+	  if either the answer was authoritive or the answer indicated the name server had "recursion available"
+	  while the query explicitly requested such recursion.<br>
+	  The preset is "<code>default</code>" (used to be <code>auth</code>).
 	</td>
       </tr>
       <tr>
@@ -978,6 +982,16 @@
 	  This vulnerability is not pdnsd's fault, and is possible using any conventional
 	  name server (pdnsd is perhaps a little more secured against this type of attacks if you make it use TCP).<br>
 	  The <code>paranoid</code> option is off by default.<br>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>ignore_cd=(on|off);</code></b><br>
+	  <em>New in version 1.2.8:</em> This option lets you specify that the CD bit of a DNS query will be ignored.
+	  Otherwise pdnsd will reply FORMERR to clients that set this bit in a query.
+	  It is safe to enable this option, as the CD bit refers to 'Checking Disabled'
+	  which means that the client will accept non-authenticated data.<br>
+	  This option is on by default. Turn it off if you want the old behaviour (before version 1.2.8).
 	</td>
       </tr>
       <tr>
@@ -1454,10 +1468,11 @@
 	  <b><code>purge_cache=(on|off);</code></b><br>
 	  In every fetched dns record, there is a cache timeout given, which 
 	  specifies how long the fetched data may be cached until it needs to be 
-	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the cached records are not purged 
+	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the stale records are not purged 
 	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
 	  Instead, they are still served if they cannot succesfully be
-	  updated (e.g. because all servers are down).
+	  updated (e.g. because all servers are down).<br>
+	  Default is <code>off</code>.
 	</td>
       </tr>
       <tr>
@@ -1520,15 +1535,24 @@
       </tr>
       <tr>
 	<td>
-	  <b><code><a name="rootserver">root_server=(on|off);</a></code></b><br>
-	  <em>New in version 1.2:</em> Set this option to <code>on</code> if the servers
-	  specified in a section are root servers. A root server will typically only give
-	  the name servers for the top-level domain in its reply. Setting <code>root_server=on</code>
-	  will cause pdnsd to try to use cached information about top-level domains to reduce to number
-	  of queries to root servers, making the resolving of new names more efficient.
+	  <b><code><a name="rootserver">root_server=(on|off|discover);</a></code></b><br>
+	  Set this option to <code>on</code> if the servers specified in a section are root servers.
+	  A root server will typically only give the name servers for the top-level domain in its reply.
+	  Setting <code>root_server=on</code> will cause pdnsd to try to use cached information about
+	  top-level domains to reduce to number of queries to root servers, making the resolving of
+	  new names more efficient.
 	  You can get a list of available root servers by running the command
 	  <code>"dig&nbsp;.&nbsp;ns"</code>.<br>
 	  This option is also necessary if you use the <a href="#delegationonly"><code>delegation_only</code></a> option.<br>
+	  <em>New in version 1.2.8:</em> This option may also be set to "<code>discover</code>".
+	  This will cause pdnsd to query the servers provided with the <code>ip=</code> option
+	  to obtain the full list of root servers. The root-server addresses will replace the addresses
+	  specified with the <code>ip=</code> option.
+	  This will only be done once on startup, or after a "<code>pdnsd-ctl&nbsp;config</code>" command.
+	  In this case the name servers specified with the <code>ip=</code> option don't have to be
+	  root servers, they just have to know the names and addresses of the root servers.
+	  After root-server discovery pdnsd will behave just as if <code>root_server=on</code>
+	  had been specified.<br>
 	  Default is <code>off</code>.
 	</td>
       </tr>
@@ -2477,7 +2501,7 @@
     Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007,&nbsp;2008&nbsp;<a href="mailto:p.a.rombouts@home.nl">Paul&nbsp;Rombouts</a>
     </address>
     <p>
-      <i>Last revised: 04 September 2008 by Paul Rombouts</i>
+      <i>Last revised: 24 December 2009 by Paul Rombouts</i>
     </p>
   </body>
 </html>

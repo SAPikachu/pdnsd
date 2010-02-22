@@ -46,15 +46,21 @@ void exclusive_unlock_server_data(int retest);
 int change_servers(int i, addr_array ar, int up);
 
 inline static int needs_testing(servparm_t *sp)
+  __attribute__((always_inline));
+inline static int needs_testing(servparm_t *sp)
 {
   return ((sp->interval>0 || sp->interval==-2) && (sp->uptest!=C_NONE || sp->scheme[0]));
 }
 
 inline static int needs_intermittent_testing(servparm_t *sp)
+  __attribute__((always_inline));
+inline static int needs_intermittent_testing(servparm_t *sp)
 {
   return (sp->interval>0 && (sp->uptest!=C_NONE || sp->scheme[0]));
 }
 
+inline static int is_interrupted_servstat_thread()
+  __attribute__((always_inline));
 inline static int is_interrupted_servstat_thread()
 {
   return (signal_interrupt && pthread_equal(pthread_self(),servstat_thrid));

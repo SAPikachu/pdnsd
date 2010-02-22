@@ -42,6 +42,7 @@ extern volatile short int use_log_lock;
 
 void crash_msg(char *msg);
 
+inline static void init_log_lock(void) __attribute__((always_inline));
 inline static void init_log_lock(void)
 {
 	use_log_lock=1;

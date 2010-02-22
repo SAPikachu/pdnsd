@@ -1,3 +1,7 @@
+Version 1.2.8 implements support for automatic discovery of root servers.
+There are also some improvements in the resolver and a new default setting for
+the neg_rrs_pol configuration option.
+
 Version 1.2.7-par fixes some security problems. It contains a fix for a
 "dangling pointer" bug that could cause pdnsd to crash when it received a long
 reply. It also addresses some of the issues raised in the CERT vulnerability

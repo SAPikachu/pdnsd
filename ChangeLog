@@ -1,3 +1,60 @@
+2009-12-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/status.c,src/status.h,src/pdnsd-ctl/pdnsd-ctl.c
+	Add a magic number to pdnsd-ctl command codes to guard against
+	possible incompatibility between the pdnsd-ctl utility and the
+	pdnsd server.
+
+2009-10-18  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Make root-server discovery a little more fault tolerant, i.e. if some
+	of the root-server names don't resolve don't necessarily reject the
+	whole result.
+
+2009-10-17  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/servers.c,src/dns_query.c,src/dns_query.h
+	Implemented automatic root-server discovery, which can now be configured
+	by setting "root_server=discover".
+
+2009-06-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c,src/consts.c,src/consts.h,src/conf-parser.c
+	Changed the default behaviour of the "neg_rrs_pol" option. The default
+	used to be to only cache records negatively in case the AA (authoritive
+	answer) bit in the reply was set. The new default is to also allow
+	negative caching in case the reply has the RA (recursion available) bit
+	set and the query had the RD (recursion desired) bit set.
+	This gives the behaviour that is usually wanted in case "proxy_only=on"
+	is set without having to set "neg_rrs_pol=on", which can be more
+	problematic. The new default can be explicitly set using
+	"neg_rrs_pol=default". The values "on","off" and "auth" are also
+	still available.
+
+2009-06-13  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/dns_answer.c,src/conf-parser.c,src/conf-keywords.h
+	Included a patch contributed by Andreas Steinmetz that implements a new
+	global configuration option "ignore_cd". pdnsd used to check that the CD
+	bit in the DNS header of queries is zero and return the error code
+	"format error" if it is not. However, considering the meaning of this
+	bit today it appears to be harmless to ignore it, so the new "ignore_cd"
+	is on by default. Setting "ignore_cd=off" gives the earlier strict
+	behavior.
+	Also renamed the the Z1, AU, Z2 bits to correspond with their modern names
+	CD, AD, Z.
+
+2008-12-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* pdnsd-1.2.7/src/dns_query.c
+	If pdnsd receives a SERVFAIL response with a non-empty answer section,
+	use the information tentatively if no better response is available.
+	The previous behaviour was to discard the reply completely, which could
+	cause failure to resolve some names.
+	Thanks to Rafal Wijata for providing an example involving PowerDNS servers
+	replying with CNAME records.
+
 2008-09-01  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c
