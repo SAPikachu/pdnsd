@@ -1,3 +1,15 @@
+Version 1.2.9 has support for many additional RR types, in particular those
+needed for DNSSEC (though no support for the DNSSEC protocol itself yet in
+pdnsd). Caching data structures are now more efficient when they only store the
+most commonly used RR types. Fine-grained configurability over which RR-types
+are cache-able. Pdnsd now has support for EDNS (Extension mechanisms for DNS),
+although its usefulness is currently limited to enabling UDP messages larger
+than 512 bytes. Defining local TXT records in the configuration file is now
+supported.  A new configuration option provides a fix in case the query uptest
+fails due to remote servers ignoring empty queries. Several bugs have been fixed
+including a UDP socket descriptor leak that affected the FreeBSD platform, and
+an IPv6 port binding bug.
+
 Version 1.2.8 implements support for automatic discovery of root servers.
 There are also some improvements in the resolver and a new default setting for
 the neg_rrs_pol configuration option.

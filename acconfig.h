@@ -1,8 +1,6 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* $Id: acconfig.h,v 1.13 2001/05/22 18:04:59 tmm Exp $ */
-
 /* ONLY EDIT acconfig.h, NEVER config.h or config.h.in!
  * config.h MAY BE OVERWRITTEN BY make, config.h.in by autoheader! */
 
@@ -37,8 +35,7 @@
  * -6), but it makes more sense to use the run_ipv4=on/off option in the
  * configuration file.
  * Make your choice. Note that IPv6 support is experimental in pdnsd. 
- * In normal operation, you will currently only need IPv4. 
- * If you activate IPv6, you should also activate DNS_NEW_RRS below. */
+ * In normal operation, you will currently only need IPv4. */
 #undef ENABLE_IPV4
 #define DEFAULT_IPV4 1
 #undef ENABLE_IPV6
@@ -78,19 +75,6 @@
 /* NO_POLL specifies not to use poll(2), but select(2) instead. If you are
  * unsure about what this means, just leave this as it is.*/
 #undef NO_POLL
-
-/* Define this if you want to compile with support for the new
- * rrs defined in various rfcs (see rfc1700 for an (incomplete) 
- * listing and pointers). These are normally not needed and consume 
- * some memory even if no records are present. You should delete the cache
- * files before you use a version with this option changed.
- * If you consider using IPv6, you will probably need the AAAA
- * (IPv6 address) record type and should enable this option. 
- * See dns.h for the definitions.
- * In short, these RRs are:
- * RP, AFSDB, X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC,
- * EID, NIMLOC, SRV, ATMA, NAPTR and KX*/
-#undef DNS_NEW_RRS
 
 /* Define this for "hard" RFC 2181 compliance: this RFC states that
  * implementations should discard answers whose RR sets have multiple
@@ -152,16 +136,6 @@
  * flooded with diagnostic messages */
 #undef DEBUG_HASH
 
-/* Define this if you need to debug the config file parser. Will generate lots
- * of diagnostic messages.  */
-#undef DEBUG_YY
-
-/* Defining NO_RCSIDS will exclude the CVS/RCS Id tags from the executables.
- * This is normally a good idea when you build pdnsd only for yourself (saves
- * executable space) but should be left enable when you build binaries for
- * distributions as it makes error-tracking easier. */
-#undef NO_RCSIDS
-
 /* Define if you have working C99 Variadic macro support */
 #undef CPP_C99_VARIADIC_MACROS
 
@@ -186,9 +160,6 @@
 #define TARGET_BSD    1
 #define TARGET_CYGWIN 2
 
-/* Allow _ in domain names? (This option is obsolete and will be ignored.) */
-#undef UNDERSCORE
-
 /* Assume the Native POSIX Thread Library instead of LinuxThreads ? */
 #undef THREADLIB_NPTL
 
@@ -212,5 +183,6 @@
 
 /* pdnsd version. DO NOT TOUCH THIS! It is replaced automatically by the
  * contents of ./version */
-#define VERSION @VERSION@
+#define VERSION "@VERSION@"
+
 #endif

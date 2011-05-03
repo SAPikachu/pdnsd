@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.4 2000/11/15 17:27:12 thomas Exp $
+
 .PHONY: all clean distclean
 
 noinst_PROGRAMS = if_up is_local_addr tping random

@@ -1,7 +1,7 @@
 /* dns.c - Declarations for dns handling and generic dns functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -29,11 +29,9 @@
 #include "helpers.h"
 #include "dns.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
-#endif
 
-/* Decompress a name record, taking the whole message as msg, returning its results in tgt (max. 255 chars),
+/* Decompress a name record, taking the whole message as msg, returning its results in tgt
+ * (which should be able hold at least DNSNAMEBUFSIZE chars),
  * taking sz as the remaining msg size (it is returned decremented by the name length, ready for further use) and
  * a source pointer (it is returned pointing to the location after the name). msgsize is the size of the whole message,
  * len is the total name length.
@@ -43,15 +41,15 @@ static char rcsid[]="$Id: dns.c,v 1.31 2002/01/03 17:47:20 tmm Exp $";
  * Returned is a dns return code, with one exception: RC_TRUNC, as defined in dns.h, indicates that the message is
  * truncated at the name (which needs a special return code, as it might or might not be fatal).
  */
-int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *sz, unsigned char *tgt, int *len)
+int decompress_name(unsigned char *msg, size_t msgsz, unsigned char **src, size_t *sz, unsigned char *tgt, unsigned int *len)
 {
-	int lb,offs;
-	int hops=0,tpos=0;
+	unsigned int lb,offs;
+	unsigned int hops=0,tpos=0;
 	unsigned char *lptr=*src;
-	long oldsz=*sz;
-	long newsz=oldsz;
+	size_t oldsz=*sz;
+	size_t newsz=oldsz;
 
-	if (newsz<=0)
+	if (newsz==0)
 		goto name_outside_data;
 	if (lptr-msg>=msgsz)
 		goto name_outside_msg;
@@ -63,7 +61,7 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 		if(lb>0x3f) {
  			if (lb<0xc0)     /* The two highest bits must be either 00 or 11 */
 				goto unsupported_lbl_bits;
-			if (newsz<=0)
+			if (newsz==0)
 				goto name_outside_data;
 			if (lptr-msg>=msgsz)
 				goto name_outside_msg;
@@ -82,7 +80,7 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 			goto name_outside_data;
 		if (lptr+lb-msg>=msgsz)
 			goto name_outside_msg;
-		if (tpos+lb>255) /* terminating null byte has to follow */
+		if (tpos+lb>DNSNAMEBUFSIZE-1) /* terminating null byte has to follow */
 			goto name_buf_full;
 		newsz -= lb;
 		do {
@@ -117,7 +115,7 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 
 		if (lptr+lb-msg>=msgsz)
 			goto name_outside_msg;
-		if(tpos+lb>255) /* terminating null byte has to follow */
+		if(tpos+lb>DNSNAMEBUFSIZE-1) /* terminating null byte has to follow */
 			goto name_buf_full;
 		do {
 			/* if (!*lptr || *lptr=='.')
@@ -149,7 +147,7 @@ int decompress_name(unsigned char *msg, long msgsz, unsigned char **src, long *s
 	return RC_FORMAT;
 
  name_buf_full:
-	DEBUG_MSG("decompress_name: decompressed name larger that 256 bytes.\n");
+	DEBUG_MSG("decompress_name: decompressed name larger than %u bytes.\n", DNSNAMEBUFSIZE);
 	return RC_FORMAT;
 
  too_many_hops:
@@ -203,9 +201,9 @@ int domain_name_match(const unsigned char *ms, const unsigned char *md, int *os,
    The return value is the length of the match in name elements.
    *os (*od) is set to the offset in the domain name ms (md) of the match.
  */
-int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int *od)
+unsigned int domain_match(const unsigned char *ms, const unsigned char *md, unsigned int *os, unsigned int *od)
 {
-	int i,j,k,n,ns=0,nd=0,offs,offd;
+	unsigned int i,j,k,n,ns=0,nd=0,offs,offd;
 	unsigned char lb,ls[128],ld[128];
 
 	/* first collect all length bytes */
@@ -239,7 +237,7 @@ int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int 
 	return k-1;
 }
 
-/* compress the domain name in in and put the result (of maximum length of strlen(in)) and
+/* compress the domain name in in and put the result (of maximum length of rhnlen(in)) and
  * fill cb with compression information for further strings.*cb may be NULL initially. 
  * offs is the offset the generated string will be placed in the packet.
  * retval: 0 - error, otherwise length
@@ -247,19 +245,19 @@ int domain_match(const unsigned char *ms, const unsigned char *md, int *os, int 
  * It is guaranteed (and insured by assertions) that the output is smaller or equal in
  * size to the input.
  */
-int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb)
+unsigned int compress_name(unsigned char *in, unsigned char *out, unsigned int offs, dlist *cb)
 {
 	compel_t *ci;
-	int add=1;
-	int longest=0,lrem=0,coffs=0;
-	int rl=0;
+	unsigned int longest=0,lrem=0,coffs=0;
+	unsigned int rl=0;
 	unsigned ilen = rhnlen(in);
+	unsigned short add=1;
 
-	PDNSD_ASSERT(ilen<=256, "compress_name: name too long");
+	PDNSD_ASSERT(ilen<=DNSNAMEBUFSIZE, "compress_name: name too long");
 
 	/* part 1: compression */
 	for (ci=dlist_first(*cb); ci; ci=dlist_next(ci)) {
-		int rv,rem,to;
+		unsigned int rv,rem,to;
 		if ((rv=domain_match(in, ci->s, &rem,&to))>longest) {
 			/*
 			 * This has some not obvious implications that should be noted: If a 
@@ -268,9 +266,13 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb)
 			 * can't be compressed. So we take the first occurence of a given length.
 			 * This works perfectly, but watch it if you change something.
 			 */
-			longest=rv;
-			lrem=rem;
-			coffs= ci->index + to;
+			unsigned int newoffs= ci->index + to;
+			 /* Only use if the offset is not too large. */
+			if(newoffs<=0x3fff) {
+				longest=rv;
+				lrem=rem;
+				coffs= newoffs;
+			}
 		}
 	}
 	if (longest>0) {
@@ -299,14 +301,14 @@ int compress_name(unsigned char *in, unsigned char *out, int offs, dlist *cb)
 
 /* Convert a numeric IP address into a domain name representation
    (C string) suitable for PTR records.
-   buf is assumed to be at least 256 bytes in size.
+   buf is assumed to be at least DNSNAMEBUFSIZE bytes in size.
 */
 int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 {
 	if(tp==T_A) {
 		unsigned char *p=(unsigned char *)&a->ipv4.s_addr;
-		int n=snprintf(charp buf,256,"%u.%u.%u.%u.in-addr.arpa.",p[3],p[2],p[1],p[0]);
-		if(n<0 || n>=256)
+		int n=snprintf(charp buf,DNSNAMEBUFSIZE,"%u.%u.%u.%u.in-addr.arpa.",p[3],p[2],p[1],p[0]);
+		if(n<0 || n>=DNSNAMEBUFSIZE)
 			return 0;
 	}
 	else 
@@ -316,12 +318,12 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 		int i,offs=0;
 		for (i=15;i>=0;--i) {
 			unsigned char bt=p[i];
-			int n=snprintf(charp(buf+offs), 256-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
+			int n=snprintf(charp(buf+offs), DNSNAMEBUFSIZE-offs,"%x.%x.",bt&0xf,(bt>>4)&0xf);
 			if(n<0) return 0;
 			offs+=n;
-			if(offs>=256) return 0;
+			if(offs>=DNSNAMEBUFSIZE) return 0;
 		}
-		if(!strncp(charp(buf+offs),"ip6.arpa.",256-offs))
+		if(!strncp(charp(buf+offs),"ip6.arpa.",DNSNAMEBUFSIZE-offs))
 			return 0;
 	}
 	else
@@ -348,7 +350,7 @@ static int add_host(unsigned char *pn, unsigned char *rns, pdnsd_ca *a, int tp, 
 	add_cache(&ce);
 	free_cent(&ce  DBG0);
 	if (reverse) {
-		unsigned char b2[256],rhn[256];
+		unsigned char b2[DNSNAMEBUFSIZE],rhn[DNSNAMEBUFSIZE];
 		if(!a2ptrstr(a,tp,b2))
 			return -1;
 		if (!str2rhn(b2,rhn))
@@ -391,9 +393,9 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 		goto fclose_return;
 	}
 	while(getline(&buf,&buflen,f)>=0) {
-		int len;
+		unsigned int len;
 		unsigned char *p,*pn,*pi;
-		unsigned char rhn[256];
+		unsigned char rhn[DNSNAMEBUFSIZE];
 		int tp,sz;
 		pdnsd_ca a;
 
@@ -474,12 +476,18 @@ int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, i
 }
 
 
+/* Get the name of an RR type given its value. */
+const char *getrrtpname(int tp)
+{
+	return tp>=T_MIN && tp<=T_MAX? rrnames[tp-T_MIN]: "[unknown]";
+}
+
 #if DEBUG>0
 /*
  * Const decoders for debugging display
  */
-static const char *c_names[C_NUM] = {"IN","CS","CH","HS"};
-static const char *qt_names[QT_NUM]={"IXFR","AXFR","MAILB","MAILA","*"};
+static const char *const c_names[C_NUM] = {"IN","CS","CH","HS"};
+static const char *const qt_names[QT_NUM]={"IXFR","AXFR","MAILB","MAILA","*"};
 
 const char *get_cname(int id)
 {
@@ -493,31 +501,32 @@ const char *get_cname(int id)
 const char *get_tname(int id)
 {
 	if (id>=T_MIN && id<=T_MAX)
-		return rr_info[id-T_MIN].name;
+		return rrnames[id-T_MIN];
         else if (id>=QT_MIN && id<=QT_MAX)
 		return qt_names[id-QT_MIN];
 	return "[unknown]";
 }
 
 
-#define NRC 16
-static const char *e_names[NRC]={
+#define NRC 17
+static const char *const e_names[NRC]={
 	"no error",
 	"query format error",
 	"server failed",
-	"unknown domain",
+	"non-existent domain",
 	"not supported",
 	"query refused",
-	"6",
-	"7",
-	"8",
-	"9",
-	"10",
+	"name exists when it should not",
+	"RR set exists when it should not",
+	"RR set that should exist does not",
+	"server not authoritative for zone",
+	"name not contained in zone",
 	"11",
 	"12",
 	"13",
 	"14",
-	"15"
+	"15",
+	"bad OPT version"
 };
 
 const char *get_ename(int id)
@@ -528,22 +537,46 @@ const char *get_ename(int id)
 }
 
 
+/* Construct a human-readable string listing the flags that are set
+   in a dns header. buf must have a size of at least DNSFLAGSMAXSTRSIZE.
+   Used for debugging purposes only.
+*/
+char *dnsflags2str(dns_hdr_t *hdr, char *buf)
+{
+	char *p= buf;
+
+	if (hdr->aa)
+		p=mempcpy(p, " AA", 3);
+	if (hdr->tc)
+		p=mempcpy(p, " TC", 3);
+	if (hdr->rd)
+		p=mempcpy(p, " RD", 3);
+	if (hdr->ra)
+		p=mempcpy(p, " RA", 3);
+	if (hdr->z)
+		p=mempcpy(p, " Z", 2);
+	if (hdr->ad)
+		p=mempcpy(p, " AD", 3);
+	if (hdr->cd)
+		p=mempcpy(p, " CD", 3);
+	*p=0;
+
+	return buf;
+}  
+
 #endif
 
 
 #if DEBUG>=9
 /* Based on debug code contributed by Kiyo Kelvin Lee. */
 
-void debug_dump_dns_msg(pdnsd_a *a, void *data, size_t len)
+void debug_dump_dns_msg(void *data, size_t len)
 {
 	unsigned char *udata = (unsigned char *)data;
 #       define dmpchksz 16
 	char buf[dmpchksz*4+2];
 	size_t i, j, k, l;
 
-	if(a) {
-		DEBUG_PDNSDA_MSG("received data from %s\n", PDNSDA2STR(a));
-	}
 	DEBUG_MSG("pointer=%p len=%lu\n", udata, (unsigned long)len);
 
 	for (i = 0; i < len; i += dmpchksz) {

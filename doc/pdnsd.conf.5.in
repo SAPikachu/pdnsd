@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Feb 2010" "pdnsd @VERSION@"
+.TH PDNSD.CONF 5 "Mar 2011" "pdnsd @fullversion@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -1234,7 +1234,7 @@ the possibility of infinite recursion.
 
 .SH "VERSION"
 .PP
-This man page is correct for version @VERSION@ of pdnsd.
+This man page is correct for version @fullversion@ of pdnsd.
 .SH "SEE ALSO"
 .PP
 .BR pdnsd (8),

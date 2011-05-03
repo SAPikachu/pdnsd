@@ -2,7 +2,7 @@
                 all rr types known to pdnsd
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004, 2007 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2007, 2010 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -24,61 +24,11 @@
 #include <config.h>
 #include <string.h>
 #include <stdio.h>
+#define DEFINE_RR_TYPE_ARRAYS 1
 #include "helpers.h"
 #include "dns.h"
 #include "rr_types.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: rr_types.c,v 1.7 2001/05/19 15:00:26 tmm Exp $";
-#endif
-
-/* Macro for standard records. No need to use it. Use with care (can produce
- * strange-looking error messages) */
-#define RR_ENT(name,tp) {name, RRCL_ ## tp, RRX_ ## tp}
-
-/* There could be a separate table detailing the relationship of types, but this
- * is slightly more flexible, as it allows a finer granularity of exclusion. Also,
- * Membership in multiple classes could be added. */
-struct rr_infos rr_info[]= {
-	RR_ENT("A", 		RECORD),
-	RR_ENT("NS", 		IDEM),
-	RR_ENT("MD", 		IDEM),
-	RR_ENT("MF", 		IDEM),
-	RR_ENT("CNAME", 	ALIAS),
-	RR_ENT("SOA", 		IDEM),
-	RR_ENT("MB", 		IDEM),
-	RR_ENT("MG", 		IDEM),
-	RR_ENT("MR", 		IDEM),
-	RR_ENT("NULL",		IDEM),
-	RR_ENT("WKS", 		RECORD),
-	RR_ENT("PTR", 		PTR),
-	RR_ENT("HINFO", 	RECORD),
-	RR_ENT("MINFO", 	IDEM),
-	RR_ENT("MX", 		IDEM),
-	RR_ENT("TXT", 		IDEM),
-#ifdef DNS_NEW_RRS
-	RR_ENT("RP",		RECORD),
-	RR_ENT("AFSDB",		RECORD),
-	RR_ENT("X25",		RECORD),
-	RR_ENT("ISDN",		RECORD),
-	RR_ENT("RT",		RECORD),
-	RR_ENT("NSAP",		RECORD),
-	RR_ENT("NSAP_PTR",	PTR),		/* broken */
-	RR_ENT("SIG",		IDEM),
-	RR_ENT("KEY",		IDEM),
-	RR_ENT("PX",		IDEM),
-	RR_ENT("GPOS",		RECORD),
-	RR_ENT("AAAA",		RECORD),
-	RR_ENT("LOC",		RECORD),
-	RR_ENT("NXT",		IDEM),
-	RR_ENT("EID",		RECORD),
-	RR_ENT("NIMLOC",	RECORD),
-	RR_ENT("SRV",		RECORD),
-	RR_ENT("ATMA",		RECORD),
-	RR_ENT("NAPTR",		RECORD),
-	RR_ENT("KX",		RECORD)
-#endif
-};
 
 /*
  * OK, this is inefficient. But it is used _really_ seldom (only in some cases while parsing the
@@ -89,7 +39,7 @@ int rr_tp_byname(char *name)
 	int i;
 
 	for (i=0;i<T_NUM;i++) {
-		if (strcmp(name, rr_info[i].name)==0)
+		if (strcmp(name, rrnames[i])==0)
 			return i+T_MIN;
 	}
 	return -1; /* invalid */

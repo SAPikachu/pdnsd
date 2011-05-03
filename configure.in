@@ -1,24 +1,23 @@
-dnl $Id: configure.in,v 1.33 2001/12/30 15:32:51 tmm Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src)
 
-PACKAGE="pdnsd"
-VERSION=`cat $srcdir/version`
-rpmspecversion=`cut -d - -f 1  $srcdir/version`
-rpmspecrelease=`cut -d - -f 2- $srcdir/version`
+package="pdnsd"
+version=`cut -d - -f 1  "$srcdir"/version`
+fullversion=`cat "$srcdir"/version`
+packagerelease=`cut -d - -f 2- "$srcdir"/version`
 
 distribution="Generic"
 target="autodetect"
-cachedir="/var/cache/$PACKAGE"
+cachedir="/var/cache/$package"
 ipv4_default=1
 have_ipv4="yes"
-newrr="yes"
+#newrrs="yes"
 query_m="udponly"
 have_tcp_server="yes"
 adisc="default"
 slock="no";
 def_id="nobody"
-have_rcsids="no"
+#have_rcsids="no"
 udp_queries="yes"
 tcp_queries="yes"
 tempdir="/tmp"
@@ -27,9 +26,12 @@ freebsd_pthread="4"
 specbuild=no
 threadlib=default
 
-AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AM_INIT_AUTOMAKE($package, $version, [no-define])
 AM_CONFIG_HEADER(config.h)
 AC_GNU_SOURCE
+AC_DEFINE_UNQUOTED(VERSION,"$fullversion")
+AC_SUBST(fullversion)
+AC_SUBST(packagerelease)
 
 AC_ARG_WITH(distribution,
 [  --with-distribution=distro  Specify target distribution (default=Generic;
@@ -170,11 +172,8 @@ AC_ARG_ENABLE(poll,
    test $enableval != "yes" && AC_DEFINE(NO_POLL))
 
 AC_ARG_ENABLE(new-rrs,
-[  --disable-new-rrs           Disable new DNS RR types, may cause problems
-                              with some resolvers],
-   newrr=$enableval)
-
-test $newrr = "yes" && AC_DEFINE(DNS_NEW_RRS)
+[  --disable-new-rrs           Disable new DNS RR types (obsolete, currently ignored)],
+   newrrs=$enableval)
 
 AC_ARG_ENABLE(strict-rfc2181,
 [  --enable-strict-rfc2181     Enforce strict RFC 2181 compliance],
@@ -199,7 +198,7 @@ fi
 
 AC_ARG_ENABLE(underscores,
 [  --enable-underscores        Allow _ in domain names (obsolete, currently ignored)],
-   test $enableval = "yes" && AC_DEFINE(UNDERSCORE))
+   underscores=$enableval)
 
 AC_ARG_WITH(default-id,
 [  --with-default-id=id        Specify default uid/gid for pdnsd 
@@ -208,7 +207,7 @@ AC_ARG_WITH(default-id,
 AC_SUBST(def_id)
 
 AC_ARG_WITH(debug,
-[  --with-debug=level          Specify debugging level],
+[  --with-debug=level          Specify debugging level (0 means no debug support)],
   AC_DEFINE_UNQUOTED(DEBUG, $withval))
 
 AC_ARG_WITH(verbosity,
@@ -235,10 +234,8 @@ AC_ARG_ENABLE(hash-debug,
   test $enableval = "yes" && AC_DEFINE(DEBUG_HASH))
 
 AC_ARG_ENABLE(rcsids,
-[  --enable-rcsids             Enable RCS IDs in executables (default=disabled)],
+[  --enable-rcsids             Enable RCS IDs in executables (obsolete, currently ignored)],
   have_rcsids=$enableval)
-
-test $have_rcsids != "yes" && AC_DEFINE(NO_RCSIDS)
 
 AC_ARG_WITH(tcp-qtimeout,
 [  --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30)],
@@ -258,8 +255,6 @@ AC_ARG_ENABLE(specbuild,
   specbuild=$enableval)
 
 AC_SUBST(specbuild)
-AC_SUBST(rpmspecversion)
-AC_SUBST(rpmspecrelease)
 
 AC_ARG_WITH(thread-lib,
 [  --with-thread-lib=lib       Specify thread library, overriding automatic detection (for Linux only).
@@ -508,4 +503,5 @@ src/rc/Slackware/rc.pdnsd
 src/rc/ArchLinux/Makefile
 src/rc/ArchLinux/pdnsd
 src/test/Makefile
+PKGBUILD
 ])

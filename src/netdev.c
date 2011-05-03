@@ -1,7 +1,7 @@
 /* netdev.c - Test network devices for existence and status
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -71,11 +71,8 @@
 #include "netdev.h"
 #include "error.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: netdev.c,v 1.11 2001/06/13 17:28:04 tmm Exp $";
-#endif
 
-#if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD)
+#if (TARGET==TARGET_BSD)
 /* Taken from FreeBSD net/if.h rev. 1.58.2.1 */
 #define	SIZEOF_ADDR_IFREQ(ifr) \
 	((ifr).ifr_addr.sa_len > sizeof(struct sockaddr) ? \
@@ -83,13 +80,14 @@ static char rcsid[]="$Id: netdev.c,v 1.11 2001/06/13 17:28:04 tmm Exp $";
 	  (ifr).ifr_addr.sa_len) : sizeof(struct ifreq))
 #elif (TARGET==TARGET_CYGWIN)
 #define SIZEOF_ADDR_IFREQ(ifr) (sizeof(struct sockaddr))
-#else
-# error Unsupported platform!
 #endif
 
+#define MAX_SOCKETOPEN_ERRS 10
+static volatile unsigned long socketopen_errs=0;
+
 /*
- * These portion is Linux/FreeBSD specific. Please write interface-detection routines for other
- * flavours of Unix if you can and want.
+ * Portions of the following code are Linux/FreeBSD specific.
+ * Please write interface-detection routines for other flavours of Unix if you can and want.
  */
 
 #if (TARGET==TARGET_LINUX) || (TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)
@@ -199,17 +197,20 @@ int if_up(char *devname)
 #  ifdef ISDN_SUPPORT
 		return statusif(devname);
 #  else
-		if (isdn_errs==0) {
+		if (isdn_errs++==0) {
 			log_warn("An ippp? device was specified for uptest, but pdnsd was compiled without ISDN support.");
 			log_warn("The uptest result will be wrong.");
-			isdn_errs++;
 		}
 #  endif
 		/* If it doesn't match our rules for isdn devices, treat as normal if */
 	}
 # endif
-	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
+	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1) {
+		if(++socketopen_errs<=MAX_SOCKETOPEN_ERRS) {
+			log_warn("Could not open socket in if_up(): %s",strerror(errno));
+		}
 		return 0;
+	}
 	strncp(ifr.ifr_name,devname,IFNAMSIZ);
 	if (ioctl(sock,SIOCGIFFLAGS,&ifr)==-1) {
 		close(sock);
@@ -223,12 +224,18 @@ int if_up(char *devname)
 
 int is_local_addr(pdnsd_a *a)
 {
+	int res=0;
+
 #  ifdef ENABLE_IPV4
 	if (run_ipv4) {
-		int res=0,i,sock;
+		int i,sock;
 		struct ifreq ifr;
-		if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
+		if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1) {
+			if(++socketopen_errs<=MAX_SOCKETOPEN_ERRS) {
+				log_warn("Could not open socket in is_local_addr(): %s",strerror(errno));
+			}
 			return 0;
+		}
 		for (i=1;i<255;i++) {
 			ifr.ifr_ifindex=i;
 			if (ioctl(sock,SIOCGIFNAME,&ifr)==-1) {
@@ -244,13 +251,11 @@ int is_local_addr(pdnsd_a *a)
 			}
 		}
 		close(sock);
-		return res;
 	}
 
 #  endif
 #  ifdef ENABLE_IPV6
 	ELSE_IPV6 {
-		int res=0;
 		char   buf[40];
 		FILE   *f;
 		struct in6_addr b;
@@ -286,41 +291,52 @@ int is_local_addr(pdnsd_a *a)
 		}
 	fclose_return:
 		fclose(f);
-		return res;
 	}
 #  endif
-	return 0;
+	return res;
 }
 
 # else /*(TARGET==TARGET_BSD) || (TARGET==TARGET_CYGWIN)*/
 
+
+#define MAX_SIOCGIFCONF_ERRS 4
+static volatile unsigned long siocgifconf_errs=0;
+
 int is_local_addr(pdnsd_a *a)
 {
-	int sock;
+	int retval=0, sock, cnt;
         struct ifconf ifc;
 	char buf[2048];
-	int cnt=0;
-	struct ifreq *ir;
-	char *ad;
-	  
+
+
+	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1) {
+		if(++socketopen_errs<=MAX_SOCKETOPEN_ERRS) {
+			log_warn("Could not open socket in is_local_addr(): %s",strerror(errno));
+		}
+		return 0;
+	}
 
 	ifc.ifc_len=sizeof(buf);
 	ifc.ifc_buf=buf;
-	if ((sock=socket(PF_INET,SOCK_DGRAM, IPPROTO_UDP))==-1)
-		return 0;
 	if (ioctl(sock,SIOCGIFCONF,&ifc)==-1) {
-	        return 0;
+		if(++siocgifconf_errs<=MAX_SIOCGIFCONF_ERRS) {
+			log_warn("ioctl() call with request SIOCGIFCONF failed in is_local_addr(): %s",strerror(errno));
+		}
+	        goto close_sock_return;
 	}
-	ad=buf;
-	while(cnt<=ifc.ifc_len-sizeof(struct ifreq)) {
-		ir=(struct ifreq *)ad;
-		if (cnt+SIZEOF_ADDR_IFREQ(*ir)>=ifc.ifc_len)
+
+	cnt=0;
+	while(cnt+sizeof(struct ifreq)<=ifc.ifc_len) {
+		struct ifreq *ir= (struct ifreq *)(buf+cnt);
+		cnt += SIZEOF_ADDR_IFREQ(*ir);
+		if (cnt>ifc.ifc_len)
 			break;
 #  ifdef ENABLE_IPV4
 		if (run_ipv4) {
 			if (ir->ifr_addr.sa_family==AF_INET &&
 			    ((struct sockaddr_in *)&ir->ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr) {
-				return 1;
+				retval=1;
+				break;
 			}
 		}
 #  endif
@@ -328,17 +344,17 @@ int is_local_addr(pdnsd_a *a)
 		ELSE_IPV6 {
 			if (ir->ifr_addr.sa_family==AF_INET6 &&
 			    IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ir->ifr_addr)->sin6_addr,&a->ipv6)) {
-				return 1;
+				retval=1;
+				break;
 			}
 		}
 #  endif
-		cnt+=SIZEOF_ADDR_IFREQ(*ir);
-		ad+=SIZEOF_ADDR_IFREQ(*ir);
-	        
 	}
+
+ close_sock_return:
 	close(sock);
 	
-	return 0;
+	return retval;
 }
 
 # endif

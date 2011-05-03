@@ -1,8 +1,7 @@
-# $Id: Makefile.am,v 1.13 2001/05/09 17:51:52 tmm Exp $
 
 sbin_PROGRAMS = pdnsd
 
-pdnsd_CFLAGS = -DCONFDIR="\"@sysconfdir@\"" @thread_CFLAGS@
+pdnsd_CFLAGS = -DCONFDIR='"$(sysconfdir)"' $(thread_CFLAGS)
 
 pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c \
 	dns_query.c error.c helpers.c icmp.c list.c main.c netdev.c rr_types.c \
@@ -12,7 +11,14 @@ pdnsd_SOURCES = conf-parser.c conff.c consts.c debug.c dns.c dns_answer.c \
 	rr_types.h servers.h status.h thread.h cache.h hash.h pdnsd_assert.h \
 	freebsd_netinet_ip_icmp.h
 
+EXTRA_DIST = make_rr_types_h.pl rr_types.in
+
 ## Try to do this last
 
-SUBDIRS = pdnsd-ctl rc test
+SUBDIRS = . pdnsd-ctl rc test
+
+$(pdnsd_OBJECTS): rr_types.h
+
+rr_types.h: make_rr_types_h.pl rr_types.in
+	perl make_rr_types_h.pl rr_types.in > rr_types.h
 

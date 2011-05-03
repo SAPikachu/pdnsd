@@ -13,9 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-# $Id: Makefile.am,v 1.7 2000/11/21 20:01:36 thomas Exp $
-#EXTRA_DIST = pdnsd
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -110,6 +107,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -120,10 +118,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -131,7 +128,6 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
-DISTRO = @distribution@
 all: all-am
 
 .SUFFIXES:
@@ -286,19 +282,19 @@ uninstall-am: uninstall-info-am
 
 
 install-exec-local:
-	if [ "$(DISTRO)" = "SuSE" ] ; then \
+	if [ "$(distribution)" = "SuSE" ] ; then \
 	  CURDIR=`pwd`; \
-	  $(mkinstalldirs) $(DESTDIR)/sbin/init.d; \
-	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd $(DESTDIR)/sbin/init.d/pdnsd; \
-	  $(mkinstalldirs) $(DESTDIR)/sbin/init.d/rc2.d; \
-	  cd $(DESTDIR)/sbin/init.d/rc2.d; \
+	  $(mkinstalldirs) "$(DESTDIR)/sbin/init.d"; \
+	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd "$(DESTDIR)/sbin/init.d/pdnsd"; \
+	  $(mkinstalldirs) "$(DESTDIR)/sbin/init.d/rc2.d"; \
+	  cd "$(DESTDIR)/sbin/init.d/rc2.d"; \
 	  ln -fs ../pdnsd K34pdnsd; ln -s ../pdnsd S11pdnsd; \
 	  cd $$CURDIR ; \
-	  $(mkinstalldirs) $(DESTDIR)/sbin/init.d/rc3.d; \
-	  cd $(DESTDIR)/sbin/init.d/rc3.d; \
+	  $(mkinstalldirs) "$(DESTDIR)/sbin/init.d/rc3.d"; \
+	  cd "$(DESTDIR)/sbin/init.d/rc3.d"; \
 	  ln -fs ../pdnsd K34pdnsd; ln -s ../pdnsd S11pdnsd; \
 	  cd $$CURDIR ; \
-	  grep "START_PDNSD" $(DESTDIR)/etc/rc.config > /dev/null ; \
+	  grep "START_PDNSD" "$(DESTDIR)/etc/rc.config" > /dev/null ; \
 	  if [ $$? -eq 1 ] ; then \
 	    echo -e "\n\n#\n# Set to yes to start pdnsd at boot time\n#\nSTART_PDNSD=yes" >> /etc/rc.config ; \
 	  fi \

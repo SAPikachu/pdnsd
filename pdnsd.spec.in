@@ -18,7 +18,7 @@
 # --define "distro <distro>" 	Configure with --with-distribution=<distro>.
 #
 # --define "run_as_user <user>" Configure with --with-default-id=<user>.
-#                               For RPMs the default <user> is "pdnsd".
+#                               For RPMs the default <user> is "@def_id@".
 #
 # --define "run_as_uid <uid>" 	If the user defined by the previous option does not exist
 #                               when the RPM is installed, the pre-install script will try
@@ -39,8 +39,8 @@
 
 Summary: A caching dns proxy for small networks or dialin accounts
 Name: @PACKAGE@
-Version: @rpmspecversion@
-Release: @rpmspecrelease@
+Version: @VERSION@
+Release: @packagerelease@
 License: GPLv3
 Group:  Daemons
 Source: http://www.phys.uu.nl/~rombouts/pdnsd/releases/%{name}-%{version}-%{release}.tar.gz

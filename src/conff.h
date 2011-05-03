@@ -1,7 +1,7 @@
 /* conff.h - Definitions for configuration management.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: conff.h,v 1.20 2002/01/29 23:49:47 tmm Exp $ */
 
 #ifndef CONFF_H
 #define CONFF_H
@@ -92,10 +91,12 @@ typedef struct {
 	char             uptest_usr[21];
 	char             interface[IFNAMSIZ];
  	char             device[IFNAMSIZ];
+	unsigned char   *query_test_name;
 	char            *label;
 	char             purge_cache;
 	char             nocache;
 	char             lean_query;
+	char             edns_query;
 	char             is_proxy;
 	char             rootserver;
 	char             rand_servers;
@@ -122,6 +123,7 @@ typedef struct {
 	char         *pidfile;
 	int           port;
 	pdnsd_a       a;
+	pdnsd_a       out_a;
 #ifdef ENABLE_IPV6
 	struct in6_addr ipv4_6_prefix;
 #endif
@@ -139,7 +141,6 @@ typedef struct {
 	char          strict_suid;
 	char          use_nss;
 	char          paranoid;
-	char          ignore_cd;
 	char          lndown_kluge;
 	char	      onquery;
 	char          rnd_recs;
@@ -153,6 +154,7 @@ typedef struct {
 	int           query_method;
 	int           query_port_start;
 	int           query_port_end;
+	int           udpbufsize;
 	zone_array    deleg_only_zones;
 } globparm_t;
 

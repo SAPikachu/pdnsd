@@ -1,7 +1,7 @@
 /* helpers.h - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: helpers.h,v 1.11 2001/06/02 20:12:45 tmm Exp $ */
 
 #ifndef HELPERS_H
 #define HELPERS_H
@@ -50,9 +49,9 @@ inline static int isdchar (unsigned char c)
 }
 #endif
 
-const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int size);
+const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, unsigned int size);
 int  str2rhn(const unsigned char *str, unsigned char *rhn);
-const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn);
+const char *parsestr2rhn(const unsigned char *str, unsigned int len, unsigned char *rhn);
 
 /* Note added by Paul Rombouts:
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
@@ -64,9 +63,9 @@ inline static unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0,lb;
 
-	while((lb=rhn[i]))
-		i+=lb+1;
-	return i+1;
+	while((lb=rhn[i++]))
+		i+=lb;
+	return i;
 }
 
 /* Skip k segments in a name in length-byte string notation. */
@@ -75,9 +74,7 @@ inline static const unsigned char *skipsegs(const unsigned char *nm, unsigned k)
 inline static const unsigned char *skipsegs(const unsigned char *nm, unsigned k)
 {
 	unsigned lb;
-	for(;k;--k) {
-		lb= *nm;
-		if(!lb) return nm;
+	for(;k && (lb= *nm); --k) {
 		nm += lb+1;
 	}
 	return nm;
@@ -92,9 +89,9 @@ inline static unsigned char *skiprhn(unsigned char *rhn)
 {
 	unsigned lb;
 
-	while((lb= *rhn))
-		rhn += lb+1;
-	return rhn+1;
+	while((lb= *rhn++))
+		rhn += lb;
+	return rhn;
 }
 
 /* count the number of name segments of a name in length-byte string notation. */
@@ -112,6 +109,7 @@ inline static unsigned int rhnsegcnt(const unsigned char *rhn)
 }
 
 unsigned int rhncpy(unsigned char *dst, const unsigned char *src);
+int isnormalencdomname(const unsigned char *rhn, unsigned maxlen);
 
 inline static int is_inaddr_any(pdnsd_a *a)  __attribute__((always_inline));
 inline static int is_inaddr_any(pdnsd_a *a)

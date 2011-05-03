@@ -1,7 +1,7 @@
 /* list.h - Dynamic array and list handling
   
    Copyright (C) 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -21,8 +21,6 @@
 */
 
 
-/* $Id: list.h,v 1.3 2001/06/21 23:58:43 tmm Exp $ */
-
 #ifndef LIST_H
 #define LIST_H
 
@@ -30,16 +28,6 @@
 #include <string.h>
 #include "pdnsd_assert.h"
 
-#if 0
-/*
- * The size of this should always be a multiple of 4 on all supported architectures.
- * Otherwise, we need further glue.
- */
-struct _dynamic_array_dummy_head {
-	unsigned long int nel;	/* number of elements in array */
-	void *elem[0];	/* dummy for alignment */
-};
-#endif
 
 typedef struct {size_t nel;} *darray;
 
@@ -62,16 +50,6 @@ typedef struct {size_t nel;} *darray;
  * Some or all of these should be inline.
  * They aren't macros for type safety.
  */
-#if 0
-inline static darray Dda_create(size_t sz)
-{
-  darray a;
-
-  a=(darray)malloc(sizeof(struct _dynamic_array_dummy_head)+sz*8);
-  if(a) a->nel=0;
-  return a;
-}
-#endif
 
 darray da_grow1(darray a, size_t headsz, size_t elemsz, void (*cleanuproutine) (void *));
 darray da_resize(darray a, size_t headsz, size_t elemsz, size_t n, void (*cleanuproutine) (void *));
@@ -87,13 +65,9 @@ inline static unsigned int da_nel(darray a)
 
 /* alloc/free debug code.*/
 #ifdef ALLOC_DEBUG
-/* darray DBGda_create(size_t sz, char *file, int line); */
 void   DBGda_free(darray a, size_t headsz, size_t elemsz, char *file, int line);
-
-/* #define da_create(sz)	DBGda_create(sz, __FILE__, __LINE__) */
 #define da_free(a)	DBGda_free((darray)(a),DA_OFFSET(a),sizeof((a)->elem[0]), __FILE__, __LINE__)
 #else
-/* #define da_create	Dda_create */
 #define da_free		free
 #endif
 
@@ -138,5 +112,59 @@ inline static void *dlist_last(dlist a)
 dlist dlist_grow(dlist a, size_t len);
 
 #define dlist_free free
+
+
+/* linked list data type. */
+struct llistnode_s {
+  struct llistnode_s *next;
+  char *data[0];
+};
+
+typedef struct {
+  struct llistnode_s *first, *last;
+}
+  llist;
+
+inline static void llist_init(llist *a)
+  __attribute__((always_inline));
+inline static void llist_init(llist *a)
+{
+  a->first=NULL;
+  a->last= NULL;
+}
+
+inline static int llist_isempty(llist *a)
+  __attribute__((always_inline));
+inline static int llist_isempty(llist *a)
+{
+  return a->first==NULL;
+}
+
+inline static void *llist_first(llist *a)
+  __attribute__((always_inline));
+inline static void *llist_first(llist *a)
+{
+  struct llistnode_s *p= a->first;
+  return p?p->data:NULL;
+}
+
+inline static void *llist_next(void *ref)
+  __attribute__((always_inline));
+inline static void *llist_next(void *ref)
+{
+  struct llistnode_s *next= *(((struct llistnode_s **)ref)-1);
+  return next?next->data:NULL;
+}
+
+inline static void *llist_last(llist *a)
+  __attribute__((always_inline));
+inline static void *llist_last(llist *a)
+{
+  struct llistnode_s *p= a->last;
+  return p?p->data:NULL;
+}
+
+int llist_grow(llist *a, size_t len);
+void llist_free(llist *a);
 
 #endif /* def LIST_H */

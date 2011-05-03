@@ -1,8 +1,6 @@
 #! /bin/sh
 # Copyright (c) 1995-1998 SuSE GmbH Nuernberg, Germany.
 #
-# $Id: pdnsd.in,v 1.5 2001/10/14 16:11:02 tmm Exp $
-#
 # Modified 2000 from SuSE Linux 6.3 /sbin/init.d/skeleton by Thomas Moestl
 #
 # /sbin/init.d/pdnsd

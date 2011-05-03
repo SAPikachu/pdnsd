@@ -26,9 +26,6 @@
 #include "consts.h"
 #include "rr_types.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: consts.c,v 1.3 2001/05/09 17:51:52 tmm Exp $";
-#endif
 
 /* Order alphabetically!! */
 static const namevalue_t const_dic[]={
@@ -64,7 +61,7 @@ static const namevalue_t const_dic[]={
 };
 
 /* Added by Paul Rombouts */
-static const char *const_names[]={
+static const char *const const_names[]={
 	"error",
 	"on",
 	"off",

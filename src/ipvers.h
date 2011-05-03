@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: ipvers.h,v 1.6 2001/04/06 18:11:35 tmm Exp $ */
 
 #ifndef IPVERS_H
 #define IPVERS_H
@@ -30,6 +29,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "rr_types.h"
 
 #if defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4
@@ -251,6 +251,13 @@ typedef union {
 #endif
 } pdnsd_a;
 
+#ifdef ENABLE_IPV4
+#define  PDNSD_A_INITIALIZER {{INADDR_ANY}}
+#else
+#define  PDNSD_A_INITIALIZER {IN6ADDR_ANY_INIT}
+#endif
+
+
 /* The pdnsd_a2 type is very similar to pdnsd_a, but can hold
    both an IPv4 and an IPv6 address at the same time,
    i.e. a struct instead of a union.
@@ -295,8 +302,8 @@ inline static void SET_PDNSD_A2(pdnsd_a2 *a2, pdnsd_a *a)
 
 /* Do we have sufficient support in the C libraries to allow local AAAA records
    to be defined? */
-#if defined(DNS_NEW_RRS) && defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
-# define ALLOW_LOCAL_AAAA 1
+#if defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
+# define ALLOW_LOCAL_AAAA IS_CACHED_AAAA
 #else
 # define ALLOW_LOCAL_AAAA 0
 #endif

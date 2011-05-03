@@ -15,7 +15,6 @@
 @SET_MAKE@
 
 # TODO: write an install rule for the Slackware start-up script.
-#EXTRA_DIST = rc.pdnsd
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -110,6 +109,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -120,10 +120,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -131,7 +130,6 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
-DISTRO = @distribution@
 all: all-am
 
 .SUFFIXES:

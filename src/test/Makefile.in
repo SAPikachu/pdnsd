@@ -131,6 +131,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -141,10 +142,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -407,7 +407,6 @@ uninstall-am: uninstall-info-am
 	uninstall-am uninstall-info-am
 
 
-# $Id: Makefile.am,v 1.4 2000/11/15 17:27:12 thomas Exp $
 .PHONY: all clean distclean
 
 # These are Symlinks we want to have in the package

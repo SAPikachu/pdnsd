@@ -7,10 +7,6 @@
 #include "../icmp.h"
 #include "../ipvers.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: tping.c,v 1.2 2000/10/18 16:21:37 thomas Exp $";
-#endif
-
 short int daemon_p=0;
 #if DEBUG>0
 short int debug_p=0;

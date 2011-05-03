@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: thread.h,v 1.3 2001/05/19 14:57:30 tmm Exp $ */
 
 #ifndef _THREAD_H_
 #define _THREAD_H_

@@ -1,7 +1,7 @@
 /* main.c - Command line parsing, intialisation and server start
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2010 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -47,9 +47,6 @@
 #include "icmp.h"
 #include "hash.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: main.c,v 1.42 2001/05/30 21:04:15 tmm Exp $";
-#endif
 
 #if DEBUG>0
 short int debug_p=0;
@@ -78,7 +75,7 @@ static const char info_message[] =
 	
 	"pdnsd - dns proxy daemon, version " VERSION "\n\n"
 	"Copyright (C) 2000, 2001 Thomas Moestl\n"
-	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts\n\n"
+	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2010 Paul A. Rombouts\n\n"
 	"pdnsd is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
 	"the Free Software Foundation; either version 3 of the License, or\n"
@@ -125,7 +122,7 @@ static const char help_message[] =
 	"-p\t\tWrites the pid the server runs as to a specified filename.\n"
 	"\t\tWorks only in daemon mode.\n"
 	"-vn\t\tsets the verbosity of pdnsd. n is a numeric argument from 0\n"
-	"\t\t(normal operation) to 3 (many messages for debugging).\n"
+	"\t\t(normal operation) to 9 (many messages for debugging).\n"
 	"\t\tUse like -v2\n"
 	"-mxx\t\tsets the query method pdnsd uses. Possible values for xx are:\n"
 	"\t\tuo (UDP only), to (TCP only), tu (TCP or, if the server\n"
@@ -539,7 +536,7 @@ int main(int argc,char *argv[])
 		if (pid!=0) {
 			int exitval=0;
 			if (global.pidfile) {
-				if(fsprintf(pfd,"%i\n",pid)<0) {
+				if(fsprintf(pfd,"%i\n",(int)pid)<0) {
 					log_error("Error: could not write to pid file %s: %s",
 						  global.pidfile, strerror(errno));
 					exitval=1;

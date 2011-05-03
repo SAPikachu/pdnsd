@@ -1,7 +1,7 @@
 /* helpers.c - Various helper functions
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2006, 2008 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2006, 2008, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -40,9 +40,6 @@
 #include "cache.h"
 #include "conff.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: helpers.c,v 1.33 2002/01/03 13:33:06 tmm Exp $";
-#endif
 
 /*
  * This is to exit pdnsd from any thread.
@@ -60,7 +57,7 @@ void pdnsd_exit()
  */
 int softlock_mutex(pthread_mutex_t *mutex)
 {
-	int tr=0;
+	unsigned int tr=0;
 	while(pthread_mutex_trylock(mutex)) {
 		if (++tr>=SOFTLOCK_MAXTRIES)
 			return 0;
@@ -177,11 +174,13 @@ int isdchar (unsigned char c)
  * Convert a string given in dotted notation to the transport format (length byte prepended
  * domain name parts, ended by a null length sequence)
  * The memory areas referenced by str and rhn may not overlap.
- * The buffer rhn points to is assumed to be 256 bytes in size.
+ * The buffer rhn points to is assumed to be at least DNSNAMEBUFSIZE bytes in size.
+ *
+ * Returns 1 if successful, otherwise 0.
  */
 int str2rhn(const unsigned char *str, unsigned char *rhn)
 {
-	int i,j;
+	unsigned int i,j;
 
 	if(*str=='.' && !*(str+1)) {
 		/* Special case: root domain */
@@ -190,21 +189,18 @@ int str2rhn(const unsigned char *str, unsigned char *rhn)
 	}
 
 	for(i=0;;) {
-		int jlim,lb;
-		jlim=i+63;
-		if(jlim>254) jlim=254; /* 254 because the termination 0 has to follow */
+		unsigned int jlim= i+63;
+		if(jlim>DNSNAMEBUFSIZE-2) jlim=DNSNAMEBUFSIZE-2; /* DNSNAMEBUFSIZE-2 because the termination 0 has to follow */
 		for(j=i; str[j] && str[j]!='.'; ++j) {
 			if(j>=jlim) return 0;
 			rhn[j+1]=str[j];
 		}
-		if(!str[j]) break;
-		lb=j-i;
-		if (lb>0) {
-			rhn[i]=(unsigned char)lb;
-			i = j+1;
-		}
-		else
+		if(!str[j])
+			break;
+		if(j<=i)
 			return 0;
+		rhn[i]=(unsigned char)(j-i);
+		i = j+1;
 	}
 
 	rhn[i]=0;
@@ -218,9 +214,9 @@ int str2rhn(const unsigned char *str, unsigned char *rhn)
   the first len chars in the input string. It also tolerates strings
   not ending in a dot and returns a message in case of an error.
  */
-const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
+const char *parsestr2rhn(const unsigned char *str, unsigned int len, unsigned char *rhn)
 {
-	int i,j;
+	unsigned int i,j;
 
 	if(len>0 && *str=='.' && (len==1 || !*(str+1))) {
 		/* Special case: root domain */
@@ -230,9 +226,8 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 
 	i=0;
 	do {
-		int jlim,lb;
-		jlim=i+63;
-		if(jlim>254) jlim=254;
+		unsigned int jlim= i+63;
+		if(jlim>DNSNAMEBUFSIZE-2) jlim=DNSNAMEBUFSIZE-2;
 		for(j=i; j<len && str[j] && str[j]!='.'; ++j) {
 			/* if(!isdchar(str[j]))
 				return "Illegal character in domain name"; */
@@ -241,15 +236,15 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
 			rhn[j+1]=str[j];
 		}
 
-		lb=j-i;
-		if (lb>0) {
-			rhn[i]=(unsigned char)lb;
-			i = j+1;
+		if(j<=i) {
+			if(j<len && str[j])
+				return "Empty name element in domain name";
+			else
+				break;
 		}
-		else if(j<len && str[j])
-			return "Empty name element in domain name";
-		else
-			break;
+
+		rhn[i]=(unsigned char)(j-i);
+		i = j+1;
 	} while(j<len && str[j]);
 
 	rhn[i]=0;
@@ -268,19 +263,18 @@ const char *parsestr2rhn(const unsigned char *str, int len, unsigned char *rhn)
  * If the labels in rhn contains non-printable characters, these are represented
  * in the result by a backslash followed three octal digits. Additionally some
  * special characters are preceded by a backslash. Normally the result should
- * fit within 256 bytes, but if there are many non-printable characters, the
+ * fit within DNSNAMEBUFSIZE bytes, but if there are many non-printable characters, the
  * receiving buffer may not be able to contain the full result. In that case the
  * truncation in the result is indicated by series of trailing dots. This
  * function is only used for diagnostic purposes, thus a truncated result should
  * not be a very serious problem (and should only occur under pathological
  * circumstances).
  */
-const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int size)
+const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, unsigned int size)
 {
-	unsigned lb;
-	int i,j;
+	unsigned int i,j,lb;
 
-	if(size<=0) return NULL;
+	if(size==0) return NULL;
 
 	i=0; j=0;
 	lb=rhn[i++];
@@ -304,7 +298,7 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 					str[j++]=c;
 				}
 				else {
-					int rem=size-1-j;
+					unsigned int rem=size-1-j;
 					int n=snprintf(charp &str[j],rem,"\\%03o",c);
 					if(n<0 || n>=rem) {
 						str[j++]='.';
@@ -334,7 +328,8 @@ const unsigned char *rhn2str(const unsigned char *rhn, unsigned char *str, int s
 	return str;
 }
 
-/* Return the length of a rhn. The definition has in fact been moved to helpers.h as an inline function.
+/* Return the length of a domain name in transport format.
+   The definition has in fact been moved to helpers.h as an inline function.
    Note added by Paul Rombouts:
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
    may yield a different result in certain error situations (when a domain name segment contains null byte).
@@ -344,15 +339,15 @@ unsigned int rhnlen(const unsigned char *rhn)
 {
 	unsigned int i=0,lb;
 
-	while((lb=rhn[i]))
-		i+=lb+1;
-	return i+1;
+	while((lb=rhn[i++]))
+		i+=lb;
+	return i;
 }
 #endif
 
 /*
  * Non-validating rhn copy (use with checked or generated data only).
- * Returns number of characters copied. The buffer dst points to is assumed to be 256 (or
+ * Returns number of characters copied. The buffer dst points to is assumed to be DNSNAMEBUFSIZE (or
  * at any rate large enough) bytes in size.
  * The answer assembly code uses this; it is guaranteed to not clobber anything
  * after the name.
@@ -361,11 +356,32 @@ unsigned int rhncpy(unsigned char *dst, const unsigned char *src)
 {
 	unsigned int len = rhnlen(src);
 
-	PDNSD_ASSERT(len<=256,"rhncpy: src too long!");
-	memcpy(dst,src,len>256?256:len);
+	PDNSD_ASSERT(len<=DNSNAMEBUFSIZE,"rhncpy: src too long!");
+	memcpy(dst,src,len>DNSNAMEBUFSIZE?DNSNAMEBUFSIZE:len);
 	return len;
 }
 
+
+/* Check whether a name is a normal wire-encoded domain name,
+   i.e. is not compressed, doesn't use extended labels and is not
+   too long.
+*/
+int isnormalencdomname(const unsigned char *rhn, unsigned maxlen)
+{
+	unsigned int i,lb;
+
+	if(maxlen>DNSNAMEBUFSIZE)
+		maxlen=DNSNAMEBUFSIZE;
+	for(i=0;;) {
+		if(i>=maxlen) return 0;
+		lb=rhn[i++];
+		if(lb==0)    break;
+		if(lb>0x3f)  return 0;
+		i += lb;
+	}
+
+	return 1;
+}
 
 int str2pdnsd_a(const char *addr, pdnsd_a *a)
 {
@@ -772,7 +788,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t size)
 		}
 		break;
 
-#if defined(DNS_NEW_RRS) && defined(AF_INET6)
+#ifdef AF_INET6
 		case AF_INET6:
 		{
 			const unsigned char *p=src;

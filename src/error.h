@@ -1,7 +1,7 @@
 /* error.h - Error handling
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: error.h,v 1.15 2001/12/30 18:26:08 tmm Exp $ */
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -53,13 +52,13 @@ void log_message(int prior,const char *s, ...) printfunc(2, 3);
 /* GNU C Macro Varargs style. */
 #define log_error(args...) log_message(LOG_ERR,args)
 #define log_warn(args...) log_message(LOG_WARNING,args)
+#define log_info(level,args...) {if((level)<=global.verbosity) log_message(LOG_INFO,args);}
 #else
 /* ANSI C99 style. */
 #define log_error(...) log_message(LOG_ERR,__VA_ARGS__)
 #define log_warn(...) log_message(LOG_WARNING,__VA_ARGS__)
+#define log_info(level,...) {if((level)<=global.verbosity) log_message(LOG_INFO,__VA_ARGS__);}
 #endif
-
-void log_info(int level, const char *s, ...) printfunc(2, 3);
 
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.
@@ -83,8 +82,8 @@ extern FILE *dbg_file;
 #  define DEBUG_MSG(args...)	{if (debug_p) debug_msg(0,args);}
 #  define DEBUG_MSGC(args...)	{if (debug_p) debug_msg(1,args);}
 #  define DEBUG_PDNSDA_MSG(args...) {char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(args);}
-#  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
-#  define DEBUG_RHN_MSG(args...) {unsigned char _debugstrbuf[256]; DEBUG_MSG(args);}
+#  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,sizeof(_debugsockabuf))
+#  define DEBUG_RHN_MSG(args...) {unsigned char _debugstrbuf[DNSNAMEBUFSIZE]; DEBUG_MSG(args);}
 #  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(args...)
@@ -103,7 +102,7 @@ extern FILE *dbg_file;
 #  define DEBUG_MSGC(...)	{if (debug_p) debug_msg(1,__VA_ARGS__);}
 #  define DEBUG_PDNSDA_MSG(...)	{char _debugsockabuf[ADDRSTR_MAXLEN]; DEBUG_MSG(__VA_ARGS__);}
 #  define PDNSDA2STR(a)		pdnsd_a2str(a,_debugsockabuf,ADDRSTR_MAXLEN)
-#  define DEBUG_RHN_MSG(...)	{unsigned char _debugstrbuf[256]; DEBUG_MSG(__VA_ARGS__);}
+#  define DEBUG_RHN_MSG(...)	{unsigned char _debugstrbuf[DNSNAMEBUFSIZE]; DEBUG_MSG(__VA_ARGS__);}
 #  define RHN2STR(a)		rhn2str(a,_debugstrbuf,sizeof(_debugstrbuf))
 # else
 #  define DEBUG_MSG(...)

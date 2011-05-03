@@ -30,9 +30,6 @@
 #include "helpers.h"
 #include "error.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: debug.c,v 1.4 2001/05/19 15:42:58 tmm Exp $";
-#endif
 
 /*
  * This is indeed very primitive (it does not track allocation failures

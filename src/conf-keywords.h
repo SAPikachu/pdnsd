@@ -1,7 +1,7 @@
 /* conf-keywords.h - Tables used by parser of configuration file.
    Based on information previously contained in conf-lex.y and conf-parse.y
 
-   Copyright (C) 2004,2005,2006,2007,2008,2009 Paul A. Rombouts
+   Copyright (C) 2004,2005,2006,2007,2008,2009,2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -34,6 +34,7 @@ enum {
 	CACHE_DIR,
 	SERVER_PORT,
 	SERVER_IP,
+	OUTGOING_IP,
 	SCHEME_FILE,
 	LINKDOWN_KLUGE,
 	MAX_TTL,
@@ -63,6 +64,7 @@ enum {
 	NEG_DOMAIN_POL,
 	QUERY_PORT_START,
 	QUERY_PORT_END,
+	UDP_BUFSIZE,
 	DELEGATION_ONLY,
 	
 	IP,
@@ -73,12 +75,14 @@ enum {
 	PING_TIMEOUT,
 	PING_IP,
 	UPTEST_CMD,
+	QUERY_TEST_NAME,
 	INTERVAL,
 	INTERFACE,
 	DEVICE,
 	PURGE_CACHE,
 	CACHING,
 	LEAN_QUERY,
+	EDNS_QUERY,
 	PRESET,
 	PROXY_ONLY,
 	ROOT_SERVER,
@@ -96,6 +100,8 @@ enum {
 	MX,
 	SOA,
 	CNAME,
+	TXT,
+	SPF,
 	NAME,
 	OWNER,
 	TTL,
@@ -119,48 +125,52 @@ static const namevalue_t section_headers[]= {
 
 /* Table for looking up global options. Order alphabetically! */
 static const namevalue_t global_options[]= {
-	{"cache_dir",        CACHE_DIR},
-	{"ctl_perms",        C_CTL_PERMS},
-	{"daemon",           DAEMON},
-	{"debug",            C_DEBUG},
-	{"delegation_only",  DELEGATION_ONLY},
-	{"ignore_cd",        IGNORE_CD},
-	{"interface",        SERVER_IP},
-	{"ipv4_6_prefix",    IPV4_6_PREFIX},
-	{"linkdown_kluge",   LINKDOWN_KLUGE},
-	{"max_ttl",          MAX_TTL},
-	{"min_ttl",          MIN_TTL},
-	{"neg_domain_pol",   NEG_DOMAIN_POL},
-	{"neg_rrs_pol",      NEG_RRS_POL},
-	{"neg_ttl",          NEG_TTL},
-	{"par_queries",      C_PAR_QUERIES},
-	{"paranoid",         PARANOID},
-	{"perm_cache",       PERM_CACHE},
-	{"pid_file",         PID_FILE},
-	{"proc_limit",       C_PROC_LIMIT},
-	{"procq_limit",      C_PROCQ_LIMIT},
-	{"query_method",     C_QUERY_METHOD},
-	{"query_port_end",   QUERY_PORT_END},
-	{"query_port_start", QUERY_PORT_START},
-	{"randomize_recs",   C_RAND_RECS},
-	{"run_as",           RUN_AS},
-	{"run_ipv4",         RUN_IPV4},
-	{"scheme_file",      SCHEME_FILE},
-	{"server_ip",        SERVER_IP},
-	{"server_port",      SERVER_PORT},
-	{"status_ctl",       STATUS_CTL},
-	{"strict_setuid",    STRICT_SETUID},
-	{"tcp_qtimeout",     TCP_QTIMEOUT},
-	{"tcp_server",       C_TCP_SERVER},
-	{"timeout",          TIMEOUT},
-	{"use_nss",          USE_NSS},
-	{"verbosity",        C_VERBOSITY}
+	{"cache_dir",         CACHE_DIR},
+	{"ctl_perms",         C_CTL_PERMS},
+	{"daemon",            DAEMON},
+	{"debug",             C_DEBUG},
+	{"delegation_only",   DELEGATION_ONLY},
+	{"ignore_cd",         IGNORE_CD},
+	{"interface",         SERVER_IP},
+	{"ipv4_6_prefix",     IPV4_6_PREFIX},
+	{"linkdown_kluge",    LINKDOWN_KLUGE},
+	{"max_ttl",           MAX_TTL},
+	{"min_ttl",           MIN_TTL},
+	{"neg_domain_pol",    NEG_DOMAIN_POL},
+	{"neg_rrs_pol",       NEG_RRS_POL},
+	{"neg_ttl",           NEG_TTL},
+	{"outgoing_ip",       OUTGOING_IP},
+	{"outside_interface", OUTGOING_IP},
+	{"par_queries",       C_PAR_QUERIES},
+	{"paranoid",          PARANOID},
+	{"perm_cache",        PERM_CACHE},
+	{"pid_file",          PID_FILE},
+	{"proc_limit",        C_PROC_LIMIT},
+	{"procq_limit",       C_PROCQ_LIMIT},
+	{"query_method",      C_QUERY_METHOD},
+	{"query_port_end",    QUERY_PORT_END},
+	{"query_port_start",  QUERY_PORT_START},
+	{"randomize_recs",    C_RAND_RECS},
+	{"run_as",            RUN_AS},
+	{"run_ipv4",          RUN_IPV4},
+	{"scheme_file",       SCHEME_FILE},
+	{"server_ip",         SERVER_IP},
+	{"server_port",       SERVER_PORT},
+	{"status_ctl",        STATUS_CTL},
+	{"strict_setuid",     STRICT_SETUID},
+	{"tcp_qtimeout",      TCP_QTIMEOUT},
+	{"tcp_server",        C_TCP_SERVER},
+	{"timeout",           TIMEOUT},
+	{"udpbufsize",        UDP_BUFSIZE},
+	{"use_nss",           USE_NSS},
+	{"verbosity",         C_VERBOSITY}
 };
 
 /* Table for looking up server options. Order alphabetically! */
 static const namevalue_t server_options[]= {
 	{"caching",            CACHING},
 	{"device",             DEVICE},
+	{"edns_query",         EDNS_QUERY},
 	{"exclude",            EXCLUDE},
 	{"file",               FILET},
 	{"include",            INCLUDE},
@@ -176,6 +186,7 @@ static const namevalue_t server_options[]= {
 	{"preset",             PRESET},
 	{"proxy_only",         PROXY_ONLY},
 	{"purge_cache",        PURGE_CACHE},
+	{"query_test_name",    QUERY_TEST_NAME},
 	{"randomize_servers",  RANDOMIZE_SERVERS},
 	{"reject",             REJECTLIST},
 	{"reject_policy",      REJECTPOLICY},
@@ -199,7 +210,9 @@ static const namevalue_t rr_options[]= {
 	{"ptr",     PTR},
 	{"reverse", REVERSE},
 	{"soa",     SOA},
-	{"ttl",     TTL}
+	{"spf",     SPF},
+	{"ttl",     TTL},
+	{"txt",     TXT}
 };
 
 /* Table for looking up source options. Order alphabetically! */

@@ -1,3 +1,134 @@
+2011-04-26  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Fixed memory leak that can occur when the configuration file is reloaded
+	and an error is encountered while parsing the definition of a TXT
+	record.
+
+2011-03-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/make_rr_types_h.pl,src/cache.h,src/cache.c,src/dns_answer.c
+	Introduced arrays rrmuiterlist and rrcachiterlist to make iterating
+	over all possible RR types in a cache entry in strict ascending order
+	a little more efficient.
+	
+2011-03-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c,src/conf-parser.c,src/conf-keywords.h
+	Implemented a new config option "outgoing_ip", which
+	makes it possible to bind outgoing connections to
+	a specific interface.
+
+2011-02-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/netdev.c
+	Fixed UDP socket descriptors leak in the implementation of
+	is_local_addr() for the FreeBSD platform. Thanks to Ashish Shukla for
+	reporting this bug.
+
+2011-02-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	In purge_all_rrsets(), also free the rrext array if it has become empty after
+	purging all the RR sets.
+
+2011-02-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/conf-parser.c,src/conf-keywords.h,
+	  src/dns_query.c,src/dns_query.h,src/servers.c
+	Changed "edns_query" from a "global" option to a "server"
+	configuration option.
+
+2011-02-04  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/dns_query.c,src/dns_query.h,src/servers.c,
+	  src/conf-parser.c
+	The query uptest sometimes fails because some DNS servers are configured
+	to ignore empty queries. The new config option "query_test_name" makes
+	it possible to query for a specific name instead.
+
+2011-02-01  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	When processing a reply from a remote name server which seems to delegate
+	to other name servers, check if the names for which NS records have
+	been supplied have locally defined NS records. If so, the local
+	records will now override those supplied by the remote server.
+
+2011-01-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Added support for defining TXT records in the configuration file.
+
+2011-01-30  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Do not cache additional records from a response that is rejected because
+	it contains IP addresses in the reject list, even when the reply
+	is processed as a NXDOMAIN reply.
+
+2011-01-25  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conf-parser.c
+	Modified the function scan_string() to allow back-slashed escape
+	sequences in strings.
+
+2011-01-21  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c,src/dns_query.c,src/conff.h,src/conff.c,
+	  src/conf-parser.c
+	Added support for EDNS (Extension mechanisms for DNS).
+	Currently this is only useful for allowing UDP message sizes
+	to be larger than 512 bytes.
+
+2011-01-20  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	To avoid frequent reallocs when composing a DNS reply message,
+	grow the message buffer in multiples of a certain minimum chunk size.
+
+2011-01-19  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns.c,src/dns.h,src/dns_answer.c
+	Extended debugging info with DNS-message lengths and flags of incoming
+	messages.
+
+2011-01-17  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/conff.c,src/conff.h,src/conf-parser.c,src/dns_answer.c
+	Made "ignore_cd" option obsolete. It is now effectively always on.
+
+2010-12-27  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_answer.c,src/dns_query.c,
+	  src/make_rr_types.pl,src/rr_types.in,src/rr_types.c
+	The array of pointers to rr_set_t structs in the dns_cent_t struct
+	contains mostly null pointers in practice, so is somewhat
+	inefficient in storage usage. This problem is exacerbated if we add
+	support for caching more RR-types. To ameliorate to the problem
+	I have decided to split the array in two, with one part fixed in the
+	dns_cent_t struct as before, and an extension part that will be
+	separately allocated, if necessary. If the extension part is used only
+	for very rarely cached types, in most cases the extension array will not
+	need to be allocated thus hopefully saving memory overall.
+	The lookup tables which are necessary to support the new cache entry
+	structure are cumbersome to write by hand, so I have written a perl
+	script to do this automatically. As an additional benefit, which RR
+	types are cache-able is now configurable for each type separately via
+	rr_types.in.
+
+2010-03-14  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Using randomized source ports for outgoing queries in IPv6 mode failed
+	with the warning "Out of ports in the range 1024-65535, dropping query!",
+	because the pdnsd tried to bind to the fixed port for incoming queries,
+	instead of the dynamically chosen port. This is a very old bug, but it
+	has only become apparent since source port randomization has become the
+	default.
+	Thanks to Philip-André Fillion, Phil Sutter, Radoslaw Szkodzinski and
+	others for reporting this bug and sending patches.
+
 2009-12-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/status.c,src/status.h,src/pdnsd-ctl/pdnsd-ctl.c

@@ -18,7 +18,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: netdev.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _NETDEV_H_
 #define _NETDEV_H_

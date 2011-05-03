@@ -7,10 +7,6 @@
 #include "../netdev.h"
 #include "../ipvers.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: is_local_addr.c,v 1.1 2000/07/20 20:03:25 thomas Exp $";
-#endif
-
 short int daemon_p=0;
 #if DEBUG>0
 short int debug_p=0;

@@ -13,8 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-# $Id: Makefile.am,v 1.2 2001/12/30 15:32:54 tmm Exp $
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -115,6 +113,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -125,10 +124,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -137,9 +135,12 @@ target_alias = @target_alias@
 thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
 man_MANS = pdnsd.8 pdnsd-ctl.8 pdnsd.conf.5
-EXTRA_DIST = pdnsd.conf.in html/dl.html html/doc.html html/faq.html \
-html/index.html txt/faq.txt txt/intro.txt txt/manual.txt \
-pdnsd.8.in pdnsd-ctl.8 pdnsd.conf.5.in
+
+# Note: pdnsd-ctl.8, pdnsd.conf.5.in, dl.html and the txt docs are handled by dist-hook rule.
+EXTRA_DIST = pdnsd.conf.in pdnsd.8.in \
+	html/dl.html.in html/doc.html html/faq.html html/index.html \
+	doc_makefile html/doc_makefile txt/doc_makefile \
+	html2confman.pl html/htmlsubst.pl 
 
 all: all-am
 
@@ -305,6 +306,9 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 check-am: all-am
 check: check-am
 all-am: Makefile $(MANS)
@@ -342,7 +346,7 @@ clean-am: clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic
+distclean-am: clean-am distclean-generic distclean-local
 
 dvi: dvi-am
 
@@ -386,26 +390,36 @@ uninstall-am: uninstall-info-am uninstall-man
 
 uninstall-man: uninstall-man5 uninstall-man8
 
-.PHONY: all all-am check check-am clean clean-generic distclean \
-	distclean-generic distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-data-hook install-exec install-exec-am install-info \
-	install-info-am install-man install-man5 install-man8 \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-generic pdf pdf-am ps ps-am uninstall uninstall-am \
-	uninstall-info-am uninstall-man uninstall-man5 uninstall-man8
+.PHONY: all all-am check check-am clean clean-generic dist-hook \
+	distclean distclean-generic distclean-local distdir dvi dvi-am \
+	html html-am info info-am install install-am install-data \
+	install-data-am install-data-hook install-exec install-exec-am \
+	install-info install-info-am install-man install-man5 \
+	install-man8 install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
+	uninstall-am uninstall-info-am uninstall-man uninstall-man5 \
+	uninstall-man8
 
 
 # XXX: Do not insist to set the config file owner to root to avoid breaking RPM
 # builds
 install-data-hook:
-	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
+	$(mkinstalldirs) "$(DESTDIR)$(sysconfdir)"
 	if test `whoami` = "root"; then \
-	  $(INSTALL) -o 0 -g 0 -m 644 pdnsd.conf $(DESTDIR)$(sysconfdir)/pdnsd.conf.sample ; \
+	  $(INSTALL) -o 0 -g 0 -m 644 pdnsd.conf "$(DESTDIR)$(sysconfdir)/pdnsd.conf.sample" ; \
 	else \
-	  $(INSTALL) -m 644 pdnsd.conf $(DESTDIR)$(sysconfdir)/pdnsd.conf.sample ; \
+	  $(INSTALL) -m 644 pdnsd.conf "$(DESTDIR)$(sysconfdir)/pdnsd.conf.sample" ; \
 	fi
+
+dist-hook: doc_makefile
+	@$(MAKE) -f doc_makefile doc
+	cp -p --parents pdnsd-ctl.8 pdnsd.conf.5.in \
+	                html/dl.html txt/faq.txt txt/intro.txt txt/manual.txt \
+	                $(distdir)
+
+distclean-local: doc_makefile
+	@$(MAKE) -f doc_makefile clean
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

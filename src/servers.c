@@ -1,7 +1,7 @@
 /* servers.c - manage a set of dns servers
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2005, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2005, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -47,9 +47,6 @@
 #include "helpers.h"
 #include "dns_query.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: servers.c,v 1.19 2002/07/19 21:14:19 tmm Exp $";
-#endif
 
 /*
  * We may be a little over-strict with locks here. Never mind...
@@ -186,7 +183,7 @@ static int uptest (servparm_t *serv, int j)
 	}
 		break;
 	case C_QUERY:
-		ret=query_uptest(s_addr, serv->port,
+		ret=query_uptest(s_addr, serv->port, serv->query_test_name,
 				 serv->timeout>=global.timeout?serv->timeout:global.timeout,
 				 PINGREPEAT);
 	} /* end of switch */
@@ -289,7 +286,7 @@ static void retest(int i, int j)
 /* This is called by the server status thread to discover the addresses of root servers.
    Call with server_lock applied.
 */
-static addr2_array resolv_rootserver_addrs(atup_array a, int port, time_t timeout)
+static addr2_array resolv_rootserver_addrs(atup_array a, int port, char edns_query, time_t timeout)
 {
 	addr2_array retval=NULL;
 
@@ -297,7 +294,7 @@ static addr2_array resolv_rootserver_addrs(atup_array a, int port, time_t timeou
 	++server_data_users;
 	pthread_mutex_unlock(&servers_lock);
 
-	retval= dns_rootserver_resolv(a,port,timeout);
+	retval= dns_rootserver_resolv(a,port,edns_query,timeout);
 
 	pthread_mutex_lock(&servers_lock);
 	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
@@ -393,7 +390,7 @@ void *servstat_thread(void *p)
 					}
 
 					DEBUG_MSG("Attempting to discover root servers for server section #%d.\n",i);
-					adrs=resolv_rootserver_addrs(sp->atup_a,sp->port,sp->timeout);
+					adrs=resolv_rootserver_addrs(sp->atup_a,sp->port,sp->edns_query,sp->timeout);
 					l= DA_NEL(adrs);
 					if(l>0) {
 						struct timeval now;

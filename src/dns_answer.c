@@ -1,7 +1,7 @@
 /* dns_answer.c - Receive and process incoming dns queries.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -22,12 +22,12 @@
 
 /*
  * STANDARD CONFORMITY
- * 
+ *
  * There are several standard conformity issues noted in the comments.
  * Some additional comments:
  *
- * I always set RA but I ignore RD largely (in everything but CNAME recursion), 
- * not because it is not supported, but because I _always_ do a recursive 
+ * I always set RA but I ignore RD largely (in everything but CNAME recursion),
+ * not because it is not supported, but because I _always_ do a recursive
  * resolve in order to be able to cache the results.
  */
 
@@ -59,9 +59,6 @@
 #include "error.h"
 #include "debug.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: dns_answer.c,v 1.60 2002/08/07 08:55:33 tmm Exp $";
-#endif
 
 /*
  * This is for error handling to prevent spewing the log files.
@@ -103,7 +100,6 @@ typedef union {
 #endif
 } pkt_info_t;
 
-#define udp_buf_len 512
 
 typedef struct {
 	union {
@@ -119,23 +115,15 @@ typedef struct {
 
 	int                sock;
 	int                proto;
-	long               len;
-	unsigned char      buf[udp_buf_len];
+	size_t             len;
+	unsigned char      buf[0];  /* Actual size determined by global.udpbufsize */
 } udp_buf_t;
 
 
-typedef struct {
-#ifndef NO_TCP_SERVER
-	uint16_t len;
-#endif
-	dns_hdr_t hdr;
-} __attribute__((packed)) dns_ans_t;
-
-#ifdef NO_TCP_SERVER
-# define ansoffset 0
-#else
-# define ansoffset 2
-#endif
+/* ALLOCINITIALSIZE should be at least sizeof(dns_msg_t) = 2+12 */
+#define ALLOCINITIALSIZE 256
+/* This mask corresponds to a chunk size of 128 bytes. */
+#define ALLOCCHUNKSIZEMASK ((size_t)0x7f)
 
 typedef struct {
 	unsigned short qtype;
@@ -152,7 +140,7 @@ typedef struct {
 	unsigned short tp,dlen;
 	unsigned char nm[0];
 	/* unsigned char data[0]; */
-} sva_t; 
+} sva_t;
 
 
 /*
@@ -182,7 +170,7 @@ static int sva_add(dlist *sva, const unsigned char *rhn, unsigned short tp, unsi
 inline static time_t ans_ttl(rr_set_t *rrset, time_t queryts)
 {
 	time_t ttl= rrset->ttl;
-	
+
 	if (!(rrset->flags&CF_LOCAL)) {
 		time_t tpassed= queryts - rrset->ts;
 		if(tpassed<0) tpassed=0;
@@ -192,18 +180,18 @@ inline static time_t ans_ttl(rr_set_t *rrset, time_t queryts)
 	return ttl;
 }
 
-/* follow_cname_chain takes a cache entry and a buffer (must be at least 256 bytes),
+/* follow_cname_chain takes a cache entry and a buffer (must be at least DNSNAMEBUFSIZE bytes),
    and copies the name indicated by the first cname record in the cache entry.
    The name is returned in length-byte string notation.
    follow_cname_chain returns 1 if a cname record is found, otherwise 0.
 */
 inline static int follow_cname_chain(dns_cent_t *c, unsigned char *name)
 {
-	rr_set_t *rrset=c->rr[T_CNAME-T_MIN];
+	rr_set_t *rrset=getrrset_CNAME(c);
 	rr_bucket_t *rr;
 	if (!rrset || !(rr=rrset->rrs))
 		return 0;
-	PDNSD_ASSERT(rr->rdlen <= 256, "follow_cname_chain: record too long");
+	PDNSD_ASSERT(rr->rdlen <= DNSNAMEBUFSIZE, "follow_cname_chain: record too long");
 	memcpy(name,rr->data,rr->rdlen);
 	return 1;
 }
@@ -218,40 +206,49 @@ inline static int follow_cname_chain(dns_cent_t *c, unsigned char *name)
  * or add_to_response the first time.
  * It gets filled with a pointer to compression information that can be reused in subsequent calls
  * to add_to_response.
- * sect is the section (S_ANSWER, S_AUTHORITY or S_ADDITIONAL) in which the record 
+ * sect is the section (S_ANSWER, S_AUTHORITY or S_ADDITIONAL) in which the record
  * belongs logically. Note that you still have to add the rrs in the right order (answer rrs first,
  * then authority and last additional).
  */
-static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short type, uint32_t ttl,
-		  int dlen, void *data, char section, char udp, dlist *cb)
+static int add_rr(dns_msg_t **ans, size_t *sz, size_t *allocsz,
+		  unsigned char *rrn, unsigned short type, uint32_t ttl,
+		  unsigned int dlen, void *data, char section, unsigned *udp, dlist *cb)
 {
-	int ilen,blen,osz,rdlen;
+	size_t osz= *sz;
+	unsigned int ilen,blen,rdlen;
 	unsigned char *rrht;
 
-	osz=*sz;
 	{
-		int nlen;
-		unsigned char nbuf[256];
+		unsigned int nlen;
+		unsigned char nbuf[DNSNAMEBUFSIZE];
 
 		if (!(nlen=compress_name(rrn,nbuf,*sz,cb)))
 			return 0;
 
-		/* This buffer is over-allocated usually due to compression. Never mind, just a few bytes,
-		 * and the buffer is freed soon*/
+		/* This buffer is usually over-allocated due to compression.
+		   Never mind, just a few bytes, and the buffer is freed soon. */
 		{
-			dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(*ans,ansoffset+*sz+nlen+sizeof_rr_hdr_t+dlen);
-			if (!nans)
-				return 0;
-			*ans=nans;
+			size_t newsz= dnsmsghdroffset + *sz + nlen + sizeof_rr_hdr_t + dlen;
+			if(newsz > *allocsz) {
+				/* Need to allocate more space.
+				   To avoid frequent reallocs, we allocate
+				   a multiple of a certain chunk size. */
+				size_t newallocsz= (newsz+ALLOCCHUNKSIZEMASK)&(~ALLOCCHUNKSIZEMASK);
+				dns_msg_t *newans=(dns_msg_t *)pdnsd_realloc(*ans,newallocsz);
+				if (!newans)
+					return 0;
+				*ans=newans;
+				*allocsz=newallocsz;
+			}
 		}
-		memcpy((unsigned char *)(&(*ans)->hdr)+*sz,nbuf,nlen);
-		*sz+=nlen;
+		memcpy((unsigned char *)(&(*ans)->hdr)+ *sz, nbuf, nlen);
+		*sz += nlen;
 	}
 
 	/* the rr header will be filled in later. Just reserve some space for it. */
-	rrht=((unsigned char *)(&(*ans)->hdr))+(*sz);
-	*sz+=sizeof_rr_hdr_t;
-	
+	rrht= ((unsigned char *)(&(*ans)->hdr)) + *sz;
+	*sz += sizeof_rr_hdr_t;
+
 	switch (type) {
 	case T_CNAME:
 	case T_MB:
@@ -266,8 +263,11 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= dlen, "T_CNAME/T_MB/...: got longer");
 		*sz+=rdlen;
 		break;
+#if IS_CACHED_MINFO || IS_CACHED_RP
+#if IS_CACHED_MINFO
 	case T_MINFO:
-#ifdef DNS_NEW_RRS
+#endif
+#if IS_CACHED_RP
 	case T_RP:
 #endif
 		if (!(rdlen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
@@ -281,10 +281,15 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= dlen, "T_MINFO/T_RP: got longer");
 		*sz+=blen;
 		break;
+#endif
 	case T_MX:
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_AFSDB
 	case T_AFSDB:
+#endif
+#if IS_CACHED_RT
 	case T_RT:
+#endif
+#if IS_CACHED_KX
 	case T_KX:
 #endif
 		PDNSD_ASSERT(dlen > 2, "T_MX/T_AFSDB/...: rr botch");
@@ -313,7 +318,7 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= dlen, "T_SOA: rr botch");
 		*sz+=20;
 		break;
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_PX
 	case T_PX:
 		PDNSD_ASSERT(dlen > 2, "T_PX: rr botch");
 		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),(unsigned char *)data,2);
@@ -331,6 +336,8 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= dlen, "T_PX: got longer");
 		*sz+=blen;
 		break;
+#endif
+#if IS_CACHED_SRV
 	case T_SRV:
 		PDNSD_ASSERT(dlen > 6, "T_SRV: rr botch");
 		memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),(unsigned char *)data,6);
@@ -341,6 +348,8 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= dlen, "T_SRV: got longer");
 		*sz+=blen;
 		break;
+#endif
+#if IS_CACHED_NXT
 	case T_NXT:
 		if (!(blen=compress_name(((unsigned char *)data), ((unsigned char *)(&(*ans)->hdr))+(*sz),*sz,cb)))
 			return 0;
@@ -350,19 +359,21 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		PDNSD_ASSERT(rdlen <= ilen, "T_NXT: got longer");
 		PDNSD_ASSERT(dlen >= ilen, "T_NXT: rr botch");
 		if (dlen > ilen) {
-			int wlen = dlen - ilen;
+			unsigned int wlen = dlen - ilen;
 			memcpy(((unsigned char *)(&(*ans)->hdr))+(*sz),((unsigned char *)data)+ilen,wlen);
 			*sz+=wlen;
 			rdlen+=wlen;
 		}
 		break;
+#endif
+#if IS_CACHED_NAPTR
 	case T_NAPTR:
 		PDNSD_ASSERT(dlen > 4, "T_NAPTR: rr botch");
 		ilen=4;
 		{
 			int j;
 			for (j=0;j<3;j++) {
-				ilen += ((int)*(((unsigned char *)data)+ilen)) + 1;
+				ilen += ((unsigned)*(((unsigned char *)data)+ilen)) + 1;
 				PDNSD_ASSERT(dlen > ilen, "T_NAPTR: rr botch 2");
 			}
 		}
@@ -382,8 +393,8 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		*sz+=dlen;
 	}
 
-	if (udp && (*sz)>512 && section==S_ADDITIONAL) /* only add the record if we do not increase the length over 512 */
-		*sz=osz;                               /* in additionals for udp answer*/
+	if (udp && *sz>*udp && section==S_ADDITIONAL) /* only add the record if we do not increase the length over 512 */
+		*sz=osz;                              /* (or possibly more if the request used EDNS) in additionals for udp answer. */
 	else {
 		PUTINT16(type,rrht);
 		PUTINT16(C_IN,rrht);
@@ -403,6 +414,43 @@ static int add_rr(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned short 
 		}
 	}
 
+	return 1;
+}
+
+/* Add an OPT pseudo RR containing EDNS info.
+   Can only be added to the additional section!
+*/
+int add_opt_pseudo_rr(dns_msg_t **ans, size_t *sz, size_t *allocsz,
+		      unsigned short udpsize, unsigned short rcode,
+		      unsigned short ednsver, unsigned short Zflags)
+{
+	unsigned char *ptr;
+	size_t newsz= dnsmsghdroffset + *sz + sizeof_opt_pseudo_rr;
+	if(newsz > *allocsz) {
+		/* Need to allocate more space.
+		   To avoid frequent reallocs, we allocate
+		   a multiple of a certain chunk size. */
+		size_t newallocsz= (newsz+ALLOCCHUNKSIZEMASK)&(~ALLOCCHUNKSIZEMASK);
+		dns_msg_t *newans=(dns_msg_t *)pdnsd_realloc(*ans,newallocsz);
+		if (!newans)
+			return 0;
+		*ans=newans;
+		*allocsz=newallocsz;
+	}
+
+	ptr= ((unsigned char *)(&(*ans)->hdr)) + *sz;
+	*ptr++ = 0;             /* Empty name */
+	PUTINT16(T_OPT,ptr);    /* type field */
+	PUTINT16(udpsize,ptr);  /* class field */
+	*ptr++ = rcode>>4;      /* 4 byte TTL field */
+	*ptr++ = ednsver;
+	PUTINT16(Zflags,ptr);
+	PUTINT16(0,ptr);        /* rdlen field */
+        /* Empty RDATA. */
+
+	*sz += sizeof_opt_pseudo_rr;
+	/* Increment arcount field in dns header. */
+	(*ans)->hdr.arcount = htons(ntohs((*ans)->hdr.arcount)+1);
 	return 1;
 }
 
@@ -459,19 +507,19 @@ inline static rr_bucket_t *randrr(rr_bucket_t *rrb)
 	return rrb;
 }
 
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_SRV
 #define AR_NUM 6
 #else
 #define AR_NUM 5
 #endif
 static const int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_SRV
 				  ,T_SRV
 #endif
 }; 
 /* offsets from record data start to server name */
 static const int ar_offs[AR_NUM]={0,0,0,0,2
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_SRV
 				  ,6
 #endif
 };
@@ -479,23 +527,24 @@ static const int ar_offs[AR_NUM]={0,0,0,0,2
 /* This adds an rrset, optionally randomizing the first element it adds.
  * if that is done, all rrs after the randomized one appear in order, starting from
  * that one and wrapping over if needed. */
-static int add_rrset(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned tp, time_t queryts,
-		     dns_cent_t *cached, char udp, dlist *cb, dlist *sva, dlist *ar)
+static int add_rrset(dns_msg_t **ans, size_t *sz, size_t *allocsz,
+		     unsigned char *rrn, unsigned tp, time_t queryts,
+		     dns_cent_t *cached, unsigned *udp, dlist *cb, dlist *sva, dlist *ar)
 {
-	rr_set_t *crrset=cached->rr[tp-T_MIN];
+	rr_set_t *crrset=getrrset(cached,tp);
 
 	if (crrset && crrset->rrs) {
 		rr_bucket_t *b;
 		rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
 		int i;
-		int rnd_recs=global.rnd_recs;
+		short rnd_recs=global.rnd_recs;
 
 		b=crrset->rrs;
 		if (rnd_recs) b=first=randrr(crrset->rrs);
 
 		while (b) {
-			if (!add_rr(ans, sz, rrn, tp, ans_ttl(crrset,queryts),
-				    b->rdlen, b->data, S_ANSWER, udp, cb)) 
+			if (!add_rr(ans, sz, allocsz, rrn, tp, ans_ttl(crrset,queryts),
+				    b->rdlen, b->data, S_ANSWER, udp, cb))
 				return 0;
 			if (tp==T_NS || tp==T_A || tp==T_AAAA) {
 				/* mark it as added */
@@ -524,49 +573,51 @@ static int add_rrset(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned tp,
 /*
  * Add the fitting elements of the cached record to the message in ans, where ans
  * is grown to fit, sz is the size of the packet and is modified to be the new size.
- * The query is in qe. 
+ * The query is in qe.
  * cb is the buffer used for message compression. *cb should be NULL if you call add_to_response
  * the first time. It gets filled with a pointer to compression information that can be
  * reused in subsequent calls to add_to_response.
  */
-static int add_to_response(dns_ans_t **ans, long *sz, unsigned char *rrn, unsigned qtype, time_t queryts,
-			   dns_cent_t *cached, char udp, dlist *cb, dlist *sva, dlist *ar)
+static int add_to_response(dns_msg_t **ans, size_t *sz, size_t *allocsz,
+			   unsigned char *rrn, unsigned qtype, time_t queryts,
+			   dns_cent_t *cached, unsigned *udp, dlist *cb, dlist *sva, dlist *ar)
 {
 	/* First of all, unless we have records of qtype, add cnames.
 	   Well, actually, there should be at max one cname. */
 	if (qtype!=T_CNAME && qtype!=QT_ALL && !(qtype>=T_MIN && qtype<=T_MAX && have_rr(cached,qtype)))
-		if (!add_rrset(ans, sz, rrn, T_CNAME, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_CNAME, queryts, cached, udp, cb, sva, ar))
 			return 0;
 
 	/* We need no switch for qclass, since we already have filtered packets we cannot understand */
 	if (qtype==QT_AXFR || qtype==QT_IXFR) {
 		/* I do not know what to do in this case. Since we do not maintain zones (and since we are
 		   no master server, so it is not our task), I just return an error message. If anyone
-		   knows how to do this better, please notify me. 
+		   knows how to do this better, please notify me.
 		   Anyway, this feature is rarely used in client communication, and there is no need for
 		   other name servers to ask pdnsd. Btw: many bind servers reject an ?XFR query for security
 		   reasons. */
-		return 0; 
+		return 0;
 	} else if (qtype==QT_MAILB) {
-		if (!add_rrset(ans, sz, rrn, T_MB, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_MB, queryts, cached, udp, cb, sva, ar))
 			return 0;
-		if (!add_rrset(ans, sz, rrn, T_MG, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_MG, queryts, cached, udp, cb, sva, ar))
 			return 0;
-		if (!add_rrset(ans, sz, rrn, T_MR, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_MR, queryts, cached, udp, cb, sva, ar))
 			return 0;
 	} else if (qtype==QT_MAILA) {
-		if (!add_rrset(ans, sz, rrn, T_MD, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_MD, queryts, cached, udp, cb, sva, ar))
 			return 0;
-		if (!add_rrset(ans, sz, rrn, T_MF, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_MF, queryts, cached, udp, cb, sva, ar))
 			return 0;
 	} else if (qtype==QT_ALL) {
-		unsigned i;
-		for (i=T_MIN;i<=T_MAX;i++) {
-			if (!add_rrset(ans, sz, rrn, i, queryts, cached, udp, cb, sva, ar))
+		int i, n= NRRITERLIST(cached);
+		const unsigned short *iterlist= RRITERLIST(cached);
+		for (i=0; i<n; ++i) {
+			if (!add_rrset(ans, sz, allocsz, rrn, iterlist[i], queryts, cached, udp, cb, sva, ar))
 				return 0;
 		}
 	} else if (qtype>=T_MIN && qtype<=T_MAX) {
-		if (!add_rrset(ans, sz, rrn, qtype, queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, qtype, queryts, cached, udp, cb, sva, ar))
 			return 0;
 	} else /* Shouldn't get here. */
 		return 0;
@@ -574,7 +625,7 @@ static int add_to_response(dns_ans_t **ans, long *sz, unsigned char *rrn, unsign
 	if (!ntohs((*ans)->hdr.ancount)) {
 		/* Add a SOA if we have one and no other records are present in the answer.
 		 * This is to aid caches so that they have a ttl. */
-		if (!add_rrset(ans, sz, rrn, T_SOA , queryts, cached, udp, cb, sva, ar))
+		if (!add_rrset(ans, sz, allocsz, rrn, T_SOA , queryts, cached, udp, cb, sva, ar))
 			return 0;
 	}
 #endif
@@ -584,8 +635,9 @@ static int add_to_response(dns_ans_t **ans, long *sz, unsigned char *rrn, unsign
 /*
  * Add an additional
  */
-static int add_additional_rr(dns_ans_t **ans, long *rlen, unsigned char *rhn, unsigned tp, time_t ttl,
-			     unsigned dlen, void *data, int sect, char udp, dlist *cb, dlist *sva)
+static int add_additional_rr(dns_msg_t **ans, size_t *rlen, size_t *allocsz,
+			     unsigned char *rhn, unsigned tp, time_t ttl,
+			     unsigned dlen, void *data, int sect, unsigned *udp, dlist *cb, dlist *sva)
 {
 	sva_t *st;
 
@@ -597,8 +649,8 @@ static int add_additional_rr(dns_ans_t **ans, long *rlen, unsigned char *rhn, un
 			return 1;
 		}
 	}
-	/* add_rr will do nothing when sz>512 bytes. */
-	if(!add_rr(ans, rlen, rhn, tp, ttl, dlen, data, sect, udp, cb))
+	/* add_rr will do nothing when udp!=NULL and sz>*udp. */
+	if(!add_rr(ans, rlen, allocsz, rhn, tp, ttl, dlen, data, sect, udp, cb))
 		return 0;
 	/* mark it as added */
 	if (!sva_add(sva,rhn,tp,dlen,data))
@@ -610,18 +662,19 @@ static int add_additional_rr(dns_ans_t **ans, long *rlen, unsigned char *rhn, un
 /*
  * Add one or more additionals from an rr bucket.
  */
-static int add_additional_rrs(dns_ans_t **ans, long *rlen, unsigned char *rhn, unsigned tp, time_t ttl,
-			      rr_bucket_t *rrb, int sect, char udp, dlist *cb, dlist *sva)
+static int add_additional_rrs(dns_msg_t **ans, size_t *rlen, size_t *allocsz,
+			      unsigned char *rhn, unsigned tp, time_t ttl,
+			      rr_bucket_t *rrb, int sect, unsigned *udp, dlist *cb, dlist *sva)
 {
 	rr_bucket_t *rr;
 	rr_bucket_t *first=NULL; /* Initialized to inhibit compiler warning */
-	int rnd_recs=global.rnd_recs;
+	short rnd_recs=global.rnd_recs;
 
 	rr=rrb;
 	if (rnd_recs) rr=first=randrr(rrb);
 
 	while(rr) {
-		if (!add_additional_rr(ans, rlen, rhn, tp, ttl, rr->rdlen,rr->data, sect, udp, cb, sva))
+		if (!add_additional_rr(ans, rlen, allocsz, rhn, tp, ttl, rr->rdlen,rr->data, sect, udp, cb, sva))
 			return 0;
 		rr=rr->next;
 		if (rnd_recs) {
@@ -635,26 +688,28 @@ static int add_additional_rrs(dns_ans_t **ans, long *rlen, unsigned char *rhn, u
 /*
  * The code below actually handles A and AAAA additionals.
  */
-static int add_additional_a(dns_ans_t **ans, long *rlen, unsigned char *rhn, time_t queryts,
-			    char udp, dlist *cb, dlist *sva) 
+static int add_additional_a(dns_msg_t **ans, size_t *rlen, size_t *allocsz,
+			    unsigned char *rhn, time_t queryts,
+			    unsigned *udp, dlist *cb, dlist *sva)
 {
 	dns_cent_t *ae;
 	int retval = 1;
 
 	if ((ae=lookup_cache(rhn,NULL))) {
 		rr_set_t *rrset; rr_bucket_t *rr;
-		rrset=ae->rr[T_A-T_MIN];
+		rrset=getrrset_A(ae);
 		if (rrset && (rr=rrset->rrs))
-		  
-			if (!add_additional_rrs(ans, rlen, rhn, T_A, ans_ttl(rrset,queryts),
+			if (!add_additional_rrs(ans, rlen, allocsz,
+						rhn, T_A, ans_ttl(rrset,queryts),
 						rr, S_ADDITIONAL, udp, cb, sva))
 				retval = 0;
 
-#ifdef DNS_NEW_RRS
+#if IS_CACHED_AAAA
 		if(retval) {
-			rrset=ae->rr[T_AAAA-T_MIN];
+			rrset=getrrset_AAAA(ae);
 			if (rrset && (rr=rrset->rrs))
-				if (!add_additional_rrs(ans, rlen, rhn, T_AAAA, ans_ttl(rrset,queryts),
+				if (!add_additional_rrs(ans, rlen, allocsz,
+							rhn, T_AAAA, ans_ttl(rrset,queryts),
 							rr, S_ADDITIONAL, udp, cb, sva))
 					retval = 0;
 		}
@@ -666,23 +721,25 @@ static int add_additional_a(dns_ans_t **ans, long *rlen, unsigned char *rhn, tim
 }
 
 /*
- * Compose an answer message for the decoded query in q, hdr is the header of the dns request
+ * Compose an answer message for the decoded query in ql, hdr is the header of the dns request
  * rlen is set to be the answer length.
+ * If udp is not NULL, *udp indicates the max length the dns response may have.
  */
-static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp) 
+static dns_msg_t *compose_answer(llist *ql, dns_hdr_t *hdr, size_t *rlen, edns_info_t *ednsinfo, unsigned *udp, int *rcodep)
 {
-	short aa=1;
+	unsigned short rcode=RC_OK, aa=1;
 	dlist cb=NULL;
 	dlist sva=NULL;
 	dlist ar=NULL;
 	time_t queryts=time(NULL);
 	dns_queryel_t *qe;
-	dns_ans_t *ans;
+	dns_msg_t *ans;
+	size_t allocsz= ALLOCINITIALSIZE;
 	dns_cent_t *cached;
 
-	ans=(dns_ans_t *)pdnsd_malloc(sizeof(dns_ans_t));
+	ans=(dns_msg_t *)pdnsd_malloc(allocsz);
 	if (!ans)
-		return NULL;
+		goto return_ans;
 	ans->hdr.id=hdr->id;
 	ans->hdr.qr=QR_RESP;
 	ans->hdr.opcode=OP_QUERY;
@@ -693,7 +750,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 	ans->hdr.z=0;
 	ans->hdr.ad=0;
 	ans->hdr.cd=0;
-	ans->hdr.rcode=RC_OK;
+	ans->hdr.rcode=rcode;
 	ans->hdr.qdcount=0; /* this is first filled in and will be modified */
 	ans->hdr.ancount=0;
 	ans->hdr.nscount=0;
@@ -701,12 +758,21 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 
 	*rlen=sizeof(dns_hdr_t);
 	/* first, add the query to the response */
-	for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
-		int qclen;
-		dns_ans_t *nans=(dns_ans_t *)pdnsd_realloc(ans,ansoffset+*rlen+rhnlen(qe->query)+4);
-		if (!nans)
-			goto error_ans;
-		ans=nans;
+	for (qe=llist_first(ql); qe; qe=llist_next(qe)) {
+		unsigned int qclen;
+		size_t newsz= dnsmsghdroffset + *rlen + rhnlen(qe->query) + 4;
+		if(newsz > allocsz) {
+			/* Need to allocate more space.
+			   To avoid frequent reallocs, we allocate
+			   a multiple of a certain chunk size. */
+			size_t newallocsz= (newsz+ALLOCCHUNKSIZEMASK)&(~ALLOCCHUNKSIZEMASK);
+			dns_msg_t *newans=(dns_msg_t *)pdnsd_realloc(ans,newallocsz);
+			if (!newans)
+				goto error_ans;
+			ans=newans;
+			allocsz=newallocsz;
+		}
+
 		{
 			unsigned char *p = ((unsigned char *)&ans->hdr) + *rlen;
 			/* the first name occurrence will not be compressed,
@@ -722,21 +788,21 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 	}
 
 	/* Barf if we get a query we cannot answer */
-	for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
-		if (((qe->qtype<T_MIN || qe->qtype>T_MAX) &&
+	for (qe=llist_first(ql); qe; qe=llist_next(qe)) {
+		if ((PDNSD_NOT_CACHED_TYPE(qe->qtype) &&
 		     (qe->qtype!=QT_MAILB && qe->qtype!=QT_MAILA && qe->qtype!=QT_ALL)) ||
 		    (qe->qclass!=C_IN && qe->qclass!=QC_ALL))
 		{
 			DEBUG_MSG("Unsupported QTYPE or QCLASS.\n");
-			ans->hdr.rcode=RC_NOTSUPP;
+			ans->hdr.rcode=rcode=RC_NOTSUPP;
 			goto cleanup_return;
 		}
 	}
-	
+
 	/* second, the answer section */
-	for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
+	for (qe=llist_first(ql); qe; qe=llist_next(qe)) {
 		int hops;
-		unsigned char qname[256];
+		unsigned char qname[DNSNAMEBUFSIZE];
 
 		rhncpy(qname,qe->query);
 		/* look if we have a cached copy. otherwise, perform a nameserver query. Same with timeout */
@@ -745,16 +811,16 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 			int rc;
 			unsigned char c_soa=cundef;
 			if ((rc=dns_cached_resolve(qname,qe->qtype, &cached, MAX_HOPS,queryts,&c_soa))!=RC_OK) {
-				ans->hdr.rcode=rc;
+				ans->hdr.rcode=rcode=rc;
 				if(rc==RC_NAMEERR && c_soa!=cundef) {
 					/* Try to add a SOA record to the authority section. */
 					unsigned scnt=rhnsegcnt(qname);
 					if(c_soa<scnt && (cached=lookup_cache(skipsegs(qname,scnt-c_soa),NULL))) {
-						rr_set_t *rrset=cached->rr[T_SOA-T_MIN];
+						rr_set_t *rrset=getrrset_SOA(cached);
 						if (rrset && !(rrset->flags&CF_NEGATIVE)) {
 							rr_bucket_t *rr;
 							for(rr=rrset->rrs; rr; rr=rr->next) {
-								if (!add_rr(&ans,rlen,cached->qname,T_SOA,ans_ttl(rrset,queryts),
+								if (!add_rr(&ans,rlen,&allocsz,cached->qname,T_SOA,ans_ttl(rrset,queryts),
 									    rr->rdlen,rr->data,S_AUTHORITY,udp,&cb))
 									goto error_cached;
 							}
@@ -768,7 +834,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 			if(!(cached->flags&DF_LOCAL))
 				aa=0;
 
-			if (!add_to_response(&ans,rlen,qname,qe->qtype,queryts,cached,udp,&cb,&sva,&ar))
+			if (!add_to_response(&ans,rlen,&allocsz,qname,qe->qtype,queryts,cached,udp,&cb,&sva,&ar))
 				goto error_cached;
 			if (hdr->rd && qe->qtype!=T_CNAME && qe->qtype!=QT_ALL &&
 			    !(qe->qtype>=T_MIN && qe->qtype<=T_MAX && have_rr(cached,qe->qtype)) &&
@@ -786,13 +852,13 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 				rr_set_t *rrset;
 				int rretp=T_NS;
 				if((qe->qtype>=T_MIN && qe->qtype<=T_MAX && !have_rr(cached,qe->qtype)) ||
-				   (qe->qtype==QT_MAILB && !have_rr(cached,T_MB) && !have_rr(cached,T_MG) && !have_rr(cached,T_MR)) ||
-				   (qe->qtype==QT_MAILA && !have_rr(cached,T_MD) && !have_rr(cached,T_MF)))
+				   (qe->qtype==QT_MAILB && !have_rr_MB(cached) && !have_rr_MG(cached) && !have_rr_MR(cached)) ||
+				   (qe->qtype==QT_MAILA && !have_rr_MD(cached) && !have_rr_MF(cached)))
 				{
 					/* no record of requested type in the answer section. */
 					rretp=T_SOA;
 				}
-				rrset=cached->rr[rretp-T_MIN];
+				rrset=getrrset(cached,rretp);
 				if(rrset && (rrset->flags&CF_NEGATIVE))
 					rrset=NULL;
 				if(!rrset) {
@@ -802,7 +868,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 					unsigned scnt=rhnsegcnt(prev->qname);
 					unsigned tcnt=(rretp==T_NS?prev->c_ns:prev->c_soa);
 					if((cached=lookup_cache((tcnt!=cundef && tcnt<scnt)?skipsegs(prev->qname,scnt-tcnt):prev->qname,NULL))) {
-						rrset=cached->rr[rretp-T_MIN];
+						rrset=getrrset(cached,rretp);
 						if(rrset && (rrset->flags&CF_NEGATIVE))
 							rrset=NULL;
 					}
@@ -814,7 +880,7 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 								pdnsd_free(cached);
 							}
 							if((cached=lookup_cache(nm,NULL)))
-								rrset=cached->rr[rretp-T_MIN];
+								rrset=getrrset(cached,rretp);
 						}
 					}
 					free_cent(prev  DBG1);
@@ -843,7 +909,8 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 		for (rre=dlist_first(ar); rre; rre=dlist_next(rre)) {
 			if (rre->tp == T_NS || rre->tp == T_SOA) {
 				unsigned char *nm = rre->tnm + rre->tsz;
-				if (!add_additional_rr(&ans, rlen, nm, rre->tp, rre->ttl, rre->tsz, rre->tnm,
+				if (!add_additional_rr(&ans, rlen, &allocsz,
+						       nm, rre->tp, rre->ttl, rre->tsz, rre->tnm,
 						       S_AUTHORITY, udp, &cb, &sva))
 				{
 					goto error_ans;
@@ -851,11 +918,23 @@ static dns_ans_t *compose_answer(dlist q, dns_hdr_t *hdr, long *rlen, char udp)
 			}
 		}
 
-		/* now add the name server addresses */
-		for (rre=dlist_first(ar); rre; rre=dlist_next(rre)) {
-			if (rre->tp == T_NS || rre->tp == RRETP_ADD) {
-				if (!add_additional_a(&ans, rlen, rre->tnm, queryts, udp, &cb, &sva))
+		/* Add the additional section, but only if we stay within the UDP buffer limit. */
+		/* If a pseudo RR doesn't fit, nothing else will. */
+		if(!(udp && *rlen+sizeof_opt_pseudo_rr>*udp)) {
+
+			/* Possibly add an OPT pseudo-RR to the additional section. */
+			if(ednsinfo) {
+				if(!add_opt_pseudo_rr(&ans, rlen, &allocsz, global.udpbufsize, rcode, 0,0))
 					goto error_ans;
+			}
+
+			/* now add the name server addresses */
+			for (rre=dlist_first(ar); rre; rre=dlist_next(rre)) {
+				if (rre->tp == T_NS || rre->tp == RRETP_ADD) {
+					if (!add_additional_a(&ans, rlen, &allocsz,
+							      rre->tnm, queryts, udp, &cb, &sva))
+						goto error_ans;
+				}
 			}
 		}
 	}
@@ -874,66 +953,144 @@ cleanup_return:
 	dlist_free(ar);
 	dlist_free(sva);
 	dlist_free(cb);
+return_ans:
+	if(rcodep) *rcodep=rcode;
 	return ans;
 }
 
 /*
- * Decode the query (the query messgage is in data and rlen bytes long) into q
- * XXX: data needs to be aligned
+ * Decode the query (the query messgage is in data and rlen bytes long) into a dlist.
+ * XXX: data needs to be aligned.
+ * The return value can be RC_OK or RC_TRUNC, in which case the (partially) constructed list is
+ * returned in qp, or something else (RC_FORMAT or RC_SERVFAIL), in which case no list is returned.
+ *
+ * *ptrrem  will be assigned the address just after the questions sections in the message, and *lenrem
+ * the remaining message length after the questions section. These values are only meaningful if the
+ * return value is RC_OK.
  */
-static int decode_query(unsigned char *data, long rlen, dlist *qp)
+static int decode_query(unsigned char *data, size_t rlen, unsigned char **ptrrem, size_t *lenrem, llist *qp)
 {
-	int i,res;
+	int i,res=RC_OK;
 	dns_hdr_t *hdr=(dns_hdr_t *)data; /* aligned, so no prob. */
 	unsigned char *ptr=(unsigned char *)(hdr+1);
-	long sz=rlen-sizeof(dns_hdr_t);
-	dlist q;
+	size_t sz= rlen - sizeof(dns_hdr_t);
 	uint16_t qdcount=ntohs(hdr->qdcount);
-	
-	q=NULL;
-	for (i=0;i<qdcount;i++) {
+
+	llist_init(qp);
+	for (i=0; i<qdcount; ++i) {
 		dns_queryel_t *qe;
-		int qlen;
-		unsigned char qbuf[256];
+		unsigned int qlen;
+		unsigned char qbuf[DNSNAMEBUFSIZE];
 		res=decompress_name(data,rlen,&ptr,&sz,qbuf,&qlen);
-		if (res==RC_TRUNC) {
-			if (hdr->tc) {
-				if (i==0) /*not even one complete query*/
-					goto return_rc_format;
-				break;
-			}
-			else
-				goto return_rc_format;
-		}
+		if (res==RC_TRUNC)
+			break;
 		if (res!=RC_OK)
 			goto cleanup_return;
 		if (sz<4) {
 			/* truncated in qtype or qclass */
 			DEBUG_MSG("decode_query: query truncated in qtype or qclass.\n");
-			if (hdr->tc) {
-				if (i==0) /*not even one complete query*/
-					goto return_rc_format;
-				break;
-			}
-			else
-				goto return_rc_format;
+			res=RC_TRUNC;
+			break;
 		}
-		if(!(q=dlist_grow(q,sizeof(dns_queryel_t)+qlen)))
+		if(!llist_grow(qp,sizeof(dns_queryel_t)+qlen))
 			return RC_SERVFAIL;
-		qe=dlist_last(q);
+		qe=llist_last(qp);
 		GETINT16(qe->qtype,ptr);
 		GETINT16(qe->qclass,ptr);
 		sz-=4;
 		memcpy(qe->query,qbuf,qlen);
 	}
-	*qp=q;
-	return RC_OK;
-
- return_rc_format:
-	res=RC_FORMAT;
- cleanup_return:
-	dlist_free(q);
+	if(ptrrem) *ptrrem=ptr;
+	if(lenrem) *lenrem=sz;
 	return res;
+
+ cleanup_return:
+	llist_free(qp);
+	return res;
+}
+
+
+/* Scan the additional section of a query message for an OPT pseudo RR.
+   data and rlen are as in decode_query(). Note in particular that data needs to be aligned!
+   ptr should point the beginning of the additional section, sz should contain the
+   length of this remaining part of the message and numrr the number of resource records in the section.
+   *numopt is incremented with the number of OPT RRs found (should be at most one).
+
+   Note that a return value of RC_OK means the additional section was parsed without errors, not that
+   an OPT pseudo RR was found! Check the value of *numopt for the latter.
+
+   The structure pointed to by ep is filled with the information of the first OPT pseudo RR found,
+   but only if *numopt was set to zero before the call.
+*/
+static int decode_query_additional(unsigned char *data, size_t rlen, unsigned char *ptr, size_t sz, int numrr,
+				   int *numopt, edns_info_t *ep)
+{
+	int i, res;
+
+	for (i=0; i<numrr; ++i) {
+		unsigned char nmbuf[DNSNAMEBUFSIZE];
+		uint16_t type,class;
+		unsigned char *ttlp;
+		uint16_t rdlen;
+		res=decompress_name(data,rlen,&ptr,&sz,nmbuf,NULL);
+		if (res!=RC_OK)
+			return res;
+		if (sz<sizeof_rr_hdr_t) {
+			/* truncated in rr header */
+			DEBUG_MSG("decode_query_additional: additional section truncated in RR header.\n");
+			return RC_TRUNC;
+		}
+		sz -= sizeof_rr_hdr_t;
+		GETINT16(type,ptr);
+		GETINT16(class,ptr);
+		ttlp= ptr;   /* Remember pointer to ttl field. */
+		ptr += 4;    /* Skip ttl field (4 bytes). */
+		GETINT16(rdlen,ptr);
+		if (sz<rdlen) {
+			DEBUG_MSG("decode_query_additional: additional section truncated in RDATA field.\n");
+			return RC_TRUNC;
+		}
+
+		if(type==T_OPT) {
+			/* Found OPT pseudo-RR */
+			if((*numopt)++ == 0) {
+#if DEBUG>0
+				if(nmbuf[0]!=0) {
+					DEBUG_MSG("decode_query_additional: name in OPT record not empty!\n");
+				}
+#endif
+				ep->udpsize= class;
+				ep->rcode= ((uint16_t)ttlp[0]<<4) | ((dns_hdr_t *)data)->rcode;
+				ep->version= ttlp[1];
+				ep->do_flg= (ttlp[2]>>7)&1;
+#if DEBUG>0
+				if(debug_p) {
+					unsigned int Zflags= ((uint16_t)ttlp[2]<<8) | ttlp[3];
+					if(Zflags & 0x7fff) {
+						DEBUG_MSG("decode_query_additional: Z field contains unknown nonzero bits (%04x).\n",
+							  Zflags);
+					}
+				}
+				if(rdlen) {
+					DEBUG_MSG("decode_query_additional: RDATA field in OPT record not empty!\n");
+				}
+#endif
+			}
+			else {
+				DEBUG_MSG("decode_query_additional: ingnoring surplus OPT record.\n");
+			}
+		}
+		else {
+			DEBUG_MSG("decode_query_additional: ignoring record of type %s (%d).\n",
+				  getrrtpname(type), type);
+		}
+
+		/* Skip RDATA field. */
+		sz -= rdlen;			
+		ptr += rdlen;
+	}
+
+	return RC_OK;
 }
 
 /* Make a dns error reply message
@@ -963,25 +1120,27 @@ static void mk_error_reply(unsigned short id, unsigned short opcode,unsigned sho
  * Analyze and answer the query in data. The answer is returned. rlen is at call the query length and at
  * return the length of the answer. You have to free the answer after sending it.
  */
-static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
+static dns_msg_t *process_query(unsigned char *data, size_t *rlenp, unsigned *udp, int *rcodep)
 {
-	long rlen= *rlenp;
+	size_t rlen= *rlenp;
 	int res;
 	dns_hdr_t *hdr;
-	dlist q=NULL; /* Initialized to inhibit compiler warning. */
-	dns_ans_t *ans;
+	llist ql;
+	dns_msg_t *ans;
+	edns_info_t ednsinfo= {0}, *ednsinfop= NULL;
 
-	DEBUG_MSG("Received query.\n");
-	DEBUG_DUMP_DNS_MSG(NULL, data, rlen);
+	DEBUG_MSG("Received query (msg len=%u).\n", (unsigned int)rlen);
+	DEBUG_DUMP_DNS_MSG(data, rlen);
 
 	/*
-	 * We will ignore all records that come with a query, except for the actual query records.
+	 * We will ignore all records that come with a query, except for the actual query records,
+	 * and possible OPT pseudo RRs in the addtional section.
 	 * We will send back the query in the response. We will reject all non-queries, and
-	 * some not supported thingies. 
+	 * some not supported thingies.
 	 * If anyone notices behaviour that is not in standard conformance, please notify me!
 	 */
 	hdr=(dns_hdr_t *)data;
-	if (rlen<2) { 
+	if (rlen<2) {
 		DEBUG_MSG("Message too short.\n");
 		return NULL; /* message too short: no id provided. */
 	}
@@ -999,13 +1158,17 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 		res=RC_NOTSUPP;
 		goto error_reply;
 	}
+#if DEBUG>0
+	if(debug_p) {
+		char flgsbuf[DNSFLAGSMAXSTRSIZE];
+		dnsflags2str(hdr, flgsbuf);
+		if(flgsbuf[0]) {
+			DEBUG_MSG("Flags:%s\n", flgsbuf);
+		}
+	}
+#endif
 	if (hdr->z!=0) {
 		DEBUG_MSG("Malformed query (nonzero Z bit).\n");
-		res=RC_FORMAT;
-		goto error_reply;
-	}
-	if (!global.ignore_cd && hdr->cd!=0) {
-		DEBUG_MSG("Malformed query (nonzero CD bit and ignore_cd=off).\n");
 		res=RC_FORMAT;
 		goto error_reply;
 	}
@@ -1026,24 +1189,82 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 		goto error_reply;
 	}
 
+#if 0
+	/* The following only makes sense if we completely disallow
+	   Extension Mechanisms for DNS (RFC 2671). */
 	if (hdr->arcount) {
 		DEBUG_MSG("Query has a non-empty additional section!\n");
 		res=RC_FORMAT;
 		goto error_reply;
 	}
+#endif
+	{
+		unsigned char *ptr;
+		size_t sz;
+		uint16_t arcount;
+		res=decode_query(data,rlen,&ptr,&sz,&ql);
+		if(res!=RC_OK) {
+			if(res==RC_TRUNC) {
+				if(!hdr->tc || llist_isempty(&ql)) {
+					res=RC_FORMAT;
+					goto free_ql_error_reply;
+				}
+			}
+			else
+				goto error_reply;
+		}
 
-	res=decode_query(data,rlen,&q);
-	if (res!=RC_OK) {
-		goto error_reply;
+		if ((arcount=ntohs(hdr->arcount))) {
+			int numoptrr= 0;
+			DEBUG_MSG("Query has a non-empty additional section: "
+				  "checking for OPT pseudo-RR.\n");
+			if(res==RC_TRUNC) {
+				DEBUG_MSG("Additional section cannot be read due to truncation!\n");
+				res=RC_FORMAT;
+				goto free_ql_error_reply;
+			}
+			res=decode_query_additional(data,rlen,ptr,sz,arcount, &numoptrr, &ednsinfo);
+			if(!(res==RC_OK || (res==RC_TRUNC && hdr->tc))) {
+				res=RC_FORMAT;
+				goto free_ql_error_reply;
+			}
+			if(numoptrr) {
+#if DEBUG>0
+				if(numoptrr>1) {
+					DEBUG_MSG("Additional section in query contains %d OPT pseudo-RRs!\n", numoptrr);
+				}
+#endif
+				if(ednsinfo.version!=0) {
+					DEBUG_MSG("Query contains unsupported EDNS version %d!\n", ednsinfo.version);
+					res=RC_BADVERS;
+					goto free_ql_error_reply;
+				}
+				if(ednsinfo.rcode!=0) {
+					DEBUG_MSG("Query contains non-zero EDNS rcode (%d)!\n", ednsinfo.rcode);
+					res=RC_FORMAT;
+					goto free_ql_error_reply;
+				}
+				DEBUG_MSG("Query contains OPT pseudosection: EDNS udp size = %u, flag DO=%u\n",
+					  ednsinfo.udpsize, ednsinfo.do_flg);
+				ednsinfop = &ednsinfo;
+				if(udp && ednsinfo.udpsize>UDP_BUFSIZE) {
+					unsigned udpbufsize = global.udpbufsize;
+					if(udpbufsize > ednsinfo.udpsize)
+						udpbufsize = ednsinfo.udpsize;
+					*udp = udpbufsize;
+				}
+			}
+		}
 	}
 
 #if DEBUG>0
 	if (debug_p) {
-		if(q) {
+		if(!llist_isempty(&ql)) {
 			dns_queryel_t *qe;
 			DEBUG_MSG("Questions are:\n");
-			for (qe=dlist_first(q); qe; qe=dlist_next(qe)) {
-				DEBUG_RHN_MSG("\tqc=%s (%u), qt=%s (%u), query=\"%s\"\n",get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
+			for (qe=llist_first(&ql); qe; qe=llist_next(qe)) {
+				DEBUG_RHN_MSG("\tqc=%s (%u), qt=%s (%u), query=\"%s\"\n",
+					      get_cname(qe->qclass),qe->qclass,get_tname(qe->qtype),qe->qtype,RHN2STR(qe->query));
 			}
 		}
 		else {
@@ -1052,29 +1273,38 @@ static dns_ans_t *process_query(unsigned char *data, long *rlenp, char udp)
 	}
 #endif
 
-	if (!q) {
+	if (llist_isempty(&ql)) {
 		res=RC_FORMAT;
 		goto error_reply;
 	}
-	if (!(ans=compose_answer(q, hdr, rlenp, udp))) {
+	if (!(ans=compose_answer(&ql, hdr, rlenp, ednsinfop, udp, rcodep))) {
 		/* An out of memory condition or similar could cause NULL output. Send failure notification */
-		dlist_free(q);
 		res=RC_SERVFAIL;
-		goto error_reply;
+		goto free_ql_error_reply;
 	}
-	dlist_free(q);
+	llist_free(&ql);
 	return ans;
 
-
+free_ql_error_reply:
+	llist_free(&ql);
  error_reply:
 	*rlenp=sizeof(dns_hdr_t);
-	ans=pdnsd_malloc(sizeof(dns_ans_t));
-	if (ans) {
-		mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,&ans->hdr);
+	{
+		size_t allocsz = sizeof(dns_msg_t);
+		if(res&~0xf)
+			allocsz += sizeof_opt_pseudo_rr;
+		ans= (dns_msg_t *)pdnsd_malloc(allocsz);
+		if (ans) {
+			mk_error_reply(hdr->id,rlen>=3?hdr->opcode:OP_QUERY,res,&ans->hdr);
+			if(res&~0xf)
+				add_opt_pseudo_rr(&ans,rlenp,&allocsz,
+						  global.udpbufsize,res,0,0);
+		}
+		else if (++da_mem_errs<=MEM_MAX_ERRS) {
+			log_error("Out of memory in query processing.");
+		}
 	}
-	else if (++da_mem_errs<=MEM_MAX_ERRS) {
-		log_error("Out of memory in query processing.");
-	}
+	if(rcodep) *rcodep= res;
 	return ans;
 }
 
@@ -1110,9 +1340,11 @@ static void *udp_answer_thread(void *data)
 #if defined(SRC_ADDR_DISC)
 	char ctrl[CMSG_SPACE(sizeof(pkt_info_t))];
 #endif
-	long rlen=((udp_buf_t *)data)->len;
+	size_t rlen=((udp_buf_t *)data)->len;
+	unsigned udpmaxrespsize = UDP_BUFSIZE;
 	/* XXX: process_query is assigned to this, this mallocs, so this points to aligned memory */
-	dns_ans_t *resp;
+	dns_msg_t *resp;
+	int rcode;
 	unsigned thrid;
 	pthread_cleanup_push(udp_answer_thread_cleanup, data);
 	THREAD_SIGINIT;
@@ -1145,7 +1377,7 @@ static void *udp_answer_thread(void *data)
 	}
 #endif
 
-	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,1))) {
+	if (!(resp=process_query(((udp_buf_t *)data)->buf,&rlen,&udpmaxrespsize,&rcode))) {
 		/*
 		 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
 		 * logging is already done. Just exit the thread now.
@@ -1153,11 +1385,11 @@ static void *udp_answer_thread(void *data)
 		pthread_exit(NULL); /* data freed by cleanup handler */
 	}
 	pthread_cleanup_push(free, resp);
-	if (rlen>512) {
-		rlen=512;
+	if (rlen>udpmaxrespsize) {
+		rlen=udpmaxrespsize;
 		resp->hdr.tc=1; /*set truncated bit*/
 	}
-	DEBUG_MSG("Outbound msg len %li, tc=%u, rc=\"%s\"\n",rlen,resp->hdr.tc,get_ename(resp->hdr.rcode));
+	DEBUG_MSG("Outbound msg len %li, tc=%u, rc=\"%s\"\n",(long)rlen,resp->hdr.tc,get_ename(rcode));
 
 	v.iov_base=(char *)&resp->hdr;
 	v.iov_len=rlen;
@@ -1179,7 +1411,7 @@ static void *udp_answer_thread(void *data)
 
 		msg.msg_name=&((udp_buf_t *)data)->addr.sin4;
 		msg.msg_namelen=sizeof(struct sockaddr_in);
-# if defined(SRC_ADDR_DISC) 
+# if defined(SRC_ADDR_DISC)
 #  if (TARGET==TARGET_LINUX)
 		((udp_buf_t *)data)->pi.pi4.ipi_spec_dst=((udp_buf_t *)data)->pi.pi4.ipi_addr;
 		cmsg=CMSG_FIRSTHDR(&msg);
@@ -1242,7 +1474,7 @@ static void *udp_answer_thread(void *data)
 # endif /* DEBUG */
 	}
 #endif
-	
+
 	/* Lock the socket, and clear the error flag before dropping the lock */
 #ifdef SOCKET_LOCKING
 	pthread_mutex_lock(&s_lock);
@@ -1262,7 +1494,7 @@ static void *udp_answer_thread(void *data)
 		pthread_mutex_unlock(&s_lock);
 #endif
 	}
-	
+
 	pthread_cleanup_pop(1);  /* free(resp) */
 	pthread_cleanup_pop(1);  /* free(data) */
 	return NULL;
@@ -1349,7 +1581,7 @@ int init_udp_socket()
 	return sock;
 }
 
-/* 
+/*
  * Listen on the specified port for udp packets and answer them (each in a new thread to be nonblocking)
  * This was changed to support sending UDP packets with exactly the same source address as they were coming
  * to us, as required by rfc2181. Although this is a sensible requirement, it is slightly more difficult
@@ -1358,7 +1590,7 @@ int init_udp_socket()
 void *udp_server_thread(void *dummy)
 {
 	int sock;
-	long qlen;
+	ssize_t qlen;
 	pthread_t pt;
 	udp_buf_t *buf;
 	struct msghdr msg;
@@ -1382,7 +1614,8 @@ void *udp_server_thread(void *dummy)
 	sock=udp_socket;
 
 	while (1) {
-		if (!(buf=(udp_buf_t *)pdnsd_calloc(1,sizeof(udp_buf_t)))) {
+		int udpbufsize= global.udpbufsize;
+		if (!(buf=(udp_buf_t *)pdnsd_calloc(1,sizeof(udp_buf_t)+udpbufsize))) {
 			if (++da_mem_errs<=MEM_MAX_ERRS) {
 				log_error("Out of memory in request handling.");
 			}
@@ -1392,7 +1625,7 @@ void *udp_server_thread(void *dummy)
 		buf->sock=sock;
 
 		v.iov_base=(char *)buf->buf;
-		v.iov_len=udp_buf_len;
+		v.iov_len=udpbufsize;
 		msg.msg_iov=&v;
 		msg.msg_iovlen=1;
 #if (TARGET!=TARGET_CYGWIN)
@@ -1584,16 +1817,19 @@ static void *tcp_answer_thread(void *csock)
 		}
 	}
 #endif
+#ifdef TCP_SUBSEQ
 
 	/* rfc1035 says we should process multiple queries in succession, so we are looping until
-	 * the socket is closed by the other side or by tcp timeout. 
+	 * the socket is closed by the other side or by tcp timeout.
 	 * This in fact makes DoSing easier. If that is your concern, you should disable pdnsd's
 	 * TCP server.*/
-	while (1) {
+	for(;;)
+#endif
+	{
 		int rlen,olen;
-		long nlen;
+		size_t nlen;
 		unsigned char *buf;
-		dns_ans_t *resp;
+		dns_msg_t *resp;
 
 #ifdef NO_POLL
 		fd_set fds;
@@ -1618,7 +1854,7 @@ static void *tcp_answer_thread(void *csock)
 			if ((err=read(sock,&rlen_net,sizeof(rlen_net)))!=sizeof(rlen_net)) {
 				DEBUG_MSG("Error while reading from TCP client: %s\n",err==-1?strerror(errno):"incomplete data");
 				/*
-				 * If the socket timed or was closed before we even received the 
+				 * If the socket timed or was closed before we even received the
 				 * query length, we cannot return an error. So exit silently.
 				 */
 				pthread_exit(NULL); /* socket is closed by cleanup handler */
@@ -1662,7 +1898,7 @@ static void *tcp_answer_thread(void *csock)
 				 * but if read fails that way, it is unlikely that it will arrive. Nevertheless...
 				 */
 				if (olen>=2) { /* We need the id to send a valid reply. */
-					dns_ans_t err;
+					dns_msg_t err;
 					mk_error_reply(((dns_hdr_t*)buf)->id,
 						       olen>=3?((dns_hdr_t*)buf)->opcode:OP_QUERY,
 						       RC_FORMAT,
@@ -1675,7 +1911,7 @@ static void *tcp_answer_thread(void *csock)
 			olen += rv;
 		}
 		nlen=rlen;
-		if (!(resp=process_query(buf,&nlen,0))) {
+		if (!(resp=process_query(buf,&nlen,NULL,NULL))) {
 			/*
 			 * A return value of NULL is a fatal error that prohibits even the sending of an error message.
 			 * logging is already done. Just exit the thread now.
@@ -1685,19 +1921,15 @@ static void *tcp_answer_thread(void *csock)
 		pthread_cleanup_pop(1);  /* free(buf) */
 		pthread_cleanup_push(free,resp);
 		{
-			int err,rsize;
+			int err; size_t rsize;
 			resp->len=htons(nlen);
-			rsize=ansoffset+nlen;
+			rsize=dnsmsghdroffset+nlen;
 			if ((err=write_all(sock,resp,rsize))!=rsize) {
 				DEBUG_MSG("Error while writing to TCP client: %s\n",err==-1?strerror(errno):"unknown error");
 				pthread_exit(NULL); /* resp is freed and socket is closed by cleanup handlers */
 			}
 		}
 		pthread_cleanup_pop(1);  /* free(resp) */
-#ifndef TCP_SUBSEQ
-		/* Do not allow multiple queries in one sequence.*/
-		break;
-#endif
 	}
 
 	/* socket is closed by cleanup handler */
@@ -1788,14 +2020,14 @@ void *tcp_server_thread(void *p)
 	}
 
 	sock=tcp_socket;
-	
+
 	if (listen(sock,5)) {
 		if (++da_tcp_errs<=TCP_MAX_ERRS) {
 			log_error("Could not listen on tcp socket: %s",strerror(errno));
 		}
 		goto close_sock_return;
 	}
-	
+
 	while (1) {
 		if (!(csock=(int *)pdnsd_malloc(sizeof(int)))) {
 			if (++da_mem_errs<=MEM_MAX_ERRS) {
@@ -1855,11 +2087,11 @@ void start_dns_servers()
 		pthread_t tcps;
 
 		if (pthread_create(&tcps,&attr_detached,tcp_server_thread,NULL)) {
-			log_error("Could not create tcp server thread. Exiting.");
+			log_error("Could not create TCP server thread. Exiting.");
 			pdnsd_exit();
 		} else {
 			tcps_thrid=tcps;
-			log_info(2,"tcp server thread started.");
+			log_info(2,"TCP server thread started.");
 		}
 	}
 #endif
@@ -1868,11 +2100,11 @@ void start_dns_servers()
 		pthread_t udps;
 
 		if (pthread_create(&udps,&attr_detached,udp_server_thread,NULL)) {
-			log_error("Could not create udp server thread. Exiting.");
+			log_error("Could not create UDP server thread. Exiting.");
 			pdnsd_exit();
 		} else {
 			udps_thrid=udps;
-			log_info(2,"udp server thread started.");
+			log_info(2,"UDP server thread started.");
 		}
 	}
 }

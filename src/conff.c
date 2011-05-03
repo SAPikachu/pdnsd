@@ -1,7 +1,7 @@
 /* conff.c - Maintain configuration information
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -36,20 +36,14 @@
 #include "servers.h"
 #include "icmp.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: conff.c,v 1.26 2001/07/02 18:55:27 tmm Exp $";
-#endif
 
 globparm_t global={
   perm_cache:        2048,
   cache_dir:         NULL,
   pidfile:           NULL,
   port:              53,
-#ifdef ENABLE_IPV4
-  a:                 {{INADDR_ANY}},
-#else
-  a:                 {IN6ADDR_ANY_INIT},
-#endif
+  a:                 PDNSD_A_INITIALIZER,
+  out_a:             PDNSD_A_INITIALIZER,
 #ifdef ENABLE_IPV6
   ipv4_6_prefix:     IN6ADDR_ANY_INIT,
 #endif
@@ -67,7 +61,6 @@ globparm_t global={
   strict_suid:       1,
   use_nss:           1,
   paranoid:          0,
-  ignore_cd:         1,
   lndown_kluge:      0,
   onquery:           0,
   rnd_recs:          1,
@@ -81,6 +74,7 @@ globparm_t global={
   query_method:      M_PRESET,
   query_port_start:  1024,
   query_port_end:    65535,
+  udpbufsize:        1024,
   deleg_only_zones:  NULL
 };
 
@@ -95,10 +89,12 @@ servparm_t serv_presets={
   uptest_usr:        "",
   interface:         "",
   device:            "",
+  query_test_name:   NULL,
   label:             NULL,
   purge_cache:       0,
   nocache:           0,
   lean_query:        1,
+  edns_query:        1,
   is_proxy:          0,
   rootserver:        0,
   rand_servers:      0,
@@ -112,11 +108,7 @@ servparm_t serv_presets={
 #if ALLOW_LOCAL_AAAA
   reject_a6:         NULL,
 #endif
-#ifdef ENABLE_IPV4
-  ping_a:            {{INADDR_ANY}}
-#else
-  ping_a:            {IN6ADDR_ANY_INIT}
-#endif
+  ping_a:            PDNSD_A_INITIALIZER
 };
 
 servparm_array servers=NULL;
@@ -385,6 +377,7 @@ void free_slist_array(slist_array sla)
 void free_servparm(servparm_t *serv)
 {
 	free(serv->uptest_cmd);
+	free(serv->query_test_name);
 	free(serv->label);
 	da_free(serv->atup_a);
 	free_slist_array(serv->alist);
@@ -414,7 +407,10 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tServer port: %i\n",global.port);
 	{
 	  char buf[ADDRSTR_MAXLEN];
-	  fsprintf_or_return(f,"\tServer ip (%s=any available one): %s\n",run_ipv4?"0.0.0.0":"::",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	  fsprintf_or_return(f,"\tServer IP (%s=any available one): %s\n",run_ipv4?"0.0.0.0":"::",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	  if(!is_inaddr_any(&global.out_a)) {
+	    fsprintf_or_return(f,"\tIP bound to interface used for querying remote servers: %s\n",pdnsd_a2str(&global.out_a,buf,ADDRSTR_MAXLEN));
+	  }
 	}
 #ifdef ENABLE_IPV6
 	if(!run_ipv4) {
@@ -432,7 +428,6 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tStrict run as: %s\n",global.strict_suid?"on":"off");
 	fsprintf_or_return(f,"\tUse NSS: %s\n",global.use_nss?"on":"off");
 	fsprintf_or_return(f,"\tParanoid mode (cache pollution prevention): %s\n",global.paranoid?"on":"off");
-	fsprintf_or_return(f,"\tIgnore CD ('checking disabled') flag in queries: %s\n",global.ignore_cd?"on":"off");
 	fsprintf_or_return(f,"\tControl socket permissions (mode): %o\n",global.ctl_perms);
 	fsprintf_or_return(f,"\tMaximum parallel queries served: %i\n",global.proc_limit);
 	fsprintf_or_return(f,"\tMaximum queries queued for serving: %i\n",global.procq_limit);
@@ -455,6 +450,7 @@ int report_conf_stat(int f)
 	if(!global.notcp)
 	  {fsprintf_or_return(f,"\tTCP query timeout: %li\n",(long)global.tcp_qtimeout);}
 #endif
+	fsprintf_or_return(f,"\tMaximum udp buffer size: %i\n",global.udpbufsize);
 
 	lock_server_data();
 	{
@@ -469,7 +465,7 @@ int report_conf_stat(int f)
 		int rv;
 		n=DA_NEL(global.deleg_only_zones);
 		for(i=0;i<n;++i) {
-			unsigned char buf[256];
+			unsigned char buf[DNSNAMEBUFSIZE];
 			rv=fsprintf(f,i==0?"%s":", %s",
 					rhn2str(DA_INDEX(global.deleg_only_zones,i),buf,sizeof(buf)));
 			if(rv<0) {retval=rv; goto unlock_return;}
@@ -530,16 +526,28 @@ static int report_server_stat(int f,int i)
 	fsprintf_or_return(f,"\tping timeout: %li\n",(long)st->ping_timeout);
 	{char buf[ADDRSTR_MAXLEN];
 	 fsprintf_or_return(f,"\tping ip: %s\n",is_inaddr_any(&st->ping_a)?"(using server ip)":pdnsd_a2str(&st->ping_a,buf,ADDRSTR_MAXLEN));}
-	fsprintf_or_return(f,"\tinterface: %s\n",st->interface);
-	fsprintf_or_return(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
-	fsprintf_or_return(f,"\tuptest command: %s\n",st->uptest_cmd?:"");
-	fsprintf_or_return(f,"\tuptest user: %s\n",st->uptest_usr[0]?st->uptest_usr:"(process owner)");
-	if (st->scheme[0]!='\0') {
+	if(st->interface[0]) {
+		fsprintf_or_return(f,"\tinterface: %s\n",st->interface);
+	}
+	if(st->device[0]) {
+		fsprintf_or_return(f,"\tdevice (for special Linux ppp device support): %s\n",st->device);
+	}
+	if(st->uptest_cmd) {
+		fsprintf_or_return(f,"\tuptest command: %s\n",st->uptest_cmd);
+		fsprintf_or_return(f,"\tuptest user: %s\n",st->uptest_usr[0]?st->uptest_usr:"(process owner)");
+	}
+	if(st->query_test_name) {
+		unsigned char nmbuf[DNSNAMEBUFSIZE];
+		fsprintf_or_return(f,"\tname used in query uptest: %s\n",
+				   rhn2str(st->query_test_name,nmbuf,sizeof(nmbuf)));
+	}
+	if (st->scheme[0]) {
 		fsprintf_or_return(f,"\tscheme: %s\n", st->scheme);
 	}
 	fsprintf_or_return(f,"\tforce cache purging: %s\n",st->purge_cache?"on":"off");
 	fsprintf_or_return(f,"\tserver is cached: %s\n",st->nocache?"off":"on");
 	fsprintf_or_return(f,"\tlean query: %s\n",st->lean_query?"on":"off");
+	fsprintf_or_return(f,"\tUse EDNS in outgoing queries: %s\n",st->edns_query?"on":"off");
 	fsprintf_or_return(f,"\tUse only proxy?: %s\n",st->is_proxy?"on":"off");
 	fsprintf_or_return(f,"\tAssumed root server: %s\n",st->rootserver?(st->rootserver==1?"yes":"discover"):"no");
 	fsprintf_or_return(f,"\tRandomize server query order: %s\n",st->rand_servers?"yes":"no");
@@ -547,7 +555,7 @@ static int report_server_stat(int f,int i)
 	fsprintf_or_return(f,"\tPolicies:%s\n", st->alist?"":" (none)");
 	for (j=0;j<DA_NEL(st->alist);++j) {
 		slist_t *sl=&DA_INDEX(st->alist,j);
-		unsigned char buf[256];
+		unsigned char buf[DNSNAMEBUFSIZE];
 		fsprintf_or_return(f,"\t\t%s: %s%s\n",
 				   sl->rule==C_INCLUDED?"include":"exclude",
 				   sl->exact?"":".",

@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: status.h,v 1.11 2001/05/30 21:04:15 tmm Exp $ */
 
 #ifndef _STATUS_H_
 #define _STATUS_H_

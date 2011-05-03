@@ -20,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: servers.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef _SERVERS_H_
 #define _SERVERS_H_

@@ -1,7 +1,7 @@
 /* pdnsd-ctl.c - Control pdnsd through a pipe
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -47,12 +47,8 @@
 #endif
 
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: pdnsd-ctl.c,v 1.19 2001/12/30 15:29:43 tmm Exp $";
-#endif
-
-#if defined(DNS_NEW_RRS) && defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
-# define ALLOW_AAAA 1
+#if defined(HAVE_STRUCT_IN6_ADDR) && defined(HAVE_INET_PTON)
+# define ALLOW_AAAA IS_CACHED_AAAA
 #else
 # define ALLOW_AAAA 0
 #endif
@@ -90,7 +86,7 @@ static const char version_message[] =
 
 static const char license_statement[] =
 	"Copyright (C) 2000, 2001 Thomas Moestl\n"
-	"Copyright (C) 2002, 2003, 2004, 2005, 2007 Paul A. Rombouts\n\n"
+	"Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010, 2011 Paul A. Rombouts\n\n"
 	"This program is part of the pdnsd package.\n\n"
 	"pdnsd is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
@@ -104,7 +100,7 @@ static const char license_statement[] =
 	"along with pdsnd; see the file COPYING.  If not, see\n"
 	"<http://www.gnu.org/licenses/>.\n";
 
-static const char *help_messages[] =
+static const char *const help_messages[] =
 {
 	"Usage: pdnsd-ctl [-c cachedir] [-q] <command> [arguments]\n\n"
 
@@ -223,7 +219,7 @@ static const char *help_messages[] =
 	"\tused for the neg command, not for add!\n"
 };
 
-#define num_help_messages (sizeof(help_messages)/sizeof(char*))
+#define NUM_HELP_MESSAGES (sizeof(help_messages)/sizeof(char*))
 
 
 /* Open connection to control socket and send command code.
@@ -260,6 +256,7 @@ static int open_sock(const char *cache_dir, uint16_t cmd)
 
 	if (write(sock,&nc,sizeof(nc))!=sizeof(nc)) {
 		perror("Error: could not write command code");
+		close(sock);
 		exit(2);
 	}
 
@@ -272,6 +269,7 @@ static void send_long(int fd,uint32_t cmd)
 
 	if (write(fd,&nc,sizeof(nc))!=sizeof(nc)) {
 		perror("Error: could not write long");
+		close(fd);
 		exit(2);
 	}
 }
@@ -282,18 +280,32 @@ static void send_short(int fd,uint16_t cmd)
 
 	if (write(fd,&nc,sizeof(nc))!=sizeof(nc)) {
 		perror("Error: could not write short");
+		close(fd);
 		exit(2);
 	}
 }
 
+#define MAXSENDSTRLEN 0xfffe
+
 static void send_string(int fd, const char *s)
 {
-	uint16_t len=(s?strlen(s):(~0));
-	send_short(fd,len);
-	if (s && write_all(fd,s,len)!=len) {
-		perror("Error: could not write string");
-		exit(2);
+	if(s) {
+		size_t len=strlen(s);
+		if(len>MAXSENDSTRLEN) {
+			fprintf(stderr,"Error: send_string: string length (%lu) exceeds maximum (%u).\n",
+				(unsigned long)len, MAXSENDSTRLEN);
+			close(fd);
+			exit(2);
+		}
+		send_short(fd,len);
+		if (write_all(fd,s,len)!=len) {
+			perror("Error: could not write string");
+			close(fd);
+			exit(2);
+		}
 	}
+	else
+		send_short(fd, ~0);
 }
 
 static uint16_t read_short(int fd)
@@ -303,6 +315,7 @@ static uint16_t read_short(int fd)
 
 	if ((err=read(fd,&nc,sizeof(nc)))!=sizeof(nc)) {
 		fprintf(stderr,"Error: could not read short: %s\n",err<0?strerror(errno):"unexpected EOF");
+		close(fd);
 		exit(2);
 	}
 	return ntohs(nc);
@@ -342,7 +355,7 @@ int main(int argc, char *argv[])
 	{
 		int i;
 		char *arg;
-		for(i=1;i<argc && (arg=argv[i]) && *arg=='-';++i) {
+		for(i=1; i<argc && (arg=argv[i]) && *arg=='-'; ++i) {
 			if(!strcmp(arg,"-c")) {
 				if(++i<argc) {
 					cache_dir= argv[i];
@@ -381,7 +394,7 @@ int main(int argc, char *argv[])
 		case CMD_HELP: {
 			int i;
 			fputs(version_message,stdout);
-			for(i=0;i<num_help_messages;++i)
+			for(i=0; i<NUM_HELP_MESSAGES; ++i)
 				fputs(help_messages[i],stdout);
 		}
 			break;
@@ -396,8 +409,8 @@ int main(int argc, char *argv[])
 			if (argc!=1)
 				goto wrong_args;
 			printf("Available RR types for the neg command:\n");
-			for (i=0;i<T_NUM;i++)
-				printf("%s\n",rr_info[i].name);
+			for (i=0; i<NRRTOT; ++i)
+				printf("%s\n",rrnames[rrcachiterlist[i]-T_MIN]);
 		}
 			break;
 
@@ -603,6 +616,7 @@ int main(int argc, char *argv[])
 					send_short(pf,nadr);
 					if(write_all(pf,adrbuf,adrbufsz)!=adrbufsz) {
 						perror("Error: could not send IP address(es)");
+						close(pf);
 						exit(2);
 					}
 					break;
@@ -673,47 +687,61 @@ int main(int argc, char *argv[])
 
 			if (argc<2)
 				goto wrong_args;
-			pf=open_sock(cache_dir, cmd);
 			bufsz=0;
-			for(i=1;i<argc;++i)
+			for(i=1; i<argc; ++i)
 				bufsz += strlen(argv[i])+1;
 
+			if(bufsz>MAXSENDSTRLEN) {
+				fprintf(stderr,"Cannot send 'eval' command: "
+					"string length (%lu) exceeds maximum (%u).\n",
+				(unsigned long)bufsz, MAXSENDSTRLEN);
+				exit(2);
+			}
+			pf=open_sock(cache_dir, cmd);
 			send_short(pf,bufsz);
 			{
 				/* Variable-size array for storing the joined strings. */
 				char buf[bufsz];
 				char *p=buf;
-				for(i=1;i<argc;++i) {
+				for(i=1; i<argc; ++i) {
 					p=stpcpy(p,argv[i]);
 					*p++ = '\n';
 				}
 				if(write_all(pf,buf,bufsz)!=bufsz) {
 					perror("Error: could not write string");
+					close(pf);
 					exit(2);
 				}
 			}	
 		}
 			goto read_retval;
 
-		case CTL_EMPTY:
+		case CTL_EMPTY: {
+			int i; size_t totsz=0;
+			for(i=1; i<argc; ++i)
+				totsz += strlen(argv[i])+1;
+
+			if(totsz>MAXSENDSTRLEN) {
+				fprintf(stderr,"Cannot send 'empty' command: "
+					"string length (%lu) exceeds maximum (%u).\n",
+					(unsigned long)totsz, MAXSENDSTRLEN);
+				exit(2);
+			}
 			pf=open_sock(cache_dir, cmd);
 			if(argc>1) {
-				int i; size_t totsz=0;
-				for(i=1;i<argc;++i)
-					totsz += strlen(argv[i])+1;
-
 				send_short(pf,totsz);
-				for(i=1;i<argc;++i) {
+				for(i=1; i<argc; ++i) {
 					size_t sz=strlen(argv[i])+1;
 					if(write_all(pf,argv[i],sz)!=sz) {
 						perror("Error: could not write string");
+						close(pf);
 						exit(2);
 					}
 				}
 			}
 			else
 				send_short(pf,~0);
-
+		}
 			goto read_retval;
 
 		case CTL_DUMP:
@@ -726,6 +754,7 @@ int main(int argc, char *argv[])
 				goto retval_failed;
 			if(copymsgtofile(pf,stdout)<0) {
 				perror("Error while reading from socket");
+				close(pf);
 				exit(2);
 			}
 			goto close_pf;

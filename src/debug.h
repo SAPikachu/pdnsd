@@ -24,7 +24,6 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $Id: debug.h,v 1.1 2001/04/12 18:50:12 tmm Exp $ */
 
 #ifndef DEBUG_H
 #define DEBUG_H

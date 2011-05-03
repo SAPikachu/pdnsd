@@ -34,9 +34,6 @@
 #include "helpers.h"
 #include "conff.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: thread.c,v 1.5 2001/05/19 14:57:30 tmm Exp $";
-#endif
 
 #if (TARGET==TARGET_LINUX) && !defined(THREADLIB_NPTL)
 volatile short int waiting=0; /* Has the main thread already done sigwait() ? */

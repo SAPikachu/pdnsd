@@ -13,8 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-# $Id: Makefile.am,v 1.20 2001/06/04 19:59:50 tmm Exp $
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -37,10 +35,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
-	$(srcdir)/file-list.base.in $(srcdir)/pdnsd.spec.in \
-	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
-	THANKS TODO acconfig.h compile depcomp install-sh missing
+	$(srcdir)/Makefile.in $(srcdir)/PKGBUILD.in \
+	$(srcdir)/config.h.in $(srcdir)/file-list.base.in \
+	$(srcdir)/pdnsd.spec.in $(top_srcdir)/configure AUTHORS \
+	COPYING ChangeLog INSTALL NEWS THANKS TODO acconfig.h compile \
+	depcomp install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -49,7 +48,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno configure.status.lineno
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
-CONFIG_CLEAN_FILES = pdnsd.spec file-list.base
+CONFIG_CLEAN_FILES = pdnsd.spec file-list.base PKGBUILD
 SOURCES =
 DIST_SOURCES =
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -133,6 +132,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -143,10 +143,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -155,10 +154,7 @@ target_alias = @target_alias@
 thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
 SUBDIRS = src doc contrib
-#GZIP_ENV=
-EXTRA_DIST = @PACKAGE@.spec.in config.h.in version \
-file-list.base.in ChangeLog.old COPYING.BSD README.par README.par.old
-
+EXTRA_DIST = version ChangeLog.old COPYING.BSD README.par README.par.old PKGBUILD
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -216,6 +212,8 @@ distclean-hdr:
 pdnsd.spec: $(top_builddir)/config.status $(srcdir)/pdnsd.spec.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 file-list.base: $(top_builddir)/config.status $(srcdir)/file-list.base.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+PKGBUILD: $(top_builddir)/config.status $(srcdir)/PKGBUILD.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 uninstall-info-am:
 
@@ -399,7 +397,7 @@ distdir: $(DISTFILES)
 	$(MAKE) $(AM_MAKEFLAGS) \
 	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
 	  dist-hook
-	-find $(distdir) -type d ! -perm -777 -exec chmod a+rwx {} \; -o \
+	-find $(distdir) -type d ! -perm -755 -exec chmod a+rwx,go+rx {} \; -o \
 	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -444 -exec $(SHELL) $(install_sh) -c -m a+r {} {} \; \
@@ -596,19 +594,38 @@ uninstall-info: uninstall-info-recursive
 
 # The sample configuration is handled in doc/Makefile.am
 install-data-hook:
-	$(mkinstalldirs) $(DESTDIR)$(cachedir)
-	test -f $(DESTDIR)$(cachedir)/pdnsd.cache || \
-	  touch $(DESTDIR)$(cachedir)/pdnsd.cache
+	$(mkinstalldirs) "$(DESTDIR)$(cachedir)"
+	test -f "$(DESTDIR)$(cachedir)/pdnsd.cache" || \
+	  touch "$(DESTDIR)$(cachedir)/pdnsd.cache"
 	if test `whoami` = "root"; then \
-	  chown $(def_id) $(DESTDIR)$(cachedir)/pdnsd.cache; \
-	  chown $(def_id) $(DESTDIR)$(cachedir); \
+	  chown $(def_id) "$(DESTDIR)$(cachedir)/pdnsd.cache"; \
+	  chown $(def_id) "$(DESTDIR)$(cachedir)"; \
 	fi
-	chmod 0640 $(DESTDIR)$(cachedir)/pdnsd.cache
-	chmod 0750 $(DESTDIR)$(cachedir)
+	chmod 0640 "$(DESTDIR)$(cachedir)/pdnsd.cache"
+	chmod 0750 "$(DESTDIR)$(cachedir)"
 
-dist-hook: $(PACKAGE).spec
-	cp $(PACKAGE).spec $(distdir)
-#	cp -pr doc $(distdir)
+dist-hook: $(PACKAGE).spec.in
+	sed -e '/^%{!?distro: %define distro /c\
+	%if 0%{!?distro:1}\
+	%if "%{_vendor}" == "redhat"\
+	%define distro RedHat\
+	%else\
+	%if "%{_vendor}" == "suse"\
+	%define distro SuSE\
+	%else\
+	%if "%{_vendor}" == "SuSE"\
+	%define distro SuSE\
+	%endif\
+	%endif\
+	%endif\
+	%endif' \
+	-e 's:[@]PACKAGE[@]:$(PACKAGE):g' \
+	-e 's:[@]VERSION[@]:$(VERSION):g' \
+	-e 's:[@]fullversion[@]:$(fullversion):g' \
+	-e 's:[@]packagerelease[@]:$(packagerelease):g' \
+	-e 's:[@]cachedir[@]:/var/cache/$(PACKAGE):g' \
+	-e 's:[@]def_id[@]:$(PACKAGE):g' \
+	$(PACKAGE).spec.in > $(distdir)/$(PACKAGE).spec
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

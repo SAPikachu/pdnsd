@@ -1,7 +1,7 @@
 /* status.c - Allow control of a running server using a socket
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -52,10 +52,6 @@
 #define alloca malloc
 #endif
 
-
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: status.c,v 1.34 2002/07/12 14:32:28 tmm Exp $";
-#endif
 
 char *sock_path=NULL;
 int stat_sock;
@@ -149,12 +145,11 @@ static int read_allocstring(int fh, char **res, unsigned *len)
    A return value of 1 means success, -1 means not defined,
    0 means error (read error, buffer too small).
 */
-static int read_domain(int fh, char *buf, int buflen)
+static int read_domain(int fh, char *buf, unsigned int buflen)
 {
 	uint16_t count;
 	unsigned int nread;
 
-	/* PDNSD_ASSERT(buflen>0, "bad read_domain call"); */
 	if(!read_short(fh,&count)) return 0;
 	if(count==(uint16_t)(~0)) return -1;
 	if(count >=buflen) return 0;
@@ -351,7 +346,7 @@ static void *status_thread (void *p)
 					break;
 				case CTL_RECORD: {
 					uint16_t cmd2;
-					unsigned char name[256],buf[256];
+					unsigned char name[DNSNAMEBUFSIZE],buf[DNSNAMEBUFSIZE];
 					DEBUG_MSG("Received RECORD command.\n");
 					if (!read_short(rs,&cmd2))
 						goto incomplete_command;
@@ -377,7 +372,7 @@ static void *status_thread (void *p)
 					uint32_t ttl;
 					char *fn;
 					uint16_t servaliases,flags;
-					unsigned char buf[256],owner[256];
+					unsigned char buf[DNSNAMEBUFSIZE],owner[DNSNAMEBUFSIZE];
 
 					DEBUG_MSG("Received SOURCE command.\n");
 					if (read_allocstring(rs,&fn,NULL)<=0) {
@@ -417,7 +412,7 @@ static void *status_thread (void *p)
 					uint32_t ttl;
 					unsigned sz;
 					uint16_t tp,flags,nadr=0;
-					unsigned char name[256],buf[256],dbuf[260];
+					unsigned char name[DNSNAMEBUFSIZE],buf[DNSNAMEBUFSIZE],dbuf[2+DNSNAMEBUFSIZE];
 					size_t adrbufsz=0;
 					unsigned char *adrbuf=NULL;
 
@@ -527,7 +522,7 @@ static void *status_thread (void *p)
 				case CTL_NEG: {
 					uint32_t ttl;
 					uint16_t tp;
-					unsigned char name[256],buf[256];
+					unsigned char name[DNSNAMEBUFSIZE],buf[DNSNAMEBUFSIZE];
 
 					DEBUG_MSG("Received NEG command.\n");
 					if (read_domain(rs, charp buf, sizeof(buf))<=0)
@@ -540,7 +535,7 @@ static void *status_thread (void *p)
 						DEBUG_MSG("NEG: received bad domain name.\n");
 						goto bad_domain_name;
 					}
-					if (tp!=255 && (tp<T_MIN || tp>T_MAX)) {
+					if (tp!=255 && PDNSD_NOT_CACHED_TYPE(tp)) {
 						DEBUG_MSG("NEG: received bad record type.\n");
 						print_serr(rs,"Bad record type.");
 						break;
@@ -556,7 +551,7 @@ static void *status_thread (void *p)
 						} else {
 							if (!init_cent(&cent, name, 0, 0, 0  DBG1))
 								goto out_of_memory;
-							if (!add_cent_rrset(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE  DBG1)) {
+							if (!add_cent_rrset_by_type(&cent,tp,ttl,0,CF_LOCAL|CF_NEGATIVE  DBG1)) {
 								free_cent(&cent  DBG1);
 								goto out_of_memory;
 							}
@@ -632,7 +627,7 @@ static void *status_thread (void *p)
 							char *q;
 							slist_t *sl;
 							unsigned sz;
-							unsigned char rhn[256];
+							unsigned char rhn[DNSNAMEBUFSIZE];
 
 							if(*p=='-') {
 								tp=C_EXCLUDED;
@@ -681,8 +676,8 @@ static void *status_thread (void *p)
 				case CTL_DUMP: {
 					int rv,exact=0;
 					unsigned char *nm=NULL;
-					char buf[256];
-					unsigned char rhn[256];
+					char buf[DNSNAMEBUFSIZE];
+					unsigned char rhn[DNSNAMEBUFSIZE];
 					DEBUG_MSG("Received DUMP command.\n");
 					if (!(rv=read_domain(rs,buf,sizeof(buf)))) {
 						print_serr(rs,"Bad domain name.");

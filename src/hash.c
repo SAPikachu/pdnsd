@@ -31,9 +31,6 @@
 #include "helpers.h"
 #include "consts.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: hash.c,v 1.12 2001/06/02 23:08:13 tmm Exp $";
-#endif
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes strings with case-insensitivity.
@@ -79,7 +76,7 @@ static unsigned dns_hash(const unsigned char *str, unsigned long *rhash)
 	s &= HASH_BITMASK;
 #ifdef DEBUG_HASH
 	{
-		unsigned char buf[256];
+		unsigned char buf[DNSNAMEBUFSIZE];
 		printf("Diagnostic: hashes for %s: %03x,%04lx\n",rhn2str(str,buf,sizeof(buf)),s,r);
 	}
 #endif
@@ -225,7 +222,7 @@ void free_dns_hash_selected(int i, slist_array sla)
 		unsigned char *name=he->data->qname;
 		for(j=0;j<m;++j) {
 			slist_t *sl=&DA_INDEX(sla,j);
-			int nrem,lrem;
+			unsigned int nrem,lrem;
 			domain_match(name,sl->domain,&nrem,&lrem);
 			if(!lrem && (!sl->exact || !nrem)) {
 				if(sl->rule==C_INCLUDED)

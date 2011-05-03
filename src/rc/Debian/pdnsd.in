@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# $Id: pdnsd.in,v 1.4 2001/05/04 21:58:26 tmm Exp $
 #
 # This script was written and contributed by Markus Mohr, and
 # slightly modified by me for version 1.0.6 (which obviously

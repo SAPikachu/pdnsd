@@ -1,5 +1,7 @@
 /* dns_answer.h - Receive and process icoming dns queries.
+
    Copyright (C) 2000 Thomas Moestl
+   Copyright (C) 2005 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -18,7 +20,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: dns_answer.h,v 1.3 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef DNS_ANSWER_H
 #define DNS_ANSWER_H

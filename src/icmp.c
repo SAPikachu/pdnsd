@@ -64,9 +64,6 @@
 #include "helpers.h"
 #include "servers.h"
 
-#if !defined(lint) && !defined(NO_RCSIDS)
-static char rcsid[]="$Id: icmp.c,v 1.26 2002/01/14 17:39:26 tmm Exp $";
-#endif
 
 #define ICMP_MAX_ERRS 10
 static volatile unsigned long icmp_errs=0; /* This is only here to minimize log output.

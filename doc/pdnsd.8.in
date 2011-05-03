@@ -1,4 +1,4 @@
-.TH PDNSD 8 "Jul 2007" "pdnsd @VERSION@" "System Administration Commands"
+.TH PDNSD 8 "Jul 2007" "pdnsd @fullversion@" "System Administration Commands"
 
 .SH NAME
 \fBpdnsd\fP \- dns proxy daemon

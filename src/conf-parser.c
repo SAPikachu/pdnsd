@@ -4,7 +4,7 @@
    This version was rewritten in C from scratch by Paul A. Rombouts
    and doesn't require (f)lex or yacc/bison.
 
-   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Paul A. Rombouts.
+   Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2011 Paul A. Rombouts.
 
   This file is part of the pdnsd package.
 
@@ -146,54 +146,95 @@ static char* getnextp(char **buf, size_t *n, FILE* in, char *p, unsigned *linenr
   return p;
 }
 
+static char translescapedchar(char c)
+{
+  switch(c) {
+  case 'f': return '\f';
+  case 'n': return '\n';
+  case 'r': return '\r';
+  case 't': return '\t';
+  case 'v': return '\v';
+  }
+  return c;
+}
 
-/* Scan a buffer for a string.
+/* Scan a buffer for a string and copy the decoded (i.e. unescaped) version into
+   another buffer.
 
    A string either begins after and ends before a double-quote ("),
    or simply consists of a sequence of "non-special" characters,
    starting at the current position.
+   A back-slash (\) acts as an escape character, preventing any character
+   following it from terminating the string. Thus, for example,
+   back-slash double-quote (\") may be used to include double-quotes
+   in a string.
+   A number of escape sequences are interpreted as in C, e.g.
+   \t, \n, \r yield control-chars as in C.
 
    char **curp should point to the position in the buffer where
                the scanning should begin. It will be updated to point
                to the first character past the scanned string.
 
-   char **startp is used to return the position in the buffer where the scanned
-               string starts.
+   char *outbuf is used to store the decoded string.
+   size_t outbufsz should be the size of outbuf.
 
-   size_t *lenp is used to return the length of the scanned string.
+   The return value is the length of the decoded string, unless an error occurs,
+   in which case -1 is returned and *errstr is assigned an error message.
+   The returned length may be larger than outbufsz, in which case the buffer
+   is filled with only the first outbufsz chars of the string.
 */
-static int scan_string(char **startp,char **curp,size_t *lenp)
+static int scan_string(char **curp,char *outbuf, unsigned outbufsz, char **errstr)
 {
-  char *start,*cur=*curp;
+  char *cur=*curp;
+  unsigned i=0;
 
   if(*cur=='"') {
-    ++cur;
-    start=cur;
-    for(;;++cur) {
-      if(!*cur) {
-	/* string without closing quote */
-	return 0;
-      }
+    /* Double-quoted string. */
+    ++cur; /* Skip opening quote. */
+    for(;; ++i,++cur) {
+      if(!*cur) goto noclosingquote;
       if(*cur=='"') break;
+      if(*cur=='\\') {
+	if(!*++cur) goto nofollowingchar;
+	if(i<outbufsz)
+	  outbuf[i]= translescapedchar(*cur);
+      }
+      else if(i<outbufsz)
+	outbuf[i]= *cur;
     }
-    *lenp=cur-start;
-    ++cur;
+    ++cur; /* Skip closing quote. */
   }
   else {
-    start=cur;
-    while(*cur &&
-	  !(isspace(*cur) ||
-	    *cur==',' || *cur==';' ||
-	    *cur=='{' || *cur=='}' ||
-	    *cur=='"' || *cur=='#' ||
-	    (*cur=='/' && (*(cur+1)=='/'|| *(cur+1)=='*'))))
-      ++cur;
-    *lenp=cur-start;
+    /* Bare (unquoted) string. */
+    for(; *cur; ++i,++cur) {
+      if(*cur=='\\') {
+	/* Accept any non-null char following a back-slash. */
+	if(!*++cur) goto nofollowingchar;
+	if(i<outbufsz)
+	  outbuf[i]= translescapedchar(*cur);
+      }
+      else if(isspace(*cur) ||
+	      *cur==',' || *cur==';' ||
+	      *cur=='{' || *cur=='}' ||
+	      *cur=='"' || *cur=='#' ||
+	      (*cur=='/' && (*(cur+1)=='/'|| *(cur+1)=='*')))
+	break;
+      else if(i<outbufsz)
+	outbuf[i]= *cur;
+    }
   }
 
-  *startp=start;
+  if(i<outbufsz)
+    outbuf[i]=0;
   *curp=cur;
-  return 1;
+  return i;
+
+ noclosingquote:
+  *errstr="quoted string without closing quote";
+  return -1;
+ nofollowingchar:
+  *errstr="may not use backslash to escape end-of-line";
+  return -1;
 }
 
 
@@ -246,15 +287,17 @@ static time_t strtotime(char *nptr, char **endptr, char **errstr)
 
 
 #define lookup_keyword(name,len,dic) binsearch_keyword(name,len,dic,sizeof(dic)/sizeof(namevalue_t))
-static const char *parse_ip(const char *ipstr,size_t len, pdnsd_a *a);
-static const char *addr_add(atup_array *ata, const char *ipstr, size_t len);
-static const char *reject_add(servparm_t *serv, const char *ipstr, size_t len);
+static const char *parse_ip(const char *ipstr, pdnsd_a *a);
+static const char *addr_add(atup_array *ata, const char *ipstr);
+#define addr_add_(ata,ipstr,len) addr_add(ata,ipstr)
+static const char *reject_add(servparm_t *serv, const char *ipstr);
+#define reject_add_(serv,ipstr,len) reject_add(serv,ipstr)
 static void check_localaddrs(servparm_t *serv);
 static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr);
-static const char *slist_add(slist_array *sla, const char *nm, size_t len, int tp);
+static const char *slist_add(slist_array *sla, const char *nm, unsigned int len, int tp);
 #define include_list_add(sla,nm,len) slist_add(sla,nm,len,C_INCLUDED)
 #define exclude_list_add(sla,nm,len) slist_add(sla,nm,len,C_EXCLUDED)
-static const char *zone_add(zone_array *za, const char *zone, size_t len);
+static const char *zone_add(zone_array *za, const char *zone, unsigned int len);
 
 #define CONCAT(a,b) a ## b
 /* a macro for concatenating tokens that expands its arguments */
@@ -272,20 +315,11 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
   (len)=(cur)-(start);					\
 }
 
-#define SCAN_STRING(start,cur,len)			\
-{							\
-  if(!scan_string(&(start),&(cur),&(len))) {		\
-    REPORT_ERROR("string without closing quote");	\
-    PARSERROR;						\
-  }							\
-}
-
 #define STRNDUP(dst,src,len)			\
 {						\
   if(dst) free(dst);				\
   if(!((dst)=strndup(src,len))) {		\
-    *errstr=NULL;				\
-    PARSERROR;					\
+    OUTOFMEMERROR;				\
   }						\
 }
 
@@ -307,21 +341,20 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
   memcpy(dst,src,len);				\
   dst[len]=0;
 
-#define SCAN_STRING_LIST(dst,cur,addfunc)	\
-{						\
-  for(;;) {					\
-    char *_strbeg; const char *_err;		\
-    size_t _len;				\
-    SCAN_STRING(_strbeg,cur,_len);		\
-    if((_err=addfunc(dst,_strbeg,_len))) {	\
-      REPORT_ERROR(_err);			\
-      PARSERROR;				\
-    }						\
-    SKIP_BLANKS(cur);				\
-    if(*(cur)!=',') break;			\
-    ++(cur);					\
-    SKIP_BLANKS(cur);				\
-  }						\
+#define SCAN_STRING_LIST(dst,cur,strbuf,len,addfunc)	\
+{							\
+  for(;;) {						\
+    const char *_err;					\
+    SCAN_STRING(cur,strbuf,len);			\
+    if((_err=addfunc(dst,strbuf,len))) {		\
+      REPORT_ERROR(_err);				\
+      PARSERROR;					\
+    }							\
+    SKIP_BLANKS(cur);					\
+    if(*(cur)!=',') break;				\
+    ++(cur);						\
+    SKIP_BLANKS(cur);					\
+  }							\
 }
 
 #define ASSIGN_ON_OFF(dst,cur,onoff,errmsg)	\
@@ -407,7 +440,7 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
 */
 #define DOM_NAME_CPY(dst,src,len)		\
 {						\
-  unsigned char _buf[256];			\
+  unsigned char _buf[DNSNAMEBUFSIZE];		\
   PARSESTR2RHN(src,len,_buf);			\
   memcpy(dst,src,len);				\
   (dst)[len]=0;					\
@@ -454,13 +487,22 @@ static const char *zone_add(zone_array *za, const char *zone, size_t len);
 */
 int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *servers, int includedepth, char **errstr)
 {
-  char *linebuf=NULL,*p,*ps,*getnextperr=NULL;
+  char *linebuf=NULL,*p,*ps,*getnextperr=NULL,*scanstrerr=NULL;
   const char *conftype;
-  size_t buflen=256,len;
+  size_t buflen=256;
   unsigned linenr=0;
-  int retval=0,sechdr,option;
+  int retval=0,sechdr,option,len;
+  char strbuf[1024];
 # define CLEANUP_HANDLER
-# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,&linenr,&getnextperr))) {CLEANUP_HANDLER; goto unexpected_eof;}}
+# define CLEANUP_HANDLER2
+# define CLEANUP_HANDLERS CLEANUP_HANDLER2;CLEANUP_HANDLER
+# define SKIP_BLANKS(cur) {if(!((cur)=getnextp(&linebuf,&buflen,in,cur,&linenr,&getnextperr))) {CLEANUP_HANDLERS; goto unexpected_eof;}}
+# define SCAN_STRING(cur,buf,len) {					\
+    if(((len)=scan_string(&(cur),buf,sizeof(buf),&scanstrerr))==-1)	\
+      {CLEANUP_HANDLERS; goto string_err;}				\
+    else if((len)>=sizeof(buf))						\
+      {CLEANUP_HANDLERS; goto string_too_long;}				\
+  }
 # define REPORT_ERROR(msg) (*errstr=report_error(conftype,linenr,msg))
 # if !defined(CPP_C99_VARIADIC_MACROS)
    /* GNU C Macro Varargs style. */
@@ -469,8 +511,9 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
    /* ANSI C99 style. */
 #  define REPORT_ERRORF(...) (*errstr=report_errorf(conftype,linenr,__VA_ARGS__))
 # endif
-# define PARSERROR {CLEANUP_HANDLER; goto free_linebuf_return;}
-# define CLEANUP_GOTO(lab) {CLEANUP_HANDLER; goto lab;}
+# define PARSERROR {CLEANUP_HANDLERS; goto free_linebuf_return;}
+# define OUTOFMEMERROR {CLEANUP_HANDLERS; goto out_of_memory;}
+# define CLEANUP_GOTO(lab) {CLEANUP_HANDLERS; goto lab;}
 
   *errstr=NULL;
   if(in) {
@@ -522,6 +565,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	  SKIP_BLANKS(p);
 
 	  switch(option) {
+	    pdnsd_a *ipaddrp;
+
 	  case PERM_CACHE:
 	    if (isalpha(*p)) {
 	      int cnst;
@@ -544,19 +589,25 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case CACHE_DIR:
-	    SCAN_STRING(ps,p,len);
-	    STRNDUP(global->cache_dir,ps,len);
+	    SCAN_STRING(p,strbuf,len);
+	    STRNDUP(global->cache_dir,strbuf,len);
 	    break;
 
 	  case SERVER_PORT:
 	    SCAN_UNSIGNED_NUM(global->port,p,"server_port option")
 	    break;
 
+	  case OUTGOING_IP:
+	    ipaddrp= &global->out_a;
+	    goto scan_ip_or_interface;
+
 	  case SERVER_IP:
-	    SCAN_STRING(ps,p,len);
+	    ipaddrp= &global->a;
+	  scan_ip_or_interface:
+	    SCAN_STRING(p,strbuf,len);
 	    {
 	      const char *err;
-	      if ((err=parse_ip(ps,len,&global->a))) {
+	      if ((err=parse_ip(strbuf,ipaddrp))) {
 #if defined(HAVE_STRUCT_IFREQ) && defined(IFNAMSIZ) && defined(SIOCGIFADDR)
 		if(!strcmp(err,"bad IP address") && len<IFNAMSIZ) {
 		  /* Treat the string argument as the name of an interface
@@ -564,7 +615,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 		  */
 		  int fd;
 		  struct ifreq req;
-		  memcpy(req.ifr_name, ps, len);
+		  memcpy(req.ifr_name, strbuf, len);
 		  req.ifr_name[len]=0;
 		  req.ifr_addr.sa_family = PDNSD_AF_INET;
 
@@ -572,11 +623,11 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 		  if ((fd = socket(PDNSD_PF_INET, SOCK_DGRAM, 0))!=-1 && ioctl(fd, SIOCGIFADDR, &req)!=-1) {
 # ifdef ENABLE_IPV4
 		    if (run_ipv4)
-		      global->a.ipv4= ((struct sockaddr_in *)&req.ifr_addr)->sin_addr;
+		      ipaddrp->ipv4= ((struct sockaddr_in *)&req.ifr_addr)->sin_addr;
 # endif
 # ifdef ENABLE_IPV6
 		    ELSE_IPV6
-		      global->a.ipv6= ((struct sockaddr_in6 *)&req.ifr_addr)->sin6_addr;
+		      ipaddrp->ipv6= ((struct sockaddr_in6 *)&req.ifr_addr)->sin6_addr;
 # endif
 		    close(fd);
 		  }
@@ -589,7 +640,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 		else
 #endif
 		  {
-		    REPORT_ERRORF("%s for the server_ip= option.",err);
+		    REPORT_ERRORF("%s for the %s= option.",err,option==SERVER_IP?"server_ip":"outgoing_ip");
 		    PARSERROR;
 		  }
 	      }
@@ -597,8 +648,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case SCHEME_FILE:
-	    SCAN_STRING(ps,p,len);
-	    STRNDUP(global->scheme_file, ps,len);
+	    SCAN_STRING(p,strbuf,len);
+	    STRNDUP(global->scheme_file, strbuf,len);
 	    break;
 
 	  case LINKDOWN_KLUGE:
@@ -614,8 +665,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case RUN_AS:
-	    SCAN_STRING(ps,p,len);
-	    STRNCP(global->run_as, ps,len, "run_as");
+	    SCAN_STRING(p,strbuf,len);
+	    STRNCP(global->run_as, strbuf,len, "run_as");
 	    break;
 
 	  case STRICT_SETUID:
@@ -630,8 +681,11 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    ASSIGN_ON_OFF(global->paranoid, p,C_ON,"bad qualifier in paranoid= option.");
 	    break;
 
-	  case IGNORE_CD:
-	    ASSIGN_ON_OFF(global->ignore_cd, p,C_ON,"bad qualifier in ignore_cd= option.");
+	  case IGNORE_CD: {
+	    int ignore_cd;
+	    ASSIGN_ON_OFF(ignore_cd, p,C_ON,"bad qualifier in ignore_cd= option.");
+	    fprintf(stderr, "Warning: ignore_cd option in configuration file is obsolete and currently has no effect.\n");
+	  }
 	    break;
 
 	  case STATUS_CTL: {
@@ -664,8 +718,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case PID_FILE:
-	    SCAN_STRING(ps,p,len);
-	    if(!cmdline.pidfile) {STRNDUP(global->pidfile,ps,len);}
+	    SCAN_STRING(p,strbuf,len);
+	    if(!cmdline.pidfile) {STRNDUP(global->pidfile,strbuf,len);}
 	    break;
 
 	  case C_VERBOSITY: {
@@ -737,11 +791,10 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case IPV4_6_PREFIX:
-	    SCAN_STRING(ps,p,len);
+	    SCAN_STRING(p,strbuf,len);
 #ifdef ENABLE_IPV6
 	    if(!cmdline.prefix) {
-	      TEMPSTRNCPY(buf,ps,len);
-	      if(inet_pton(AF_INET6,buf,&global->ipv4_6_prefix)<=0) {
+	      if(inet_pton(AF_INET6,strbuf,&global->ipv4_6_prefix)<=0) {
 		REPORT_ERROR("ipv4_6_prefix: argument not a valid IPv6 address.");
 		PARSERROR;
 	      }
@@ -860,8 +913,19 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	  }
 	    break;
 
+	  case UDP_BUFSIZE: {
+	    int val;
+	    SCAN_UNSIGNED_NUM(val,p,"udpbufsize");
+	    if(val<512 || val>65535-(20+8)) {
+	      REPORT_ERROR("value for udpbufsize out of range.");
+	      PARSERROR;
+	    }
+	    global->udpbufsize=val;
+	  }
+	    break;
+
 	  case DELEGATION_ONLY:
-	    SCAN_STRING_LIST(&global->deleg_only_zones,p,zone_add)
+	    SCAN_STRING_LIST(&global->deleg_only_zones,p,strbuf,len,zone_add)
 	    break;
 
 	  default: /* we should never get here */
@@ -908,15 +972,14 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 
 	  switch(option) {
 	  case IP:
-	    SCAN_STRING_LIST(&server.atup_a,p,addr_add);
+	    SCAN_STRING_LIST(&server.atup_a,p,strbuf,len,addr_add_);
 	    break;
 
 	  case FILET:
-	    SCAN_STRING(ps,p,len);
+	    SCAN_STRING(p,strbuf,len);
 	    {
 	      char *errmsg;
-	      TEMPSTRNCPY(fn,ps,len);
-	      if (!read_resolv_conf(fn, &server.atup_a, &errmsg)) {
+	      if (!read_resolv_conf(strbuf, &server.atup_a, &errmsg)) {
 		if(errmsg) {REPORT_ERROR(errmsg); free(errmsg);}
 		else *errstr=NULL;
 		PARSERROR;
@@ -929,8 +992,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case SCHEME:
-	    SCAN_STRING(ps,p,len);
-	    STRNCP(server.scheme, ps,len, "scheme");
+	    SCAN_STRING(p,strbuf,len);
+	    STRNCP(server.scheme, strbuf,len, "scheme");
 	    break;
 
 	  case UPTEST: {
@@ -949,10 +1012,10 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case PING_IP:
-	    SCAN_STRING(ps,p,len);
+	    SCAN_STRING(p,strbuf,len);
 	    {
 	      const char *err;
-	      if ((err=parse_ip(ps,len,&server.ping_a))) {
+	      if ((err=parse_ip(strbuf,&server.ping_a))) {
 		REPORT_ERRORF("%s for the ping_ip= option.",err);
 		PARSERROR;
 	      }
@@ -960,14 +1023,47 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case UPTEST_CMD:
-	    SCAN_STRING(ps,p,len);
-	    STRNDUP(server.uptest_cmd, ps,len);
+	    SCAN_STRING(p,strbuf,len);
+	    STRNDUP(server.uptest_cmd, strbuf,len);
 	    SKIP_BLANKS(p);
 	    if(*p==',') {
 	      ++p;
 	      SKIP_BLANKS(p);
-	      SCAN_STRING(ps,p,len);
-	      STRNCP(server.uptest_usr, ps,len, "second argument of uptest_cmd");
+	      SCAN_STRING(p,strbuf,len);
+	      STRNCP(server.uptest_usr, strbuf,len, "second argument of uptest_cmd");
+	    }
+	    break;
+
+	  case QUERY_TEST_NAME:
+	    if(isalpha(*p)) {
+	      int cnst;
+	      SCAN_ALPHANUM(ps,p,len);
+	      if(*p!='.' && *p!='-') {
+		cnst=lookup_const(ps,len);
+		if(cnst==C_NONE) {
+		  if(server.query_test_name)
+		    free(server.query_test_name);
+		  server.query_test_name=NULL;
+		  break;
+		}
+	      }
+	      p=ps;  /* reset current char pointer and try again. */
+	    }
+	    {
+	      unsigned char tname[DNSNAMEBUFSIZE], *copy;
+	      unsigned sz;
+
+	      SCAN_STRING(p,strbuf,len);
+	      PARSESTR2RHN(ucharp strbuf,len,tname);
+	      sz=rhnlen(tname);
+	      copy= malloc(sz);
+	      if(!copy) {
+		OUTOFMEMERROR;
+	      }
+	      memcpy(copy,tname,sz);
+	      if(server.query_test_name)
+		free(server.query_test_name);
+	      server.query_test_name=copy;
 	    }
 	    break;
 
@@ -1002,13 +1098,13 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case INTERFACE:
-	    SCAN_STRING(ps,p,len);
-	    STRNCP(server.interface, ps,len, "interface");
+	    SCAN_STRING(p,strbuf,len);
+	    STRNCP(server.interface, strbuf,len, "interface");
 	    break;
 
 	  case DEVICE:
-	    SCAN_STRING(ps,p,len);
-	    STRNCP(server.device, ps,len, "device");
+	    SCAN_STRING(p,strbuf,len);
+	    STRNCP(server.device, strbuf,len, "device");
 	    break;
 
 	  case PURGE_CACHE:
@@ -1021,6 +1117,10 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 
 	  case LEAN_QUERY:
 	    ASSIGN_ON_OFF(server.lean_query,p,C_ON,"bad qualifier in lean_query= option.");
+	    break;
+
+	  case EDNS_QUERY:
+	    ASSIGN_ON_OFF(server.edns_query,p,C_ON,"bad qualifier in edns_query= option.");
 	    break;
 
 	  case PRESET:
@@ -1050,15 +1150,15 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case INCLUDE:
-	    SCAN_STRING_LIST(&server.alist,p,include_list_add)
+	    SCAN_STRING_LIST(&server.alist,p,strbuf,len,include_list_add)
 	    break;
 
 	  case EXCLUDE:
-	    SCAN_STRING_LIST(&server.alist,p,exclude_list_add)
+	    SCAN_STRING_LIST(&server.alist,p,strbuf,len,exclude_list_add)
 	    break;
 
 	  case REJECTLIST:
-	    SCAN_STRING_LIST(&server,p,reject_add);
+	    SCAN_STRING_LIST(&server,p,strbuf,len,reject_add_);
 	    break;
 
 	  case REJECTPOLICY: {
@@ -1073,8 +1173,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case LABEL:
-	    SCAN_STRING(ps,p,len);
-	    STRNDUP(server.label,ps,len);
+	    SCAN_STRING(p,strbuf,len);
+	    STRNDUP(server.label,strbuf,len);
 	    break;
 
 	  default: /* we should never get here */
@@ -1123,7 +1223,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	if(server.interval==-1) global->onquery=1;
 
 	if (!(*servers=DA_GROW1_F(*servers,(void(*)(void*))free_servparm))) {
-	  CLEANUP_GOTO(out_of_memory);
+	  OUTOFMEMERROR;
 	}
 	DA_LAST(*servers)= server;
 #	undef  CLEANUP_HANDLER
@@ -1157,13 +1257,13 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	  switch(option) {
 	    int tp;
 	  case NAME: {
-	    unsigned char c_name[256];
+	    unsigned char c_name[DNSNAMEBUFSIZE];
 	    if (c_cent.qname) {
 	      REPORT_ERROR("You may specify only one name in a rr section.");
 	      PARSERROR;
 	    }
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,c_name);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,c_name);
 	    if (!init_cent(&c_cent, c_name, 0, 0, c_flags  DBG0))
 	      goto out_of_memory;
 	  }
@@ -1189,33 +1289,31 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 
 	  case A: {
-	    int sz;
+	    unsigned int sz;
 	    pdnsd_ca c_a;
 
 	    if (!c_cent.qname)
 	      goto no_name_spec;
-	    SCAN_STRING(ps,p,len);
-	    {
-	      TEMPSTRNCPY(buf,ps,len);
-	      if (inet_aton(buf,&c_a.ipv4)) {
-		tp=T_A;
-		sz=sizeof(struct in_addr);
+	    SCAN_STRING(p,strbuf,len);
+	    if (inet_aton(strbuf,&c_a.ipv4)) {
+	      tp=T_A;
+	      sz=sizeof(struct in_addr);
+	    }
+	    else
+#if ALLOW_LOCAL_AAAA
+	      if (inet_pton(AF_INET6,strbuf,&c_a.ipv6)>0) {
+		tp=T_AAAA;
+		sz=sizeof(struct in6_addr);
 	      }
 	      else
-#if ALLOW_LOCAL_AAAA
-		if (inet_pton(AF_INET6,buf,&c_a.ipv6)>0) {
-		  tp=T_AAAA;
-		  sz=sizeof(struct in6_addr);
-		}
-		else
 #endif
-		  {
-		    REPORT_ERROR("bad IP address in a= option.");
-		    PARSERROR;
-		  }
-	    }
+		{
+		  REPORT_ERROR("bad IP address in a= option.");
+		  PARSERROR;
+		}
+
 	    if(!add_cent_rr(&c_cent,tp,c_ttl,0,CF_LOCAL,sz,&c_a  DBG0))
-	      goto add_cent_failed;
+	      goto add_rr_failed;
 	  }
 	    break;
 
@@ -1229,52 +1327,52 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    tp=T_PTR;
 	  scan_name:
 	    {
-	      unsigned char c_name[256];
+	      unsigned char c_name[DNSNAMEBUFSIZE];
 
 	      if (!c_cent.qname)
 		goto no_name_spec;
-	      SCAN_STRING(ps,p,len);
-	      PARSESTR2RHN(ucharp ps,len,c_name);
+	      SCAN_STRING(p,strbuf,len);
+	      PARSESTR2RHN(ucharp strbuf,len,c_name);
 	      if(!add_cent_rr(&c_cent,tp,c_ttl,0,CF_LOCAL,rhnlen(c_name),c_name  DBG0))
-		goto add_cent_failed;
+		goto add_rr_failed;
 	    }
 	    break;
 
 	  case MX: {
 	    unsigned char *cp;
 	    unsigned pref;
-	    unsigned char c_mx[258];
+	    unsigned char c_mx[2+DNSNAMEBUFSIZE];
 
 	    if (!c_cent.qname)
 	      goto no_name_spec;
 	    cp=c_mx+2;
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,cp);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,cp);
 	    SKIP_COMMA(p,"missing second argument (preference level) of mx= option");
 	    SCAN_UNSIGNED_NUM(pref,p,"second argument of mx= option");
 	    cp=c_mx;
 	    PUTINT16(pref,cp);
 	    if(!add_cent_rr(&c_cent,T_MX,c_ttl,0,CF_LOCAL,2+rhnlen(cp),c_mx  DBG0))
-	      goto add_cent_failed;
+	      goto add_rr_failed;
 	  }
 	    break;
 
 	  case SOA: {
-	    int blen,rlen;
+	    unsigned int blen,rlen;
 	    unsigned char *bp;
 	    uint32_t val;
-	    unsigned char buf[2*256+20];
+	    unsigned char buf[2*DNSNAMEBUFSIZE+20];
 
 	    if (!c_cent.qname)
 	      goto no_name_spec;
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,buf);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,buf);
 	    rlen=rhnlen(buf);
 	    blen=rlen;
 	    bp=buf+rlen;
 	    SKIP_COMMA(p,"missing 2nd argument of soa= option");
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,bp);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,bp);
 	    rlen=rhnlen(bp);
 	    blen += rlen;
 	    bp += rlen;
@@ -1295,10 +1393,82 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    PUTINT32(val,bp);
 	    blen += 20;
 	    if(!add_cent_rr(&c_cent,T_SOA,c_ttl,0,CF_LOCAL,blen,buf  DBG0))
-	      goto add_cent_failed;
+	      goto add_rr_failed;
 	  }
 	    break;
+	  case SPF:
+#if IS_CACHED_SPF
+	    tp=T_SPF;
+	    goto define_txt_rr;
+#else
+	    REPORT_ERROR("Missing support for caching SPF records in rr section");
+	    PARSERROR;
+#endif
+	  case TXT:
+#if IS_CACHED_TXT
+	    tp=T_TXT;
+#else
+	    REPORT_ERROR("Missing support for caching TXT records in rr section");
+	    PARSERROR;
+#endif
+#if IS_CACHED_TXT || IS_CACHED_SPF
+#if IS_CACHED_SPF
+	  define_txt_rr:
+#endif
+	  {
+	    unsigned char *rbuf;
+	    unsigned sz,allocsz;
+	    int rv;
 
+	    if (!c_cent.qname)
+	      goto no_name_spec;
+	    rbuf=NULL;
+	    sz=allocsz=0;
+#           undef  CLEANUP_HANDLER2
+#           define CLEANUP_HANDLER2 (free(rbuf))
+
+	    for(;;) {
+	      unsigned char *newbuf,*cp;
+	      unsigned newsz=sz+256;
+	      int n;
+	      if(newsz>allocsz) {
+		allocsz += 512;
+		newbuf=realloc(rbuf,allocsz);
+		if(!newbuf) {
+		  OUTOFMEMERROR;
+		}
+		rbuf=newbuf;
+	      }
+	      cp = rbuf+sz;
+	      n=scan_string(&p, charp (cp+1), 255, &scanstrerr);
+	      if(n==-1) {
+		REPORT_ERRORF("%s in %s= option", scanstrerr, getrrtpname(tp));
+		PARSERROR;
+	      }
+	      if(n>255) {
+		REPORT_ERRORF("string longer than 255 bytes in %s= option", getrrtpname(tp));
+		PARSERROR;
+	      }
+	      *cp=n;
+	      sz += n+1;
+	      if(sz>0xffff) {
+		REPORT_ERRORF("data exceeds maximum size (65535 bytes) in %s= option", getrrtpname(tp));
+		PARSERROR;
+	      }		
+	      SKIP_BLANKS(p);
+	      if(*p!=',') break;
+	      ++p;
+	      SKIP_BLANKS(p);
+	    }
+	    rv=add_cent_rr(&c_cent,tp,c_ttl,0,CF_LOCAL,sz,rbuf  DBG0);
+	    CLEANUP_HANDLER2;
+#           undef  CLEANUP_HANDLER2
+#           define CLEANUP_HANDLER2
+	    if(!rv)
+	      goto add_rr_failed;
+	  }
+	    break;
+#endif
 	  default: /* we should never get here */
 	    CLEANUP_GOTO(internal_parse_error);
 	  } /* end of switch(option) */
@@ -1315,7 +1485,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	if(c_cent.qname[0]==1 && c_cent.qname[1]=='*') {
 	  /* Wild card record. Set the DF_WILD flag for the name with '*.' removed. */
 	  if(!set_cent_flags(&c_cent.qname[2],DF_WILD)) {
-	    unsigned char buf[256];
+	    unsigned char buf[DNSNAMEBUFSIZE];
 	    rhn2str(c_cent.qname,buf,sizeof(buf));
 	    REPORT_ERRORF("You must define some records for '%s'"
 			  " before you can define records for the wildcard name '%s'",
@@ -1335,15 +1505,14 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	CLEANUP_HANDLER;
 	break;
 
-      add_cent_failed:
-	CLEANUP_HANDLER;
-	goto out_of_memory;
+      add_rr_failed:
+	OUTOFMEMERROR;
 #	undef  CLEANUP_HANDLER
 #	define CLEANUP_HANDLER
       }
 
       case SOURCE: {
-	unsigned char c_owner[256];
+	unsigned char c_owner[DNSNAMEBUFSIZE];
 	time_t c_ttl;
 	unsigned c_flags;
 	unsigned char c_aliases;
@@ -1367,8 +1536,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 
 	  switch(option) {
 	  case OWNER:
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,c_owner);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,c_owner);
 	    break;
 
 	  case TTL:
@@ -1380,11 +1549,10 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	      REPORT_ERROR("you must specify owner before file= in source records.");
 	      PARSERROR;
 	    }
-	    SCAN_STRING(ps,p,len);
+	    SCAN_STRING(p,strbuf,len);
 	    {
 	      char *errmsg;
-	      TEMPSTRNCPY(fn,ps,len);
-	      if (!read_hosts(fn, c_owner, c_ttl, c_flags, c_aliases, &errmsg)) {
+	      if (!read_hosts(strbuf, c_owner, c_ttl, c_flags, c_aliases, &errmsg)) {
 		if(errmsg) { REPORT_ERROR(errmsg); free(errmsg); }
 		else *errstr=NULL;
 		PARSERROR;
@@ -1434,18 +1602,17 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	      REPORT_ERRORF("maximum include depth (%d) exceeded.",MAXINCLUDEDEPTH);
 	      PARSERROR;
 	    }
-	    SCAN_STRING(ps,p,len);
+	    SCAN_STRING(p,strbuf,len);
 	    {
 	      char *errmsg;
-	      TEMPSTRNCPY(fn,ps,len);
-	      if (!read_config_file(fn, NULL, NULL, includedepth+1, &errmsg)) {
+	      if (!read_config_file(strbuf, NULL, NULL, includedepth+1, &errmsg)) {
 		if(errmsg) {
 		  if(linenr) {
-		    if(asprintf(errstr, "In file %s included at line %u:\n%s",fn,linenr,errmsg)<0)
+		    if(asprintf(errstr, "In file %s included at line %u:\n%s",strbuf,linenr,errmsg)<0)
 		      *errstr=NULL;
 		  }
 		  else {
-		    if(asprintf(errstr, "In file %s:\n%s",fn,errmsg)<0)
+		    if(asprintf(errstr, "In file %s:\n%s",strbuf,errmsg)<0)
 		      *errstr=NULL;
 		  }
 		  free(errmsg);
@@ -1470,7 +1637,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	break;
 
       case NEG: {
-	unsigned char c_name[256];
+	unsigned char c_name[DNSNAMEBUFSIZE];
 	time_t c_ttl;
 	unsigned char htp,hdtp;
 
@@ -1493,8 +1660,8 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 
 	  switch(option) {
 	  case NAME:
-	    SCAN_STRING(ps,p,len);
-	    PARSESTR2RHN(ucharp ps,len,c_name);
+	    SCAN_STRING(p,strbuf,len);
+	    PARSESTR2RHN(ucharp strbuf,len,c_name);
 	    break;
 
 	  case TTL:
@@ -1539,8 +1706,12 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 		    REPORT_ERRORF("unrecognized rr type '%.*s' used as argument for types= option.",(int)len,ps);
 		    PARSERROR;
 		  }
-		  if (!c_cent.rr[cnst-T_MIN] && !add_cent_rrset(&c_cent,cnst,c_ttl,0,CF_LOCAL|CF_NEGATIVE  DBG0)) {
-		    CLEANUP_GOTO(out_of_memory);
+		  if(PDNSD_NOT_CACHED_TYPE(cnst)) {
+		    REPORT_ERRORF("illegal rr type '%.*s' used as argument for types= option.",(int)len,ps);
+		    PARSERROR;
+		  }
+		  if (!getrrset_eff(&c_cent,cnst) && !add_cent_rrset_by_type(&c_cent,cnst,c_ttl,0,CF_LOCAL|CF_NEGATIVE  DBG0)) {
+		    OUTOFMEMERROR;
 		  }
 		  SKIP_BLANKS(p);
 		  if(*p!=',') break;
@@ -1619,6 +1790,14 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
   REPORT_ERROR("too many arguments to option or missing semicolon");
   PARSERROR;
 
+ string_err:
+  REPORT_ERROR(scanstrerr);
+  PARSERROR;
+
+ string_too_long:
+  REPORT_ERROR("string length exceeds buffer size");
+  PARSERROR;
+
  no_name_spec:
   REPORT_ERROR("you must specify a name before a,ptr,cname,mx,ns(owner) and soa records.");
   PARSERROR;
@@ -1649,22 +1828,23 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
   return retval;
 
 #undef SKIP_BLANKS
+#undef SCAN_STRING
 #undef REPORT_ERROR
 #undef REPORT_ERRORF
 #undef PARSERROR
+#undef OUTOFMEMERROR
 #undef CLEANUP_GOTO
 }
 
 
 /* Convert a string representation of an IP address into a binary format. */
-static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
+static const char* parse_ip(const char *ipstr, pdnsd_a *a)
 {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
   if(!cmdlineipv) cmdlineipv=-2;
 #endif
   {
-    TEMPSTRNCPY(buf,ipstr,len);
-    if(!strcmp(buf,"any")) {
+    if(!strcmp(ipstr,"any")) {
 #ifdef ENABLE_IPV4
       if (run_ipv4)
 	a->ipv4.s_addr=INADDR_ANY;
@@ -1674,9 +1854,9 @@ static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
 	a->ipv6=in6addr_any;
 #endif
     }
-    else if(!str2pdnsd_a(buf,a)) {
+    else if(!str2pdnsd_a(ipstr,a)) {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-      if(run_ipv4 && inet_pton(AF_INET6,buf,&a->ipv6)>0) {
+      if(run_ipv4 && inet_pton(AF_INET6,ipstr,&a->ipv6)>0) {
 	return "You should set run_ipv4=off or use the command-line option -6"
 	  " before specifying an IPv6 address";
       }
@@ -1688,7 +1868,7 @@ static const char* parse_ip(const char *ipstr,size_t len, pdnsd_a *a)
 }
 
 /* Add an IP address to the list of name servers. */
-static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
+static const char *addr_add(atup_array *ata, const char *ipstr)
 {
   atup_t *at;
   pdnsd_a addr;
@@ -1697,11 +1877,10 @@ static const char *addr_add(atup_array *ata, const char *ipstr, size_t len)
   if(!cmdlineipv) cmdlineipv=-2;
 #endif
   {
-    TEMPSTRNCPY(buf,ipstr,len);
-    if(!str2pdnsd_a(buf,&addr)) {
+    if(!str2pdnsd_a(ipstr,&addr)) {
 #if defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
-      if(run_ipv4 && inet_pton(AF_INET6,buf,&addr.ipv6)>0) {
-	fprintf(stderr,"IPv6 address \"%s\" in config file ignored while running in IPv4 mode.\n",buf);
+      if(run_ipv4 && inet_pton(AF_INET6,ipstr,&addr.ipv6)>0) {
+	fprintf(stderr,"IPv6 address \"%s\" in config file ignored while running in IPv4 mode.\n",ipstr);
 	return NULL;
       }
 #endif
@@ -1744,54 +1923,52 @@ inline static void mk_netmask6(struct in6_addr *m, int len)
 #endif
 
 /* Add an IP address/mask to the reject lists. */
-static const char *reject_add(servparm_t *serv, const char *ipstr, size_t len)
+static const char *reject_add(servparm_t *serv, const char *ipstr)
 {
-  TEMPSTRNCPY(buf,ipstr,len);
-  {
-    char *slash=strchr(buf,'/'); int mlen=0;
+  char *slash=strchr(ipstr,'/'); int mlen=0;
 
-    if(slash) {
-      *slash++=0;
+  if(slash) {
+    *slash++=0;
 
-      if(*slash && isdigit(*slash)) {
-	char *endptr;
-	int l = strtol(slash,&endptr,10);
-	if(!*endptr) {
-	  mlen=l;
-	  slash=NULL;
-	}
+    if(*slash && isdigit(*slash)) {
+      char *endptr;
+      int l = strtol(slash,&endptr,10);
+      if(!*endptr) {
+	mlen=l;
+	slash=NULL;
       }
     }
-    else
-      mlen=128; /* Works for both IPv4 and IPv6 */
-
-    {
-      addr4maskpair_t am;
-
-      am.mask.s_addr = mk_netmask4(mlen);
-      if(inet_aton(buf,&am.a) && (!slash || inet_aton(slash,&am.mask))) {
-	if(!(serv->reject_a4=DA_GROW1(serv->reject_a4)))
-	  return "out of memory!";
-
-	DA_LAST(serv->reject_a4) = am;
-	return NULL;
-      }
-    }
-#if ALLOW_LOCAL_AAAA
-    {
-      addr6maskpair_t am;
-
-      mk_netmask6(&am.mask,mlen);
-      if(inet_pton(AF_INET6,buf,&am.a)>0 && (!slash || inet_pton(AF_INET6,slash,&am.mask)>0)) {
-	if(!(serv->reject_a6=DA_GROW1(serv->reject_a6)))
-	  return "out of memory!";
-
-	DA_LAST(serv->reject_a6) = am;
-	return NULL;
-      }
-    }
-#endif
   }
+  else
+    mlen=128; /* Works for both IPv4 and IPv6 */
+
+  {
+    addr4maskpair_t am;
+
+    am.mask.s_addr = mk_netmask4(mlen);
+    if(inet_aton(ipstr,&am.a) && (!slash || inet_aton(slash,&am.mask))) {
+      if(!(serv->reject_a4=DA_GROW1(serv->reject_a4)))
+	return "out of memory!";
+
+      DA_LAST(serv->reject_a4) = am;
+      return NULL;
+    }
+  }
+#if ALLOW_LOCAL_AAAA
+  {
+    addr6maskpair_t am;
+
+    mk_netmask6(&am.mask,mlen);
+    if(inet_pton(AF_INET6,ipstr,&am.a)>0 && (!slash || inet_pton(AF_INET6,slash,&am.mask)>0)) {
+      if(!(serv->reject_a6=DA_GROW1(serv->reject_a6)))
+	return "out of memory!";
+
+      DA_LAST(serv->reject_a6) = am;
+      return NULL;
+    }
+  }
+#endif
+
   return "bad IP address";
 }
 
@@ -1871,7 +2048,11 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
 	++p;
       } while(*p && !isspace(*p));
       len=p-ps;
-      if((errmsg=addr_add(ata, ps, len))) {
+      {
+	TEMPSTRNCPY(ipstr,ps,len);
+	errmsg=addr_add(ata, ipstr);
+      }
+      if(errmsg) {
 	if(asprintf(errstr, "%s in line %u of file %s", errmsg,linenr,fn)<0)
 	  *errstr=NULL;
 	goto cleanup_return;
@@ -1890,13 +2071,13 @@ static int read_resolv_conf(const char *fn, atup_array *ata, char **errstr)
   return rv;
 }
 
-static const char *slist_add(slist_array *sla, const char *nm, size_t len, int tp)
+static const char *slist_add(slist_array *sla, const char *nm, unsigned int len, int tp)
 {
   slist_t *sl;
   int exact=1;
   const char *err;
   size_t sz;
-  unsigned char rhn[256];
+  unsigned char rhn[DNSNAMEBUFSIZE];
 
   if (len>1 && *nm=='.') {
     exact=0;
@@ -1911,20 +2092,20 @@ static const char *slist_add(slist_array *sla, const char *nm, size_t len, int t
   }
   sl=&DA_LAST(*sla);
 
+  sl->exact=exact;
+  sl->rule=tp;
   if (!(sl->domain=malloc(sz)))
     return "out of memory!";
   memcpy(sl->domain,rhn,sz);
-  sl->exact=exact;
-  sl->rule=tp;
   return NULL;
 }
 
-static const char *zone_add(zone_array *za, const char *zone, size_t len)
+static const char *zone_add(zone_array *za, const char *zone, unsigned int len)
 {
   zone_t z;
   const char *err;
   size_t sz;
-  unsigned char rhn[256];
+  unsigned char rhn[DNSNAMEBUFSIZE];
 
   if((err=parsestr2rhn(ucharp zone,len,rhn)))
     return err;

@@ -13,8 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#EXTRA_DIST = pdnsd
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -109,6 +107,7 @@ datadir = @datadir@
 def_id = @def_id@
 distribution = @distribution@
 exec_prefix = @exec_prefix@
+fullversion = @fullversion@
 host_alias = @host_alias@
 includedir = @includedir@
 infodir = @infodir@
@@ -119,10 +118,9 @@ localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+packagerelease = @packagerelease@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-rpmspecrelease = @rpmspecrelease@
-rpmspecversion = @rpmspecversion@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 specbuild = @specbuild@
@@ -130,7 +128,6 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 thread_CFLAGS = @thread_CFLAGS@
 threadlib = @threadlib@
-DISTRO = @distribution@
 all: all-am
 
 .SUFFIXES:
@@ -285,9 +282,9 @@ uninstall-am: uninstall-info-am
 
 
 install-exec-local:
-	if [ "$(DISTRO)" = "ArchLinux" ] ; then				\
-	  $(mkinstalldirs) $(DESTDIR)/etc/rc.d;				\
-	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd $(DESTDIR)/etc/rc.d/pdnsd;	\
+	if [ "$(distribution)" = "ArchLinux" ] ; then			\
+	  $(mkinstalldirs) "$(DESTDIR)/etc/rc.d";			\
+	  $(INSTALL_SCRIPT) $(srcdir)/pdnsd "$(DESTDIR)/etc/rc.d/pdnsd";\
 	fi
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

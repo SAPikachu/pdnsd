@@ -309,7 +309,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar distribution cachedir def_id specbuild rpmspecversion rpmspecrelease threadlib CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB thread_CFLAGS CPP EGREP ALLOCA LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar fullversion packagerelease distribution cachedir def_id specbuild threadlib CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB thread_CFLAGS CPP EGREP ALLOCA LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -861,12 +861,11 @@ Optional Features:
   --enable-socket-locking     Enable the UDP socket locking
   --disable-poll              Disable poll(2) and use select(2)
                               (default=enabled)
-  --disable-new-rrs           Disable new DNS RR types, may cause problems
-                              with some resolvers
+  --disable-new-rrs           Disable new DNS RR types (obsolete, currently ignored)
   --enable-strict-rfc2181     Enforce strict RFC 2181 compliance
   --enable-underscores        Allow _ in domain names (obsolete, currently ignored)
   --enable-hash-debug         Debug hash tables (warning: massive output)
-  --enable-rcsids             Enable RCS IDs in executables (default=disabled)
+  --enable-rcsids             Enable RCS IDs in executables (obsolete, currently ignored)
   --enable-tcp-subseq         Enable multiple dns querys using one
                               tcp connection
   --enable-specbuild          Only used when building pdnsd from spec files
@@ -890,7 +889,7 @@ Optional Packages:
                               arc4random function (default on FreeBSD)
   --with-default-id=id        Specify default uid/gid for pdnsd
                               (default=nobody)
-  --with-debug=level          Specify debugging level
+  --with-debug=level          Specify debugging level (0 means no debug support)
   --with-verbosity=level      Specify default message verbosity
   --with-hash-buckets=num     Number of hash buckets to use (default=1024).
                               The number actually used is the smallest power of two
@@ -1350,23 +1349,23 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-PACKAGE="pdnsd"
-VERSION=`cat $srcdir/version`
-rpmspecversion=`cut -d - -f 1  $srcdir/version`
-rpmspecrelease=`cut -d - -f 2- $srcdir/version`
+package="pdnsd"
+version=`cut -d - -f 1  "$srcdir"/version`
+fullversion=`cat "$srcdir"/version`
+packagerelease=`cut -d - -f 2- "$srcdir"/version`
 
 distribution="Generic"
 target="autodetect"
-cachedir="/var/cache/$PACKAGE"
+cachedir="/var/cache/$package"
 ipv4_default=1
 have_ipv4="yes"
-newrr="yes"
+#newrrs="yes"
 query_m="udponly"
 have_tcp_server="yes"
 adisc="default"
 slock="no";
 def_id="nobody"
-have_rcsids="no"
+#have_rcsids="no"
 udp_queries="yes"
 tcp_queries="yes"
 tempdir="/tmp"
@@ -1681,18 +1680,9 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE=$PACKAGE
- VERSION=$VERSION
+ PACKAGE=$package
+ VERSION=$version
 
-
-cat >>confdefs.h <<_ACEOF
-#define PACKAGE "$PACKAGE"
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define VERSION "$VERSION"
-_ACEOF
 
 # Some tools Automake needs.
 
@@ -1818,6 +1808,12 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 cat >>confdefs.h <<\_ACEOF
 #define _GNU_SOURCE 1
 _ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define VERSION "$fullversion"
+_ACEOF
+
 
 
 
@@ -2042,13 +2038,8 @@ fi;
 # Check whether --enable-new-rrs or --disable-new-rrs was given.
 if test "${enable_new_rrs+set}" = set; then
   enableval="$enable_new_rrs"
-  newrr=$enableval
+  newrrs=$enableval
 fi;
-
-test $newrr = "yes" && cat >>confdefs.h <<\_ACEOF
-#define DNS_NEW_RRS 1
-_ACEOF
-
 
 # Check whether --enable-strict-rfc2181 or --disable-strict-rfc2181 was given.
 if test "${enable_strict_rfc2181+set}" = set; then
@@ -2091,10 +2082,7 @@ fi
 # Check whether --enable-underscores or --disable-underscores was given.
 if test "${enable_underscores+set}" = set; then
   enableval="$enable_underscores"
-  test $enableval = "yes" && cat >>confdefs.h <<\_ACEOF
-#define UNDERSCORE 1
-_ACEOF
-
+  underscores=$enableval
 fi;
 
 
@@ -2159,11 +2147,6 @@ if test "${enable_rcsids+set}" = set; then
   have_rcsids=$enableval
 fi;
 
-test $have_rcsids != "yes" && cat >>confdefs.h <<\_ACEOF
-#define NO_RCSIDS 1
-_ACEOF
-
-
 
 # Check whether --with-tcp-qtimeout or --without-tcp-qtimeout was given.
 if test "${with_tcp_qtimeout+set}" = set; then
@@ -2198,8 +2181,6 @@ if test "${enable_specbuild+set}" = set; then
   enableval="$enable_specbuild"
   specbuild=$enableval
 fi;
-
-
 
 
 
@@ -7556,7 +7537,7 @@ fi
 done
 
 
-                                                                                                                                                                                                                            ac_config_files="$ac_config_files pdnsd.spec Makefile file-list.base contrib/Makefile doc/Makefile doc/pdnsd.8 doc/pdnsd.conf.5 doc/pdnsd.conf src/Makefile src/pdnsd-ctl/Makefile src/rc/Makefile src/rc/RedHat/Makefile src/rc/RedHat/pdnsd src/rc/SuSE/Makefile src/rc/SuSE/pdnsd src/rc/Debian/Makefile src/rc/Debian/pdnsd src/rc/Slackware/Makefile src/rc/Slackware/rc.pdnsd src/rc/ArchLinux/Makefile src/rc/ArchLinux/pdnsd src/test/Makefile"
+                                                                                                                                                                                                                                      ac_config_files="$ac_config_files pdnsd.spec Makefile file-list.base contrib/Makefile doc/Makefile doc/pdnsd.8 doc/pdnsd.conf.5 doc/pdnsd.conf src/Makefile src/pdnsd-ctl/Makefile src/rc/Makefile src/rc/RedHat/Makefile src/rc/RedHat/pdnsd src/rc/SuSE/Makefile src/rc/SuSE/pdnsd src/rc/Debian/Makefile src/rc/Debian/pdnsd src/rc/Slackware/Makefile src/rc/Slackware/rc.pdnsd src/rc/ArchLinux/Makefile src/rc/ArchLinux/pdnsd src/test/Makefile PKGBUILD"
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -8135,6 +8116,7 @@ do
   "src/rc/ArchLinux/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/rc/ArchLinux/Makefile" ;;
   "src/rc/ArchLinux/pdnsd" ) CONFIG_FILES="$CONFIG_FILES src/rc/ArchLinux/pdnsd" ;;
   "src/test/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/test/Makefile" ;;
+  "PKGBUILD" ) CONFIG_FILES="$CONFIG_FILES PKGBUILD" ;;
   "depfiles" ) CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
   "config.h" ) CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
@@ -8244,12 +8226,12 @@ s,@am__leading_dot@,$am__leading_dot,;t t
 s,@AMTAR@,$AMTAR,;t t
 s,@am__tar@,$am__tar,;t t
 s,@am__untar@,$am__untar,;t t
+s,@fullversion@,$fullversion,;t t
+s,@packagerelease@,$packagerelease,;t t
 s,@distribution@,$distribution,;t t
 s,@cachedir@,$cachedir,;t t
 s,@def_id@,$def_id,;t t
 s,@specbuild@,$specbuild,;t t
-s,@rpmspecversion@,$rpmspecversion,;t t
-s,@rpmspecrelease@,$rpmspecrelease,;t t
 s,@threadlib@,$threadlib,;t t
 s,@CC@,$CC,;t t
 s,@CFLAGS@,$CFLAGS,;t t

@@ -1,7 +1,7 @@
 /* dns_query.h - Execute outgoing dns queries and write entries to cache
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2002, 2003, 2004, 2006, 2009 Paul A. Rombouts
+   Copyright (C) 2002, 2003, 2004, 2006, 2009, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -20,12 +20,15 @@
   <http://www.gnu.org/licenses/>.
 */
 
-/* $Id: dns_query.h,v 1.6 2001/05/09 17:51:52 tmm Exp $ */
 
 #ifndef DNS_QUERY_H
 #define DNS_QUERY_H
 
 #include "cache.h"
+
+/* Default UDP buffer size (when EDNS is not used). */
+#define UDP_BUFSIZE 512
+
 
 typedef struct qhintnode_s qhintnode_t;
 
@@ -36,7 +39,12 @@ int r_dns_cached_resolve(unsigned char *name, int thint, dns_cent_t **cachedp,
 #define dns_cached_resolve(name,thint,cachedp,hops,queryts,c_soa) \
         r_dns_cached_resolve(name,thint,cachedp,hops,NULL,queryts,c_soa)
 
-addr2_array dns_rootserver_resolv(atup_array atup_a, int port, time_t timeout);
-int query_uptest(pdnsd_a *addr, int port, time_t timeout, int rep);
+addr2_array dns_rootserver_resolv(atup_array atup_a, int port, char edns_query, time_t timeout);
+int query_uptest(pdnsd_a *addr, int port, const unsigned char *name, time_t timeout, int rep);
+
+/* --- from dns_answer.c */
+int add_opt_pseudo_rr(dns_msg_t **ans, size_t *sz, size_t *allocsz,
+		      unsigned short udpsize, unsigned short rcode,
+		      unsigned short ednsver, unsigned short Zflags);
 
 #endif
