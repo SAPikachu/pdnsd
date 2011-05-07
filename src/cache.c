@@ -1725,10 +1725,36 @@ inline static void adjust_ttl(rr_set_t *rrset)
 		rrset->ttl=0;
 	}
 	else {
-		if(rrset->ttl<global.min_ttl)
-			rrset->ttl=global.min_ttl;
-		else if(rrset->ttl>global.max_ttl)
-			rrset->ttl=global.max_ttl;
+		time_t min_ttl= global.min_ttl, neg_ttl=global.neg_ttl;
+		if((rrset->flags&CF_NEGATIVE) && neg_ttl<min_ttl)
+			min_ttl=neg_ttl;
+		if(rrset->ttl<min_ttl)
+			rrset->ttl=min_ttl;
+		else {
+			time_t max_ttl= global.max_ttl;
+			if(rrset->ttl>max_ttl)
+				rrset->ttl=max_ttl;
+		}
+	}
+}
+
+inline static void adjust_dom_ttl(dns_cent_t *cent)
+{
+	if (cent->flags&DF_NOCACHE) {
+		cent->flags &= ~DF_NOCACHE;
+		cent->ttl=0;
+	}
+	else {
+		time_t min_ttl= global.min_ttl, neg_ttl=global.neg_ttl;
+		if(/* (cent->flags&DF_NEGATIVE) && */ neg_ttl<min_ttl)
+			min_ttl=neg_ttl;
+		if(cent->ttl<min_ttl)
+			cent->ttl=min_ttl;
+		else {
+			time_t max_ttl= global.max_ttl;
+			if(cent->ttl>max_ttl)
+				cent->ttl=max_ttl;
+		}
 	}
 }
 
@@ -1777,6 +1803,7 @@ void add_cache(dns_cent_t *cent)
 		}
 		/* If this record is negatively cached, add the cent to the rr list. */
 		if (ce->flags&DF_NEGATIVE) {
+			adjust_dom_ttl(ce);
 			if (!insert_rrl(NULL,ce,-1))
 				goto free_cent_unlock_cache_return;
 		}

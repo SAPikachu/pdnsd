@@ -58,7 +58,7 @@ typedef struct {
 typedef struct {
 	unsigned char    *qname;                  /* Name of the query in length byte - string notation. */
 	size_t           cs;                      /* size of the rrs*/
-	short            num_rrs;                 /* The number of rrs. When this decreases to 0, the cent is deleted. */
+	unsigned short   num_rrs;                 /* The number of rrs. When this decreases to 0, the cent is deleted. */
 	unsigned short   flags;                   /* Flags for the whole cent */
 	time_t           ts;                      /* Timestamp (only for negatively cached domains) */
 	time_t           ttl;                     /* TTL       (  "   "     "         "       "   ) */
@@ -80,8 +80,8 @@ typedef struct {
 #define CF_NEGATIVE    1       /* this one is for per-RRset negative caching*/
 #define CF_LOCAL       2       /* Local zone entry */
 #define CF_AUTH        4       /* authoritative record */
-#define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge. Not really written
-				* to cache records, but used by add_cent_rrset */
+#define CF_NOCACHE     8       /* Only hold for the cache latency time period, then purge.
+				* Not really written to cache, but used by add_cache. */
 #define CF_ADDITIONAL 16       /* This was fetched as an additional or "off-topic" record. */
 #define CF_NOPURGE    32       /* Do not purge this record */
 #define CF_ROOTSERV   64       /* This record was directly obtained from a root server */
@@ -94,7 +94,10 @@ typedef struct {
 #define DF_NEGATIVE    1       /* this one is for whole-domain negative caching (created on NXDOMAIN)*/
 #define DF_LOCAL       2       /* local record (in conj. with DF_NEGATIVE) */
 #define DF_AUTH        4       /* authoritative record */
-#define DF_WILD        8       /* subdomains of this domain have wildcard records */
+#define DF_NOCACHE     8       /* Only hold for the cache latency time period, then purge.
+				* Only used for negatively cached domains.
+				* Not really written to cache, but used by add_cache. */
+#define DF_WILD       16       /* subdomains of this domain have wildcard records */
 
 /* #define DFF_NOINHERIT (DF_NEGATIVE) */ /* not to be inherited on requery */
 

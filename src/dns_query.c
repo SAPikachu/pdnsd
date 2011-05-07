@@ -1563,6 +1563,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 					DEBUG_RHN_MSG("Caching domain %s negative with ttl %li\n",RHN2STR(name),(long)ttl);
 					negate_cent(ent);
 					ent->ttl=ttl;
+					if(st->nocache) ent->flags |= DF_NOCACHE;
 					goto cleanup_return_OK;
 				} else {
 					if(c_soa) *c_soa=ent->c_soa;
@@ -2402,12 +2403,14 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 		serv=servsave;
 		ns=nssave;
 		if(!authoksave) {
-		  int jlim= RRARR_LEN(ent);
+			int jlim= RRARR_LEN(ent);
 			for (j=0; j<jlim; ++j) {
 				rr_set_t *rrs= RRARR_INDEX(ent,j);
 				if (rrs)
 					rrs->flags |= CF_NOCACHE;
 			}
+			if(ent->flags&DF_NEGATIVE)  /* Very unlikely, but not impossible. */
+				ent->flags |= DF_NOCACHE;
 		}
 		rv=RC_OK;
 	}

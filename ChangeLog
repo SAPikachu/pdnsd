@@ -1,3 +1,13 @@
+2011-05-06  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_query.c
+	At the request of Andrei Caraman, the TTL of a negatively cached domain
+	is now adjusted in accordance with the min_ttl and max_ttl options, just
+	as it is done for (negatively) cached records.
+	Additional change to the TTL policy is that for negative records (and
+	negative domains) the neg_ttl setting overrides min_ttl if
+	neg_ttl < min_ttl.
+
 2011-04-26  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/conf-parser.c
