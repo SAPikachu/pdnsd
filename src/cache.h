@@ -57,16 +57,22 @@ typedef struct {
 
 typedef struct {
 	unsigned char    *qname;                  /* Name of the query in length byte - string notation. */
-	size_t           cs;                      /* size of the rrs*/
-	unsigned short   num_rrs;                 /* The number of rrs. When this decreases to 0, the cent is deleted. */
-	unsigned short   flags;                   /* Flags for the whole cent */
-	time_t           ts;                      /* Timestamp (only for negatively cached domains) */
-	time_t           ttl;                     /* TTL       (  "   "     "         "       "   ) */
-	struct rr_lent_s *lent;                   /* lent for the whole cent, only for neg. cached doms */
-	rr_set_t         *(rrmu[NRRMU]);          /* The most used records. Use the the value obtained from rrlkuptab[]
-						     as index. */
-	rr_set_t         **rrext;                 /* Pointer (may be NULL) to an array of size NNRREXT storing the
+	size_t           cs;                      /* Size of the cache entry, including RR sets. */
+	unsigned short   num_rrs;                 /* The number of RR sets. When this decreases to 0, the cent is deleted. */
+	unsigned short   flags;                   /* Flags for the whole cent. */
+	union {
+		struct {                          /* Fields used only for negatively cached domains. */
+			struct rr_lent_s *lent;   /* lent for the whole cent. */
+			time_t           ttl;     /* TTL for negative caching. */
+			time_t           ts;      /* Timestamp. */
+		} neg;
+		struct {                          /* Fields used only for domains that actually exist. */
+			rr_set_t         *(rrmu[NRRMU]); /* The most used records.
+							    Use the the value obtained from rrlkuptab[] as index. */
+			rr_set_t         **rrext; /* Pointer (may be NULL) to an array of size NNRREXT storing the
 						     less frequently used records. */
+		} rr;
+	};
 	unsigned char    c_ns,c_soa;              /* Number of trailing name elements in qname to use to find NS or SOA
 						     records to add to the authority section of a response. */
 } dns_cent_t;
@@ -121,8 +127,11 @@ char *flags2str(unsigned flags,char *buf,int nflags,const char *flgnames);
  */
 #define CACHE_LAT 120
 #define CLAT_ADJ(ttl) ((ttl)<CACHE_LAT?CACHE_LAT:(ttl))
-/* This is used internally to check if a cache entry or rrset has timed out. */
-#define timedout(ent) ((ent)->ts+CLAT_ADJ((ent)->ttl)<time(NULL))
+/* This is used internally to check if a rrset has timed out. */
+#define timedout(rrset) ((rrset)->ts+CLAT_ADJ((rrset)->ttl)<time(NULL))
+/* This is used internally to check if a negatively cached domain has timed out.
+   Only use if the DF_NEGATIVE bit is set! */
+#define timedout_nxdom(cent) ((cent)->neg.ts+CLAT_ADJ((cent)->neg.ttl)<time(NULL))
 
 extern volatile short int use_cache_lock;
 
@@ -193,7 +202,7 @@ int add_cent_rr(dns_cent_t *cent, int type, time_t ttl, time_t ts, unsigned flag
 int del_rrset(rr_set_t *rrs  DBGPARAM);
 void free_cent(dns_cent_t *cent  DBGPARAM);
 void free_cent0(void *ptr);
-void negate_cent(dns_cent_t *cent);
+void negate_cent(dns_cent_t *cent, time_t ttl, time_t ts);
 void del_cent(dns_cent_t *cent);
 
 /* Because this is empty by now, it is defined as an empty macro to save overhead.*/
@@ -211,18 +220,20 @@ inline static rr_set_t *getrrset(dns_cent_t *cent, int type)
   __attribute__((always_inline));
 inline static rr_set_t *getrrset(dns_cent_t *cent, int type)
 {
-	int tpi= type - T_MIN;
+	if(!(cent->flags&DF_NEGATIVE)) {
+		int tpi= type - T_MIN;
 
-	if(tpi>=0 && tpi<T_NUM) {
-		unsigned int idx = rrlkuptab[tpi];
-		if(idx < NRRMU)
-			return cent->rrmu[idx];
-		else {
-			idx -= NRRMU;
-			if(idx < NRREXT) {
-				rr_set_t **rrext= cent->rrext;
-				if(rrext)
-					return rrext[idx];
+		if(tpi>=0 && tpi<T_NUM) {
+			unsigned int idx = rrlkuptab[tpi];
+			if(idx < NRRMU)
+				return cent->rr.rrmu[idx];
+			else {
+				idx -= NRRMU;
+				if(idx < NRREXT) {
+					rr_set_t **rrext= cent->rr.rrext;
+					if(rrext)
+						return rrext[idx];
+				}
 			}
 		}
 	}
@@ -232,7 +243,8 @@ inline static rr_set_t *getrrset(dns_cent_t *cent, int type)
 
 /* This version of getrrset is slightly more efficient,
    but also more dangerous, because it performs less checks.
-   It is safe to use if T_MIN <= type <= T_MAX
+   It is safe to use if T_MIN <= type <= T_MAX and cent
+   is not negative.
 */
 inline static rr_set_t *getrrset_eff(dns_cent_t *cent, int type)
   __attribute__((always_inline));
@@ -240,11 +252,11 @@ inline static rr_set_t *getrrset_eff(dns_cent_t *cent, int type)
 {
 	unsigned int idx = rrlkuptab[type-T_MIN];
 	if(idx < NRRMU)
-		return cent->rrmu[idx];
+		return cent->rr.rrmu[idx];
 	else {
 		idx -= NRRMU;
 		if(idx < NRREXT) {
-			rr_set_t **rrext= cent->rrext;
+			rr_set_t **rrext= cent->rr.rrext;
 			if(rrext)
 				return rrext[idx];
 		}
@@ -261,34 +273,34 @@ inline static int have_rr(dns_cent_t *cent, int type)
   __attribute__((always_inline));
 inline static int have_rr(dns_cent_t *cent, int type)
 {
-	rr_set_t *rrset=getrrset_eff(cent, type);
-	return rrset && rrset->rrs;
+	rr_set_t *rrset;
+	return !(cent->flags&DF_NEGATIVE) && (rrset=getrrset_eff(cent, type)) && rrset->rrs;
 }
 
 /* Some quick and dirty and hopefully fast macros. */
 #define PDNSD_NOT_CACHED_TYPE(type) ((type)<T_MIN || (type)>T_MAX || rrlkuptab[(type)-T_MIN]>=NRRTOT)
 
 /* This is useful for iterating over all the RR types in a cache entry in strict ascending order. */
-#define NRRITERLIST(cent) ((cent)->rrext?NRRTOT:NRRMU)
-#define RRITERLIST(cent)  ((cent)->rrext?rrcachiterlist:rrmuiterlist)
+#define NRRITERLIST(cent) ((cent)->flags&DF_NEGATIVE?0:(cent)->rr.rrext?NRRTOT:NRRMU)
+#define RRITERLIST(cent)  ((cent)->flags&DF_NEGATIVE?NULL:(cent)->rr.rrext?rrcachiterlist:rrmuiterlist)
 
 /* The following macros use array indices as arguments, not RR type values! */
-#define GET_RRSMU(cent,i)  ((cent)->rrmu[i])
-#define GET_RRSEXT(cent,i) ((cent)->rrext?(cent)->rrext[i]:NULL)
-#define HAVE_RRMU(cent,i)  ((cent)->rrmu[i] && (cent)->rrmu[i]->rrs)
-#define HAVE_RREXT(cent,i) ((cent)->rrext && (cent)->rrext[i] && (cent)->rrext[i]->rrs)
+#define GET_RRSMU(cent,i)  (!((cent)->flags&DF_NEGATIVE)?(cent)->rr.rrmu[i]:NULL)
+#define GET_RRSEXT(cent,i) (!((cent)->flags&DF_NEGATIVE) && (cent)->rr.rrext?(cent)->rr.rrext[i]:NULL)
+#define HAVE_RRMU(cent,i)  (!((cent)->flags&DF_NEGATIVE) && (cent)->rr.rrmu[i] && (cent)->rr.rrmu[i]->rrs)
+#define HAVE_RREXT(cent,i) (!((cent)->flags&DF_NEGATIVE) && (cent)->rr.rrext && (cent)->rr.rrext[i] && (cent)->rr.rrext[i]->rrs)
 
-#define RRARR_LEN(cent) ((cent)->rrext?NRRTOT:NRRMU)
+#define RRARR_LEN(cent) ((cent)->flags&DF_NEGATIVE?0:(cent)->rr.rrext?NRRTOT:NRRMU)
 
 /* This allows us to index the RR-set arrays in a cache entry as if they formed one contiguous array. */
-#define RRARR_INDEX_TESTEXT(cent,i)    ((i)<NRRMU?(cent)->rrmu[i]:(cent)->rrext?(cent)->rrext[(i)-NRRMU]:NULL)
+#define RRARR_INDEX_TESTEXT(cent,i)    ((cent)->flags&DF_NEGATIVE?NULL:(i)<NRRMU?(cent)->rr.rrmu[i]:(cent)->rr.rrext?(cent)->rr.rrext[(i)-NRRMU]:NULL)
 /* This gets the address where the pointer to an RR-set is stored in a cache entry,
    given the cache entry and an RR-set index.
    Address may be NULL if no storage space for the type has been allocated. */
-#define RRARR_INDEX_PA_TESTEXT(cent,i) ((i)<NRRMU?&(cent)->rrmu[i]:(cent)->rrext?&(cent)->rrext[(i)-NRRMU]:NULL)
+#define RRARR_INDEX_PA_TESTEXT(cent,i) ((cent)->flags&DF_NEGATIVE?NULL:(i)<NRRMU?&(cent)->rr.rrmu[i]:(cent)->rr.rrext?&(cent)->rr.rrext[(i)-NRRMU]:NULL)
 
 /* The following macros should only be used if 0 <= i < RRARR_LEN(cent) ! */
-#define RRARR_INDEX(cent,i)    ((i)<NRRMU?(cent)->rrmu[i]:(cent)->rrext[(i)-NRRMU])
-#define RRARR_INDEX_PA(cent,i) ((i)<NRRMU?&(cent)->rrmu[i]:&(cent)->rrext[(i)-NRRMU])
+#define RRARR_INDEX(cent,i)    ((i)<NRRMU?(cent)->rr.rrmu[i]:(cent)->rr.rrext[(i)-NRRMU])
+#define RRARR_INDEX_PA(cent,i) ((i)<NRRMU?&(cent)->rr.rrmu[i]:&(cent)->rr.rrext[(i)-NRRMU])
 
 #endif

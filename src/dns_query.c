@@ -212,7 +212,7 @@ static int rr_to_cache(dns_cent_array *centa, unsigned char *oname, int tp, time
 	if (!(*centa=DA_GROW1_F(*centa,free_cent0)))
 		return 0;
 	cent=&DA_LAST(*centa);
-	if (!init_cent(cent,oname, 0, queryts, 0  DBG1)) {
+	if (!init_cent(cent,oname, 0, 0, 0  DBG1)) {
 		*centa=DA_RESIZE(*centa,n);
 		return 0;
 	}
@@ -1361,7 +1361,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 			goto free_recvbuf_return;
 		}
 		/* By marking DF_AUTH, we mean authoritative AND complete. */
-		if (!init_cent(&DA_INDEX(ans_sec,0), name, 0, queryts, (aa && qtype==QT_ALL)?DF_AUTH:0  DBG1)) {
+		if (!init_cent(&DA_INDEX(ans_sec,0), name, 0, 0, (aa && qtype==QT_ALL)?DF_AUTH:0  DBG1)) {
 			rv=RC_FATALERR; /* unrecoverable error */
 			goto free_centarrays_recvbuf_return;
 		}
@@ -1561,8 +1561,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 						}
 					}
 					DEBUG_RHN_MSG("Caching domain %s negative with ttl %li\n",RHN2STR(name),(long)ttl);
-					negate_cent(ent);
-					ent->ttl=ttl;
+					negate_cent(ent,ttl,queryts);
 					if(st->nocache) ent->flags |= DF_NOCACHE;
 					goto cleanup_return_OK;
 				} else {
@@ -2403,13 +2402,15 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 		serv=servsave;
 		ns=nssave;
 		if(!authoksave) {
-			int jlim= RRARR_LEN(ent);
-			for (j=0; j<jlim; ++j) {
-				rr_set_t *rrs= RRARR_INDEX(ent,j);
-				if (rrs)
-					rrs->flags |= CF_NOCACHE;
+			if(!(ent->flags&DF_NEGATIVE)) {
+				int jlim= RRARR_LEN(ent);
+				for (j=0; j<jlim; ++j) {
+					rr_set_t *rrs= RRARR_INDEX(ent,j);
+					if (rrs)
+						rrs->flags |= CF_NOCACHE;
+				}
 			}
-			if(ent->flags&DF_NEGATIVE)  /* Very unlikely, but not impossible. */
+			else    /* Very unlikely, but not impossible. */
 				ent->flags |= DF_NOCACHE;
 		}
 		rv=RC_OK;
@@ -3188,7 +3189,7 @@ static int lookup_cache_status(const unsigned char *name, int thint, dns_cent_t 
 		}
 		DEBUG_RHN_MSG("Record found in cache for %s\n",RHN2STR(cached->qname));
 		if (cached->flags&DF_NEGATIVE) {
-			if ((ttl=cached->ts+CLAT_ADJ(cached->ttl))>=queryts)
+			if ((ttl=cached->neg.ts+CLAT_ADJ(cached->neg.ttl))>=queryts)
 				neg=1;
 			else
 				timed=1;

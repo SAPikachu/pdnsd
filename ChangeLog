@@ -1,3 +1,10 @@
+2011-05-08  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c,src/cache.h,src/dns_query.c,src/status.c
+	Make the dns_cent_t struct more compact by putting the fields that are
+	only used for either non-existent or existent domains, but not both,
+	into a union so that these fields can share memory.
+
 2011-05-06  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/cache.c,src/cache.h,src/dns_query.c

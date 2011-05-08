@@ -395,6 +395,10 @@ static void *status_thread (void *p)
 						print_serr(rs, "Bad TTL.");
 						goto free_fn;
 					}
+					if(flags&DF_NEGATIVE) {
+						print_serr(rs, "Bad cache flags.");
+						goto free_fn;
+					}
 					{
 						char *errmsg;
 						if (read_hosts(fn,owner,ttl,flags,servaliases,&errmsg))
@@ -429,6 +433,8 @@ static void *status_thread (void *p)
 						goto bad_domain_name;
 					if (ttl < 0)
 						goto bad_ttl;
+					if(flags&DF_NEGATIVE)
+						goto bad_flags;
 
 					switch (tp) {
 					case T_A:
@@ -715,6 +721,9 @@ static void *status_thread (void *p)
 					break;
 				bad_ttl:
 					print_serr(rs, "Bad TTL.");
+					break;
+				bad_flags:
+					print_serr(rs, "Bad cache flags.");
 					break;
 				out_of_memory:
 					print_serr(rs,"Out of memory.");

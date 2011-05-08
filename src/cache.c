@@ -43,7 +43,7 @@
 
 
 /* A version identifier to prevent reading incompatible cache files */
-static const char cachverid[] = {'p','d','1','2'};
+static const char cachverid[] = {'p','d','1','3'};
 
 /* CACHE STRUCTURE CHANGES IN PDNSD 1.0.0
  * Prior to version 1.0.0, the cache was managed at domain granularity (all records of a domain were handled as a unit),
@@ -109,9 +109,9 @@ typedef struct {
 typedef struct {
 	unsigned char    tp;
 	unsigned char    num_rr;
+	unsigned short   flags;
 	time_t           ttl;
 	time_t           ts;
-	unsigned short   flags;
 }  __attribute__((packed))
 rr_fset_t;
 
@@ -119,8 +119,8 @@ typedef struct {
 	unsigned char    qlen;
 	unsigned char    num_rrs;
 	unsigned short   flags;                   /* Flags for the whole cent */
-	time_t           ts;                      /* Timestamp (only for negative cached records) */
-	time_t           ttl;                     /* TTL       (  "   "     "       "       "   ) */
+	time_t           ttl;                     /* TTL       (only for negatively cached domains) */
+	time_t           ts;                      /* Timestamp (only for negatively cached domains) */
 	unsigned char    c_ns,c_soa;              /* Number of trailing name elements in qname to use to find NS or SOA
 						     records to add to the authority section of a response. */
 /*      qname (with length qlen) follows here */
@@ -542,8 +542,8 @@ unsigned int mk_flag_val(servparm_t *server)
  * are only used if DF_NEGATIVE is set in the flags. Otherwise,
  * the timestamps of the individual records are used. DF_NEGATIVE
  * is used for whole-domain negative caching.
- * By convention, the ttl should be set to 0, and the ttl should
- * be set correctly when DF_NEGATIVE is not set. */
+ * By convention, the ttl should be set to 0, unless the
+ * DF_NEGATIVE bit is set. */
 int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t ts, unsigned flags  DBGPARAM)
 {
 	int i;
@@ -556,12 +556,16 @@ int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t t
 	cent->num_rrs=0;
 	cent->cs=sizeof(dns_cent_t)+namesz;
 	cent->flags=flags;
-	cent->ts=ts;
-	cent->ttl=ttl;
-	cent->lent=NULL;
-	for(i=0; i<NRRMU; ++i)
-		cent->rrmu[i]=NULL;
-	cent->rrext=NULL;
+	if(flags&DF_NEGATIVE) {
+		cent->neg.lent=NULL;
+		cent->neg.ttl=ttl;
+		cent->neg.ts=ts;
+	}
+	else {
+		for(i=0; i<NRRMU; ++i)
+			cent->rr.rrmu[i]=NULL;
+		cent->rr.rrext=NULL;
+	}
 	cent->c_ns=cundef;
 	cent->c_soa=cundef;
 	return 1;
@@ -591,15 +595,27 @@ static int add_cent_rrset_by_index(dns_cent_t *cent, unsigned int idx, time_t tt
 {
 	rr_set_t **rrext, **rrsetpa, *rrset;
 
+	/* If we add a rrset, even a negative one, the domain is not negative any more. */
+	if (cent->flags&DF_NEGATIVE) {
+		int i;
+		/* need to remove the cent from the lent list. */
+		if (cent->neg.lent)
+			remove_rrl(cent->neg.lent  DBGARG);
+		cent->flags &= ~DF_NEGATIVE;
+		for(i=0; i<NRRMU; ++i)
+			cent->rr.rrmu[i]=NULL;
+		cent->rr.rrext=NULL;
+	}
+
 	if(idx < NRRMU)
-		rrsetpa = &cent->rrmu[idx];
+		rrsetpa = &cent->rr.rrmu[idx];
 	else {
 		idx -= NRRMU;
 		PDNSD_ASSERT(idx < NRREXT, "add_cent_rrset_by_index: rr-set index out of range");
-		rrext = cent->rrext;
+		rrext = cent->rr.rrext;
 		if(!rrext) {
 			int i;
-			cent->rrext = rrext = cache_malloc(sizeof(rr_set_t*)*NRREXT);
+			cent->rr.rrext = rrext = cache_malloc(sizeof(rr_set_t*)*NRREXT);
 			if(!rrext)
 				return 0;
 			for(i=0; i<NRREXT; ++i)
@@ -622,16 +638,6 @@ static int add_cent_rrset_by_index(dns_cent_t *cent, unsigned int idx, time_t tt
 	rrset->rrs=NULL;
 	cent->cs += sizeof(rr_set_t);
 	++cent->num_rrs;
-	/* If we add a rrset, even a negative one, the domain is not negative any more. */
-	if (cent->flags&DF_NEGATIVE) {
-		cent->flags &= ~DF_NEGATIVE;
-		cent->ttl=0;
-		/* need to remove the cent from the lent list. */
-		if (cent->lent) {
-			remove_rrl(cent->lent  DBGARG);
-			cent->lent=NULL;
-		}
-	}
 	return 1;
 }
 
@@ -787,25 +793,28 @@ void free_rr(rr_bucket_t rr)
 /* Free all data referred by a cache entry. */
 void free_cent(dns_cent_t *cent  DBGPARAM)
 {
-	int i;
 	cache_free(cent->qname);
-	if(cent->lent)
-		remove_rrl(cent->lent  DBGARG);
-	for (i=0; i<NRRMU; ++i) {
-		rr_set_t *rrs=cent->rrmu[i];
-		if (rrs) del_rrset(rrs  DBG0);
+	if(cent->flags&DF_NEGATIVE) {
+		if(cent->neg.lent)
+			remove_rrl(cent->neg.lent  DBGARG);
 	}
-	{
-		rr_set_t **rrext = cent->rrext;
-		if(rrext) {
-			for(i=0; i<NRREXT; ++i) {
-				rr_set_t *rrs=rrext[i];
-				if (rrs) del_rrset(rrs  DBG0);
+	else {
+		int i;
+		for (i=0; i<NRRMU; ++i) {
+			rr_set_t *rrs=cent->rr.rrmu[i];
+			if (rrs) del_rrset(rrs  DBG0);
+		}
+		{
+			rr_set_t **rrext = cent->rr.rrext;
+			if(rrext) {
+				for(i=0; i<NRREXT; ++i) {
+					rr_set_t *rrs=rrext[i];
+					if (rrs) del_rrset(rrs  DBG0);
+				}
+				cache_free(rrext);
 			}
-			cache_free(rrext);
 		}
 	}
-
 }
 
 /* Same as free_cent, but is suitable as cleanup handler */
@@ -815,37 +824,43 @@ void free_cent0(void *ptr)
 }
 
 /* Negate an existing cache entry and free any existing rr sets. */
-void negate_cent(dns_cent_t *cent)
+void negate_cent(dns_cent_t *cent, time_t ttl, time_t ts)
 {
 	int i;
 
-	for (i=0; i<NRRMU; ++i) {
-		rr_set_t *rrs=cent->rrmu[i];
-		if (rrs) {
-			cent->cs -= del_rrset(rrs  DBG0);
-			cent->rrmu[i]=NULL;
-		}
-	}
-	{
-		rr_set_t **rrext = cent->rrext;
-		if(rrext) {
-			for(i=0; i<NRREXT; ++i) {
-				rr_set_t *rrs=rrext[i];
-				if (rrs)
-					cent->cs -= del_rrset(rrs  DBG0);
+	if(!(cent->flags&DF_NEGATIVE)) {
+		for (i=0; i<NRRMU; ++i) {
+			rr_set_t *rrs=cent->rr.rrmu[i];
+			if (rrs) {
+				cent->cs -= del_rrset(rrs  DBG0);
+				/* cent->rr.rrmu[i]=NULL; */
 			}
-			cache_free(rrext);
-			cent->rrext=NULL;
-			cent->cs -= sizeof(rr_set_t*)*NRREXT;
 		}
+		{
+			rr_set_t **rrext = cent->rr.rrext;
+			if(rrext) {
+				for(i=0; i<NRREXT; ++i) {
+					rr_set_t *rrs=rrext[i];
+					if (rrs)
+						cent->cs -= del_rrset(rrs  DBG0);
+				}
+				cache_free(rrext);
+				/* cent->rr.rrext=NULL; */
+				cent->cs -= sizeof(rr_set_t*)*NRREXT;
+			}
+		}
+		cent->num_rrs=0;
+		cent->flags |= DF_NEGATIVE;
 	}
-	cent->num_rrs=0;
-	cent->flags |= DF_NEGATIVE;
+
+	cent->neg.lent=NULL;
+	cent->neg.ttl=ttl;
+	cent->neg.ts=ts;
 }
 
 inline static time_t get_rrlent_ts(rr_lent_t *le)
 {
-	return (le->rrset)?(le->rrset->ts):(le->cent->ts);
+	return (le->rrset)?(le->rrset->ts):(le->cent->neg.ts);
 }
 
 /* insert a rrset into the rr_l list. This modifies the rr_set_t if rrs is not NULL!
@@ -910,7 +925,7 @@ static int insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int idx)
 	if (rrs)
 		rrs->lent=ne;
 	else
-		cent->lent=ne;
+		cent->neg.lent=ne;
 
 	return 1;
 }
@@ -1038,7 +1053,6 @@ cleanup_return:
 dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM)
 {
 	dns_cent_t *copy;
-	int i, ilim;
 
 	/*
 	 * We do not debug cache internals with it, as mallocs seem to be
@@ -1046,7 +1060,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM)
 	 */
 	if (!(copy=cache_malloc(sizeof(dns_cent_t))))
 		return NULL;
-	*copy=*cent;
+
 	{
 		/* copy the name */
 		size_t namesz=rhnlen(cent->qname);
@@ -1055,40 +1069,52 @@ dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM)
 
 		memcpy(copy->qname,cent->qname,namesz);
 	}
-	copy->lent=NULL;
-
-	for (i=0; i<NRRMU; ++i)
-		copy->rrmu[i]=NULL;
-
-	ilim = NRRMU;
-	if(cent->rrext) {
-		rr_set_t **rrextc;
-		ilim = NRRTOT;
-		copy->rrext = rrextc = cache_malloc(sizeof(rr_set_t*)*NRREXT);
-		if(!rrextc) goto free_cent_return_null;
-
-		for (i=0; i<NRREXT; ++i)
-			rrextc[i]=NULL;
+	copy->cs= cent->cs;
+	copy->num_rrs= cent->num_rrs;
+	copy->flags= cent->flags;
+	copy->c_ns = cent->c_ns;
+	copy->c_soa= cent->c_soa;
+	if(cent->flags&DF_NEGATIVE) {
+		copy->neg.lent=NULL;
+		copy->neg.ttl= cent->neg.ttl;
+		copy->neg.ts = cent->neg.ts;
 	}
+	else {
+		int i, ilim;
+		for (i=0; i<NRRMU; ++i)
+			copy->rr.rrmu[i]=NULL;
+		copy->rr.rrext=NULL;
 
-	for (i=0; i<ilim; ++i) {
-		rr_set_t *rrset= RRARR_INDEX(cent,i);
-		if (rrset) {
-			rr_set_t *rrsc=cache_malloc(sizeof(rr_set_t));
-			rr_bucket_t *rr,**rrp;
-			*RRARR_INDEX_PA(copy,i)=rrsc;
-			if (!rrsc)
-				goto free_cent_return_null;
-			*rrsc=*rrset;
-			rrsc->lent=NULL;
-			rrp=&rrsc->rrs;
-			rr=rrset->rrs;
-			while(rr) {
-				rr_bucket_t *rrc=copy_rr(rr  DBGARG);
-				*rrp=rrc;
-				if (!rrc) goto free_cent_return_null;
-				rrp=&rrc->next;
-				rr=rr->next;
+		ilim = NRRMU;
+		if(cent->rr.rrext) {
+			rr_set_t **rrextc;
+			ilim = NRRTOT;
+			copy->rr.rrext = rrextc = cache_malloc(sizeof(rr_set_t*)*NRREXT);
+			if(!rrextc) goto free_cent_return_null;
+
+			for (i=0; i<NRREXT; ++i)
+				rrextc[i]=NULL;
+		}
+
+		for (i=0; i<ilim; ++i) {
+			rr_set_t *rrset= RRARR_INDEX(cent,i);
+			if (rrset) {
+				rr_set_t *rrsc=cache_malloc(sizeof(rr_set_t));
+				rr_bucket_t *rr,**rrp;
+				*RRARR_INDEX_PA(copy,i)=rrsc;
+				if (!rrsc)
+					goto free_cent_return_null;
+				*rrsc=*rrset;
+				rrsc->lent=NULL;
+				rrp=&rrsc->rrs;
+				rr=rrset->rrs;
+				while(rr) {
+					rr_bucket_t *rrc=copy_rr(rr  DBGARG);
+					*rrp=rrc;
+					if (!rrc) goto free_cent_return_null;
+					rrp=&rrc->next;
+					rr=rr->next;
+				}
 			}
 		}
 	}
@@ -1135,33 +1161,36 @@ static int purge_rrset(dns_cent_t *cent, int idx, int test)
 */
 static int purge_all_rrsets(dns_cent_t *cent, int test, int *numrrsrem)
 {
-	int rv=0, i, ilim= RRARR_LEN(cent), numrrs=0, numrrext=0;
+	int rv=0, numrrs=0, numrrext=0;
 
-	for(i=0; i<ilim; ++i) {
-		rr_set_t *rrs= RRARR_INDEX(cent,i);
-		if (rrs) {
-			if(!(rrs->flags&CF_NOPURGE || rrs->flags&CF_LOCAL) && timedout(rrs)) {
-				/* well, it must go. */
-				if(!test)
-					cache_size -= del_cent_rrset_by_index(cent, i  DBG0);
-				++rv;
-			}
-			else {
-				++numrrs;
-				if(i>=NRRMU) ++numrrext;
+	if(!(cent->flags&DF_NEGATIVE)) {
+		int i, ilim= RRARR_LEN(cent);
+		for(i=0; i<ilim; ++i) {
+			rr_set_t *rrs= RRARR_INDEX(cent,i);
+			if (rrs) {
+				if(!(rrs->flags&CF_NOPURGE || rrs->flags&CF_LOCAL) && timedout(rrs)) {
+					/* well, it must go. */
+					if(!test)
+						cache_size -= del_cent_rrset_by_index(cent, i  DBG0);
+					++rv;
+				}
+				else {
+					++numrrs;
+					if(i>=NRRMU) ++numrrext;
+				}
 			}
 		}
-	}
 
-	/* If the array of less frequently used RRs has become empty, free it. */
-	if(cent->rrext && numrrext==0) {
-		if(!test) {
-			cache_free(cent->rrext);
-			cent->rrext=NULL;
-			cent->cs -= sizeof(rr_set_t*)*NRREXT;
-			cache_size -= sizeof(rr_set_t*)*NRREXT;
+		/* If the array of less frequently used RRs has become empty, free it. */
+		if(cent->rr.rrext && numrrext==0) {
+			if(!test) {
+				cache_free(cent->rr.rrext);
+				cent->rr.rrext=NULL;
+				cent->cs -= sizeof(rr_set_t*)*NRREXT;
+				cache_size -= sizeof(rr_set_t*)*NRREXT;
+			}
+			++rv;
 		}
-		++rv;
 	}
 
 	if(numrrsrem) *numrrsrem=numrrs;
@@ -1189,7 +1218,7 @@ static int purge_cent(dns_cent_t *cent, int delete, int test)
 	/* If the cache entry was purged empty, delete it from the cache. */
 	if (delete && numrrs==0
 	    && (!(cent->flags&DF_NEGATIVE) ||
-		(!(cent->flags&DF_LOCAL) && timedout(cent))))
+		(!(cent->flags&DF_LOCAL) && timedout_nxdom(cent))))
 	{
 		if(!test)
 			del_cache_ent(cent,NULL); /* this will subtract the cent's left size from cache_size */
@@ -1259,7 +1288,7 @@ static void purge_cache(long sz, int lazy)
 			/* Side effect: if purge_rrset called del_cent_rrset then le has been freed.
 			 * ce, however, is still guaranteed to be valid. */
 			if (ce->num_rrs==0 && (!(ce->flags&DF_NEGATIVE) ||
-					       (!(ce->flags&DF_LOCAL) && timedout(ce))))
+					       (!(ce->flags&DF_LOCAL) && timedout_nxdom(ce))))
 				del_cache_ent(ce,NULL);
 		}
 		le=next;
@@ -1395,7 +1424,7 @@ void read_disk_cache()
 				goto free_data_fclose;
 			}
 			if(sh.tp<=prevtp) {
-				log_warn("Unexpected rr type encountered (smaller than the previous one) while reading disk cache file.");
+				log_warn("Unexpected rr type encountered (not in strict ascending order) while reading disk cache file.");
 				goto free_data_fclose;
 			}
 			prevtp=sh.tp;
@@ -1482,9 +1511,9 @@ static int write_rrset(int tp, rr_set_t *rrs, FILE *f)
 	num_rr=0;
 	for(rr=rrs->rrs; rr && num_rr<255; rr=rr->next) ++num_rr;
 	sh.num_rr=num_rr;
+	sh.flags=rrs->flags;
 	sh.ttl=rrs->ttl;
 	sh.ts=rrs->ts;
-	sh.flags=rrs->flags;
 
 	if (fwrite(&sh,sizeof(sh),1,f)!=1) {
 		log_error("Error while writing rr header to disk cache: %s", strerror(errno));
@@ -1555,8 +1584,10 @@ void write_disk_cache()
 
 	for (le=fetch_first(&pos); le; le=fetch_next(&pos)) {
 		/* count the rr's */
-		if((le->flags&DF_NEGATIVE) && !(le->flags&DF_LOCAL))
-			++en;
+		if(le->flags&DF_NEGATIVE) {
+			if(!(le->flags&DF_LOCAL))
+				++en;
+		}
 		else {
 			jlim= RRARR_LEN(le);
 			for (j=0; j<jlim; ++j) {
@@ -1575,26 +1606,35 @@ void write_disk_cache()
 
 	for (le=fetch_first(&pos); le; le=fetch_next(&pos)) {
 		/* now, write the rr's */
-		if((le->flags&DF_NEGATIVE) && !(le->flags&DF_LOCAL))
-			goto write_rrs;
-
-		jlim= RRARR_LEN(le);
-		for (j=0; j<jlim; ++j) {
-			rr_set_t *rrset= RRARR_INDEX(le,j);
-			if (rrset && !(rrset->flags&CF_LOCAL)) {
+		if(le->flags&DF_NEGATIVE) {
+			if(!(le->flags&DF_LOCAL))
 				goto write_rrs;
+		}
+		else {
+			jlim= RRARR_LEN(le);
+			for (j=0; j<jlim; ++j) {
+				rr_set_t *rrset= RRARR_INDEX(le,j);
+				if (rrset && !(rrset->flags&CF_LOCAL)) {
+					goto write_rrs;
+				}
 			}
 		}
 		continue;
 	       write_rrs:
 		{
 			dns_file_t df;
-			int num_rrs, n;
+			int num_rrs;
 			const unsigned short *iterlist;
 			df.qlen=rhnlen(le->qname)-1; /* Don't include the null byte at the end */
 			df.flags=le->flags;
-			df.ts=le->ts;
-			df.ttl=le->ttl;
+			if(le->flags&DF_NEGATIVE) {
+				df.ttl=le->neg.ttl;
+				df.ts=le->neg.ts;
+			}
+			else {
+				df.ttl=0;
+				df.ts=0;
+			}
 			df.c_ns=le->c_ns; df.c_soa=le->c_soa;
 			df.num_rrs=0; num_rrs=0;
 			jlim=RRARR_LEN(le);
@@ -1620,9 +1660,9 @@ void write_disk_cache()
 				goto fclose_unlock;
 			}
 
-			n= NRRITERLIST(le);
+			jlim= NRRITERLIST(le);
 			iterlist= RRITERLIST(le);
-			for (j=0; j<n; ++j) {
+			for (j=0; j<jlim; ++j) {
 				int tp= iterlist[j];
 				rr_set_t *rrset= getrrset_eff(le,tp);
 				if(rrset && !(rrset->flags&CF_LOCAL)) {
@@ -1738,22 +1778,25 @@ inline static void adjust_ttl(rr_set_t *rrset)
 	}
 }
 
+
+/* Only use for negatively cached domains, thus only
+   if the DF_NEGATIVE bit is set! */
 inline static void adjust_dom_ttl(dns_cent_t *cent)
 {
 	if (cent->flags&DF_NOCACHE) {
 		cent->flags &= ~DF_NOCACHE;
-		cent->ttl=0;
+		cent->neg.ttl=0;
 	}
 	else {
 		time_t min_ttl= global.min_ttl, neg_ttl=global.neg_ttl;
 		if(/* (cent->flags&DF_NEGATIVE) && */ neg_ttl<min_ttl)
 			min_ttl=neg_ttl;
-		if(cent->ttl<min_ttl)
-			cent->ttl=min_ttl;
+		if(cent->neg.ttl<min_ttl)
+			cent->neg.ttl=min_ttl;
 		else {
 			time_t max_ttl= global.max_ttl;
-			if(cent->ttl>max_ttl)
-				cent->ttl=max_ttl;
+			if(cent->neg.ttl>max_ttl)
+				cent->neg.ttl=max_ttl;
 		}
 	}
 }
@@ -1791,18 +1834,20 @@ void add_cache(dns_cent_t *cent)
 		if(!(ce=copy_cent(cent  DBG0)))
 			goto warn_unlock_cache_return;
 
-		ilim= RRARR_LEN(ce);
-		/* Add the rrs to the rr list */
-		for (i=0; i<ilim; ++i) {
-			rr_set_t *rrset= RRARR_INDEX(ce,i);
-			if (rrset) {
-				adjust_ttl(rrset);
-				if (!insert_rrl(rrset,ce,i))
-					goto free_cent_unlock_cache_return;
+		if(!(ce->flags&DF_NEGATIVE)) {
+			ilim= RRARR_LEN(ce);
+			/* Add the rrs to the rr list */
+			for (i=0; i<ilim; ++i) {
+				rr_set_t *rrset= RRARR_INDEX(ce,i);
+				if (rrset) {
+					adjust_ttl(rrset);
+					if (!insert_rrl(rrset,ce,i))
+						goto free_cent_unlock_cache_return;
+				}
 			}
 		}
-		/* If this record is negatively cached, add the cent to the rr list. */
-		if (ce->flags&DF_NEGATIVE) {
+		else {
+			/* If this domain is negatively cached, add the cent to the rr_l list. */
 			adjust_dom_ttl(ce);
 			if (!insert_rrl(NULL,ce,-1))
 				goto free_cent_unlock_cache_return;
@@ -1917,24 +1962,24 @@ int add_reverse_cache(dns_cent_t * cent)
 				unsigned char buf[DNSNAMEBUFSIZE],rhn[DNSNAMEBUFSIZE];
 				if(!a2ptrstr((pdnsd_ca *)(rr->data),tp,buf) || !str2rhn(buf,rhn))
 					return 0;
-				if(!init_cent(&ce, rhn, cent->ttl, cent->ts, cent->flags  DBG0))
+				if(!init_cent(&ce, rhn, 0, 0, cent->flags  DBG0))
 					return 0;
 				if(!add_cent_rr(&ce,T_PTR,rrset->ttl,rrset->ts,rrset->flags,rhnlen(cent->qname),cent->qname  DBG0)) {
 					free_cent(&ce  DBG0);
 					return 0;
 				}
 #ifdef RRMUINDEX_NS
-				ce.rrmu[RRMUINDEX_NS]=cent->rrmu[RRMUINDEX_NS];
+				ce.rr.rrmu[RRMUINDEX_NS]=cent->rr.rrmu[RRMUINDEX_NS];
 #endif
 #ifdef RRMUINDEX_SOA
-				ce.rrmu[RRMUINDEX_SOA]=cent->rrmu[RRMUINDEX_SOA];
+				ce.rr.rrmu[RRMUINDEX_SOA]=cent->rr.rrmu[RRMUINDEX_SOA];
 #endif
 				add_cache(&ce);
 #ifdef RRMUINDEX_NS
-				ce.rrmu[RRMUINDEX_NS]=NULL;
+				ce.rr.rrmu[RRMUINDEX_NS]=NULL;
 #endif
 #ifdef RRMUINDEX_SOA
-				ce.rrmu[RRMUINDEX_SOA]=NULL;
+				ce.rr.rrmu[RRMUINDEX_SOA]=NULL;
 #endif
 				free_cent(&ce  DBG0);
 			}
@@ -2011,16 +2056,20 @@ void invalidate_record(const unsigned char *name)
 
 	lock_cache_rw();
 	if ((ce=dns_lookup(name,NULL))) {
-		ilim= RRARR_LEN(ce);
-		for (i=0; i<ilim; ++i) {
-			rr_set_t *rrs= RRARR_INDEX(ce,i);
-			if (rrs) {
-				rrs->ts=0;
-				rrs->flags &= ~CF_AUTH;
+		if(!(ce->flags&DF_NEGATIVE)) {
+			ilim= RRARR_LEN(ce);
+			for (i=0; i<ilim; ++i) {
+				rr_set_t *rrs= RRARR_INDEX(ce,i);
+				if (rrs) {
+					rrs->ts=0;
+					rrs->flags &= ~CF_AUTH;
+				}
 			}
 		}
-		/* set the cent time to 0 (for the case that this was negative) */
-		ce->ts=0;
+		else {
+			/* set the cent time to 0 (for the case that this was negative) */
+			ce->neg.ts=0;
+		}
 		ce->flags &= ~DF_AUTH;
 	}
 	unlock_cache_rw();
@@ -2209,7 +2258,7 @@ int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, u
 	if (!(ret=dns_lookup(name,&loc))) {
 		if (!(ret=cache_malloc(sizeof(dns_cent_t))))
 			goto unlock_return;
-		if(!init_cent(ret, name, 0, ts, 0  DBG0)) {
+		if(!init_cent(ret, name, 0, 0, 0  DBG0)) {
 			pdnsd_free(ret);
 			goto unlock_return;
 		}
@@ -2294,7 +2343,7 @@ static int dump_cent(int fd, dns_cent_t *cent)
 	now=time(NULL);
 
 	if(cent->flags&DF_NEGATIVE) {
-		timestamp2str(cent->ts,now,tstr);
+		timestamp2str(cent->neg.ts,now,tstr);
 		fsprintf_or_return(fd,"%s    (domain negated)\n",tstr);
 	}
 	else {
