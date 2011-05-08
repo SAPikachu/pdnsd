@@ -52,9 +52,10 @@ while(<>) {
 }
 
 defined($minval) or die "No values defined.\n";
+if($nrr>255) {warn "Warning: total number of cache-able RR types is greater than 255.\n"}
 
 print << 'END-OF-TEXT';
-/* rr_types.h - A structure with names & descriptions of
+/* rr_types.h - A header file with names & descriptions of
                 all rr types known to pdnsd
    Copyright (C) 2000, 2001 Thomas Moestl
    Copyright (C) 2007, 2010, 2011 Paul A. Rombouts

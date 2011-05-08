@@ -107,25 +107,36 @@ typedef struct {
 } rr_fbucket_t;
 
 typedef struct {
-	unsigned char    tp;
-	unsigned char    num_rr;
-	unsigned short   flags;
+	unsigned char    tp;                      /* RR type */
+	unsigned char    num_rr;                  /* Number of records in RR set. */
+	unsigned short   flags;                   /* Flags for RR set. */
 	time_t           ttl;
 	time_t           ts;
 }  __attribute__((packed))
 rr_fset_t;
 
+#if NRRTOT>255
+#warning "Number of cache-able RR types is greater than 255. This can give problems when saving the cache to file."
+#endif
+
 typedef struct {
-	unsigned char    qlen;
-	unsigned char    num_rrs;
-	unsigned short   flags;                   /* Flags for the whole cent */
-	time_t           ttl;                     /* TTL       (only for negatively cached domains) */
-	time_t           ts;                      /* Timestamp (only for negatively cached domains) */
+	unsigned char    qlen;                    /* Length of the domain name which follows after the struct. */
+	unsigned char    num_rrs;                 /* Number of RR-sets. */
+	unsigned short   flags;                   /* Flags for the whole cent. */
 	unsigned char    c_ns,c_soa;              /* Number of trailing name elements in qname to use to find NS or SOA
 						     records to add to the authority section of a response. */
-/*      qname (with length qlen) follows here */
+     /* ttl and ts follow but only for negatively cached domains. */
+     /* qname (with length qlen) follows here. */
 }  __attribute__((packed))
 dns_file_t;
+
+
+/* TTL and timestamp for negatively cached domains. */
+typedef struct {
+	time_t           ttl;
+	time_t           ts;
+}  __attribute__((packed))
+dom_fttlts_t;
 
 /*
  * This has two modes: Normally, we have rrset, cent and idx filled in;
@@ -542,7 +553,7 @@ unsigned int mk_flag_val(servparm_t *server)
  * are only used if DF_NEGATIVE is set in the flags. Otherwise,
  * the timestamps of the individual records are used. DF_NEGATIVE
  * is used for whole-domain negative caching.
- * By convention, the ttl should be set to 0, unless the
+ * By convention, ttl and ts should be set to 0, unless the
  * DF_NEGATIVE bit is set. */
 int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t ts, unsigned flags  DBGPARAM)
 {
@@ -553,8 +564,8 @@ int init_cent(dns_cent_t *cent, const unsigned char *qname, time_t ttl, time_t t
 	if (cent->qname == NULL)
 		return 0;
 	memcpy(cent->qname,qname,namesz);
-	cent->num_rrs=0;
 	cent->cs=sizeof(dns_cent_t)+namesz;
+	cent->num_rrs=0;
 	cent->flags=flags;
 	if(flags&DF_NEGATIVE) {
 		cent->neg.lent=NULL;
@@ -851,9 +862,9 @@ void negate_cent(dns_cent_t *cent, time_t ttl, time_t ts)
 		}
 		cent->num_rrs=0;
 		cent->flags |= DF_NEGATIVE;
+		cent->neg.lent=NULL;
 	}
 
-	cent->neg.lent=NULL;
 	cent->neg.ttl=ttl;
 	cent->neg.ts=ts;
 }
@@ -1382,6 +1393,7 @@ void read_disk_cache()
 
 	for(;cnt>0;--cnt) {
 		dns_file_t fe;
+		dom_fttlts_t fttlts = {0,0};
 		unsigned char nb[256];
 		unsigned num_rrs;
 		unsigned char prevtp;
@@ -1389,6 +1401,12 @@ void read_disk_cache()
 			log_warn_read_error(f,"cache entry header");
 			goto free_data_fclose;
 		}
+		if(fe.flags&DF_NEGATIVE) {
+			if (fread(&fttlts,sizeof(fttlts),1,f)!=1) {
+				log_warn_read_error(f,"cache TTL and timestamp");
+				goto free_data_fclose;
+			}
+		}			
 		if (fe.qlen) {
 			int i;
 			/* Because of its type qlen should be <=255. */
@@ -1405,7 +1423,7 @@ void read_disk_cache()
 			}
 		}
 		nb[fe.qlen]='\0';
-		if (!init_cent(&ce, nb, fe.ttl, fe.ts, fe.flags  DBG0)) {
+		if (!init_cent(&ce, nb, fttlts.ttl, fttlts.ts, fe.flags  DBG0)) {
 			goto free_data_fclose_exit;
 		}
 		ce.c_ns=fe.c_ns; ce.c_soa=fe.c_soa;
@@ -1626,17 +1644,10 @@ void write_disk_cache()
 			int num_rrs;
 			const unsigned short *iterlist;
 			df.qlen=rhnlen(le->qname)-1; /* Don't include the null byte at the end */
+			df.num_rrs=0;
 			df.flags=le->flags;
-			if(le->flags&DF_NEGATIVE) {
-				df.ttl=le->neg.ttl;
-				df.ts=le->neg.ts;
-			}
-			else {
-				df.ttl=0;
-				df.ts=0;
-			}
 			df.c_ns=le->c_ns; df.c_soa=le->c_soa;
-			df.num_rrs=0; num_rrs=0;
+			num_rrs=0;
 			jlim=RRARR_LEN(le);
 			for (j=0; j<jlim; ++j) {
 				rr_set_t *rrset= RRARR_INDEX(le,j);
@@ -1654,6 +1665,13 @@ void write_disk_cache()
 			if (fwrite(&df,sizeof(df),1,f)!=1) {
 				log_error("Error while writing cache entry header to disk cache: %s", strerror(errno));
 				goto fclose_unlock;
+			}
+			if(le->flags&DF_NEGATIVE) {
+				dom_fttlts_t fttlts= {le->neg.ttl,le->neg.ts};
+				if (fwrite(&fttlts,sizeof(fttlts),1,f)!=1) {
+					log_error("Error while writing cache TTL and timestamp to disk cache: %s", strerror(errno));
+					goto fclose_unlock;
+				}
 			}
 			if (df.qlen && fwrite(le->qname,df.qlen,1,f)!=1) {
 				log_error("Error while writing domain name to disk cache: %s", strerror(errno));

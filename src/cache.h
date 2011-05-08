@@ -56,13 +56,13 @@ typedef struct {
 
 
 typedef struct {
-	unsigned char    *qname;                  /* Name of the query in length byte - string notation. */
+	unsigned char    *qname;                  /* Name of the domain in length byte - string notation. */
 	size_t           cs;                      /* Size of the cache entry, including RR sets. */
 	unsigned short   num_rrs;                 /* The number of RR sets. When this decreases to 0, the cent is deleted. */
-	unsigned short   flags;                   /* Flags for the whole cent. */
+	unsigned short   flags;                   /* Flags for the whole domain. */
 	union {
 		struct {                          /* Fields used only for negatively cached domains. */
-			struct rr_lent_s *lent;   /* lent for the whole cent. */
+			struct rr_lent_s *lent;   /* list entry for the whole cent. */
 			time_t           ttl;     /* TTL for negative caching. */
 			time_t           ts;      /* Timestamp. */
 		} neg;

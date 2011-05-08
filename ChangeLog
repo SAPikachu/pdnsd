@@ -4,6 +4,8 @@
 	Make the dns_cent_t struct more compact by putting the fields that are
 	only used for either non-existent or existent domains, but not both,
 	into a union so that these fields can share memory.
+	When saving the cache to file, only write the TTL and time-stamp for
+	a whole domain when it is negatively cached.
 
 2011-05-06  Paul Rombouts  <p.a.rombouts@home.nl>
 
@@ -28,7 +30,7 @@
 	Introduced arrays rrmuiterlist and rrcachiterlist to make iterating
 	over all possible RR types in a cache entry in strict ascending order
 	a little more efficient.
-	
+
 2011-03-09  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c,src/conf-parser.c,src/conf-keywords.h
@@ -228,7 +230,6 @@
 	in CERT VU#800113.
 	The old situation, where pdnsd lets the kernel select the source ports,
 	is still available by specifying query_port_start=none.
-	
 
 2008-07-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
@@ -860,7 +861,7 @@
 	* src/dns_query.c
 	The code for handling NXT records was flawed. A response from a remote server
 	containing NXT records (even well-formed ones) could cause pdnsd to crash.
-	The code for handling NAPTR records contained incorrect PDNSD_ASSERT statements, 
+	The code for handling NAPTR records contained incorrect PDNSD_ASSERT statements,
 	which could cause pdnsd to abort unnecessarily.
 
 2004-07-25  Paul A. Rombouts  <p.a.rombouts@home.nl>
@@ -923,7 +924,6 @@
 	sections of replies from remote name servers.
 	This information can be used by pdnsd to fill in the authority section of its
 	own reply.
-	
 
 2004-06-25  Paul Rombouts  <p.a.rombouts@home.nl>
 
@@ -1079,7 +1079,7 @@
 	versions of pdnsd the busy spin would eventually time out. Due to some recent
 	changes the loop would no longer time out, making the bug more noticeable.
 	With thanks to Nicolas George for reporting the bug.
-	
+
 	I also discovered a closely related flaw that would cause pdnsd to poll() closed
 	file descriptors. It usually works out OK in practice, but it is definitively not
 	the correct way to do it.
@@ -1274,7 +1274,7 @@
 	* src/dns.c,src/test/is_local_addr.c,src/test/tping.c
 	It appears the option to compile pdnsd without IPv4 support (i.e. only IPv6
 	support) was broken. Should be fixed now.
-	
+
 2004-03-19  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/cache.c
@@ -1304,7 +1304,7 @@
 2004-03-13  Paul Rombouts <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c
-	Changed a declaration in udp_answer_thread() so that the buffer used for passing 
+	Changed a declaration in udp_answer_thread() so that the buffer used for passing
 	control messages on to sendmsg() is exactly the right size, instead of an arbitrary
 	512 bytes.
 	Also initialized the msg_flags of the struct msghdr passed on to sendmsg() to zero,
@@ -1495,7 +1495,7 @@
 
 	* src/cache.c
 	Added parentheses to correct mistaken operator precedence assumption in cache.c.
-	!cent->flags&DF_NEGATIVE is parsed as (!(cent->flags))&DF_NEGATIVE but I think 
+	!cent->flags&DF_NEGATIVE is parsed as (!(cent->flags))&DF_NEGATIVE but I think
 	what Thomas Moestl must have intended was !((cent->flags)&DF_NEGATIVE).
 
 2003-09-12  Paul Rombouts <p.a.rombouts@home.nl>
@@ -1613,7 +1613,6 @@
 	Eliminated the use of inet_ntoa() in favor of the more modern inet_ntop().
 	inet_ntop() makes more sense in threaded code and is also recommended in
 	the glibc info pages.
-	
 
 2003-07-03  Paul Rombouts <p.a.rombouts@home.nl>
 
