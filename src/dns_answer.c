@@ -812,21 +812,29 @@ static dns_msg_t *compose_answer(llist *ql, dns_hdr_t *hdr, size_t *rlen, edns_i
 			unsigned char c_soa=cundef;
 			if ((rc=dns_cached_resolve(qname,qe->qtype, &cached, MAX_HOPS,queryts,&c_soa))!=RC_OK) {
 				ans->hdr.rcode=rcode=rc;
-				if(rc==RC_NAMEERR && c_soa!=cundef) {
-					/* Try to add a SOA record to the authority section. */
-					unsigned scnt=rhnsegcnt(qname);
-					if(c_soa<scnt && (cached=lookup_cache(skipsegs(qname,scnt-c_soa),NULL))) {
-						rr_set_t *rrset=getrrset_SOA(cached);
-						if (rrset && !(rrset->flags&CF_NEGATIVE)) {
-							rr_bucket_t *rr;
-							for(rr=rrset->rrs; rr; rr=rr->next) {
-								if (!add_rr(&ans,rlen,&allocsz,cached->qname,T_SOA,ans_ttl(rrset,queryts),
-									    rr->rdlen,rr->data,S_AUTHORITY,udp,&cb))
-									goto error_cached;
+				if(rc==RC_NAMEERR) {
+					if(c_soa!=cundef) {
+						/* Try to add a SOA record to the authority section. */
+						unsigned scnt=rhnsegcnt(qname);
+						if(c_soa<scnt && (cached=lookup_cache(skipsegs(qname,scnt-c_soa),NULL))) {
+							rr_set_t *rrset=getrrset_SOA(cached);
+							if (rrset && !(rrset->flags&CF_NEGATIVE)) {
+								rr_bucket_t *rr;
+								for(rr=rrset->rrs; rr; rr=rr->next) {
+									if (!add_rr(&ans,rlen,&allocsz,cached->qname,T_SOA,ans_ttl(rrset,queryts),
+										    rr->rdlen,rr->data,S_AUTHORITY,udp,&cb))
+										goto error_cached;
+								}
 							}
+							free_cent(cached  DBG1);
+							pdnsd_free(cached);
 						}
-						free_cent(cached  DBG1);
-						pdnsd_free(cached);
+					}
+
+					/* Possibly add an OPT pseudo-RR to the additional section. */
+					if(ednsinfo) {
+						if(!add_opt_pseudo_rr(&ans, rlen, &allocsz, global.udpbufsize, rcode, 0,0))
+							goto error_ans;
 					}
 				}
 				goto cleanup_return;
