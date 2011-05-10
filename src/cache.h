@@ -111,7 +111,7 @@ enum {w_wild=1, w_neg, w_locnerr};  /* Used to distinguish different types of wi
 
 #if DEBUG>0
 #define NCFLAGS 7
-#define NDFLAGS 4
+#define NDFLAGS 5
 #define CFLAGSTRLEN (NCFLAGS*4)
 #define DFLAGSTRLEN (NDFLAGS*4)
 extern const char cflgnames[];

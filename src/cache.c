@@ -2656,7 +2656,7 @@ int dump_cache(int fd, const unsigned char *name, int exact)
 
 /* Added by Paul Rombouts: This is only used in debug messages. */
 const char cflgnames[NCFLAGS*3]={'N','E','G','L','O','C','A','U','T','N','O','C','A','D','D','N','O','P','R','T','S'};
-const char dflgnames[NDFLAGS*3]={'N','E','G','L','O','C','A','U','T','W','L','D'};
+const char dflgnames[NDFLAGS*3]={'N','E','G','L','O','C','A','U','T','N','O','C','W','L','D'};
 
 char *flags2str(unsigned flags,char *buf,int nflags,const char *flgnames)
 {
