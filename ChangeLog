@@ -1,3 +1,9 @@
+2011-05-09  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_answer.c
+	In compose_answer(), also add an OPT pseudo-RR to the additional section
+	of a NXDOMAIN reply when appropriate.
+
 2011-05-08  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/cache.c,src/cache.h,src/dns_query.c,src/status.c
