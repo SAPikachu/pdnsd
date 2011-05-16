@@ -14,6 +14,7 @@ Makefile
 /file-list.base
 /pdnsd.spec
 /pdnsd-*.tar.gz
+/PKGBUILD
 /src/rc/*/pdnsd
 /src/rc/Slackware/rc.pdnsd
 /stamp-h1
