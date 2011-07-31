@@ -143,11 +143,11 @@ dom_fttlts_t;
  * for negatively cached cents, we have rrset set to NULL and idx set to -1.
  */
 typedef struct rr_lent_s {
-	rr_set_t         *rrset;
-	dns_cent_t       *cent;
-	int              idx;
 	struct rr_lent_s *next;
 	struct rr_lent_s *prev;
+	rr_set_t         *rrset;
+	dns_cent_t       *cent;
+	int              idx;    /* This is the array index, not the type of the RR-set. */
 } rr_lent_t;
 
 
@@ -956,67 +956,93 @@ static void remove_rrl(rr_lent_t *le  DBGPARAM)
 	cache_free(le);
 }
 
+
+/* Merge two sorted rr_l lists to make a larger sorted list.
+   The lists are sorted according to increasing time-stamp.
+   The back links are ignored, these must be fixed using a separate pass.
+*/
+static rr_lent_t *listmerge(rr_lent_t *p, rr_lent_t *q)
+{
+
+	if(!p)
+		return q;
+	else if(!q)
+		return p;
+	else {
+		rr_lent_t *l=NULL, **s= &l;
+
+		for(;;) {
+			if(get_rrlent_ts(p) <= get_rrlent_ts(q)) {
+				*s= p;
+				s= &p->next;
+				p= *s;
+				if(!p) {
+					*s= q;
+					break;
+				}
+			}
+			else { /* get_rrlent_ts(p) > get_rrlent_ts(q) */
+				*s= q;
+				s= &q->next;
+				q= *s;
+				if(!q) {
+					*s= p;
+					break;
+				}
+			}
+		}
+
+		return l;
+	}      
+}
+
 /* Sort the rr_l list using merge sort, which can be more efficient than insertion sort used by rr_insert().
+   This algorithm is adapted from the GNU C++ STL implementation for list containers.
    Call with locks applied.
    Written by Paul Rombouts.
 */
 static void sort_rrl()
 {
-	if(rrset_l) {
-		unsigned int m;
+	/* Do nothing unless the list has length >= 2. */
+	if(rrset_l && rrset_l->next) {
+		/* First sort the list ignoring the back links, these will be fixed later. */
+#               define NTMPSORT 32
+		/* Because we use an array of fixed length, the length of the list we can sort
+		   is bounded by pow(2,NTMPSORT)-1. */
+		rr_lent_t *tmp[NTMPSORT];  /* tmp[i] will either be NULL or point to a sorted list of length pow(2,i). */
+		rr_lent_t **fill= tmp, **end=tmp+NTMPSORT, **counter;
+		rr_lent_t *rem= rrset_l, *carry;
 
-		for(m=1;; m *= 2) {
-			unsigned int nmerge=0,i,j;
-			rr_lent_t *p,*q=rrset_l,**s= &rrset_l, **t;
+		do {
+			carry=rem; rem=rem->next;
+			carry->next=NULL;
+			for(counter = tmp; counter!=fill && *counter!=NULL; ++counter) {
+				carry=listmerge(*counter,carry);
+				*counter=NULL;
+			}
 
-			do {
-				++nmerge;
-				p=q;
-				i=m;
-				do {
-					t= &q->next;
-					q= *t;
-				} while(--i && q);
+			PDNSD_ASSERT(counter!=end, "sort_rrl: tmp array overflowed");
 
-				if(!q) break;
-      
-				i=j=m;
-				for(;;) {
-					if(get_rrlent_ts(p) <= get_rrlent_ts(q)) {
-						*s= p;
-						s= &p->next;
-						p= *s;
-						--i;
-						if(!i) {
-							*s= q;
-							do {s= &q->next; q= *s;} while(--j && q);
-							break;
-						}
-					}
-					else { /* get_rrlent_ts(p) > get_rrlent_ts(q) */
-						*s= q;
-						s= &q->next;
-						q= *s;
-						--j;
-						if(!j || !q) {
-							*s= p;
-							*t= q;
-							s= t;
-							break;
-						}
-					}
-				}
-			} while(q);
+			*counter=carry;
 
-			if(nmerge<=1) break;
+			if(counter==fill) ++fill;
 		}
-	}
+		while(rem);
 
-	{
-		/* restore the backward links */
-		rr_lent_t *p,*q=NULL;
-		for(p=rrset_l; p; p=p->next) {p->prev=q; q=p;}
-		rrset_l_tail=q;
+		/* Merge together all the remaining list fragments contained in array tmp. */
+		carry= tmp[0];
+		counter= tmp;
+		while(++counter!=fill)
+			carry=listmerge(*counter,carry);
+
+		rrset_l= carry;
+
+		{
+			/* Restore the backward links. */
+			rr_lent_t *p,*q=NULL;
+			for(p=rrset_l; p; p=p->next) {p->prev=q; q=p;}
+			rrset_l_tail=q;
+		}
 	}
 }
 

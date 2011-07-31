@@ -1,3 +1,8 @@
+2011-07-31  Paul Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	Use a slightly more sophisticated merge-sort algorithm in sort_rrl().
+
 2011-05-09  Paul Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c
