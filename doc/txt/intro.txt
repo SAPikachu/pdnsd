@@ -66,9 +66,10 @@ marked optional, experimental or obsolete in these rfcs:
     zones, that should not violate the standard
 
 The following record types, that are extensions to the original DNS standard,
-are supported for caching at a compile time option (if you do not need them,
-you do not need to compile support for them into pdnsd and save cache and
-executable space):
+are supported for caching since version 1.2.9 (if you do not need most of them,
+you can disable runtime support for the unneeded ones before compiling pdnsd
+and save a little cache and executable space, see the source file src/
+rr_types.in):
 
   * RP (responsible person, RFC 1183)
   * AFSDB (AFS database location, RFC 1183)
@@ -86,6 +87,15 @@ executable space):
   * ATMA (ATM address)
   * NAPTR (URI mapping, RFC 2168)
   * KX (key exchange, RFC 2230)
+  * CERT (Certificate record, RFC 4398)
+  * DS (Delegation Signer, RFC 4034)
+  * RRSIG (Resource Record Signature, RFC 4034)
+  * NSEC (Next Secure, RFC 4034)
+  * DNSKEY (record containing the public key for a zone, RFC 4034)
+  * NSEC3 (Next Secure version 3, RFC 5155)
+
+    Note: This list is incomplete. For the complete list see the source file
+    src/rr_types.in.
 
 There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for
 both). Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for
@@ -129,12 +139,12 @@ on or off using the pdnsd-ctl utility). These tests are:
     available. This is a very flexible testing method with which it should be
     able to perform virtually any needed test.
   * query: New in version 1.2: This works like the ping test, except it sends
-    an empty DNS query to the remote server. If the server sends a well-formed
-    response back within the timeout period (except SERVFAIL), it will be
-    regarded as available. This test is useful if a remote server does not
-    respond to ICMP_ECHO requests at all, which unfortunately is quite common
-    these days. In many cases this test will be a more reliable indicator of
-    availability than the ones mentioned above.
+    an (empty) DNS query to the remote server. If the server sends a
+    well-formed response back within the timeout period (except SERVFAIL), it
+    will be regarded as available. This test is useful if a remote server does
+    not respond to ICMP_ECHO requests at all, which unfortunately is quite
+    common these days. In many cases this test will be a more reliable
+    indicator of availability than the ones mentioned above.
 
 
 Local Records ("Zones")
@@ -152,6 +162,7 @@ These are the local record types pdnsd can understand:
   * NS (name server, generated automatically by pdnsd for any local record set)
   * CNAME (canonical host name)
   * MX (mail exchange for the domain)
+  * TXT (arbitrary text strings, often used for Sender Policy Framework)
 
 You can specify these records in the configuration file.
 You may "source" a file in a format like that used in the /etc/hosts file, that
@@ -289,5 +300,5 @@ Eelco Vriezekolk.
 Thomas Moestl and Paul Rombouts
 
 
-Last revised: 21 February 2010 by Paul Rombouts
+Last revised: 26 January 2012 by Paul Rombouts
 

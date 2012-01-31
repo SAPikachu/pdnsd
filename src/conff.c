@@ -94,7 +94,7 @@ servparm_t serv_presets={
   purge_cache:       0,
   nocache:           0,
   lean_query:        1,
-  edns_query:        1,
+  edns_query:        0,
   is_proxy:          0,
   rootserver:        0,
   rand_servers:      0,

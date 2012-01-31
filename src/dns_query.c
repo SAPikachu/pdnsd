@@ -1055,7 +1055,7 @@ static int p_query_sm(query_stat_t *st)
 	return retval; /* should be either RC_SERVFAIL or RC_FATALERR */
 }
 
-inline static dns_cent_t *lookup_cent_array(dns_cent_array ca, const unsigned char *nm)
+static dns_cent_t *lookup_cent_array(dns_cent_array ca, const unsigned char *nm)
 {
 	int i,n=DA_NEL(ca);
 	for(i=0;i<n;++i) {

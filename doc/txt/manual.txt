@@ -8,12 +8,11 @@ the Free Software Foundation; either version 3, or (at your option) any later
 version.
 You can find a copy of the GNU GPL in the file COPYING in the source or
 documentation directory.
-This manual is up-to-date for version 1.2.8-par. For older documentation,
-please refer to the doc directory of the respective pdnsd package.
-A somewhat outdated pdnsd HOWTO ("unofficial" step-by-step installation and
-setup instructions) is available at http://www.geocities.com/sunil_tt/. For
-Apple Mac users, Brian Wells has published a good HOWTO at http://web.mac.com/
-brianwells/main/pdnsd.html.
+This manual is up-to-date for version 1.2.9. For older documentation, please
+refer to the doc directory of the respective pdnsd package.
+If you want a quicker introduction to pdnsd, you can try some of the HOWTOs
+available on the web. For Apple Mac users, Brian Wells has published a good
+HOWTO at http://web.mac.com/brianwells/main/pdnsd.html.
 
 0. Installation
 
@@ -59,21 +58,21 @@ Several pdnsd-specific options are available when building RPM packages:
 
 --without debug         Has the same effect as --with-debug=0 (see below).
 
---define "distro        Has the same effect as --with-distribution=<distro> (
-<distro>"               see below).
+--define "distro <      Has the same effect as --with-distribution=<distro> (
+distro>"                see below).
 
 --define "run_as_user   Has the same effect as --with-default-id=<user> (see
 <user>"                 below).
                         For RPMs the default <user> is "pdnsd".
 
                         If the user defined by the previous option does not
---define "run_as_uid    exist when the RPM is installed, the pre-install script
-<uid>"                  will try to create a new user with numerical id <uid>.
+--define "run_as_uid <  exist when the RPM is installed, the pre-install script
+uid>"                   will try to create a new user with numerical id <uid>.
                         The default is to let the system choose the numerical
                         id at install time.
 
---define "cachedir      Has the same effect as --with-cachedir=<dir> (see below
-<dir>"                  ).
+--define "cachedir <    Has the same effect as --with-cachedir=<dir> (see below
+dir>"                   ).
 
 You can also configure which compiler flags will be used by setting the
 environment variable CFLAGS. Using a bash shell, you can do that on the command
@@ -201,12 +200,11 @@ distro                    RedHat, SuSE, Debian)
 --disable-poll            Disable poll(2) and use select(2) (default=enabled)
                           You will normally not need this.
 
-                          Disable new DNS RR types. This may cause problems
-                          with some resolvers. The new types are RP, AFSDB,
---disable-new-rrs         X25, ISDN, RT, NSAP, PX, GPOS, AAAA, LOC, EID,
-                          NIMLOC, SRV, ATMA, NAPTR and KX. Most of these are
-                          seldomly needed, but AAAA is essential when using
-                          IPv6.
+                          Since version 1.2.9 this option is obsolete and
+                          ignored. It is now possible to configure for each RR
+--disable-new-rrs         type separately whether it is cacheable by pdnsd by
+                          editing the file src/rr_types.in. The comments in
+                          this file explain how to do this.
 
                           Enforce strict RFC 2181 compliance.
                           This will cause pdnsd to reject DNS answers with
@@ -542,7 +540,11 @@ Option value may be a string literal, a number, a time specification or a
 constant. In previous versions of pdnsd strings had to be enclosed in quotes
 ("), but since version 1.1.10 this is no longer necessary, unless a string
 contains a special character such as whitespace, a token that normally starts a
-comment, or one of ",;{}".
+comment, or one of ",;{}\". Since version 1.2.9 a backslash (\) inside a string
+is interpreted as an escape character, so it is possible to include special
+characters in strings (both quoted or unquoted) by preceding them with a
+backslash. Some escape sequences are in interpreted as in the C programming
+language, e.g. \t becomes a tab, \n becomes a new-line control char.
 A time specification consists a sequence of digits followed by a one-letter
 suffix. The following suffixes are recognized: s (seconds), m (minutes), h
 (hours), d (days) and w (weeks). If the suffix is missing, seconds are assumed.
@@ -614,6 +616,22 @@ or may not work on other platforms). pdnsd will not bind to the interface name,
 but will look up the address of the interface at start-up and listen on that
 address. If the address of the interface changes while pdnsd is running, pdnsd
 will not notice that. You will need to restart pdnsd in that case.
+
+outgoing_ip=string;
+or
+outside_interface=string;
+New in version 1.2.9: Set the IP address of the interface used by pdnsd for
+outgoing queries. This can be useful when the host has several interfaces and
+you want pdnsd to send outgoing queries via only one of them. For example, if
+pdnsd is running on a host with one interface with IP address 192.168.1.1
+connected to the local network, and another with IP address 123.xxx.yyy.zzz
+connected to the internet, you may specify server_ip=192.168.1.1 and
+outgoing_ip=123.xxx.yyy.zzz to enforce that pdnsd only responds to queries
+received from the local network, and only sends outgoing queries via the
+interface connected to the internet.
+The default setting for this option is any, which means that the kernel is free
+to decide which interface to use. Like with the server_ip option, you may also
+give the name of an interface here, instead of an IP address.
 
 linkdown_kluge=(on|off);
 This option enables a kluge that some people might need: when all servers are
@@ -928,6 +946,11 @@ call (only possible in versions 1.2.5 and later).
 This option was contributed by Jan-Marek Glogowski.
 On by default.
 
+udpbufsize=number;
+New in version 1.2.9: This option sets the upper limit on the size of UDP DNS
+messages. The default is 1024.
+See also the edns_query server option below.
+
 
 2.1.2 server Section
 
@@ -1020,12 +1043,14 @@ defined methods are:
     command is given with the uptest_cmd option (see below). For secuity
     issues, also see that entry.
   * query: New in version 1.2: This works like the ping test, except it sends
-    an empty DNS query to the remote server. If the server sends a well-formed
-    response back within the timeout period (except SERVFAIL), it will be
-    regarded as available. This test is useful if a remote server does not
-    respond to ICMP_ECHO requests at all, which unfortunately is quite common
-    these days. In many cases this test will be a more reliable indicator of
-    availability than the ones mentioned before.
+    an (empty) DNS query to the remote server. If the server sends a
+    well-formed response back within the timeout period (except SERVFAIL), it
+    will be regarded as available. This test is useful if a remote server does
+    not respond to ICMP_ECHO requests at all, which unfortunately is quite
+    common these days. It can also happen that a remote server is online but
+    ignores empty DNS queries. Then you will need the set the query_test_name
+    option (see below). In many cases this test will be a more reliable
+    indicator of availability than the ones mentioned before.
 
 The default value is none.
 
@@ -1041,6 +1066,15 @@ The default is 600 (one minute).
 
 ping_ip=string;
 The IP address for the ping test. The default is the IP of the name server.
+
+query_test_name=string;
+New in version 1.2.9: Sets the name to be queried when using uptest=query
+availability test. If the string is the unquoted constant none, an empty query
+is used (this the default), otherwise a query of type A will be sent for the
+domain name specified here. It is not necessary for the domain name to exist or
+have a record of type A in order for the uptest to succeed.
+If the the remote server ignores empty queries, you will probably want to set
+query_test_name="." (the root domain).
 
 uptest_cmd=string,string;
 or
@@ -1132,6 +1166,18 @@ A last note: If you use multiple pdnsd's that access each other, turning this
 option on is probably a big win.
 This on by default.
 
+edns_query=(on|off);
+New in version 1.2.9: Specifies whether to use EDNS (Extension mechanisms for
+DNS) for outgoing queries. Currently this is only useful for allowing UDP
+message sizes larger than 512 bytes. Note that setting this option on can give
+problems in combination with some legacy systems or software, including,
+embarrassingly enough, previous versions of pdnsd.
+The default is off, but if your network can handle UDP payloads significantly
+larger than 512 bytes, the recommended value is on.
+Note that this option only effects outgoing queries. If pdnsd receives a query
+using EDNS, it will reply using EDNS regardless of the value of this option.
+See also the udpbufsize option above.
+
 scheme=string;
 You can specify a pcmcia-cs scheme that is used in addition to the uptests. If
 you specify a scheme here, the server this section is for will only be queries
@@ -1142,8 +1188,8 @@ the global section to make this option work.
 preset=(on|off);
 This allows you to specify the initial state of a server before any uptest is
 performed. on specifies that the server is regarded available. The default is
-on. This is especially useful when you set uptest=none; and want to control a
-server only via pdnsd-ctl.
+on. This is especially useful when you set uptest=none; and want to change the
+status of a server only via pdnsd-ctl.
 
 proxy_only=(on|off);
 When this option is set to on, answers given by the servers are always
@@ -1193,9 +1239,9 @@ be matched exactly, or a range of addresses using an address/mask pair. The
 mask can be specified as a simple integer, indicating the number of initial 1
 bits in the mask, or in the usual IP address notation. IP addresses may be
 either IPv4 or IPv6 (provided there is sufficient support in the C libraries
-and --disable-new-rrs was not used). When addresses in the reject list are
-compared with those in a reply, only the bits corresponding to those set in the
-netmask are significant, the rest are ignored.
+and support for AAAA records was not disabled). When addresses in the reject
+list are compared with those in a reply, only the bits corresponding to those
+set in the netmask are significant, the rest are ignored.
 Multiple addresses or address/mask pairs may be specified; this can be done by
 entering multiple lines of the form reject=string; or a single line like this:
 
@@ -1359,9 +1405,9 @@ a=string;
 Defines an A (host address) record. The argument is an IPv4 address in dotted
 notation. pdnsd will serve this address for the host name given in the name
 option.
-Provided there is sufficient support in the C libraries and --disable-new-rrs
-was not used, the argument string may also be an IPv6 address, in which case an
-AAAA record will be defined.
+Provided there is sufficient support in the C libraries and support for AAAA
+records was not disabled, the argument string may also be an IPv6 address, in
+which case an AAAA record will be defined.
 This option be may used multiple times within an rr section, causing multiple
 addresses to be defined for the name. However, if you put the different
 addresses in different rr sections for the same name, the definition in the
@@ -1463,7 +1509,11 @@ The 6th parameter defines the timeout after which a cached record expires if it
 has not been refreshed.
 The 7th parameter is the ttl that is specified in every rr and should be the
 same as given with the ttl option (if you do not specify a ttl, use the default
-86400)
+86400).
+
+txt=string,...,string;
+New in version 1.2.9: Defines an TXT record. You can specify one or more
+strings here.
 
 
 2.1.4 neg Section
@@ -1629,8 +1679,8 @@ status                                  Print a description of pdnsd's cache sta
                                         are assumed to be available.
 
 server         (index|label)  (up|      Set the status of the server with the given index or label
-               down|retest)  [dns1      (where the given label matches the one given with the
-               [,dns2[,...]]]           label option in the respective server section in the
+               down|retest)  [dns1[,    (where the given label matches the one given with the
+               dns2[,...]]]             label option in the respective server section in the
                                         config file) to up or down, or force a retest. The index
                                         is assigned in the order of definition in pdnsd.conf
                                         starting with 0. Use the status command to view the
@@ -1681,16 +1731,16 @@ add            a  addr  name  [ttl]
                [noauth]
                                         Add a record of the given type to the pdnsd cache,
                                         replacing existing records for the same name and type. The
-add            aaaa  addr  name         2nd argument corresponds to the value of the option in the
-               [ttl]  [noauth]          rr section that is named like the first argument: a is a
+add            aaaa  addr  name  [ttl   2nd argument corresponds to the value of the option in the
+               ]  [noauth]              rr section that is named like the first argument: a is a
                                         record for hostname-to-address mapping, aaaa is the same
                                         thing for IPv6 addresses, and ptr is for
 add            ptr  host  name  [ttl]   address-to-hostname mapping. See the documentation for the
                  [noauth]               rr section for more details. In case of A and AAAA
                                         records, the addr argument may be a list of IP addresses,
                                         separated by commas or white space, causing multiple
-add            cname  host  name        addresses to be defined for the same name. The ttl is
-               [ttl]  [noauth]          optional, the default is 900 seconds. noauth is used to
+add            cname  host  name  [     addresses to be defined for the same name. The ttl is
+               ttl]  [noauth]           optional, the default is 900 seconds. noauth is used to
                                         make the domains non-authoritative - please see the
                                         description of the authrec config file options for a
 add            mx  host  name  pref     description of what that means. If you want no other
@@ -1808,8 +1858,8 @@ the contrib directory for further information.
 5 Problems...
 
 If you have problems with configuring or running pdnsd, be sure to read the FAQ
-. If this does not help you, pdnsd crashes or you find bugs, please mail me at
-tmoestl@gmx.net.
+. If this does not help you, pdnsd crashes or you find bugs, please mail one of
+the authors.
 Note added by Paul Rombouts: Thomas Moestl no longer maintains the code. I have
 revised the code and added new features. See README.par and the ChangeLog in
 the source directory (or /usr/share/doc/pdnsd-<version> if you have installed a
@@ -1896,6 +1946,15 @@ src/                  which is only run once, during build time, to generate the
 make_hashconvtable.c  file hashconvtable.h, used by src/hash.c (versions
                       1.1.10-par and later). (obsolete since version 1.2)
 
+                      A perl script for generating src/rr_types.h, a C header
+src/                  file containing macro definitions and tables needed for
+make_rr_types_h.pl    handling the RR types known to pdnsd, from the text file
+                      src/rr_types.in.
+
+src/rr_types.c, src/  These define tables and macros needed for handling the RR
+rr_types.h, src/      types known to pdnsd. Since version 1.2.9, rr_types.h is an
+rr_types.in           automatically generated file, see make_rr_types_h.pl.
+
 src/netdev.c, src/    Define functions for network device handling. OS-specific.
 netdev.h
 
@@ -1911,5 +1970,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 Copyright (C) 2000, 2001 Thomas Moestl
 Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul Rombouts
 
-Last revised: 24 December 2009 by Paul Rombouts
+Last revised: 22 January 2012 by Paul Rombouts
 

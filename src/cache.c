@@ -2357,10 +2357,12 @@ int add_cache_rr_add(const unsigned char *name, int tp, time_t ttl, time_t ts, u
 int report_cache_stat(int f)
 {
 	long mc=(long)global.perm_cache*1024+MCSZ;
-	double csz=(((double)cache_size)/mc)*100;
 	fsprintf_or_return(f,"\nCache status:\n=============\n");
 	fsprintf_or_return(f,"%ld kB maximum disk cache size.\n",global.perm_cache);
-	fsprintf_or_return(f,"%ld of %ld bytes (%.3g%%) memory cache used in %ld entries.\n",cache_size,mc,csz,ent_num);
+	fsprintf_or_return(f,"%ld of %ld bytes (%.3g%%) memory cache used in %ld entries"
+			   " (avg %.5g bytes/entry).\n",
+			   cache_size, mc, (((double)cache_size)/mc)*100, ent_num,
+			   ((double)cache_size)/ent_num);
 	return 0;
 }
 

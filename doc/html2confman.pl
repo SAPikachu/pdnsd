@@ -130,7 +130,7 @@ or in \\fB/usr/share/doc/pdnsd/\\fP if you are using a binary package.
 .UR
 <tmoestl\@gmx.net>
 .UE
-and was extensively revised by Paul Rombouts
+and was extensively revised by Paul A. Rombouts
 .UR
 <p.a.rombouts\@home.nl>
 .UE
@@ -140,7 +140,7 @@ Several others have contributed to \\fBpdnsd\\fP; see files in the source or
 \\fB/usr/share/doc/pdnsd/\\fP directory.
 .PP
 This man page was automatically generated from the html documentation for \\fBpdnsd\\fP,
-using a customized Perl script written by Paul Rombouts.
+using a customized Perl script written by Paul A. Rombouts.
 ENDOFTRAILER
 
 if(defined($_)) {

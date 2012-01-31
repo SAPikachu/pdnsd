@@ -294,7 +294,7 @@ or in \fB/usr/share/doc/pdnsd/\fP if you are using a binary package.
 .UR
 <tmoestl@gmx.net>,
 .UE
-and was extensively revised by Paul Rombouts
+and was extensively revised by Paul A. Rombouts
 .UR
 <p.a.rombouts@home.nl>
 .UE
@@ -310,7 +310,7 @@ This man page was written by Mahesh T. Pai
 using the documents in \fB/usr/share/docs/pdnsd/\fP directory for Debian,
 but can be used on other distributions too.
 .PP
-Last revised: 22 Jul 2007 by Paul Rombouts.
+Last revised: 22 Jul 2007 by Paul A. Rombouts.
 
 .SH COPYRIGHT
 

@@ -1,8 +1,10 @@
-/* rr_types.c - A structure with names & descriptions of
-                all rr types known to pdnsd
+/* rr_types.c - Tables with information for handling
+                all rr types known to pdnsd, plus
+		some helper functions useful for turning
+		binary RR data into text or vice versa.
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2004, 2007, 2010 Paul A. Rombouts
+   Copyright (C) 2003, 2004, 2007, 2010, 2011 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 

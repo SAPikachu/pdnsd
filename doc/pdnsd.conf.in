@@ -18,6 +18,7 @@ global {
 	max_ttl=1w;        # One week.
 	timeout=10;        # Global timeout option (10 seconds).
 	neg_domain_pol=on;
+	udpbufsize=1024;   # Upper limit on the size of UDP messages.
 }
 
 # The following section is most appropriate if you have a fixed connection to
@@ -36,6 +37,13 @@ server {
 	interval=10m;      # Check every 10 minutes.
 	purge_cache=off;   # Keep stale cache entries in case the ISP's
 			   # DNS servers go offline.
+	edns_query=yes;    # Use EDNS for outgoing queries to allow UDP messages
+			   # larger than 512 bytes. May cause trouble with some
+			   # legacy systems.
+#	exclude=.thepiratebay.org;  # If your ISP censors certain names, you may
+				    # want to exclude them here, and provide an
+				    # alternative server section below that will
+				    # successfully resolve the names.
 }
 
 /*
@@ -89,9 +97,13 @@ server {
 		192.228.79.201; # list on start up.
 	timeout = 5;
 	uptest = query;         # Test availability using empty DNS queries.
+#	query_test_name = .;    # To be used if remote servers ignore empty queries.
 	interval = 30m;         # Test every half hour.
 	ping_timeout = 300;     # Test should time out after 30 seconds.
 	purge_cache = off;
+#	edns_query = yes;	# Use EDNS for outgoing queries to allow UDP messages
+			   	# larger than 512 bytes. May cause trouble with some
+			   	# legacy systems.
 	exclude = .localdomain;
 	policy = included;
 	preset = off;

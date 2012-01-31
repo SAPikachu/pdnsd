@@ -1,5 +1,5 @@
-	        pdnsd version 1.2.8-par by Paul Rombouts
-                ========================================
+	        pdnsd version 1.2.9 by Paul Rombouts
+                ====================================
 
 This file describes the version of pdnsd that I maintain personally and am
 making available so other people can enjoy the latest features and fixes. Thomas
@@ -30,6 +30,9 @@ vulnerability note VU#800113. It also contains some improvements for defining
 local records interactively using the pdnsd-ctl utility.
 The main new feature of version 1.2.8 is automatic discovery of root servers,
 as well as some minor improvements in the resolver.
+Version 1.2.9 among other things supports many addtional RR types, uses data
+structures that should be more slightly more memory efficient and has support
+for EDNS, which allows DNS UDP messages to be larger than 512 bytes.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'
@@ -190,6 +193,15 @@ For a short history about recent releases have a look at NEWS or doc/html/index.
   servers and set "root_server=discover".
   The "neg_rrs_pol" option has a new default setting, which should allow
   sensible negative caching of RRs in most situations, even if "proxy_only=on".
+
+- Version 1.2.9 contains support for EDNS (Extension mechanisms for DNS), which
+  allows UDP messages to be larger than 512 bytes. Whether pdnsd uses EDNS in
+  outgoing queries is determined by the configuration option "edns_query". If
+  pdnsd receives a query using EDNS, it will reply using EDNS regardless of the
+  configuration settings.
+  Local TXT records can now be defined in the configuration file.
+  If the query uptest fails due to remote servers ignoring empty queries, this
+  can now be remedied using the new "query_test_name" config option.
 
 The new features are described in greater detail in the manual doc/html/doc.html
 or doc/txt/manual.txt.

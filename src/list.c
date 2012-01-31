@@ -165,4 +165,7 @@ void llist_free(llist *a)
     free(p);
     p=next;
   }
+
+  a->first=NULL;
+  a->last= NULL;
 }

@@ -43,6 +43,27 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2012-02-01</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.9-par has been released.</b>
+	Version 1.2.9 supports many more RR types (including those necessary for DNSSEC) and
+	EDNS (Extension mechanisms for DNS) to enable UDP messages larger than 512 bytes.
+	It also has support for defining local TXT records and has several new options and bugfixes
+	(including file descriptor leaks that effect FreeBSD users).
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#ffccff" width="20%"><b>2011-05-03</b></td>
+	<td bgcolor="#ccffff" width="80%"><b>The latest source code is available from a
+	 <a href="http://gitorious.org/pdnsd">git repository</a>.</b><br>
+	In response to frequent requests I have uploaded a git tree including the latest code
+	and a fairly extensive history of pdnsd development to
+	<a href="http://gitorious.org/pdnsd/pdnsd">gitorious.org</a>.
+	Anyone who wants to participate in pdnsd development is free to create a
+	<a href="http://gitorious.org/pdnsd/pdnsd/clone">clone repo on gitorious.org</a>
+	and push his modifications there.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#ffccff" width="20%"><b>2010-02-22</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.8-par has been released.</b>
 	The main new feature of version 1.2.8 is automatic discovery of root servers.
@@ -303,7 +324,7 @@
 	pdnsd is no longer actively maintained; I apologize to all those who reported bugs or
 	asked questions without receiving any reply. However, <b>Paul A. Rombouts</b> has published
 	a patch set against the last released version at 
-	<a href="http://www.phys.uu.nl/~rombouts/pdnsd.html">http://www.phys.uu.nl/~rombouts/pdnsd.html</a>,
+	<a href="http://members.home.nl/p.a.rombouts/pdnsd.html">http://members.home.nl/p.a.rombouts/pdnsd.html</a>,
 	which cleans up a lot of code fixes many bugs.
 	</td>
       </tr>
@@ -404,8 +425,9 @@
       <li> Namespaces other than IN (Internet)
       <li> AXFR and IXFR queries (whole zone transfers); since pdnsd does not maintain  zones, that should not violate the standard
     </ul>
-    The following record types, that are extensions to the original DNS standard, are supported for caching at a compile time option
-    (if you do not need them, you do not need to compile support for them into pdnsd and save cache and executable space):
+    The following record types, that are extensions to the original DNS standard, are supported for caching since version 1.2.9
+    (if you do not need most of them, you can disable runtime support for the unneeded ones before compiling pdnsd and save a little cache and executable space, see the source file <code>src/rr_types.in</code>):
+    <table><tr><td>
     <ul>
       <li> RP (<i>responsible person</i>, RFC 1183)
       <li> AFSDB (<i>AFS database location</i>, RFC 1183)
@@ -423,7 +445,16 @@
       <li> ATMA (<i>ATM address</i>)
       <li> NAPTR (<i>URI mapping</i>, RFC 2168)
       <li> KX (<i>key exchange</i>, RFC 2230)
-    </ul>
+      <li> CERT (<i>Certificate record</i>, RFC 4398)
+      <li> DS (<i>Delegation Signer</i>, RFC 4034)
+      <li> RRSIG (<i>Resource Record Signature</i>, RFC 4034)
+      <li> NSEC (<i>Next Secure</i>, RFC 4034)
+      <li> DNSKEY (<i>record containing the public key for a zone</i>, RFC 4034)
+      <li> NSEC3 (<i>Next Secure version 3</i>, RFC 5155)
+    </ul></td></tr>
+      <tr><td><ul><i><b>Note</b>: This list is incomplete. For the complete list see the source file</i> <code>src/rr_types.in</code>.
+      </ul></td></tr>
+    </table>
     There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for both).
     Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for the OpenBSD one!
     Thanks to Kiyo Kelvin Lee now also runs on the Cygwin platform!
@@ -463,7 +494,7 @@
 	  to be not available. This is a very flexible testing method with which it should be able to perform
 	  virtually any needed test.
       <li><b>query:</b> <em>New in version 1.2:</em>
-          This works like the ping test, except it sends an empty DNS query to the remote server.
+          This works like the ping test, except it sends an (empty) DNS query to the remote server.
 	  If the server sends a well-formed response back within the timeout period (except SERVFAIL),
 	  it will be regarded as available.
 	  This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
@@ -485,6 +516,7 @@
       <li> <b>NS</b> (name server, generated automatically by pdnsd for any local record set)
       <li> <b>CNAME</b> (canonical host name)
       <li> <b>MX</b> (mail exchange for the domain)
+      <li> <b>TXT</b> (arbitrary text strings, often used for Sender Policy Framework)
     </ul>
     You can specify these records in the configuration file. <br>
     You may &quot;source&quot; a file in a format like that used in the <code>/etc/hosts</code> file, that means
@@ -529,7 +561,7 @@
     <h1><a name="authors">Authors</a></h1>
     <p>
       pdnsd was originally written by <a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>,
-      but is no longer maintained by him. <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a>
+      but is no longer maintained by him. <a href="mailto:p.a.rombouts@home.nl">Paul A. Rombouts</a>
       has revised large portions of the code and has added a number of new features.
       See <a href="../../README.par"><code>README.par</code></a> and the <a href="../../ChangeLog"><code>ChangeLog</code></a>
       in the source directory (or <code>/usr/share/doc/pdnsd-&lt;version&gt;</code>
@@ -617,9 +649,9 @@
 	    </a>
 	</center></td> 
 	<td><center>
-	    <a href="http://freshmeat.net">
-	      <img src="fm.mini.jpg" alt="http://freshmeat.net"><br>
-	      freshmeat - huge free software index
+	    <a href="http://freecode.com">
+	      <img src="fm_logo.png" alt="http://freecode.com"><br>
+	      Freecode (formerly Freshmeat) - large free software index
 	    </a>
 	  </center></td>
       </tr>
@@ -636,11 +668,11 @@
     <br>
     <hr>
     <address><a href="mailto:tmoestl@gmx.net">Thomas Moestl</a>
-      and <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a>
+      and <a href="mailto:p.a.rombouts@home.nl">Paul A. Rombouts</a>
     </address>
     <br>
     <p>
-      <i>Last revised: 21 February 2010 by Paul Rombouts</i>
+      <i>Last revised: 26 January 2012 by Paul A. Rombouts</i>
     </p>
   </body>
 </html>

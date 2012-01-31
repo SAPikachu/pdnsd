@@ -36,16 +36,16 @@
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by
     <a href="index.html#authors">Thomas Moestl</a> with revisions by
-    <a href="index.html#authors">Paul Rombouts</a>.<br>
+    <a href="index.html#authors">Paul A. Rombouts</a>.<br>
     This manual is a part of the pdnsd package, and may be distributed in
     original or modified  form  under  terms  of  the  GNU  General  Public
     License,  as  published by the Free Software Foundation; either version
     3, or (at your option) any later version.<br>
     You can find a copy of the GNU GPL in the file <code>COPYING</code> in the source or documentation directory.<br>
-    This manual is up-to-date for version 1.2.8-par. For older documentation, please refer to the doc
+    This manual is up-to-date for version 1.2.9. For older documentation, please refer to the doc
     directory of the respective pdnsd package.<br>
-    A somewhat outdated pdnsd HOWTO (&quot;unofficial&quot; step-by-step installation and setup instructions)
-    is available at <a href="http://www.geocities.com/sunil_tt/">http://www.geocities.com/sunil_tt/</a>.
+    If you want a quicker introduction to pdnsd, you can try some of the
+    <a href="http://www.google.com/search?q=pdnsd+howto">HOWTOs available on the web</a>.
     For Apple Mac users, Brian Wells has published a good HOWTO at
     <a href="http://web.mac.com/brianwells/main/pdnsd.html">http://web.mac.com/brianwells/main/pdnsd.html</a>.
 
@@ -69,8 +69,8 @@
     You can do this as root, but it is safer to build a binary package first as a normal user,
     and then, when all has gone well, install the resulting binary package as root as in the previous section.
     How to build an RPM package without being root is described at
-    <a href="http://www.ibm.com/developerworks/library/l-rpm2/">
-    http://www.ibm.com/developerworks/library/l-rpm2/</a>.<br><br>
+    <a href="http://www.ibm.com/developerworks/linux/library/l-rpm1/">
+    http://www.ibm.com/developerworks/linux/library/l-rpm1/</a>.<br><br>
     Several pdnsd-specific options are available when building RPM packages:
     <table cellpadding=7>
       <tr>
@@ -164,15 +164,29 @@
     This is useful if you prefer a different level of optimization, for instance.
 
     <br>
-    <h3>0.3 Installing from the pure sources (tar archives)</h3>
-    <h4>0.3.1 Decompressing</h4>
-    The pdsnsd source comes in a gzip'ed tar archive.
+    <h3>0.3 Installing from pure sources (tar archives or git repositories)</h3>
+    <h4>0.3.1 Setting up the source code tree</h4>
+    Source code is available in the form of snapshots (tarballs) or a git repository
+    with the very latest development code and a (nearly) complete history of all the revisions.
+    Cloning a git repository is useful if you need a recent fix or feature
+    that is not yet contained in a main release or you want to participate in pdnsd development.
+    Otherwise you will probably find the tarballs more convenient because they are much more compact.
+    <h5>0.3.1.1 Unpacking a tar archive</h5>
+    The pdsnsd snapshot releases come in the form of a gzip'ed tar archive.
     To decompress it (using a modern tar) do<br>
     <p class="indented"><code>tar&nbsp;-xzf&nbsp;pdnsd-&lt;version&gt;.tar.gz</code></p>
     If your tar doesn't do this, use:<br>
     <p class="indented"><code>gzip&nbsp;-dc&nbsp;pdnsd-&lt;version&gt;.tar.gz&nbsp;| tar&nbsp;-xf&nbsp;-</code></p>
+    <h5>0.3.1.2 Cloning a git repository</h5>
+    To clone a git repository you need to install, if not already installed,
+    the git version control system, which is available as a package in most modern Linux distributions.
+    Then run the command:<br>
+    <p class="indented"><code>git&nbsp;clone&nbsp;git://gitorious.org/pdnsd/pdnsd.git&nbsp;pdnsd</code></p>
+    In rare cases, if you are behind some kind of firewall, the special git protocol can't be used
+    and you will need to fall back to the http protocol.
+    See the <a href="http://gitorious.org/pdnsd">gitorious.org</a> website or git documentation for more information.
 
-    <h4>0.3.2 Setup </h4>
+    <h4>0.3.2 Configuring the source</h4>
     Change into the pdnsd source directory and run configure. It takes the following command line
     options (if you do not specify an option, defaults will be used):<br>
     <table bgcolor="#CCCCCC" cellpadding=10>
@@ -366,11 +380,10 @@
 	  <code>--disable-new-rrs</code>
 	</td>
 	<td>
-	  Disable new DNS RR types. This may cause problems with some resolvers.
-	  The new types are RP, AFSDB, X25, ISDN, RT,  NSAP,
-	  PX, GPOS, AAAA, LOC, EID, NIMLOC, SRV, ATMA, NAPTR and KX.
-	  Most of these are seldomly needed, but AAAA is essential
-	  when using IPv6.
+	  Since version 1.2.9 this option is obsolete and ignored.
+	  It is now possible to configure for each RR type separately whether it is
+	  cacheable by pdnsd by editing the file <code>src/rr_types.in</code>.
+	  The comments in this file explain how to do this.	  
 	</td>
       </tr>
       <tr>
@@ -594,7 +607,7 @@
     <h3>0.4 Start at boot time</h3>
     In the <code>src/rc</code> folder of the pdnsd distribution are start scripts
     for pdnsd designed for different Linux distros. There are scripts
-    for SuSE, Redhat and Debian Linux now.<br>
+    for SuSE, Redhat, Debian, Arch Linux and Slackware now.<br>
     The start scripts are automatically installed during RPM install, and also during <code>make install</code>
     if you specified your distro.<br>
     For Slackware Linux there is a start-up script contributed by Nikola Kotur, but presently
@@ -708,8 +721,12 @@
       file in your cache directory. <b>--nodebug</b> disables debugging.
     </p>
     <p>
-      pdnsd <b>-vn</b> sets the verbosity level of pdnsd. n may be a digit from 0 to 3,
-      where 0 means normal operation, while 3 will most verbose. Example is <code>-v2</code>
+      pdnsd <b>-v</b><i>n</i> sets the verbosity level of pdnsd. <i>n</i> is normally a digit from 0 to 3,
+      where 0 means normal operation, while 3 will most verbose.
+      Level 9 can be used in combination with the <code>--debug</code> option for very
+      extensive debug information.<br>
+      <i>Note</i>: The current implementation mostly ignores the verbosity level,
+      so you may not notice much difference between the various levels.
     </p>
     <p>
       The option <b>-s</b> or <b>--status</b> enables the status control socket. This is a named socket in
@@ -770,7 +787,12 @@
     In previous  versions of pdnsd strings had to be enclosed
     in quotes (&quot;), but since version 1.1.10 this is no longer necessary, unless
     a string contains a special character such as whitespace, a token that normally starts
-    a comment, or one of &quot;<code>,;{}</code>&quot;.<br>
+    a comment, or one of &quot;<code>,;{}\</code>&quot;.
+    Since version 1.2.9 a backslash (\) inside a string is interpreted as an escape character,
+    so it is possible to include special characters in strings (both quoted or unquoted)
+    by preceding them with a backslash. Some escape sequences are in interpreted as in the C
+    programming language, e.g. <code>\t</code> becomes a tab,
+    <code>\n</code> becomes a new-line control char.<br>
     A time specification consists a sequence of digits followed by a one-letter suffix.
     The following suffixes are recognized:
     <code>s</code> (seconds), <code>m</code> (minutes), <code>h</code> (hours),
@@ -855,6 +877,27 @@
 	  interface at start-up and listen on that address. If the address of the interface
 	  changes while pdnsd is running, pdnsd will not notice that. You will need to
 	  restart pdnsd in that case.
+	</td>
+      </tr>
+      <tr>
+ 	<td>
+	  <b><code>outgoing_ip=<i>string</i>;</code></b><br>
+	  or<br>
+	  <b><code>outside_interface=<i>string</i>;</code></b><br>
+	  <em>New in version 1.2.9:</em>
+	  Set the IP address of the interface used by pdnsd for outgoing queries.
+	  This can be useful when the host has several interfaces and you want pdnsd
+	  to send outgoing queries via only one of them.
+	  For example, if  pdnsd is running on a host with one interface with IP address
+	  192.168.1.1 connected to the local network, and another with IP address 123.xxx.yyy.zzz
+	  connected to the internet, you may specify <code>server_ip=192.168.1.1</code>
+	  and <code>outgoing_ip=123.xxx.yyy.zzz</code> to enforce that pdnsd only responds
+	  to queries received from the local network, and only sends outgoing queries via
+	  the interface connected to the internet.<br>
+	  The default setting for this option is <code>any</code>, which means that
+	  the kernel is free to decide which interface to use.
+	  Like with the <code>server_ip</code> option, you may also give the name of an
+	  interface here, instead of an IP address.
 	</td>
       </tr>
       <tr>
@@ -1247,6 +1290,14 @@
 	  On by default.
 	</td>
       </tr>
+      <tr>
+	<td>
+	  <b><code><a name="udpbufsize">udpbufsize=<i>number</i>;</a></code></b><br>
+	  <em>New in version 1.2.9:</em>
+	  This option sets the upper limit on the size of UDP DNS messages. The default is 1024.<br>
+	  See also the <code><a href="#ednsquery">edns_query</a></code> server option below.
+	</td>
+      </tr>
     </table>
 
     <br>
@@ -1350,11 +1401,13 @@
 	      <code>uptest_sh</code>. The command is given with the <code>uptest_cmd</code> option (see below).
 	      For secuity issues, also see that entry.
 	    <li><b><code>query</code></b>: <em>New in version 1.2:</em>
-	      This works like the ping test, except it sends an empty DNS query to the remote server.
+	      This works like the ping test, except it sends an (empty) DNS query to the remote server.
 	      If the server sends a well-formed response back within the timeout period (except SERVFAIL),
 	      it will be regarded as available.
 	      This test is useful if a remote server does not respond to ICMP_ECHO requests at all,
 	      which unfortunately is quite common these days.
+	      It can also happen that a remote server is online but ignores empty DNS queries.
+	      Then you will need the set the <code><a href="#querytestname">query_test_name</a></code> option (see below).
 	      In many cases this test will be a more reliable indicator of availability
 	      than the ones mentioned before.
 	  </ul>
@@ -1380,6 +1433,19 @@
 	<td>
 	  <b><code>ping_ip=<i>string</i>;</code></b><br>
 	  The IP address for the ping test. The default is the IP of the name server.
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code><a name="querytestname">query_test_name=<i>string</i>;</a></code></b><br>
+	  <em>New in version 1.2.9:</em>
+	  Sets the name to be queried when using <code>uptest=query</code> availability test.
+	  If the string is the unquoted constant <code>none</code>,
+	  an empty query is used (this the default), otherwise a query of type A will be
+	  sent for the domain name specified here. It is not necessary for the domain name
+	  to exist or have a record of type A in order for the uptest to succeed.<br>
+	  If the the remote server ignores empty queries, you will probably want to set
+	  <code>query_test_name="."</code> (the root domain).
 	</td>
       </tr>
       <tr>
@@ -1503,6 +1569,22 @@
       </tr>
       <tr>
 	<td>
+	  <b><code><a name="ednsquery">edns_query=(on|off);</a></code></b><br>
+	  <em>New in version 1.2.9:</em>
+	  Specifies whether to use EDNS (Extension mechanisms for DNS) for outgoing queries.
+	  Currently this is only useful for allowing UDP message sizes larger than 512 bytes.
+	  Note that setting this option on can give problems in combination with some legacy
+	  systems or software, including, embarrassingly enough, previous versions of pdnsd.<br>
+	  The default is <code>off</code>, but if your network can handle UDP payloads
+	  significantly larger than 512 bytes, the recommended value is <code>on</code>.<br>
+	  Note that this option only effects outgoing queries. If pdnsd receives a query using
+	  EDNS, it will reply using EDNS regardless of the value of this option.
+	  <br>
+	  See also the <code><a href="#udpbufsize">udpbufsize</a></code> option above.
+	</td>
+      </tr>
+      <tr>
+	<td>
 	  <b><code>scheme=<i>string</i>;</code></b><br>
 	  You can specify a pcmcia-cs scheme that is used in addition to the uptests. If you specify
 	  a scheme here, the server this section is for will only be queries if the given scheme
@@ -1515,9 +1597,9 @@
 	<td>
 	  <b><code>preset=(on|off);</code></b><br>
 	  This allows you to specify the initial state of a server before any uptest is performed.
-	  on specifies that the server is regarded available. The default is on. This is especially
-	  useful when you set <code>uptest=none;</code> and want to control a server only via
-	  pdnsd-ctl.
+	  <code>on</code> specifies that the server is regarded available. The default is <code>on</code>.
+	  This is especially useful when you set <code>uptest=none;</code> and want to change
+	  the status of a server only via pdnsd-ctl.
 	</td>
       </tr>
       <tr>
@@ -1579,8 +1661,8 @@
 	  exactly, or a range of addresses using an address/mask pair.
 	  The mask can be specified as a simple integer, indicating the number of initial 1 bits in
 	  the mask, or in the usual IP address notation. IP addresses may be either IPv4 or IPv6
-	  (provided there is sufficient support in the C libraries and <code>--disable-new-rrs</code>
-	  was not used).
+	  (provided there is sufficient support in the C libraries and support for AAAA records was
+	  not disabled).
 	  When addresses in the reject list are compared with those in a reply, only the bits
 	  corresponding to those set in the netmask are significant, the rest are ignored.<br>
 	  Multiple addresses or address/mask pairs may be specified; this can be done by entering
@@ -1780,8 +1862,8 @@
 	  <b><code>a=<i>string</i>;</code></b><br>
 	  Defines an A (host address) record. The argument is an IPv4 address in dotted notation.
 	  pdnsd will serve this address for the host name given in the <code>name</code> option.<br>
-	  Provided there is sufficient support in the C libraries and <code>--disable-new-rrs</code>
-	  was not used, the argument string may also be an IPv6 address, in which case an AAAA record
+	  Provided there is sufficient support in the C libraries and support for AAAA records was not
+	  disabled, the argument string may also be an IPv6 address, in which case an AAAA record
 	  will be defined.<br>
 	  This option be may used multiple times within an <code>rr</code> section, causing
 	  multiple addresses to be defined for the name. However, if you put the different addresses
@@ -1892,7 +1974,14 @@
 	  The 6th parameter defines the timeout after which a cached record expires if it
 	  has not been refreshed.<br>
 	  The 7th parameter is the ttl that is specified in every rr and should be the 
-	  same as given with the ttl option (if you do not specify a ttl, use the default 86400)<br>
+	  same as given with the ttl option (if you do not specify a ttl, use the default 86400).
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <b><code>txt=<i>string</i>,...,<i>string</i>;</code></b><br>
+	  <em>New in version 1.2.9:</em>
+	  Defines an TXT record. You can specify one or more strings here.
 	</td>
       </tr>
     </table>
@@ -2254,7 +2343,8 @@
 	  If no arguments are provided, the cache will be completely emptied,
 	  freeing all existing entries.
 	  Note that this also removes local records, as defined by the config file.
-	  To restore local records, run <code>"pdnsd-ctl&nbsp;config"</code> immediately afterwards.<br>
+	  To restore local records, run <code>"pdnsd-ctl&nbsp;config"</code> or
+	  <code>"pdnsd-ctl&nbsp;include <i>filename</i>"</code> immediately afterwards.<br>
 	  The <code>"pdnsd-ctl&nbsp;empty-cache"</code> command now accepts additional arguments;
 	  these are interpreted as include/exclude names. If an argument starts with a '+'
 	  the name will be included. If an argument starts with a '-' it will be
@@ -2321,8 +2411,8 @@
     <br>
     <h2>5 Problems...</h2>
     If you have problems with configuring or running pdnsd, be sure to read the <a href="faq.html">FAQ</a>.
-    If this does not help you, pdnsd crashes or you find bugs, please mail me at <a href="mailto:tmoestl@gmx.net">tmoestl@gmx.net</a>.<br>
-    <em>Note added by <a href="mailto:p.a.rombouts@home.nl">Paul Rombouts</a></em>:
+    If this does not help you, pdnsd crashes or you find bugs, please mail one of the authors.<br>
+    <em>Note added by <a href="mailto:p.a.rombouts@home.nl">Paul A. Rombouts</a></em>:
     Thomas Moestl no longer maintains the code. I have revised the code and added new features.
     See <a href="../../README.par"><code>README.par</code></a> and the
     <a href="../../ChangeLog"><code>ChangeLog</code></a> in the source directory
@@ -2475,6 +2565,22 @@
 	</td>
       </tr>
       <tr>
+	<td bgcolor="#FFCCFF" width="20%">src/make_rr_types_h.pl</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  A perl script for generating src/rr_types.h,
+	  a C header file containing macro definitions and tables needed for handling the
+	  RR types known to pdnsd, from the text file src/rr_types.in.
+	</td>
+      </tr>
+      <tr>
+	<td bgcolor="#FFCCFF" width="20%">src/rr_types.c, src/rr_types.h, src/rr_types.in</td>
+	<td bgcolor="#CCFFFF" width="80%">
+	  These define tables and macros needed for handling the RR types known to pdnsd.
+	  Since version 1.2.9, rr_types.h is an automatically generated file,
+	  see make_rr_types_h.pl.
+	</td>
+      </tr>
+      <tr>
 	<td bgcolor="#FFCCFF" width="20%">src/netdev.c, src/netdev.h</td>
 	<td bgcolor="#CCFFFF" width="80%">
 	  Define functions for network device handling. OS-specific.
@@ -2498,10 +2604,10 @@
     <hr>
     <address>
     Copyright&nbsp;(C)&nbsp;2000,&nbsp;2001&nbsp;<a href="mailto:tmoestl@gmx.net">Thomas&nbsp;Moestl</a><br>
-    Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007,&nbsp;2008&nbsp;<a href="mailto:p.a.rombouts@home.nl">Paul&nbsp;Rombouts</a>
+    Copyright&nbsp;(C)&nbsp;2003,&nbsp;2004,&nbsp;2005,&nbsp;2006,&nbsp;2007,&nbsp;2008&nbsp;<a href="mailto:p.a.rombouts@home.nl">Paul&nbsp;A.&nbsp;Rombouts</a>
     </address>
     <p>
-      <i>Last revised: 24 December 2009 by Paul Rombouts</i>
+      <i>Last revised: 30 January 2012 by Paul A. Rombouts</i>
     </p>
   </body>
 </html>

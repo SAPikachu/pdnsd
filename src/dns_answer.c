@@ -992,28 +992,29 @@ static int decode_query(unsigned char *data, size_t rlen, unsigned char **ptrrem
 		res=decompress_name(data,rlen,&ptr,&sz,qbuf,&qlen);
 		if (res==RC_TRUNC)
 			break;
-		if (res!=RC_OK)
-			goto cleanup_return;
+		if (res!=RC_OK) {
+			llist_free(qp);
+			break;
+		}
 		if (sz<4) {
 			/* truncated in qtype or qclass */
 			DEBUG_MSG("decode_query: query truncated in qtype or qclass.\n");
 			res=RC_TRUNC;
 			break;
 		}
-		if(!llist_grow(qp,sizeof(dns_queryel_t)+qlen))
-			return RC_SERVFAIL;
+		if(!llist_grow(qp,sizeof(dns_queryel_t)+qlen)) {
+			res=RC_SERVFAIL;
+			break;
+		}
 		qe=llist_last(qp);
 		GETINT16(qe->qtype,ptr);
 		GETINT16(qe->qclass,ptr);
 		sz-=4;
 		memcpy(qe->query,qbuf,qlen);
 	}
+
 	if(ptrrem) *ptrrem=ptr;
 	if(lenrem) *lenrem=sz;
-	return res;
-
- cleanup_return:
-	llist_free(qp);
 	return res;
 }
 
@@ -1293,7 +1294,7 @@ static dns_msg_t *process_query(unsigned char *data, size_t *rlenp, unsigned *ud
 	llist_free(&ql);
 	return ans;
 
-free_ql_error_reply:
+ free_ql_error_reply:
 	llist_free(&ql);
  error_reply:
 	*rlenp=sizeof(dns_hdr_t);

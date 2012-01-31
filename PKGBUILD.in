@@ -5,7 +5,7 @@ pkgname=@PACKAGE@
 pkgver=@VERSION@
 pkgrel=@packagerelease@
 pkgdesc="pdnsd is a proxy DNS server with permanent caching (the cache contents are written to hard disk on exit) that is designed to cope with unreachable or down DNS servers."
-url="http://www.phys.uu.nl/~rombouts/pdnsd.html"
+url="http://members.home.nl/p.a.rombouts/pdnsd.html"
 license="GPLv3"
 depends=()
 makedepends=(glibc)
@@ -13,7 +13,7 @@ conflicts=()
 replaces=()
 backup=()
 install=
-source=(http://www.phys.uu.nl/~rombouts/pdnsd/releases/$pkgname-$pkgver-$pkgrel.tar.gz)
+source=(http://members.home.nl/p.a.rombouts/pdnsd/releases/$pkgname-$pkgver-$pkgrel.tar.gz)
 md5sums=()
 
 build() {
