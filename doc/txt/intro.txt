@@ -93,9 +93,10 @@ rr_types.in):
   * NSEC (Next Secure, RFC 4034)
   * DNSKEY (record containing the public key for a zone, RFC 4034)
   * NSEC3 (Next Secure version 3, RFC 5155)
+  * NSEC3PARAM (NSEC3 parameters, RFC 5155)
 
-    Note: This list is incomplete. For the complete list see the source file
-    src/rr_types.in.
+Note: This list is incomplete. For the complete list see the source file src/
+rr_types.in.
 
 There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for
 both). Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for
@@ -214,7 +215,7 @@ If you want to download pdnsd, please visit the download page.
 Authors
 
 pdnsd was originally written by Thomas Moestl, but is no longer maintained by
-him. Paul Rombouts has revised large portions of the code and has added a
+him. Paul A. Rombouts has revised large portions of the code and has added a
 number of new features. See README.par and the ChangeLog in the source
 directory (or /usr/share/doc/pdnsd-<version> if you have installed a binary
 package) for more details. If you have questions about the recent
@@ -297,8 +298,8 @@ Eelco Vriezekolk.
 
 -------------------------------------------------------------------------------
 
-Thomas Moestl and Paul Rombouts
+Thomas Moestl and Paul A. Rombouts
 
 
-Last revised: 26 January 2012 by Paul Rombouts
+Last revised: 10 February 2012 by Paul A. Rombouts
 

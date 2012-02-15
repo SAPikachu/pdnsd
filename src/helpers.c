@@ -423,26 +423,25 @@ int is_inaddr_any(pdnsd_a *a)
 #endif
 
 /*
- * This is used for user output only, so it does not matter when an error occurs
+ * This is used for user output only, so it does not matter when an error occurs.
  */
 const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 {
 	const char *res;
 #ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		if (!(res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen))) {
-			log_error("inet_ntop: %s", strerror(errno));
-		}
-	}
+	if (run_ipv4)
+		res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen);
 #endif
 #ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		if (!(res=inet_ntop(AF_INET6,&a->ipv6,buf,maxlen))) {
-			log_error("inet_ntop: %s", strerror(errno));
-		}
-	}
+	ELSE_IPV6
+		res=inet_ntop(AF_INET6,&a->ipv6,buf,maxlen);
 #endif
-	return res?res:"?.?.?.?";
+	if (!res) {
+		log_error("inet_ntop: %s", strerror(errno));
+		return "?.?.?.?";
+	}
+
+	return res;
 }
 
 

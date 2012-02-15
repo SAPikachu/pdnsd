@@ -9,3 +9,5 @@
   necessary. Also try to get compatibility for other compilers than gcc.
 - Write an install rule for the Slackware start-up script.
 - Update the FAQ.
+- Implement DNSSEC support. Since version 1.2.9, pdnsd is able to cache the RR
+  types necessary for DNSSEC, but the resolver is not yet security aware.

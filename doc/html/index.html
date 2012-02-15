@@ -43,7 +43,7 @@
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
-	<td bgcolor="#ffccff" width="20%"><b>2012-02-01</b></td>
+	<td bgcolor="#ffccff" width="20%"><b>2012-02-14</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.9-par has been released.</b>
 	Version 1.2.9 supports many more RR types (including those necessary for DNSSEC) and
 	EDNS (Extension mechanisms for DNS) to enable UDP messages larger than 512 bytes.
@@ -427,7 +427,6 @@
     </ul>
     The following record types, that are extensions to the original DNS standard, are supported for caching since version 1.2.9
     (if you do not need most of them, you can disable runtime support for the unneeded ones before compiling pdnsd and save a little cache and executable space, see the source file <code>src/rr_types.in</code>):
-    <table><tr><td>
     <ul>
       <li> RP (<i>responsible person</i>, RFC 1183)
       <li> AFSDB (<i>AFS database location</i>, RFC 1183)
@@ -451,10 +450,11 @@
       <li> NSEC (<i>Next Secure</i>, RFC 4034)
       <li> DNSKEY (<i>record containing the public key for a zone</i>, RFC 4034)
       <li> NSEC3 (<i>Next Secure version 3</i>, RFC 5155)
-    </ul></td></tr>
-      <tr><td><ul><i><b>Note</b>: This list is incomplete. For the complete list see the source file</i> <code>src/rr_types.in</code>.
-      </ul></td></tr>
-    </table>
+      <li> NSEC3PARAM (<i>NSEC3 parameters</i>, RFC 5155)
+    </ul>
+    <p style="text-indent: 1em;">
+      <i><b>Note</b>: This list is incomplete. For the complete list see the source file</i> <code>src/rr_types.in</code>.
+    </p>
     There are FreeBSD and OpenBSD ports available for pdnsd (ports/net/pdnsd for both).
     Thanks go to Roman Shterenzon for the FreeBSD port Sebastian Stark for the OpenBSD one!
     Thanks to Kiyo Kelvin Lee now also runs on the Cygwin platform!
@@ -672,7 +672,7 @@
     </address>
     <br>
     <p>
-      <i>Last revised: 26 January 2012 by Paul A. Rombouts</i>
+      <i>Last revised: 10 February 2012 by Paul A. Rombouts</i>
     </p>
   </body>
 </html>

@@ -1724,27 +1724,21 @@ void *udp_server_thread(void *dummy)
 		if (run_ipv4) {
 			msg.msg_name=&buf->addr.sin4;
 			msg.msg_namelen=sizeof(struct sockaddr_in);
-			qlen=recvmsg(sock,&msg,0);
-			if (qlen<0 && errno!=EINTR) {
-				if (++da_udp_errs<=UDP_MAX_ERRS) {
-					log_error("error in UDP recv: %s", strerror(errno));
-				}
-			}
 		}
 # endif
 # ifdef ENABLE_IPV6
 		ELSE_IPV6 {
 			msg.msg_name=&buf->addr.sin6;
 			msg.msg_namelen=sizeof(struct sockaddr_in6);
-			qlen=recvmsg(sock,&msg,0);
-			if (qlen<0 && errno!=EINTR) {
-				if (++da_udp_errs<=UDP_MAX_ERRS) {
-					log_error("error in UDP recv: %s", strerror(errno));
-				}
-			}
 		}
 # endif
-#endif
+		qlen=recvmsg(sock,&msg,0);
+		if (qlen<0 && errno!=EINTR) {
+			if (++da_udp_errs<=UDP_MAX_ERRS) {
+				log_error("error in UDP recv: %s", strerror(errno));
+			}
+		}
+#endif /* SRC_ADDR_DISC */
 
 		if (qlen>=0) {
 			pthread_mutex_lock(&proc_lock);

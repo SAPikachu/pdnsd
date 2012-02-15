@@ -40,10 +40,10 @@ server {
 	edns_query=yes;    # Use EDNS for outgoing queries to allow UDP messages
 			   # larger than 512 bytes. May cause trouble with some
 			   # legacy systems.
-#	exclude=.thepiratebay.org;  # If your ISP censors certain names, you may
-				    # want to exclude them here, and provide an
-				    # alternative server section below that will
-				    # successfully resolve the names.
+#	exclude=.thepiratebay.org,  # If your ISP censors certain names, you may
+#		.thepiratebay.se,   # want to exclude them here, and provide an
+#		.piratebay.org,	    # alternative server section below that will
+#		.piratebay.se;	    # successfully resolve the names.
 }
 
 /*

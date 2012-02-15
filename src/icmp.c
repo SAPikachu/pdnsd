@@ -1,7 +1,7 @@
 /* icmp.c - Server response tests using ICMP echo requests
 
    Copyright (C) 2000, 2001 Thomas Moestl
-   Copyright (C) 2003, 2005, 2007 Paul A. Rombouts
+   Copyright (C) 2003, 2005, 2007, 2012 Paul A. Rombouts
 
   This file is part of the pdnsd package.
 
@@ -113,24 +113,15 @@ volatile int ping6_isocket=-1;
 /* Initialize the sockets for pinging */
 void init_ping_socket()
 {
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
-			log_warn("icmp ping: socket() failed: %s",strerror(errno));
-			return;
-		}
+	if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
+		log_warn("icmp ping: socket() failed: %s",strerror(errno));
 	}
-#endif
 #ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		if ((ping_isocket=socket(PF_INET, SOCK_RAW, IPPROTO_ICMP))==-1) {
-			log_warn("icmp ping: socket() failed: %s",strerror(errno));
-			return;
-		}
-
+	if (!run_ipv4)  {
+		/* Failure to initialize the IPv4 ping socket is not
+		   necessarily a problem, as long as the IPv6 version works. */
 		if ((ping6_isocket=socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6))==-1) {
 			log_warn("icmpv6 ping: socket() failed: %s",strerror(errno));
-			return;
 		}
 	}
 #endif
@@ -523,12 +514,17 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 int ping(pdnsd_a *addr, int timeout, int rep)
 {
 
-	if (ping_isocket==-1)
-		return -1;
-
+#ifdef ENABLE_IPV4
+	if (run_ipv4) {
+		if (ping_isocket==-1)
+			return -1;
+	}
+#endif
 #ifdef ENABLE_IPV6
-	if (!run_ipv4 && ping6_isocket==-1)
-		return -1;
+	ELSE_IPV6 {
+		if (ping6_isocket==-1)
+			return -1;
+	}
 #endif
 
 	/* We were given a timeout in 10ths of seconds,
@@ -542,7 +538,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 #ifdef ENABLE_IPV6
 	ELSE_IPV6 {
 		/* If it is a IPv4 mapped IPv6 address, we prefer ICMPv4. */
-		if (IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
+		if (ping_isocket!=-1 && IN6_IS_ADDR_V4MAPPED(&addr->ipv6)) {
 			struct in_addr v4;
 			v4.s_addr=((uint32_t *)&addr->ipv6)[3];
 			return ping4(v4,timeout,rep);

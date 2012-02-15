@@ -1,7 +1,7 @@
                               pdnsd Documentation
 
 This is the "official" pdnsd documentation and reference written by Thomas
-Moestl with revisions by Paul Rombouts.
+Moestl with revisions by Paul A. Rombouts.
 This manual is a part of the pdnsd package, and may be distributed in original
 or modified form under terms of the GNU General Public License, as published by
 the Free Software Foundation; either version 3, or (at your option) any later
@@ -40,7 +40,8 @@ rpmbuild -tb pdnsd-<version>.tar.gz
 You can do this as root, but it is safer to build a binary package first as a
 normal user, and then, when all has gone well, install the resulting binary
 package as root as in the previous section. How to build an RPM package without
-being root is described at http://www.ibm.com/developerworks/library/l-rpm2/.
+being root is described at http://www.ibm.com/developerworks/linux/library/
+l-rpm1/.
 
 Several pdnsd-specific options are available when building RPM packages:
 
@@ -79,12 +80,21 @@ environment variable CFLAGS. Using a bash shell, you can do that on the command
 line like this:  CFLAGS="-O1 -Wall" rpmbuild ...
 This is useful if you prefer a different level of optimization, for instance.
 
-0.3 Installing from the pure sources (tar archives)
+0.3 Installing from pure sources (tar archives or git repositories)
 
-0.3.1 Decompressing
+0.3.1 Setting up the source code tree
 
-The pdsnsd source comes in a gzip'ed tar archive. To decompress it (using a
-modern tar) do
+Source code is available in the form of snapshots (tarballs) or a git
+repository with the very latest development code and a (nearly) complete
+history of all the revisions. Cloning a git repository is useful if you need a
+recent fix or feature that is not yet contained in a main release or you want
+to participate in pdnsd development. Otherwise you will probably find the
+tarballs more convenient because they are much more compact.
+
+0.3.1.1 Unpacking a tar archive
+
+The pdsnsd snapshot releases come in the form of a gzip'ed tar archive. To
+decompress it (using a modern tar) do
 
 tar -xzf pdnsd-<version>.tar.gz
 
@@ -92,7 +102,19 @@ If your tar doesn't do this, use:
 
 gzip -dc pdnsd-<version>.tar.gz | tar -xf -
 
-0.3.2 Setup
+0.3.1.2 Cloning a git repository
+
+To clone a git repository you need to install, if not already installed, the
+git version control system, which is available as a package in most modern
+Linux distributions. Then run the command:
+
+git clone git://gitorious.org/pdnsd/pdnsd.git pdnsd
+
+In rare cases, if you are behind some kind of firewall, the special git
+protocol can't be used and you will need to fall back to the http protocol. See
+the gitorious.org website or git documentation for more information.
+
+0.3.2 Configuring the source
 
 Change into the pdnsd source directory and run configure. It takes the
 following command line options (if you do not specify an option, defaults will
@@ -383,8 +405,8 @@ Thats it!
 0.4 Start at boot time
 
 In the src/rc folder of the pdnsd distribution are start scripts for pdnsd
-designed for different Linux distros. There are scripts for SuSE, Redhat and
-Debian Linux now.
+designed for different Linux distros. There are scripts for SuSE, Redhat,
+Debian, Arch Linux and Slackware now.
 The start scripts are automatically installed during RPM install, and also
 during make install if you specified your distro.
 For Slackware Linux there is a start-up script contributed by Nikola Kotur, but
@@ -481,8 +503,11 @@ the command line. This will cause extra diagnostic messages to be printed. When
 pdnsd runs in daemon mode, the messages will be written to the pdnsd.debug file
 in your cache directory. --nodebug disables debugging.
 
-pdnsd -vn sets the verbosity level of pdnsd. n may be a digit from 0 to 3,
-where 0 means normal operation, while 3 will most verbose. Example is -v2
+pdnsd -vn sets the verbosity level of pdnsd. n is normally a digit from 0 to 3,
+where 0 means normal operation, while 3 will most verbose. Level 9 can be used
+in combination with the --debug option for very extensive debug information.
+Note: The current implementation mostly ignores the verbosity level, so you may
+not notice much difference between the various levels.
 
 The option -s or --status enables the status control socket. This is a named
 socket in the cache directory called pdnsd.status. This socket allows run-time
@@ -1792,8 +1817,8 @@ eval           string                   Parse the given string as if it were par
 empty-cache    [[+|-]name ...]          If no arguments are provided, the cache will be completely
                                         emptied, freeing all existing entries. Note that this also
                                         removes local records, as defined by the config file. To
-                                        restore local records, run "pdnsd-ctl config" immediately
-                                        afterwards.
+                                        restore local records, run "pdnsd-ctl config" or
+                                        "pdnsd-ctl include filename" immediately afterwards.
                                         The "pdnsd-ctl empty-cache" command now accepts additional
                                         arguments; these are interpreted as include/exclude names.
                                         If an argument starts with a '+' the name will be
@@ -1860,11 +1885,11 @@ the contrib directory for further information.
 If you have problems with configuring or running pdnsd, be sure to read the FAQ
 . If this does not help you, pdnsd crashes or you find bugs, please mail one of
 the authors.
-Note added by Paul Rombouts: Thomas Moestl no longer maintains the code. I have
-revised the code and added new features. See README.par and the ChangeLog in
-the source directory (or /usr/share/doc/pdnsd-<version> if you have installed a
-binary package) for more details. If you have questions about my modifications,
-you can find my email address at the end of README.par.
+Note added by Paul A. Rombouts: Thomas Moestl no longer maintains the code. I
+have revised the code and added new features. See README.par and the ChangeLog
+in the source directory (or /usr/share/doc/pdnsd-<version> if you have
+installed a binary package) for more details. If you have questions about my
+modifications, you can find my email address at the end of README.par.
 
 
 6 Hacking
@@ -1968,7 +1993,7 @@ status.h              pdnsd's interface to pdnsd-ctl.
 -------------------------------------------------------------------------------
 
 Copyright (C) 2000, 2001 Thomas Moestl
-Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul Rombouts
+Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
 
-Last revised: 22 January 2012 by Paul Rombouts
+Last revised: 30 January 2012 by Paul A. Rombouts
 
