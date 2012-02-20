@@ -407,9 +407,11 @@ int report_conf_stat(int f)
 	fsprintf_or_return(f,"\tServer port: %i\n",global.port);
 	{
 	  char buf[ADDRSTR_MAXLEN];
-	  fsprintf_or_return(f,"\tServer IP (%s=any available one): %s\n",run_ipv4?"0.0.0.0":"::",pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
+	  fsprintf_or_return(f,"\tServer IP (%s=any available one): %s\n", SEL_IPVER("0.0.0.0","::"),
+			     pdnsd_a2str(&global.a,buf,ADDRSTR_MAXLEN));
 	  if(!is_inaddr_any(&global.out_a)) {
-	    fsprintf_or_return(f,"\tIP bound to interface used for querying remote servers: %s\n",pdnsd_a2str(&global.out_a,buf,ADDRSTR_MAXLEN));
+	    fsprintf_or_return(f,"\tIP bound to interface used for querying remote servers: %s\n",
+			       pdnsd_a2str(&global.out_a,buf,ADDRSTR_MAXLEN));
 	  }
 	}
 #ifdef ENABLE_IPV6

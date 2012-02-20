@@ -514,18 +514,8 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 int ping(pdnsd_a *addr, int timeout, int rep)
 {
 
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		if (ping_isocket==-1)
-			return -1;
-	}
-#endif
-#ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		if (ping6_isocket==-1)
-			return -1;
-	}
-#endif
+	if (SEL_IPVER(ping_isocket,ping6_isocket) == -1)
+		return -1;
 
 	/* We were given a timeout in 10ths of seconds,
 	   but ping4 and ping6 want a timeout in seconds. */

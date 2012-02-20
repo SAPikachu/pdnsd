@@ -55,7 +55,7 @@ const char *parsestr2rhn(const unsigned char *str, unsigned int len, unsigned ch
 
 /* Note added by Paul Rombouts:
    Compared to the definition used by Thomas Moestl (strlen(rhn)+1), the following definition of rhnlen
-   may yield a different result in certain error situations (when a domain name segment contains null byte).
+   may yield a different result in certain error situations (when a domain name segment contains a null byte).
 */
 inline static unsigned int rhnlen(const unsigned char *rhn)
   __attribute__((always_inline));
@@ -114,36 +114,16 @@ int isnormalencdomname(const unsigned char *rhn, unsigned maxlen);
 inline static int is_inaddr_any(pdnsd_a *a)  __attribute__((always_inline));
 inline static int is_inaddr_any(pdnsd_a *a)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? a->ipv4.s_addr==INADDR_ANY:
-# else
-    a->ipv4.s_addr==INADDR_ANY
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6)
-#endif
-    ;
+  return SEL_IPVER( a->ipv4.s_addr==INADDR_ANY,
+		    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6) );
 }
 
 /* Same as is_inaddr_any(), but for the pdnsd_a2 type. */
 inline static int is_inaddr2_any(pdnsd_a2 *a)  __attribute__((always_inline));
 inline static int is_inaddr2_any(pdnsd_a2 *a)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? a->ipv4.s_addr==INADDR_ANY:
-# else
-    a->ipv4.s_addr==INADDR_ANY
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6)
-#endif
-    ;
+  return SEL_IPVER( a->ipv4.s_addr==INADDR_ANY,
+		    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6) );
 }
 
 
@@ -151,18 +131,8 @@ inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
   __attribute__((always_inline));
 inline static int same_inaddr(pdnsd_a *a, pdnsd_a *b)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? a->ipv4.s_addr==b->ipv4.s_addr:
-# else
-    a->ipv4.s_addr==b->ipv4.s_addr
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6)
-#endif
-    ;
+  return SEL_IPVER( a->ipv4.s_addr==b->ipv4.s_addr,
+		    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) );
 }
 
 /* Compare a pdnsd_a*  with a pdnsd_a2*. */
@@ -170,37 +140,17 @@ inline static int same_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
   __attribute__((always_inline));
 inline static int same_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? a->ipv4.s_addr==b->ipv4.s_addr:
-# else
-    a->ipv4.s_addr==b->ipv4.s_addr
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) && b->ipv4.s_addr==INADDR_ANY
-#endif
-    ;
+  return SEL_IPVER( a->ipv4.s_addr==b->ipv4.s_addr,
+		    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) && b->ipv4.s_addr==INADDR_ANY );
 }
 
 inline static int equiv_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
   __attribute__((always_inline));
 inline static int equiv_inaddr2(pdnsd_a *a, pdnsd_a2 *b)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? a->ipv4.s_addr==b->ipv4.s_addr:
-# else
-    a->ipv4.s_addr==b->ipv4.s_addr
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) ||
-    (b->ipv4.s_addr!=INADDR_ANY && ADDR_EQUIV6_4(&a->ipv6,&b->ipv4))
-#endif
-    ;
+  return SEL_IPVER( a->ipv4.s_addr==b->ipv4.s_addr,
+		    IN6_ARE_ADDR_EQUAL(&a->ipv6,&b->ipv6) ||
+		     (b->ipv4.s_addr!=INADDR_ANY && ADDR_EQUIV6_4(&a->ipv6,&b->ipv4)) );
 }
 
 int str2pdnsd_a(const char *addr, pdnsd_a *a);

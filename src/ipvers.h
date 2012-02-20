@@ -56,11 +56,14 @@
 # ifdef ENABLE_IPV6
 extern short int run_ipv4;
 extern short int cmdlineipv;
+#  define SEL_IPVER(a4,a6)  (run_ipv4? a4: a6)
 # else
 #  define run_ipv4 1
+#  define SEL_IPVER(a4,a6)  (a4)
 # endif
 #else
 #  define run_ipv4 0
+#  define SEL_IPVER(a4,a6)  (a6)
 #endif
 #ifdef ENABLE_IPV6
 #define DEFAULT_IPV4_6_PREFIX "::ffff:0.0.0.0"
@@ -161,21 +164,9 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 #define SOCKA_A4(a) ((pdnsd_a *)&((struct sockaddr_in *)(a))->sin_addr)
 #define SOCKA_A6(a) ((pdnsd_a *)&((struct sockaddr_in6 *)(a))->sin6_addr)
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define SOCKA_A(a) (run_ipv4?SOCKA_A4(a):SOCKA_A6(a))
-#  define PDNSD_PF_INET (run_ipv4?PF_INET:PF_INET6)
-#  define PDNSD_AF_INET (run_ipv4?AF_INET:AF_INET6)
-# else
-#  define SOCKA_A(a) SOCKA_A4(a)
-#  define PDNSD_PF_INET PF_INET
-#  define PDNSD_AF_INET AF_INET
-# endif
-#else
-# define SOCKA_A(a) SOCKA_A6(a)
-# define PDNSD_PF_INET PF_INET6
-# define PDNSD_AF_INET AF_INET6
-#endif
+#define SOCKA_A(a) SEL_IPVER(SOCKA_A4(a),SOCKA_A6(a))
+#define PDNSD_PF_INET SEL_IPVER(PF_INET,PF_INET6)
+#define PDNSD_AF_INET SEL_IPVER(AF_INET,AF_INET6)
 
 /* This is to compare two addresses. This is a macro because it may change due to the more complex IPv6 adressing architecture
  * (there are, for example, two equivalent addresses of the loopback device) 
@@ -184,15 +175,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 #define ADDR_EQUIV4(a,b) (((struct in_addr *)(a))->s_addr==((struct in_addr *)(b))->s_addr)
 #define ADDR_EQUIV6(a,b) IN6_ARE_ADDR_EQUAL(((struct in6_addr *)(a)),((struct in6_addr *)(b)))
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define ADDR_EQUIV(a,b) (run_ipv4? ADDR_EQUIV4(a,b): ADDR_EQUIV6(a,b))
-# else
-#  define ADDR_EQUIV(a,b) ADDR_EQUIV4(a,b)
-# endif
-#else
-# define ADDR_EQUIV(a,b) ADDR_EQUIV6(a,b)
-#endif
+#define ADDR_EQUIV(a,b) SEL_IPVER(ADDR_EQUIV4(a,b), ADDR_EQUIV6(a,b))
 
 /* Compare an IPv6 adress with an IPv4 one. b should have type struct in_addr*.
    Note the similarity with the IPV6_MAPIPV4 macro. */
@@ -290,15 +273,7 @@ inline static void SET_PDNSD_A2(pdnsd_a2 *a2, pdnsd_a *a)
 # define SET_PDNSD_A2(a2,a) ((a2)->ipv4=(a)->ipv4)
 #endif
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define PDNSD_A2_TO_A(a2) (run_ipv4?((pdnsd_a *)&(a2)->ipv4):((pdnsd_a *)&(a2)->ipv6))
-# else
-#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv4)
-# endif
-#else
-#  define PDNSD_A2_TO_A(a2) ((pdnsd_a *)&(a2)->ipv6)
-#endif
+#define PDNSD_A2_TO_A(a2) SEL_IPVER(((pdnsd_a *)&(a2)->ipv4),((pdnsd_a *)&(a2)->ipv6))
 
 /* Do we have sufficient support in the C libraries to allow local AAAA records
    to be defined? */

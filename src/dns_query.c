@@ -164,18 +164,8 @@ static volatile unsigned long poll_errs=0;
 #undef SIN_LEN
 #endif
 
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-#  define SIN_LEN (run_ipv4?sizeof(struct sockaddr_in):sizeof(struct sockaddr_in6))
-#  define PDNSD_A(p) (run_ipv4?((pdnsd_a *) &(p)->a.sin4.sin_addr):((pdnsd_a *) &(p)->a.sin6.sin6_addr))
-# else
-#  define SIN_LEN sizeof(struct sockaddr_in)
-#  define PDNSD_A(p) ((pdnsd_a *) &(p)->a.sin4.sin_addr)
-# endif
-#else
-#  define SIN_LEN sizeof(struct sockaddr_in6)
-#  define PDNSD_A(p) ((pdnsd_a *) &(p)->a.sin6.sin6_addr)
-#endif
+#define SIN_LEN SEL_IPVER(sizeof(struct sockaddr_in),sizeof(struct sockaddr_in6))
+#define PDNSD_A(p) SEL_IPVER(((pdnsd_a *) &(p)->a.sin4.sin_addr),((pdnsd_a *) &(p)->a.sin6.sin6_addr))
 
 #ifndef EWOULDBLOCK
 #define EWOULDBLOCK EAGAIN
@@ -1932,18 +1922,9 @@ static int add_qserv(query_stat_array *q, pdnsd_a2 *a, int port, time_t timeout,
    previous query_stat_t entry. */
 inline static int query_stat_same_inaddr2(query_stat_t *qs, pdnsd_a2 *b)
 {
-  return
-#ifdef ENABLE_IPV4
-# ifdef ENABLE_IPV6
-    run_ipv4? qs->a.sin4.sin_addr.s_addr==b->ipv4.s_addr:
-# else
-    qs->a.sin4.sin_addr.s_addr==b->ipv4.s_addr
-# endif
-#endif
-#ifdef ENABLE_IPV6
-    IN6_ARE_ADDR_EQUAL(&qs->a.sin6.sin6_addr,&b->ipv6) && qs->a4fallback.s_addr==b->ipv4.s_addr
-#endif
-    ;
+  return SEL_IPVER(  qs->a.sin4.sin_addr.s_addr==b->ipv4.s_addr,
+		     IN6_ARE_ADDR_EQUAL(&qs->a.sin6.sin6_addr,&b->ipv6) &&
+		      qs->a4fallback.s_addr==b->ipv4.s_addr );
 }
 
 

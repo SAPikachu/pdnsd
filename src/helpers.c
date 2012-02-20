@@ -409,16 +409,8 @@ int str2pdnsd_a(const char *addr, pdnsd_a *a)
 #if 0
 int is_inaddr_any(pdnsd_a *a)
 {
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		return a->ipv4.s_addr==INADDR_ANY;
-	}
-#endif
-#ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		return IN6_IS_ADDR_UNSPECIFIED(&a->ipv6);
-	}
-#endif
+  return SEL_IPVER( a->ipv4.s_addr==INADDR_ANY,
+		    IN6_IS_ADDR_UNSPECIFIED(&a->ipv6) );
 }
 #endif
 
@@ -427,15 +419,8 @@ int is_inaddr_any(pdnsd_a *a)
  */
 const char *pdnsd_a2str(pdnsd_a *a, char *buf, int maxlen)
 {
-	const char *res;
-#ifdef ENABLE_IPV4
-	if (run_ipv4)
-		res=inet_ntop(AF_INET,&a->ipv4,buf,maxlen);
-#endif
-#ifdef ENABLE_IPV6
-	ELSE_IPV6
-		res=inet_ntop(AF_INET6,&a->ipv6,buf,maxlen);
-#endif
+	const char *res= SEL_IPVER( inet_ntop(AF_INET,&a->ipv4,buf,maxlen),
+				    inet_ntop(AF_INET6,&a->ipv6,buf,maxlen) );
 	if (!res) {
 		log_error("inet_ntop: %s", strerror(errno));
 		return "?.?.?.?";

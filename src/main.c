@@ -285,7 +285,7 @@ int main(int argc,char *argv[])
 					"Try using -4 or -6 option instead.\n",strerror(errno));
 				exit(1);
 			}
-			if((run_ipv4=!rv))
+			if((run_ipv4= !rv))
 				fprintf(stderr,"Switching to IPv4 mode.\n");
 			cmdlineipv=1;
 #else
@@ -590,16 +590,7 @@ int main(int argc,char *argv[])
 	if (!final_init())
 		_exit(1);
 #endif
-#ifdef ENABLE_IPV4
-	if (run_ipv4) {
-		DEBUG_MSG("Using IPv4.\n");
-	}
-#endif
-#ifdef ENABLE_IPV6
-	ELSE_IPV6 {
-		DEBUG_MSG("Using IPv6.\n");
-	}
-#endif
+	DEBUG_MSG(SEL_IPVER("Using IPv4.\n", "Using IPv6.\n"));
 
 	/* initialize attribute for creating detached threads */
 	pthread_attr_init(&attr_detached);

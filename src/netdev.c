@@ -331,24 +331,15 @@ int is_local_addr(pdnsd_a *a)
 		cnt += SIZEOF_ADDR_IFREQ(*ir);
 		if (cnt>ifc.ifc_len)
 			break;
-#  ifdef ENABLE_IPV4
-		if (run_ipv4) {
-			if (ir->ifr_addr.sa_family==AF_INET &&
-			    ((struct sockaddr_in *)&ir->ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr) {
-				retval=1;
-				break;
-			}
+		if (SEL_IPVER(ir->ifr_addr.sa_family==AF_INET &&
+			       ((struct sockaddr_in *)&ir->ifr_addr)->sin_addr.s_addr==a->ipv4.s_addr,
+			      ir->ifr_addr.sa_family==AF_INET6 &&
+			       IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ir->ifr_addr)->sin6_addr,
+						  &a->ipv6)))
+		{
+			retval=1;
+			break;
 		}
-#  endif
-#  ifdef ENABLE_IPV6
-		ELSE_IPV6 {
-			if (ir->ifr_addr.sa_family==AF_INET6 &&
-			    IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)&ir->ifr_addr)->sin6_addr,&a->ipv6)) {
-				retval=1;
-				break;
-			}
-		}
-#  endif
 	}
 
  close_sock_return:
