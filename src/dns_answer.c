@@ -454,6 +454,30 @@ int add_opt_pseudo_rr(dns_msg_t **ans, size_t *sz, size_t *allocsz,
 	return 1;
 }
 
+/* Remove the last entry in the additional section,
+   assuming it is an OPT pseudo RR of fixed size.
+   Returns the new message size if successful, or
+   zero if an inconsistency is detected.
+*/
+size_t remove_opt_pseudo_rr(dns_msg_t *ans, size_t sz)
+{
+	uint16_t acnt=ntohs(ans->hdr.arcount), type;
+	unsigned char *ptr;
+	/* First do some sanity checks. */
+	if(!(acnt>0 && sz >= sizeof(dns_hdr_t)+sizeof_opt_pseudo_rr))
+		return 0;
+	sz -= sizeof_opt_pseudo_rr;
+	ptr= ((unsigned char *)(&ans->hdr)) + sz;
+	if(*ptr++)
+		return 0;  /* Name must be empty. */
+	GETINT16(type,ptr);
+	if(type!=T_OPT)
+		return 0;  /* RR type must be OPT. */
+	/* Decrement arcount field in dns header. */
+	ans->hdr.arcount = htons(acnt-1);
+	return sz;
+}
+
 typedef struct rre_s {
 	unsigned short tp;
 	unsigned short tsz;		/* Size of tnm field */
@@ -1239,7 +1263,7 @@ static dns_msg_t *process_query(unsigned char *data, size_t *rlenp, unsigned *ud
 			}
 			if(numoptrr) {
 #if DEBUG>0
-				if(numoptrr>1) {
+				if(numoptrr!=1) {
 					DEBUG_MSG("Additional section in query contains %d OPT pseudo-RRs!\n", numoptrr);
 				}
 #endif

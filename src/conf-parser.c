@@ -1255,7 +1255,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	  SKIP_BLANKS(p);
 
 	  switch(option) {
-	    int tp;
+	    int tp; const char *tpname;
 	  case NAME: {
 	    unsigned char c_name[DNSNAMEBUFSIZE];
 	    if (c_cent.qname) {
@@ -1398,7 +1398,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	    break;
 	  case SPF:
 #if IS_CACHED_SPF
-	    tp=T_SPF;
+	    tp=T_SPF; tpname="spf";
 	    goto define_txt_rr;
 #else
 	    REPORT_ERROR("Missing support for caching SPF records in rr section");
@@ -1406,7 +1406,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 #endif
 	  case TXT:
 #if IS_CACHED_TXT
-	    tp=T_TXT;
+	    tp=T_TXT; tpname="txt";
 #else
 	    REPORT_ERROR("Missing support for caching TXT records in rr section");
 	    PARSERROR;
@@ -1442,17 +1442,17 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	      cp = rbuf+sz;
 	      n=scan_string(&p, charp (cp+1), 255, &scanstrerr);
 	      if(n==-1) {
-		REPORT_ERRORF("%s in %s= option", scanstrerr, getrrtpname(tp));
+		REPORT_ERRORF("%s in %s= option", scanstrerr, tpname);
 		PARSERROR;
 	      }
 	      if(n>255) {
-		REPORT_ERRORF("string longer than 255 bytes in %s= option", getrrtpname(tp));
+		REPORT_ERRORF("string longer than 255 bytes in %s= option", tpname);
 		PARSERROR;
 	      }
 	      *cp=n;
 	      sz += n+1;
 	      if(sz>0xffff) {
-		REPORT_ERRORF("data exceeds maximum size (65535 bytes) in %s= option", getrrtpname(tp));
+		REPORT_ERRORF("data exceeds maximum size (65535 bytes) in %s= option", tpname);
 		PARSERROR;
 	      }		
 	      SKIP_BLANKS(p);

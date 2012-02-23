@@ -46,5 +46,6 @@ int query_uptest(pdnsd_a *addr, int port, const unsigned char *name, time_t time
 int add_opt_pseudo_rr(dns_msg_t **ans, size_t *sz, size_t *allocsz,
 		      unsigned short udpsize, unsigned short rcode,
 		      unsigned short ednsver, unsigned short Zflags);
+size_t remove_opt_pseudo_rr(dns_msg_t *ans, size_t sz);
 
 #endif

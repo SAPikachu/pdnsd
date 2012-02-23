@@ -1224,33 +1224,62 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 			st->state=QS_DONE;
 			break;
 		}
-		else if (entp && (rcode==RC_SERVFAIL || rcode==RC_NOTSUPP || rcode==RC_REFUSED)) {
-			if (st->msg->hdr.rd && !st->recvbuf->ra) {
-				/* seems as if we have got no recursion available.
-				   We will have to do it by ourselves (sigh...) */
-				DEBUG_PDNSDA_MSG("Server %s returned error code: %s."
-						 " Maybe does not support recursive query?"
-						 " Querying non-recursively.\n",
-						 PDNSDA2STR(PDNSD_A(st)),get_ename(rcode));
-				st->msg->hdr.rd=0;
-				st->myrid=get_rand16();
-				st->msg->hdr.id=htons(st->myrid);
-				st->state=(USE_UDP(st)?QS_UDPINITIAL:QS_TCPINITIAL);
-				goto tryagain;
+		else if (entp) {
+			if(rcode==RC_SERVFAIL || rcode==RC_NOTSUPP || rcode==RC_REFUSED) {
+				if (st->msg->hdr.rd && !st->recvbuf->ra) {
+					/* seems as if we have got no recursion available.
+					   We will have to do it by ourselves (sigh...) */
+					DEBUG_PDNSDA_MSG("Server %s returned error code: %s."
+							 " Maybe does not support recursive query?"
+							 " Querying non-recursively.\n",
+							 PDNSDA2STR(PDNSD_A(st)),get_ename(rcode));
+					st->msg->hdr.rd=0;
+					goto resetstate_tryagain;
+				}
+				else if(rcode!=RC_SERVFAIL && st->edns_query && st->msg->hdr.arcount)
+					goto try_withoutedns;
+				else if (st->recvbuf->ancount && st->auth_serv==2) {
+					/* The name server returned a failure code,
+					   but the answer section is not empty,
+					   and the answer is from a server lower down the call chain.
+					   Use this answer tentatively (it may be the
+					   best we can get), but remember the failure. */
+					DEBUG_PDNSDA_MSG("Server %s returned error code: %s,"
+							 " but the answer section is not empty."
+							 " Using the answer tentatively.\n",
+							 PDNSDA2STR(PDNSD_A(st)),get_ename(rcode));
+					st->failed=1;
+					st->state=QS_DONE;
+					break;
+				}
 			}
-			else if (ntohs(st->recvbuf->ancount) && st->auth_serv==2) {
-				/* The name server returned a failure code,
-				   but the answer section is not empty,
-				   and the answer is from a server lower down the call chain.
-				   Use this answer tentatively (it may be the
-				   best we can get), but remember the failure. */
-				DEBUG_PDNSDA_MSG("Server %s returned error code: %s,"
-						 " but the answer section is not empty."
-						 " Using the answer tentatively.\n",
+			else if(rcode==RC_FORMAT && st->edns_query && st->msg->hdr.arcount)
+			try_withoutedns: {
+				size_t transl;
+				/* Perhaps the remote server barfs when the query
+				   contains an OPT RR in the additional section.
+				   Try again with an empty addtional section. */
+				DEBUG_PDNSDA_MSG("Server %s returned error code: %s."
+						 " Maybe cannot handle EDNS?"
+						 " Querying with empty additional section.\n",
 						 PDNSDA2STR(PDNSD_A(st)),get_ename(rcode));
-				st->failed=1;
-				st->state=QS_DONE;
-				break;
+				transl=remove_opt_pseudo_rr(st->msg,st->transl);
+				if(transl!=0 && st->msg->hdr.arcount==0) {
+					st->transl=transl;
+#ifndef NO_TCP_QUERIES
+					st->msg->len=htons(st->transl);
+#endif
+					st->edns_query=0;
+				resetstate_tryagain:
+					st->myrid=get_rand16();
+					st->msg->hdr.id=htons(st->myrid);
+					st->state=(USE_UDP(st)?QS_UDPINITIAL:QS_TCPINITIAL);
+					goto tryagain;
+				}
+				else {
+					DEBUG_PDNSDA_MSG("Internal error: could not remove additional section from query"
+							 " to server %s\n", PDNSDA2STR(PDNSD_A(st)));
+				}
 			}
 		}
 					
@@ -1387,19 +1416,21 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 			if (arcount) {
 				rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, arcount, 
 					    flags|CF_ADDITIONAL, queryts, &add_sec, &numoptrr, &ednsinfo);
+				if(numoptrr!=0) {
 #if DEBUG>0
-				if(numoptrr>1) {
-					DEBUG_MSG("Additional section in reply contains %d OPT pseudo-RRs!\n", numoptrr);
-				}
-				DEBUG_PDNSDA_MSG("Reply from %s contains OPT pseudosection: EDNS version = %u, udp size = %u, flag DO=%u\n",
-						 PDNSDA2STR(PDNSD_A(st)), ednsinfo.version, ednsinfo.udpsize, ednsinfo.do_flg);
+					if(numoptrr!=1) {
+						DEBUG_MSG("Additional section in reply contains %d OPT pseudo-RRs!\n", numoptrr);
+					}
+					DEBUG_PDNSDA_MSG("Reply from %s contains OPT pseudosection: EDNS version = %u, udp size = %u, flag DO=%u\n",
+							 PDNSDA2STR(PDNSD_A(st)), ednsinfo.version, ednsinfo.udpsize, ednsinfo.do_flg);
 #endif
-				if(rcode!=ednsinfo.rcode) {
-					DEBUG_PDNSDA_MSG("Reply from %s contains unexpected EDNS rcode %u (%s)!\n",
-							 PDNSDA2STR(PDNSD_A(st)), ednsinfo.rcode, get_ename(ednsinfo.rcode));
-					rcode=ednsinfo.rcode;
-					/* Mark as failed, but use answer tentatively. */
-					st->failed=1;
+					if(rcode!=ednsinfo.rcode) {
+						DEBUG_PDNSDA_MSG("Reply from %s contains unexpected EDNS rcode %u (%s)!\n",
+								 PDNSDA2STR(PDNSD_A(st)), ednsinfo.rcode, get_ename(ednsinfo.rcode));
+						rcode=ednsinfo.rcode;
+						/* Mark as failed, but use answer tentatively. */
+						st->failed=1;
+					}
 				}
 			}
 		}

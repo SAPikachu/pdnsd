@@ -1,3 +1,14 @@
+2012-02-21  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	If we have used EDNS in a query and the remote server answered
+	with rcode "format error", try again with the OPT pseudo-record
+	removed from the additional section of the query.
+
+	Also fixed a bug in p_exec_query() that caused pdnsd to behave
+	as if every reply with a non-empty additional section contained
+	an OPT record.
+
 2012-02-15  Paul A. Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_answer.c,src/helpers.c,src/helpers.h,src/icmp.c,
