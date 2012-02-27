@@ -1938,7 +1938,7 @@ src/conf-keywords.h
 src/conff.c, src/     The configuration handler functions and their prototypes.
 conff.h               The parser is called from here.
 
-src/consts.h          Some constants used by lexer, parser, config file handler
+src/consts.h          Some constants used by the parser, config file handler
                       functions and in the server status thread, among others.
 
                       Define dns message structures, constants, and some common
@@ -1993,7 +1993,7 @@ status.h              pdnsd's interface to pdnsd-ctl.
 -------------------------------------------------------------------------------
 
 Copyright (C) 2000, 2001 Thomas Moestl
-Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Paul A. Rombouts
+Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2012 Paul A. Rombouts
 
-Last revised: 30 January 2012 by Paul A. Rombouts
+Last revised: 27 February 2012 by Paul A. Rombouts
 

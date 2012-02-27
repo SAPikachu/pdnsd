@@ -204,8 +204,8 @@ The common software requirements for all supported systems are:
     the REALLY standard ones mv, cp, ln, rm, pwd, test, echo, cat, mkdir,
     chown, chmod, tar). In any standard Unix installation, this should be no
     problem.
-  * for hacking and building own packages, you might also need gzip, bzip2 and
-    rpm
+  * for hacking and building own packages, you might also need gzip, bzip2,
+    perl and rpmbuild
 
 
 Download
@@ -301,5 +301,5 @@ Eelco Vriezekolk.
 Thomas Moestl and Paul A. Rombouts
 
 
-Last revised: 10 February 2012 by Paul A. Rombouts
+Last revised: 27 February 2012 by Paul A. Rombouts
 

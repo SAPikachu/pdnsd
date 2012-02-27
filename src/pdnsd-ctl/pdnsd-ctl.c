@@ -107,6 +107,7 @@ static const char *const help_messages[] =
 	"Command-line options:\n"
 
 	"-c\tcachedir\n\tSet the cache directory to cachedir (must match pdnsd setting).\n"
+	"\tThe default is '" CACHEDIR "'.\n"
 	"-q\n\tBe quiet unless output is specified by command or something goes wrong.\n\n"
 
 	"Commands and needed arguments are:\n"
@@ -197,7 +198,8 @@ static const char *const help_messages[] =
 	"\tIf no arguments are provided, the cache is completely emptied,\n"
 	"\tfreeing all existing entries. This also removes \"local\" records,\n"
 	"\tas defined by the config file. To restore local records, run\n"
-	"\t\"pdnsd-ctl config\" immediately afterwards.\n"
+	"\t\"pdnsd-ctl config\" or \"pdnsd-ctl include filename\"  immediately\n"
+	"\tafterwards.\n"
 	"\tIf one or more arguments are provided, these are interpreted as \n"
 	"\tinclude/exclude names. If an argument starts with a '+' the name is to\n"
 	"\tbe included. If an argument starts with a '-' it is to be excluded.\n"
