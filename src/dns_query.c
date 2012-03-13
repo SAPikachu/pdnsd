@@ -176,6 +176,9 @@ typedef DYNAMIC_ARRAY(dns_cent_t) *dns_cent_array;
 
 /*
  * Take the data from an RR and add it to an array of cache entries.
+ * The return value will be RC_OK in case of success,
+ * RC_SERVFAIL in case the RR was rejected because of incorrect timestamp settings
+ * or RC_FATALERR in case of a memory allocation failure.
  */
 static int rr_to_cache(dns_cent_array *centa, unsigned char *oname, int tp, time_t ttl,
 		       unsigned dlen, void *data, unsigned flags, time_t queryts)
@@ -187,26 +190,26 @@ static int rr_to_cache(dns_cent_array *centa, unsigned char *oname, int tp, time
 	for(i=0;i<n;++i) {
 		cent=&DA_INDEX(*centa,i);
 		if (rhnicmp(cent->qname,oname)) {
-			/* We already have an entry in the array for this name. add_cent_rr is sufficient. 
+			/* We already have an entry in the array for this name. add_cent_rr is sufficient.
 			   However, make sure there are no double records. This is done by add_cent_rr */
 #ifdef RFC2181_ME_HARDER
-			rr_set_t rrset= getrrset(cent,tp);
+			rr_set_t *rrset= getrrset(cent,tp);
 			if (rrset && rrset->ttl!=ttl)
-				return 0;
+				return RC_SERVFAIL;
 #endif
-			return add_cent_rr(cent,tp,ttl,queryts,flags,dlen,data  DBG1);
+			return add_cent_rr(cent,tp,ttl,queryts,flags,dlen,data  DBG1)? RC_OK: RC_FATALERR;
 		}
 	}
 
 	/* Add a new entry to the array for this name. */
 	if (!(*centa=DA_GROW1_F(*centa,free_cent0)))
-		return 0;
+		return RC_FATALERR;
 	cent=&DA_LAST(*centa);
 	if (!init_cent(cent,oname, 0, 0, 0  DBG1)) {
 		*centa=DA_RESIZE(*centa,n);
-		return 0;
+		return RC_FATALERR;
 	}
-	return add_cent_rr(cent,tp,ttl,queryts,flags,dlen,data  DBG1);
+	return add_cent_rr(cent,tp,ttl,queryts,flags,dlen,data  DBG1)? RC_OK: RC_FATALERR;
 }
 
 /*
@@ -217,8 +220,12 @@ static int rr_to_cache(dns_cent_array *centa, unsigned char *oname, int tp, time
  * *numopt is incremented with the number of OPT pseudo RRs found (should be at most one).
  * The structure pointed to by ep is filled with the information of the first OPT pseudo RR found,
  * but only if *numopt was set to zero before the call.
+ *
+ * The return value will be either RC_OK (which indicates success),
+ * or one of the failure codes RC_FORMAT, RC_TRUNC, RC_SERVFAIL or RC_FATALERR
+ * (the latter indicates a memory allocation failure).
 */
-static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_t *lcnt, int recnum, 
+static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_t *lcnt, int recnum,
 		    unsigned flags, time_t queryts, dns_cent_array *centa, int *numopt, edns_info_t *ep)
 {
 	int rc;
@@ -304,8 +311,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 					return rc==RC_TRUNC?RC_FORMAT:rc;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, len, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, len, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 
@@ -330,8 +337,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #endif
@@ -360,8 +367,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 
@@ -386,8 +393,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=20;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #if IS_CACHED_AAAA
@@ -418,8 +425,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #endif
@@ -440,8 +447,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #endif
@@ -457,8 +464,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				if (slen > sizeof(db))
 					goto buffer_overflow;
 				memcpy(nptr,bptr,blcnt);
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #endif
@@ -497,8 +504,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 				slen+=len;
 				if (blcnt!=0)
 					goto trailing_junk;
-				if (!rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, slen, db, flags,queryts))!=RC_OK)
+					return rc;
 			}
 				break;
 #endif
@@ -536,8 +543,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 						memcpy(nptr,bptr,blcnt);
 						rc=rr_to_cache(centa, oname, type, ttl, slen, rbuf, flags,queryts);
 						free(rbuf);
-						if(!rc)
-							return RC_FATALERR;
+						if(rc!=RC_OK)
+							return rc;
 					}
 					break;
 				default:
@@ -569,8 +576,8 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 					memcpy(nptr,bptr,blcnt);
 					rc=rr_to_cache(centa, oname, type, ttl, slen, rbuf, flags,queryts);
 					free(rbuf);
-					if(!rc)
-						return RC_FATALERR;
+					if(rc!=RC_OK)
+						return rc;
 				}
 				break;
 #endif
@@ -592,15 +599,15 @@ static int rrs2cent(unsigned char *msg, size_t msgsz, unsigned char **ptr, size_
 					memcpy(nptr,bptr,blcnt);
 					rc=rr_to_cache(centa, oname, type, ttl, slen, rbuf, flags,queryts);
 					free(rbuf);
-					if(!rc)
-						return RC_FATALERR;
+					if(rc!=RC_OK)
+						return rc;
 				}
 				break;
 #endif
 			default:
 			default_case:
-				if (!rr_to_cache(centa, oname, type, ttl, rdlength, *ptr, flags,queryts))
-					return RC_FATALERR;
+				if ((rc=rr_to_cache(centa, oname, type, ttl, rdlength, *ptr, flags,queryts))!=RC_OK)
+					return rc;
 			}
 		}
 		else {
@@ -665,7 +672,7 @@ static int bind_socket(int s)
 			for(m=1; m<range; m <<= 1);
 			/* Convert into a bit mask. */
 			--m;
-		}		
+		}
 
 		for (try2=0,maxtry2=range*2;;) {
 			/* Get a random number < range, by rejecting those >= range. */
@@ -791,12 +798,12 @@ inline static void switch_to_tcp(query_stat_t *st)
  */
 
 /* The query state machine that is called from p_exec_query. This is called once for initialization (state
- * QS_TCPINITIAL or QS_UDPINITIAL is preset), and the state that it gives back may either be state QS_DONE, 
- * in which case it must return a return code other than -1 and is called no more for this server 
+ * QS_TCPINITIAL or QS_UDPINITIAL is preset), and the state that it gives back may either be state QS_DONE,
+ * in which case it must return a return code other than -1 and is called no more for this server
  * (except perhaps in UDP mode if TCP failed). If p_query_sm returns -1, then the state machine is in a read
- * or write state, and a function higher up the calling chain can setup a poll() or select() together with st->sock. 
- * If that poll/select is succesful for that socket, p_exec_query is called again and will hand over to p_query_sm. 
- * So, you can assume that read(), write() and recvfrom() will not block at the start of a state handling when you 
+ * or write state, and a function higher up the calling chain can setup a poll() or select() together with st->sock.
+ * If that poll/select is succesful for that socket, p_exec_query is called again and will hand over to p_query_sm.
+ * So, you can assume that read(), write() and recvfrom() will not block at the start of a state handling when you
  * have returned -1 (which means "call again") as last step of the last state handling. */
 static int p_query_sm(query_stat_t *st)
 {
@@ -1072,7 +1079,7 @@ static time_t soa_minimum(rr_bucket_t *rrs)
 
 /*
  * The function that will actually execute a query. It takes a state structure in st.
- * st->state must be set to QS_INITIAL before calling. 
+ * st->state must be set to QS_INITIAL before calling.
  * This may return one of the RC_* codes, where RC_OK indicates success, the other
  * RC codes indicate the appropriate errors. -1 is the return value that indicates that
  * you should call p_exec_query again with the same state for the result until you get
@@ -1282,7 +1289,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 				}
 			}
 		}
-					
+
 	discard_reply:
 		/* report failure */
 		pdnsd_free(st->msg);
@@ -1389,7 +1396,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		   storing the results in the arrays ans_sec,auth_sec and add_sec.
 		*/
 		numoptrr=0;
-		rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, ntohs(st->recvbuf->ancount), 
+		rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, ntohs(st->recvbuf->ancount),
 			    flags, queryts, &ans_sec, &numoptrr, &ednsinfo);
 #if DEBUG>0
 		if(numoptrr!=0) {
@@ -1400,7 +1407,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		if(rv==RC_OK) {
 			uint16_t nscount=ntohs(st->recvbuf->nscount);
 			if (nscount) {
-				rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, nscount, 
+				rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, nscount,
 					    flags|CF_ADDITIONAL, queryts, &auth_sec, &numoptrr, &ednsinfo);
 #if DEBUG>0
 				if(numoptrr!=0) {
@@ -1414,7 +1421,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		if(rv==RC_OK) {
 			uint16_t arcount=ntohs(st->recvbuf->arcount);
 			if (arcount) {
-				rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, arcount, 
+				rv=rrs2cent((unsigned char *)st->recvbuf, st->recvl, &rrp, &lcnt, arcount,
 					    flags|CF_ADDITIONAL, queryts, &add_sec, &numoptrr, &ednsinfo);
 				if(numoptrr!=0) {
 #if DEBUG>0
@@ -1438,6 +1445,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		if(!(rv==RC_OK || (rv==RC_TRUNC && st->recvbuf->tc))) {
 			DEBUG_PDNSDA_MSG(rv==RC_FORMAT?"Format error in reply from %s.\n":
 					 rv==RC_TRUNC?"Format error in reply from %s (message unexpectedly truncated).\n":
+					 rv==RC_SERVFAIL?"Inconsistent timestamps in reply from %s.\n":
 					 "Out of memory while processing reply from %s.\n",
 					 PDNSDA2STR(PDNSD_A(st)));
 			if(rv!=RC_FATALERR) rv=RC_SERVFAIL;
@@ -1456,7 +1464,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 					cent->c_ns=scnt;
 				if(getrrset_SOA(cent))
 					cent->c_soa=scnt;
-				
+
 				if((qtype>=QT_MIN && qtype<=QT_MAX) ||
 				   (/* (qtype>=T_MIN && qtype<=T_MAX) && */ getrrset(cent,qtype)) ||
 				   (n==1 && cent->num_rrs==0))
@@ -1639,7 +1647,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 								}
 								goto delegation_OK;
 							}
-						try_next_auth:;	
+						try_next_auth:;
 						}
 					}
 #if DEBUG>0
@@ -1696,7 +1704,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 					    ((cent=lookup_cent_array(auth_sec,
 								     (ent->c_soa!=cundef && ent->c_soa<(scnt=rhnsegcnt(name)))?
 								     skipsegs(name,scnt-ent->c_soa):
-								     name)) && 
+								     name)) &&
 					     (rrset=getrrset_SOA(cent)) && rrset->rrs))
 					{
 						time_t min=soa_minimum(rrset->rrs);
@@ -1862,7 +1870,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 
 /*
  * Cancel a query, freeing all resources. Any query state is valid as input (this may even be called
- * if a call to p_exec_query already returned error or success) 
+ * if a call to p_exec_query already returned error or success)
  */
 static void p_cancel_query(query_stat_t *st)
 {
@@ -2126,7 +2134,7 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 				 * the returned times are not always to be trusted upon */
 				ts=time(NULL);
 				do {
-					/* build poll/select sets, maintain time. 
+					/* build poll/select sets, maintain time.
 					 * If you do parallel queries, the highest timeout will be honored
 					 * also for the other servers when their timeout is exceeded and
 					 * the highest is not.
@@ -2267,7 +2275,7 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 							*/
 							if(nevents && (time(NULL)-ts0)<global_timeout)
 								continue;
-						} 
+						}
 #endif
 						break;
 					}
@@ -2721,7 +2729,7 @@ static int auth_ok(query_stat_array q, const unsigned char *name, int thint, dns
 				return -1;
 			}
 			retval=1;
-		skip_server:;						
+		skip_server:;
 		}
 #if DEBUG>0
 		if(!retval) {

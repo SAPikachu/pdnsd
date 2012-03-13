@@ -1,5 +1,5 @@
-	        pdnsd version 1.2.9 by Paul Rombouts
-                ====================================
+	        pdnsd version 1.2.9a by Paul Rombouts
+                =====================================
 
 This file describes the version of pdnsd that I maintain personally and am
 making available so other people can enjoy the latest features and fixes. Thomas
@@ -33,6 +33,9 @@ as well as some minor improvements in the resolver.
 Version 1.2.9 among other things supports many addtional RR types, uses data
 structures that should be more slightly more memory efficient and has support
 for EDNS, which allows DNS UDP messages to be larger than 512 bytes.
+Version 1.2.9a is a simple bugfix release that fixes a problem with compiling
+1.2.9 after configuring with --enable-strict-rfc2181. Unless you use this option
+to compile pdnsd, there is no need to upgrade from 1.2.9 to 1.2.9a.
 
 For instructions how to compile and install pdnsd see doc/html/doc.html or
 doc/txt/manual.txt. Note that I am no longer distributing a patch w.r.t. Thomas'

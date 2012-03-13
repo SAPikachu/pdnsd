@@ -715,6 +715,8 @@ static int add_cent_rr_int(dns_cent_t *cent, unsigned int idx, time_t ttl, time_
 /* Add an rr to a cache entry, giving the ttl, the data length, the rr type (tp)
  * and a pointer to the data. A record is allocated, and the data is copied into
  * it. Do this for all rrs in a cache entry.
+ * The return value will be 1 in case of success, or 0 in case of a memory allocation
+ * problem.
  */
 int add_cent_rr(dns_cent_t *cent, int type , time_t ttl, time_t ts, unsigned flags,
 		unsigned dlen, void *data  DBGPARAM)

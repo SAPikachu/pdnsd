@@ -3,7 +3,7 @@ versionfile = ../../version
 arch = i686
 arch2 = x86_64
 extver = _sl6
-system = Scientific Linux 6.1 system
+system = Scientific Linux 6.2 system
 
 doc: dl.html
 .PHONY: doc clean

@@ -1,3 +1,7 @@
+Version 1.2.9a fixes a bug in the 1.2.9 release that causes a build failure when
+pdnsd is configured with --enable-strict-rfc2181. Unless you use this option to
+compile pdnsd, there is no need to upgrade from 1.2.9 to 1.2.9a.
+
 Version 1.2.9 has support for many additional RR types, in particular those
 needed for DNSSEC (though no support for the DNSSEC protocol itself yet in
 pdnsd). Caching data structures are now more efficient when they only store the
