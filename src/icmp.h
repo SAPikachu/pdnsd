@@ -33,7 +33,7 @@ volatile extern int ping6_isocket;
 /* initialize a socket for pinging */
 void init_ping_socket(void);
 
-/* 
+/*
  * This is a classical ping routine.
  * timeout in 10ths of seconds, rep is the repetition count.
  */

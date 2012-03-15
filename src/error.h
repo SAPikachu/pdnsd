@@ -63,7 +63,7 @@ void log_message(int prior,const char *s, ...) printfunc(2, 3);
 /* Following are some ugly macros for debug messages that
  * should inhibit any code generation when DEBUG is not defined.
  * Of course, those messages could be done in a function, but I
- * want to save the overhead when DEBUG is not defined. 
+ * want to save the overhead when DEBUG is not defined.
  * debug_p needs to be defined (by including conff.h), or you
  * will get strange errors.
  * A macro call expands to a complete statement, so a semicolon after

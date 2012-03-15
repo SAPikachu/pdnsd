@@ -18,7 +18,7 @@
       <tr>
 	<td> <span class="small">
 	    <a href="index.html">pdnsd Homepage</a>
-	  </span></td> 
+	  </span></td>
 	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
@@ -32,7 +32,7 @@
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
-    </table> 
+    </table>
     <!--)notext-->
     <center><h1>pdnsd Documentation</h1></center>
     This is the &quot;official&quot; pdnsd documentation and reference written by
@@ -57,7 +57,7 @@
     <p class="indented"><code>rpm&nbsp;-i&nbsp;pdnsd-&lt;<i>version</i>&gt;.rpm</code></p>
     This should install pretty much everything automatically. The only thing left
     for you to do is adapt your configuration file (stored in <code>/etc/pdnsd.conf</code>)
-    according to your needs (see below). 
+    according to your needs (see below).
     In the Red Hat and SuSE RPMs, a start script is also installed; read the section
     <i>0.4, Start at Boot Time</i> about that.
 
@@ -230,7 +230,7 @@
 	  Change compilation target platform (default: autodetect; others: Linux, BSD, Cygwin).<br>
 	  autodetect will attempt to detect whether you are using Linux, *BSD or Cygwin and
 	  should normally be sufficient. If this does not work, try specifying
-	  your system manually (for the Darwin platform (Apple Mac OS X) specify BSD here). 
+	  your system manually (for the Darwin platform (Apple Mac OS X) specify BSD here).
 	</td>
       </tr>
       <tr>
@@ -362,7 +362,7 @@
 	</td>
 	<td>
 	  Disable the UDP source address discovery.<br>
-	  You need this only if you have trouble with messages saying 
+	  You need this only if you have trouble with messages saying
 	  &quot;could not discover udp source address&quot;.<br>
 	  For the Cygwin target, this option is disabled by default.
 	</td>
@@ -384,7 +384,7 @@
 	  Since version 1.2.9 this option is obsolete and ignored.
 	  It is now possible to configure for each RR type separately whether it is
 	  cacheable by pdnsd by editing the file <code>src/rr_types.in</code>.
-	  The comments in this file explain how to do this.	  
+	  The comments in this file explain how to do this.
 	</td>
       </tr>
       <tr>
@@ -457,7 +457,7 @@
 	  debugging your config files, so I recommend using the default (1).
 	  However, if you use pdnsd under heavy load, a  better strategy may be
 	  to compile one version of pdnsd without debug support (configured with
-	  <code>--with-debug=0</code>) for production use, and one version with 
+	  <code>--with-debug=0</code>) for production use, and one version with
 	  with debug support (e.g. <code>--with-debug=9</code>)
 	  for diagnostic purposes.
 	</td>
@@ -544,7 +544,7 @@
 	</td>
       </tr>
     </table>
-    Normally, you will need only <code>--prefix</code>, <code>--sysconfdir</code> and 
+    Normally, you will need only <code>--prefix</code>, <code>--sysconfdir</code> and
     <code>--with-distribution</code>.
     If you specify your distribution using <code>--with-distribution</code>, this has the
     following effects:
@@ -578,31 +578,31 @@
       <li> copies pdnsd-ctl to <code>$(prefix)/sbin/</code>
       <li> copies docs/pdnsd.conf.sample (a sample configuration) to the pdnsd config directory.
       <li> creates your cache directory if it is not there.
-	After installation, you should check the file permissions and create or edit 
+	After installation, you should check the file permissions and create or edit
 	<code>/etc/pdnsd.conf</code> to fit your needs (see below).
 	If you use the <a href="#runas"><code>run_as</code></a> option, please make sure that your
 	cache directory is owned by the user you specified with this option!
     </ol>
     You must be root for this installation!<br>
-    <b>Security notes:</b> <b><i>never</i></b> make the pdnsd cache directory 
-    writeable for untrusted users, or you will get several security holes: 
+    <b>Security notes:</b> <b><i>never</i></b> make the pdnsd cache directory
+    writeable for untrusted users, or you will get several security holes:
     the users might modify the cache contents, or plant dangerous links.<br>
     If you use a pidfile, you should be aware that you introduce security
     problems if you place the pidfile in a directory in a NFS filesystem that
-    is writeable for untrusted users. Generally, the pidfile directory 
+    is writeable for untrusted users. Generally, the pidfile directory
     (typically /var/run) should not be writeable for untrusted users.
     <br>
     <h4>0.3.4 Manual installation </h4>
     For a manual installation, you need to do the following steps:
     <ol>
       <li> Copy pdnsd and pdnsd-ctl from your build directory to an appropriate location (e.g. <code>/usr/sbin</code>).
-      <li> Copy <code>docs/pdnsd.conf</code> into the directory you want it to reside (<code>/etc</code> by default, 
+      <li> Copy <code>docs/pdnsd.conf</code> into the directory you want it to reside (<code>/etc</code> by default,
 	    and change it according to your needs (see below).
       <li> Create your caching directory; default is <code>/var/cache/pdnsd</code> (you may change this
 	in your <code>pdnsd.conf</code>); Permissions should be at max <code>rwxr-xr-x</code> (if you want to
 	protect your cache and status socket, make it <code>rwx------</code>).
     </ol>
-    Thats it! 
+    Thats it!
     <br>
 
     <h3>0.4 Start at boot time</h3>
@@ -617,7 +617,7 @@
 
     <h4>0.4.1 SuSE Linux startup</h4>
     <code>rc/SuSE/pdnsd</code> is a start script for SuSE Linux. It was tested for 6.? but should run on some
-    versions below. You can do <code>make install</code> as root in the <code>rc/SuSE</code> 
+    versions below. You can do <code>make install</code> as root in the <code>rc/SuSE</code>
     directory to install it, or you can install manually:<br>
     <table width="100%" bgcolor="#CCCCCC" cellpadding=5>
       <tr>
@@ -631,7 +631,7 @@
 	  <code>/sbin/init.d/rc2.d/</code> and create there the following two symlinks:<br>
 	  S11pdnsd to ../pdnsd (do <code>ln -s ../pdnsd S11pdnsd</code> in that dir) <br>
 	  K34pdnsd to ../pdnsd (do <code>ln -s ../pdnsd K34pdnsd</code> in that dir) <br>
-	  The numbers dictate the order different services are started and 
+	  The numbers dictate the order different services are started and
 	  might need to be modified. Then edit your <code>/etc/rc.config</code> file and
 	  add the line <code>START_PDNSD=yes</code> to start pdnsd at boot time.
 	</td>
@@ -646,12 +646,12 @@
     most is copyrighted by SuSE. They put it under the GPL, however, so
     the license stated in <a href="../../COPYING">COPYING</a> also applies to this script.
     There is NO WARRANTY OF ANY KIND on these scripts.
-    This is no official SuSE script, and SuSE naturally does NO support 
+    This is no official SuSE script, and SuSE naturally does NO support
     for it.
     <h4>0.4.2 Red Hat Linux startup</h4>
     <code>rc/Redhat/pdnsd</code> is a start script for Red Hat Linux. It was contibuted by Torben
     Janssen. <br>
-    This was tested for 6.1 but should run on 5.0+. You can do <code>make install</code> as root in the 
+    This was tested for 6.1 but should run on 5.0+. You can do <code>make install</code> as root in the
     <code>rc/Redhat</code> directory to install it, or you can install manually:<br>
     <table width="100%" bgcolor="#CCCCCC" cellpadding=5>
       <tr>
@@ -663,15 +663,15 @@
 	<td>
 	  For manual installation, copy <code>rc/Redhat/pdnsd</code> into <code>/etc/rc.d/init.d/</code><br>
 	  Then go to <code>/etc/rc.d/rc3.d</code> and create there the following symlink:<br>
-	  S78pdnsd -&gt; ../init.d/pdnsd 
+	  S78pdnsd -&gt; ../init.d/pdnsd
 	  (do <code>ln -f -s ../init.d/pdnsd S78pdnsd</code> in that dir)<br>
 
 	  Then go to <code>/etc/rc.d/rc0.d</code> and create there the following symlink:<br>
-	  K78pdnsd -&gt; ../init.d/pdnsd 
+	  K78pdnsd -&gt; ../init.d/pdnsd
 	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)<br>
 
 	  Then go to /etc/rc.d/rc6.d and create there the following symlink:<br>
-	  K78pdnsd -&gt; ../init.d/pdnsd 
+	  K78pdnsd -&gt; ../init.d/pdnsd
 	  (do <code>ln -f -s ../init.d/pdnsd K78pdnsd</code> in that dir)
 	</td>
       </tr>
@@ -807,8 +807,8 @@
     <code>(option1|option2|option3|...)</code><br>
     The constants <code>true|false</code> and <code>yes|no</code>
     are accepted as synonyms for the constants <code>on|off</code>.<br>
-    Comments may be enclosed in /* and */, nested comments are possible. If the 
-    # sign or two slashes (//) appear in the configuration file, everything from 
+    Comments may be enclosed in /* and */, nested comments are possible. If the
+    # sign or two slashes (//) appear in the configuration file, everything from
     these signs to the end of the current line is regarded as a comment and ignored.<br>
     There are examples for nearly all options in the sample config file.
     <br>
@@ -821,7 +821,7 @@
       <tr>
 	<td>
 	  <b><code>perm_cache=(<i>number</i>|off);</code></b><br>
-	  Switch the disk cache off or supply a maximum cache size in kB. If the disk 
+	  Switch the disk cache off or supply a maximum cache size in kB. If the disk
 	  cache is switched off, 8 bytes will still be written to disk.
 	  The memory cache is always 10kB larger than the file cache.
 	  This value is 2048 (2 MB) by default.
@@ -841,7 +841,7 @@
 	  Set the server port. This is especially useful when you want to start the
 	  server and are not root. Note that you may also not specify uptest=ping in
 	  the server section as non-root.<br>
-	  The default port is 53, the RFC-standard one. Note that you should only use 
+	  The default port is 53, the RFC-standard one. Note that you should only use
 	  non-standard ports when you only need clients on your machine to communicate
 	  with the server; others will probably fail if the try to contact the server
 	  on the basis of an NS record, since the A record that supplies the address for
@@ -909,14 +909,14 @@
 	  received, and a DNS error is returned in any case. The only exception from this
 	  is that local records (as specified in <code>rr</code> and <code>source</code>
 	  sections are still served normally.
-	  In general, you probably want to get cached entries even when the network is down, 
+	  In general, you probably want to get cached entries even when the network is down,
 	  so this defaults to off.
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>max_ttl=<i>timespec</i>;</code></b><br>
-	  This option sets the maximum time a record is held in cache. All dns 
+	  This option sets the maximum time a record is held in cache. All dns
 	  resource records have a time to live field that says for what period of time the
 	  record may be cached before it needs to be requeried. If this is more than the
 	  value given with <code>max_ttl</code>, this time to live value is set to <code>max_ttl</code>.
@@ -927,7 +927,7 @@
       <tr>
 	<td>
 	  <b><code>min_ttl=<i>timespec</i>;</code></b><br>
-	  This option sets the minimum time a record is held in cache. All dns 
+	  This option sets the minimum time a record is held in cache. All dns
 	  resource records have a time to live field that says for what period of time the
 	  record may be cached before it needs to be requeried. If this is less than the
 	  value given with <code>min_ttl</code>, this time to live value is set to <code>min_ttl</code>.
@@ -977,7 +977,7 @@
 	  A little more details: after reading the config file, becoming a daemon (if specified) and starting
 	  the server status thread, the main thread changes its gid and uid, as do all newly created threads
 	  thereafter. By taking another uid and gid, those threads run with the privileges of the
-	  specified user. 
+	  specified user.
 	  Under Linux and FreeBSD, the server status thread runs with the original privileges only when the strict_setuid option
 	  is set to <code>off</code> (see below, <code>on</code> by default), because these may be needed
 	  for exec uptests. The manager thread also retains its original privileges in this case.
@@ -990,7 +990,7 @@
 	<td>
 	  <b><code>strict_setuid=(on|off);</code></b><br>
 	  When used together with the <code>run_as</code> option, this option lets you specify that all threads of the
-	  program will run with the privileges of the <code>run_as</code> user. This provides higher security than 
+	  program will run with the privileges of the <code>run_as</code> user. This provides higher security than
 	  the normal <code>run_as</code>
 	  option, but is not always possible. See the <a href="#runas"><code>run_as</code></a> option for further discussion.<br>
 	  This option is on by default.<br>
@@ -1000,23 +1000,23 @@
       <tr>
 	<td>
 	  <b><code>paranoid=(on|off);</code></b><br>
-	  Normally, pdnsd queries all servers in recursive mode (i.e. instructs servers to query other servers themselves 
+	  Normally, pdnsd queries all servers in recursive mode (i.e. instructs servers to query other servers themselves
 	  if possible,
 	  and to give back answers for domains that may not be in its authority), and accepts additional records with information
 	  for servers that are not in the authority of the queried server. This opens the possibility of so-called cache poisoning:
 	  a malicious attacker might set up a dns server that, when queried, returns forged additional records. This way, he might
-	  replace trusted servers with his own ones by making your dns server return bad IP addresses. This option protects 
+	  replace trusted servers with his own ones by making your dns server return bad IP addresses. This option protects
 	  you from cache poisoning by rejecting additional records
-	  that do not describe domains in the queried servers authority space and not doing recursive queries any more. 
+	  that do not describe domains in the queried servers authority space and not doing recursive queries any more.
 	  An exception
 	  to this rule are the servers you specify in your config file, which are trusted.<br>
-	  The penalty is a possible performance decrease, in particular, more queries might be necessary for the same 
+	  The penalty is a possible performance decrease, in particular, more queries might be necessary for the same
 	  operation.<br>
-	  You should also notice that there may be other similar security problems, which are essentially problems of 
+	  You should also notice that there may be other similar security problems, which are essentially problems of
 	  the DNS, i.e.
-	  any &quot;traditional&quot; server has them (the DNS security extensions solve these problems, but are not widely 
+	  any &quot;traditional&quot; server has them (the DNS security extensions solve these problems, but are not widely
 	  supported).
-	  One of this vulnerabilities is that an attacker may bombard you with forged answers in hopes that one may match a 
+	  One of this vulnerabilities is that an attacker may bombard you with forged answers in hopes that one may match a
 	  query
 	  you have done. If you have done such a query, one in 65536 forged packets will be succesful (i.e. an average packet
 	  count of 32768 is needed for that attack). pdnsd can use TCP for queries,
@@ -1303,9 +1303,9 @@
 
     <br>
     <h3>2.1.2 <a name="serversection"><code>server</code> Section</a></h3>
-    Each server section specifies a set of name servers that pdnsd should try to get 
+    Each server section specifies a set of name servers that pdnsd should try to get
     resource records or authoritative name server information from. The servers are
-    queried in the order of their appearance (or parallel to a limited extend). 
+    queried in the order of their appearance (or parallel to a limited extend).
     If one fails, the next one is taken and so on.<br>
     You probably want to specify  the dns server in your LAN, the caching dns servers
     of your internet provider or even a list of root servers in one or more server sections.<br>
@@ -1388,14 +1388,14 @@
 	    <li><b><code>dev</code></b> and <b><code>diald</code></b>: Perform an <code>if</code> uptest, and, if that
 	      was succesful, additionally check whether a program is running that
 	      has locked a given (modem-) device. The needed parameters are an interface (specified as for the <code>if</code>
-	      uptest, e.g. <code>&quot;ppp0&quot;</code>) and a device relative to <code>/dev</code> (e.g. 
+	      uptest, e.g. <code>&quot;ppp0&quot;</code>) and a device relative to <code>/dev</code> (e.g.
 	      <code>&quot;modem&quot;</code> for <code>/dev/modem</code> specified using the <code>device=</code> option.
-	      pdnsd will then look for a pid file for the given interface in <code>/var/lock</code> (e.g. 
+	      pdnsd will then look for a pid file for the given interface in <code>/var/lock</code> (e.g.
 	      <code>/var/run/ppp0.pid</code>) and for a lockfile for the given device (e.g. <code>/var/lock/LCK..modem</code>),
 	      and then test whether the locking process is the process that created the pid file and this process is still
 	      alive. If this is the case, the normal <code>if</code> uptest is executed for the given interface.<br>
 	      The <code>dev</code> option is for pppd dial-on-demand, <code>diald</code> is the same for diald users.
-	    <li><b><code>exec</code></b>: Executes a given command in the <code>/bin/sh</code> shell 
+	    <li><b><code>exec</code></b>: Executes a given command in the <code>/bin/sh</code> shell
 	      (as <code>/bin/sh -c &lt;command&gt;</code>)
 	      and evaluates the result (the return code of the last command) in the shell's way of handling return codes,
 	      i.e. 0 indicates success, all other indicate failure. The shell's process name will be
@@ -1415,7 +1415,7 @@
 	  <p>
 	    The default value is <b><code>none</code></b>.
 	    <br><br>
-	    <b>NOTE</b>: If you use on-demand dialing, use <code>none</code>, <code>if</code>, 
+	    <b>NOTE</b>: If you use on-demand dialing, use <code>none</code>, <code>if</code>,
 	    <code>dev</code>, <code>diald</code> or <code>exec</code>,
 	    since <code>ping</code> or <code>query</code> will send packets
 	    in the specified interval and the interface will thus frequently dial!
@@ -1455,7 +1455,7 @@
 	  or<br>
 	  <b><code>uptest_cmd=<i>string</i>;</code></b><br>
 	  Sets the command for the uptest=exec function to the first string.
-	  If the second string is given, it specifies a user with whose user 
+	  If the second string is given, it specifies a user with whose user
 	  id and primary group id the command is executed.<br>
 	  This is especially useful if you are executing the server as root,
 	  but do not want the uptest to be performed with root privileges.
@@ -1474,7 +1474,7 @@
       <tr>
 	<td>
 	  <b><code>interval=(<i>timespec</i>|onquery|ontimeout);</code></b><br>
-	  Sets the interval for the server up-test. The default is 900 seconds; 
+	  Sets the interval for the server up-test. The default is 900 seconds;
 	  however, a test is forced when a query times out and the timestamp is reset then.<br>
 	  If you specify <code>onquery</code> instead of a timeout, the interface will be
 	  tested before every query. This is to prevent automatically dialing
@@ -1487,7 +1487,7 @@
 	  (btw, it doesn't make sense anyway).
 	  Note also that using <code>onquery</code> is no guarantee that the interface
 	  will not be used. When another (reachable) dns server tells pdnsd
-	  to query a third dns server for data, pdnsd will do that and has 
+	  to query a third dns server for data, pdnsd will do that and has
 	  no means of checking whether this will dial up the interface or not.
 	  This however should be a rare situation.<br>
 	  <em>New in version 1.2.3:</em>
@@ -1533,10 +1533,10 @@
       <tr>
 	<td>
 	  <b><code>purge_cache=(on|off);</code></b><br>
-	  In every fetched dns record, there is a cache timeout given, which 
-	  specifies how long the fetched data may be cached until it needs to be 
-	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the stale records are not purged 
-	  (unless the cache size would be exceeded, in this case the oldest records are purged). 
+	  In every fetched dns record, there is a cache timeout given, which
+	  specifies how long the fetched data may be cached until it needs to be
+	  reloaded. If <code>purge_cache</code> is set to <code>off</code>, the stale records are not purged
+	  (unless the cache size would be exceeded, in this case the oldest records are purged).
 	  Instead, they are still served if they cannot succesfully be
 	  updated (e.g. because all servers are down).<br>
 	  Default is <code>off</code>.
@@ -1557,7 +1557,7 @@
 	  the advantage that usually less cache space is used and the query is
 	  usually faster. In 90% of the cases, only address (A) records are needed
 	  anyway. If switched off, pdnsd will always cache all data about a host
-	  it can find and will specifically ask for all available records 
+	  it can find and will specifically ask for all available records
 	  (well, at least it is a good approximation for what it really does ;-)
 	  This will of course increase the answer packet sizes.<br>
 	  Some buggy name servers may not deliver CNAME records when not asked for
@@ -1720,7 +1720,7 @@
 	   If no server is available for a queried domain, pdnsd will return an error message
 	   to the client that usually will stop the client's attempts to resolve a specific
 	   domain from this server (the libc resolver will e.g. return an error to the application that
-	   tried to resolve the domain if no other servers are available in the <code>resolv.conf</code>). 
+	   tried to resolve the domain if no other servers are available in the <code>resolv.conf</code>).
 	   This may be of use sometimes.<br>
 	   <em>Note</em>: the <code>simple_only</code> and <code>fqdn_only</code> constants
 	   were added by Paul Rombouts.
@@ -1740,7 +1740,7 @@
 	  the name given as string, the server is queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
 	  If the given name starts with a dot, the whole subdomain
-	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code> 
+	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code>
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to include all subdomains, but not the domain of the given
@@ -1762,7 +1762,7 @@
 	  the name given as string, the server is not queried if this was the first matching rule
 	  (see also the entry for <code>policy</code>).<br>
 	  If the given name starts with a dot, the whole subdomain
-	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code> 
+	  of the given name including the one of that name is matched, e.g. <code>&quot;.foo.bar.&quot;</code>
 	  will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.<br>
 	  If it does not start in a dot, only exactly the given name (ignoring the case, of course)
 	  will be matched (hint: if you want to exclude all subdomains, but not the domain of the given
@@ -1875,9 +1875,9 @@
       <tr>
 	<td>
 	  <b><code>ptr=<i>string</i>;</code></b><br>
-	  Defines a PTR (domain name pointer) record. The argument is a host name in 
+	  Defines a PTR (domain name pointer) record. The argument is a host name in
 	  dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
-	  you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something 
+	  you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something
 	  like the following sections:<br>
 	  <pre>
     rr {
@@ -1897,11 +1897,11 @@
 	  with <code>reverse=on</code>.<br>
 	  There is something special about the name in the second section:
 	  when a resolver wants to get a host name from an internet address,
-	  it composes an address that is built of the IP address in reverse byte order 
-	  (<code>1.0.0.127</code> instead of <code>127.0.0.1</code>) where each byte of the adress written 
+	  it composes an address that is built of the IP address in reverse byte order
+	  (<code>1.0.0.127</code> instead of <code>127.0.0.1</code>) where each byte of the adress written
 	  as number constitutes a sub-domain under the domain <code>in-addr.arpa.</code> <br>
 	  So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (e.g. <code>1.2.3.4</code>),
-	  reverse the byte order (<code>4.3.2.1</code>) and append in-addr.arpa. (<code>4.3.2.1.in-addr.arpa.</code>) 
+	  reverse the byte order (<code>4.3.2.1</code>) and append in-addr.arpa. (<code>4.3.2.1.in-addr.arpa.</code>)
 	  Then, define an <code>rr</code> section giving this address as <code>name</code> and the domain name corresponding to
 	  that ip in the <code>ptr</code> option.
 	</td>
@@ -1960,21 +1960,21 @@
       <tr>
 	<td>
 	  <b><code>soa=<i>string</i>,<i>string</i>,<i>number</i>,<i>timespec</i>,<i>timespec</i>,<i>timespec</i>,<i>timespec</i>;</code></b><br>
-	  This defines a soa (start of authority) record. The first string is the 
-	  domain name of the server and should be equal to the name you specified as 
+	  This defines a soa (start of authority) record. The first string is the
+	  domain name of the server and should be equal to the name you specified as
 	  owner. <br>
-	  The second string specifies the email address of the maintainer of the name 
-	  server. It is also specified as a domain name, so you will have to replace the 
+	  The second string specifies the email address of the maintainer of the name
+	  server. It is also specified as a domain name, so you will have to replace the
 	  @ sign in the name with a dot (.) to get the name you have to specify here.
-	  The next parameter (the first number) is the serial number of the record. You 
+	  The next parameter (the first number) is the serial number of the record. You
 	  should increment this number if you change the record.<br>
 	  The 4th parameter is the refresh timeout. It specifies after what amount
 	  of time a caching server should attempt to refresh the cached record.<br>
-	  The 5th parameter specifies a time after which a caching server should attempt 
+	  The 5th parameter specifies a time after which a caching server should attempt
 	  to refresh the record after a refresh failure.<br>
 	  The 6th parameter defines the timeout after which a cached record expires if it
 	  has not been refreshed.<br>
-	  The 7th parameter is the ttl that is specified in every rr and should be the 
+	  The 7th parameter is the ttl that is specified in every rr and should be the
 	  same as given with the ttl option (if you do not specify a ttl, use the default 86400).
 	</td>
       </tr>
@@ -1988,7 +1988,7 @@
     </table>
     <br>
     <h3>2.1.4 <a name="negsection"><code>neg</code> Section</a></h3>
-    Every <code>neg</code> section specifies a dns resource record or a dns domain that should be 
+    Every <code>neg</code> section specifies a dns resource record or a dns domain that should be
     cached negatively locally. Queries for negatively cached records are always answered
     immediatley with an error or an empty answer without querying other hosts as long
     as the record is valid. The records defined with <code>neg</code> sections remain
@@ -2020,7 +2020,7 @@
 	<td>
 	  <b><code>name=<i>string</i>;</code></b><br>
 	  Specifies the name of the domain for which negative cache entries are created.
-          This option must be specified before the types option. 
+          This option must be specified before the types option.
 	  Names are interpreted as absolute domain names (i.e. pdnsd
 	  assumes they end in the root domain).
 	  You need to specify domain names in dotted notation (example venera.isi.edu.).<br>
@@ -2041,11 +2041,11 @@
 	<td>
 	  <b><code>types=(domain|<i>rr_type</i>[,<i>rr_type</i>[,<i>rr_type</i>[,...]]]);</code></b><br>
 	  Specifies what is to be cached negatively: <code>domain</code> will cache the whole
-	  domain negatively; alternatively, you can specify a comma-separated list of RR types 
+	  domain negatively; alternatively, you can specify a comma-separated list of RR types
 	  which are to be cached negatively. You may specify multiple types options, but
 	  <code>domain</code> and the RR types are mutually exclusive.<br>
 	  The RR types are specified using their official names from the RFC's in capitals,
-	  e.g. <code>A</code>, <code>CNAME</code>, <code>NS</code>, <code>PTR</code>, <code>MX</code>, 
+	  e.g. <code>A</code>, <code>CNAME</code>, <code>NS</code>, <code>PTR</code>, <code>MX</code>,
 	  <code>AAAA</code>, ...<br>
 	  The command <code>pdnsd-ctl&nbsp;list-rrtypes</code> will give you a complete list
 	  of those types. <a href="#pdnsdctl"><code>pdnsd-ctl</code></a> is built along with pdnsd
@@ -2056,24 +2056,24 @@
     <br>
     <h3>2.1.5 <a name="sourcesection"><code>source</code> Section</a></h3>
     Every source section allows you to let pdnsd read the records from a file in an
-    <code>/etc/hosts</code>-like format. pdnsd will generate records to resolve the entries 
-    address from its host name and vice versa for every entry in the file. This is 
+    <code>/etc/hosts</code>-like format. pdnsd will generate records to resolve the entries
+    address from its host name and vice versa for every entry in the file. This is
     normally easier than defining an rr for every of your addresses, since localhost
     and your other FQDNs are normally given in <code>/etc/hosts</code>.<br>
-    The accepted format is as follows: The #-sign initiates a comment, the rest of 
-    the line from the first occurence of this character on is ignored. Empty lines 
+    The accepted format is as follows: The #-sign initiates a comment, the rest of
+    the line from the first occurence of this character on is ignored. Empty lines
     are tolerated.<br>
     The first entry on a line (predeceded by an arbitrary number of tabs and spaces)
-    is the IP in dotted notation, the second entry on one line (separated by the 
-    first by an arbitrary number of tabs and spaces) is the FQDN (fully qualified 
-    domain name) for that ip. The rest of the line is ignored by default (in the original 
+    is the IP in dotted notation, the second entry on one line (separated by the
+    first by an arbitrary number of tabs and spaces) is the FQDN (fully qualified
+    domain name) for that ip. The rest of the line is ignored by default (in the original
     <code>/etc/hosts</code>, it may contain information not needed by pdnsd).
     <br><br>
     <table width="100%" bgcolor="#CCCCCC" cellpadding=10>
       <tr>
 	<td>
 	  <b><code>owner=<i>string</i>;</code></b><br>
-	  Specifies the name of the host pdnsd runs on and that are specified in dns 
+	  Specifies the name of the host pdnsd runs on and that are specified in dns
 	  answers (specifically, nameserver records).
 	  Must be specified before any file entries.<br>
 	  Names are interpreted as absolute domain names (i.e. pdnsd
@@ -2088,15 +2088,15 @@
       <tr>
 	<td>
 	  <b><code>ttl=<i>timespec</i>;</code></b><br>
-	  Specifies the ttl (time to live) for all resource records in this section after 
+	  Specifies the ttl (time to live) for all resource records in this section after
 	  this entry. This may be redefined. The default is 86400 seconds (=1 day).
 	</td>
       </tr>
       <tr>
 	<td>
 	  <b><code>file=<i>string</i>;</code></b><br>
-	  The string specifies a file name. For every file entry in a source section, 
-	  pdnsd will try to load the given file as described above. Failure is indicated 
+	  The string specifies a file name. For every file entry in a source section,
+	  pdnsd will try to load the given file as described above. Failure is indicated
 	  only when the file cannot be opened, malformed entries will be ignored.
 	</td>
       </tr>
@@ -2134,7 +2134,7 @@
       <tr>
 	<td>
 	  <b><code>file=<i>string</i>;</code></b><br>
-	  The string specifies a file name. For every <code>file</code> option in an include section, 
+	  The string specifies a file name. For every <code>file</code> option in an include section,
 	  pdnsd will parse the given file as described above. The file may contain include sections itself,
 	  but as a precaution pdnsd checks that a certain maximum depth is not exceeded to guard against
 	  the possibility of infinite recursion.
@@ -2377,7 +2377,7 @@
 	  Print information stored in the cache about <i>name</i>.
 	  If <i>name</i> begins with a dot and is not the root domain, information about
 	  the  names  in the cache ending in <i>name</i> (including <i>name</i> without
-	  the leading dot) will be printed. 
+	  the leading dot) will be printed.
 	  If <i>name</i> is not specified, information about all the names in the cache will
 	  be printed.<br>
 	  For each RR record the time and date that this record has been added to the cache

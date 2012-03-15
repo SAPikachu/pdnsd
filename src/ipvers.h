@@ -33,14 +33,14 @@
 
 #if defined(ENABLE_IPV4) && !defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4
-#  undef DEFAULT_IPV4 
+#  undef DEFAULT_IPV4
 # endif
 # define DEFAULT_IPV4 1
 #endif
 
 #if !defined(ENABLE_IPV4) && defined(ENABLE_IPV6)
 # ifdef DEFAULT_IPV4
-#  undef DEFAULT_IPV4 
+#  undef DEFAULT_IPV4
 # endif
 # define DEFAULT_IPV4 0
 #endif
@@ -132,7 +132,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 
 #if defined(ENABLE_IPV4) && !defined(SIN_LEN) && (TARGET==TARGET_BSD)
 # define SIN_LEN
-#endif 
+#endif
 
 #if defined(ENABLE_IPV6) && (TARGET==TARGET_LINUX)
 
@@ -153,7 +153,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
  * at the time of writing. Should this change, define a appropriate flowinfo here. */
 #define IPV6_FLOWINFO 0
 
-/* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine. 
+/* There does not seem to be a function/macro to generate IPv6-mapped IPv4-Adresses. So here comes mine.
  * Pass an in_addr* and an in6_addr* */
 #define IPV6_MAPIPV4(a,b) {((uint32_t *)(b))[3]=(a)->s_addr;		\
 			   ((uint32_t *)(b))[2]=htonl(0xffff);		\
@@ -169,7 +169,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 #define PDNSD_AF_INET SEL_IPVER(AF_INET,AF_INET6)
 
 /* This is to compare two addresses. This is a macro because it may change due to the more complex IPv6 adressing architecture
- * (there are, for example, two equivalent addresses of the loopback device) 
+ * (there are, for example, two equivalent addresses of the loopback device)
  * Pass this two addresses as in_addr or in6_addr. pdnsd_a is ok (it is a union) */
 
 #define ADDR_EQUIV4(a,b) (((struct in_addr *)(a))->s_addr==((struct in_addr *)(b))->s_addr)
@@ -193,7 +193,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 				((((uint32_t *)(a))[2]^((uint32_t *)(b))[2])&((uint32_t *)(m))[2])==0 && \
 				((((uint32_t *)(a))[3]^((uint32_t *)(b))[3])&((uint32_t *)(m))[3])==0)
 
-/* See if we need 4.4BSD style sockaddr_* structures and define some macros that set the length field. 
+/* See if we need 4.4BSD style sockaddr_* structures and define some macros that set the length field.
  * The non-4.4BSD behaviour is the only one that is POSIX-conformant.*/
 #if defined(SIN6_LEN) || defined(SIN_LEN)
 # define BSD44_SOCKA
@@ -222,7 +222,7 @@ __cmsg_nxthdr (struct msghdr *__mhdr, struct cmsghdr *__cmsg) __THROW
 # ifndef IPV6_RECVPKTINFO
 /* This appears to be needed e.g. on Darwin (Mac OS X). */
 #  define IPV6_RECVPKTINFO IPV6_PKTINFO
-# endif 
+# endif
 #endif
 
 typedef union {

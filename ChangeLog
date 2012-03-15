@@ -1,7 +1,25 @@
+2012-03-16  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	When adding RR records one by one to a cache entry using add_cent_rr(),
+	use the smallest ttl value in case of conflicting ttls.
+	Code for local/nonlocal conflict resolution has been taken out of
+	add_cent_rr_int() and put into add_cent_rr() and cr_check_add()
+	which should be slightly more efficient.
+
+2012-03-15  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	Enforcing strict RFC 2181 compliance by rejecting all the answers
+	with inconsistent ttl timestamps can cause undesirable resolve failures.
+	I have tried to implement a more compromising solution, whereby
+	inconsistent answers that should be normally rejected are still never
+	cached, but are nevertheless used as intermediary or temporary results
+	if all else fails.
+
 2012-03-13  Paul A. Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c
-
 	Fixed a typo in rr_to_cache() that caused pdnsd to fail to compile when
 	configured with the --enable-strict-rfc2181 option.
 	Thanks to Gonzalo L. R. for reporting this problem.

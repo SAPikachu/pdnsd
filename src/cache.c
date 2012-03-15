@@ -350,7 +350,7 @@ static void yield_lock_cache_rw()
 		pthread_cond_broadcast(&r_cond); /* let 'em all read */
 	pthread_mutex_unlock(&lock_mutex);
 
-	usleep_r(1000); 
+	usleep_r(1000);
 
 	/* Now try to get the lock back again */
 	pthread_mutex_lock(&lock_mutex);
@@ -482,7 +482,7 @@ void init_cache_lock()
 }
 #endif
 
-/* Empty the cache, freeing all entries that match the include/exclude list. */ 
+/* Empty the cache, freeing all entries that match the include/exclude list. */
 int empty_cache(slist_array sla)
 {
 	int i;
@@ -670,10 +670,7 @@ static int add_cent_rr_int(dns_cent_t *cent, unsigned int idx, time_t ttl, time_
 {
 	rr_bucket_t *rr;
 	rr_set_t *rrset;
-	if ((cent->flags&DF_LOCAL) && !(flags&CF_LOCAL)) {
-		/* ignore. Local has precedence. */
-		return 1;
-	}
+
 	if (!(rr=create_rr(dlen,data  DBGARG)))
 		return 0;
 	if(!(rtail && *rtail)) {
@@ -712,29 +709,38 @@ static int add_cent_rr_int(dns_cent_t *cent, unsigned int idx, time_t ttl, time_
 }
 
 
-/* Add an rr to a cache entry, giving the ttl, the data length, the rr type (tp)
+/* Add an rr to a cache entry, giving the ttl, the data length, the rr type
  * and a pointer to the data. A record is allocated, and the data is copied into
  * it. Do this for all rrs in a cache entry.
  * The return value will be 1 in case of success, or 0 in case of a memory allocation
  * problem.
  */
-int add_cent_rr(dns_cent_t *cent, int type , time_t ttl, time_t ts, unsigned flags,
+int add_cent_rr(dns_cent_t *cent, int type, time_t ttl, time_t ts, unsigned flags,
 		unsigned dlen, void *data  DBGPARAM)
 {
-	int tpi = type - T_MIN;
+	int tpi;
 	unsigned int idx;
 	rr_set_t *rrset;
-	rr_bucket_t *rtail;
+	rr_bucket_t *rtail, *rrb;
 
+	if ((cent->flags&DF_LOCAL) && !(flags&CF_LOCAL))
+		return 1;  /* ignore. Local has precedence. */
+
+	tpi = type - T_MIN;
 	PDNSD_ASSERT(tpi>=0 && tpi<T_NUM, "add_cent_rr: rr type value out of range");
 	idx= rrlkuptab[tpi];
 	PDNSD_ASSERT(idx < NRRTOT, "add_cent_rr: illegal rr type value for caching");
 	rrset= RRARR_INDEX_TESTEXT(cent,idx);
 	rtail=NULL;
 
-	/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
 	if (rrset) {
-		rr_bucket_t *rrb=rrset->rrs;
+		if(ttl<rrset->ttl)
+			/* The ttl timestamps should be identical.
+			   In case they are not, we will use the smallest one. */
+			rrset->ttl= ttl;
+
+		/* OK, some stupid nameservers feel inclined to return the same address twice. Grmbl... */
+		rrb=rrset->rrs;
 		while (rrb) {
 			if (rrb->rdlen==dlen && memcmp(rrb->data,data,dlen)==0)
 				return 1;
@@ -925,7 +931,7 @@ static int insert_rrl(rr_set_t *rrs, dns_cent_t *cent, int idx)
 		le->next=ne;
 	finish:;
 	}
-	else { 
+	else {
 		/* simply append at the end, sorting will be done later with a more efficient algorithm. */
 		ne->prev=rrset_l_tail;
 		if(rrset_l_tail)
@@ -995,7 +1001,7 @@ static rr_lent_t *listmerge(rr_lent_t *p, rr_lent_t *q)
 		}
 
 		return l;
-	}      
+	}
 }
 
 /* Sort the rr_l list using merge sort, which can be more efficient than insertion sort used by rr_insert().
@@ -1173,7 +1179,7 @@ dns_cent_t *copy_cent(dns_cent_t *cent  DBGPARAM)
  * This will either delete the whole rrset, or will leave it as a whole (RFC2181 seems to
  * go in that direction)
  * This was pretty large once upon a time ;-), but now, since we operate in rrsets, was
- * shrinked drastically.
+ * shrunk drastically.
  * If test is zero and the record is in the cache, we need rw-locks applied.
  * If test is nonzero, nothing will actually be deleted.
  * Substracts the size of the freed memory from cache_size (if test is zero).
@@ -1434,7 +1440,7 @@ void read_disk_cache()
 				log_warn_read_error(f,"cache TTL and timestamp");
 				goto free_data_fclose;
 			}
-		}			
+		}
 		if (fe.qlen) {
 			int i;
 			/* Because of its type qlen should be <=255. */
@@ -1584,7 +1590,7 @@ static int write_rrset(int tp, rr_set_t *rrs, FILE *f)
  * Write cache to disk on termination. The hash table is lost and needs to be regenerated
  * on reload.
  *
- * The locks are not very fine grained here, but I don't think this needs fixing as this routine 
+ * The locks are not very fine grained here, but I don't think this needs fixing as this routine
  * is only called on exit.
  *
  */
@@ -1752,33 +1758,37 @@ void write_disk_cache()
  */
 static int cr_check_add(dns_cent_t *cent, int idx, time_t ttl, time_t ts, unsigned flags)
 {
-	time_t nttl = 0;
-	const struct rr_infos *rri = &rr_info[idx];
+	time_t nttl;
+	const struct rr_infos *rri;
 
 	if (flags & CF_NEGATIVE)
 		return 1;		/* no constraints here. */
 
-	if (!(flags & CF_LOCAL)) {
-		int i, ilim=RRARR_LEN(cent), ncf = 0, olda = 0;
+	nttl = 0;
+	rri = &rr_info[idx];
 
+	if (!(flags & CF_LOCAL)) {
+		int i, ilim, ncf;
+
+		if(cent->flags & DF_LOCAL)
+			return 0;   /* Local has precedence. */
+
+		ncf = 0; ilim = RRARR_LEN(cent);
 		for (i = 0; i < ilim; ++i) {
 			rr_set_t *rrs= RRARR_INDEX(cent,i);
 			/* Should be symmetric; check both ways anyway. */
 			if (rrs && !(rrs->flags & CF_NEGATIVE) &&
 			    ((rri->class & rr_info[i].excludes) ||
-			    (rri->excludes & rr_info[i].class))) {
+			    (rri->excludes & rr_info[i].class)))
+			{
 				time_t rttl;
+				if (rrs->flags & CF_LOCAL)
+					return 0;   /* old was authoritative. */
 				++ncf;
 				rttl = rrs->ttl + rrs->ts - time(NULL);
-				nttl += rttl >= 0 ? rttl : 0;
-				if (rrs->flags & CF_LOCAL) {
-					olda = 1;
-					break;
-				}
+				if(rttl > 0) nttl += rttl;
 			}
 		}
-		if (olda)	/* old was authoritative */
-			return 0;
 		if (ncf == 0)	/* no conflicts */
 			return 1;
 		/* Medium ttl of conflicting records */
@@ -1787,7 +1797,7 @@ static int cr_check_add(dns_cent_t *cent, int idx, time_t ttl, time_t ts, unsign
 	if ((flags & CF_LOCAL) || ttl > nttl) {
 		int i, ilim= RRARR_LEN(cent);
 
-		/* remove the old records, so that the new one can be added */
+		/* Remove the old records, so that the new one can be added. */
 		for (i = 0; i < ilim; ++i) {
 			rr_set_t *rrs= RRARR_INDEX(cent,i);
 			/* Should be symmetric; check both ways anyway. */
@@ -2043,7 +2053,7 @@ int add_reverse_cache(dns_cent_t * cent)
 }
 
 
-/* 
+/*
    Delete a cent from the cache. Call with write locks applied.
    Does not delete corresponding entry in hash table, call del_cache_ent()
    or del_cache() for that.

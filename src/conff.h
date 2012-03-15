@@ -67,7 +67,7 @@ typedef struct {
 typedef DYNAMIC_ARRAY(slist_t) *slist_array;
 
 typedef struct {
-	struct in_addr   a,mask;	
+	struct in_addr   a,mask;
 } addr4maskpair_t;
 
 typedef DYNAMIC_ARRAY(addr4maskpair_t) *a4_array;

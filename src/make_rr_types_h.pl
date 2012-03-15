@@ -249,7 +249,7 @@ extern const char *const rrnames[T_NUM];
 #if DEFINE_RR_TYPE_ARRAYS
 const char *const rrnames[T_NUM] = {
 END-OF-TEXT
-for(my $val=$minval, my $i=0; $val<=$maxval; ++$val) {
+for(my $val=$minval; $val<=$maxval; ++$val) {
     my $name = $namedic{$val};
     print('  "', defined($name)? $name: "TYPE$val", '"');
     print ',' if $val<$maxval;

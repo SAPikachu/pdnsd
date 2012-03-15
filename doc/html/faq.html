@@ -16,7 +16,7 @@
       <tr>
 	<td> <span class="small">
 	    <a href="index.html">pdnsd Homepage</a>
-	  </span></td> 
+	  </span></td>
 	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
@@ -30,7 +30,7 @@
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
-    </table> 
+    </table>
     <!--)notext-->
     <h1>The pdnsd FAQ</h1>
     <a name="q001"></a>
@@ -38,7 +38,7 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>Q:</b></td>
 	<td bgcolor="#CCFFFF">
-	  There are complete and well-tested name servers around, such as the BIND. 
+	  There are complete and well-tested name servers around, such as the BIND.
 	  These do also perform caching. Why should I use pdnsd?
 	</td>
       </tr>
@@ -47,7 +47,7 @@
 	<td bgcolor="#DDFFEE">
 	  pdnsd does not aim to be a complete name server implementation, such as the
 	  BIND. It is optimized for caching, and you can only specify a small subset of all
-	  dns record types pdnsd knows in your local &quot;zone&quot; definitions. 
+	  dns record types pdnsd knows in your local &quot;zone&quot; definitions.
 	  This of course reduces the code size drastically, and such the memory footprint.
 	  There are some features especially interesting for dialin networks, ordinary
 	  (non-server) internet hosts and computers that are often not connected to
@@ -57,7 +57,7 @@
 	  <ul>
 	    <li> permanent disk cache (useful for frequent power-offs/reboots)
 	    <li> usually smaller memory footprint (depends on cache size) (see next question)
-	    <li> offline-detection prevents hangs (e.g. the typical hang on startup of some 
+	    <li> offline-detection prevents hangs (e.g. the typical hang on startup of some
 	      Netscape Navigator versions if not dialled in)
 	    <li> better control about timeouts (also to prevent hangs)
 	    <li> better control over the cache
@@ -73,7 +73,7 @@
 	<td bgcolor="#FFCCFF"><b>Q:</b></td>
 	<td bgcolor="#CCFFFF">
 	  When I look at the process size with ps, top, gtop, or a similar tool, I see
-	  some processes with a total size well above 3.5 MB. This is much more than 
+	  some processes with a total size well above 3.5 MB. This is much more than
 	  e.g. BIND named (about 1.4 MB). Why?
 	</td>
       </tr>
@@ -81,13 +81,13 @@
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
 	  Really, it is not.
-	  pdnsd uses multithreading, not multiprocessing. That means that the processes 
+	  pdnsd uses multithreading, not multiprocessing. That means that the processes
 	  share most of their process space. In the LinuxThreads library
-	  or NPTL (Native Posix Thread Libary), 
+	  or NPTL (Native Posix Thread Libary),
 	  which are used by pdnsd on Linux, in fact the total process address space is shared
 	  (although the processes have different stacks, these are in one process
-	  address space). You may check this by looking at the at the process sizes of 
-	  the  pdnsd threads: all should be the same. The effective size that pdnsd 
+	  address space). You may check this by looking at the at the process sizes of
+	  the  pdnsd threads: all should be the same. The effective size that pdnsd
 	  occupies is thus the size of any of the processes, not the sum of those.
 	  So, pdnsd with empty cache occupies about 800 kB, and the maximum size
 	  should be about the cache size plus this size (in fact, ca 5-10% more).
@@ -133,21 +133,21 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
-	  Some resolver programs, e.g. nslookup, want to look up the name of the 
+	  Some resolver programs, e.g. nslookup, want to look up the name of the
 	  server they are using before doing anything else. This option is for defining
 	  a PTR record for your IP such that those programs get an answer even if the
 	  name server you are caching is not available or does not offer these records.
 	  By extension, you may also define A and SOA records. This allows you to build
-	  very small zones without having to use a &quot;big&quot; name server. It is NOT 
-	  intended to replace such a complete server in anything but VERY small 
-	  networks. Alternatively, you may start a named on another host or on the 
+	  very small zones without having to use a &quot;big&quot; name server. It is NOT
+	  intended to replace such a complete server in anything but VERY small
+	  networks. Alternatively, you may start a named on another host or on the
 	  same host on another port and cache it with pdnsd in addition to other (more
 	  distant) name servers.
 	  <br>
-	  The <code>source</code> section allows you to let pdnsd read in your 
-	  <code>/etc/hosts</code> file on startup and serve its contents. This file is used by your local 
-	  resolver before it even  tries the name servers and usually contains 
-	  fully-qualified domain names (FQDNs) for all of the internet addresses your host has. 
+	  The <code>source</code> section allows you to let pdnsd read in your
+	  <code>/etc/hosts</code> file on startup and serve its contents. This file is used by your local
+	  resolver before it even  tries the name servers and usually contains
+	  fully-qualified domain names (FQDNs) for all of the internet addresses your host has.
 	  If you source this file, you usually won't need any additional <code>rr</code> sections. Sourcing it also allows
 	  other hosts (eg. in your local network) to access the names defined in your
 	  hosts file. You can of course just add other hosts in your local network to the
@@ -182,7 +182,7 @@
 	  Linux glibc, for example, does set those macros correctly. Never mind. You just have to know
 	  whether your machine is little-endian or big-endian, this means wheter your
 	  machine saves the least significant byte of a word or double-word first in memory (little-endian) or
-	  the most significant first (big-endian). 
+	  the most significant first (big-endian).
 	  All intel x86 and Alpha machines are little-endian, for example, while SPARC
 	  and PowerPC architectures are big-endian.
 	  If your machine is little-endian, add the following line to your config.h:
@@ -205,9 +205,9 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>Q:</b></td>
 	<td bgcolor="#CCFFFF">
-	  At startup, I get a warning saying:<br> 
+	  At startup, I get a warning saying:<br>
 	  <i>
-	    Uptest command [...] will implicitly be executed as root 
+	    Uptest command [...] will implicitly be executed as root
 	  </i> <br>
 	  What does that mean?
 	</td>
@@ -215,10 +215,10 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
-	  This warning only occurs if you use the <code>uptest=exec</code> option in your 
+	  This warning only occurs if you use the <code>uptest=exec</code> option in your
 	  configuration. It means that the uptest command is run as root
 	  because pdnsd is running as root, and this was not explicitely specified.
-	  The idea is that it may introduce security holes (in the programs being run) 
+	  The idea is that it may introduce security holes (in the programs being run)
 	  when they run as root, and so they shouldn't do that if possible.
 	  You can specify the user that shall run the command by appending its name
 	  comma-separated as string to the <code>uptest_cmd</code> line: <br>
@@ -236,7 +236,7 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>Q:</b></td>
 	<td bgcolor="#CCFFFF">
-	  I cannot run my <code>uptest_cmd</code> command as root (it says <i>permission denied</i>), 
+	  I cannot run my <code>uptest_cmd</code> command as root (it says <i>permission denied</i>),
 	  although the pdnsd executable is setuid root. Why?
 	</td>
       </tr>
@@ -244,7 +244,7 @@
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
 	  pdnsd will drop privileges gained through setuid/setgid before executing the
-	  uptest commands (you shouldn't set the pdnsd executable setuid/setgid anyway). 
+	  uptest commands (you shouldn't set the pdnsd executable setuid/setgid anyway).
 	  The reason is clear: if you install the pdnsd
 	  executable as setuid root and this wouln't be done, any user could execute
 	  shellcode with root privileges using that option!
@@ -267,7 +267,7 @@
       <tr>
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
-	  pdnsd has an option (<code>uptest=exec</code>) that allows the execution of arbitrary 
+	  pdnsd has an option (<code>uptest=exec</code>) that allows the execution of arbitrary
 	  shell code (for testing whether an interface is up). This must be
 	  of course secured against unauthorized use. One of these
 	  protection is the one that produces the error message: if you routinely run
@@ -298,7 +298,7 @@
 	<td bgcolor="#FFCCFF"><b>A:</b></td>
 	<td bgcolor="#DDFFEE">
 	  Some resolvers (e.g. of the glibc 2.1) seem sometimes not to look up unmodified names, but the names with
-	  an entry of the search path already appended. Since pdnsd will serve short names with this 
+	  an entry of the search path already appended. Since pdnsd will serve short names with this
 	  option anyway, you can delete the search an domain options from your /etc/resolv.conf. This is reported to
 	  work in some cases.
 	</td>
@@ -342,7 +342,7 @@
 	  authority section of the reply message. If pdnsd is behind a firewall that blocks the
 	  UDP reply packets from remote name servers, pdnsd will wait in vain for a reply.
 	  One solution is to set <a href="doc.html#proxyonly"><code>proxy_only=on</code></a>
-	  in the servers sections of the configuration file. 
+	  in the servers sections of the configuration file.
 	  This will prevent pdnsd from querying name servers that are not listed in the configuration
 	  file.
 	  Another solution that can be tried is specifying

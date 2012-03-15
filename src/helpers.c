@@ -51,7 +51,7 @@ void pdnsd_exit()
 }
 
 /*
- * Try to grab a mutex. If we can't, fail. This will loop until we get the 
+ * Try to grab a mutex. If we can't, fail. This will loop until we get the
  * mutex or fail. This is only used in debugging code or at exit, otherwise
  * we might run into lock contention problems.
  */
@@ -82,7 +82,7 @@ int run_as(const char *user)
 
 			/* Note that we use getpwnam_r() instead of getpwnam(),
 			   which returns its result in a statically allocated buffer and
-			   cannot be considered thread safe. 
+			   cannot be considered thread safe.
 			   Doesn't use NSS! */
 			err=getpwnam_r(user, &pwdbuf, buf, buflen, &pwd);
 			if(err==0 && pwd) {
@@ -93,7 +93,7 @@ int run_as(const char *user)
 					return 0;
 				}
 
-				/* initgroups uses NSS, so we can disable it, 
+				/* initgroups uses NSS, so we can disable it,
 				   i.e. we might need DNS for LDAP lookups, which times out */
 				if (global.use_nss && (initgroups(user, pwd->pw_gid)!=0)) {
 					log_error("Could not initialize the group access list of run_as user '%s': %s",
@@ -618,7 +618,7 @@ int escapestr(const char *in, int ilen, char *str, int size)
 int stricomp(char *a, char *b)
 {
 	int i;
-	if (strlen(a) != strlen(b)) 
+	if (strlen(a) != strlen(b))
 		return 0;
 	for (i=0;i<strlen(a);i++) {
 		if (tolower(a[i])!=tolower(b[i]))
@@ -634,7 +634,7 @@ int stricomp(char *a, char *b)
 int strncp(char *dst, char *src, int dstsz)
 {
 	char o;
-	
+
 	strncpy(dst,src,dstsz);
 	o=dst[dstsz-1];
 	dst[dstsz-1]='\0';
@@ -675,7 +675,7 @@ int getline(char **lineptr, size_t *n, FILE *stream)
 			else
 				return -1;
 		}
-			
+
 		i += strlen(lni);
 
 		if(i<sz-1 || line[i-1]=='\n')

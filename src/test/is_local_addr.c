@@ -26,10 +26,10 @@ FILE *dbg_file;
 globparm_t global;
 
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	pdnsd_a a;
-	
+
 	if (argc!=2) {
 		printf("Usage: %s <address>\n",argv[0]);
 		exit(1);

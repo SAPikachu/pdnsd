@@ -540,7 +540,7 @@ static const int ar_recs[AR_NUM]={T_NS, T_MD, T_MF, T_MB, T_MX
 #if IS_CACHED_SRV
 				  ,T_SRV
 #endif
-}; 
+};
 /* offsets from record data start to server name */
 static const int ar_offs[AR_NUM]={0,0,0,0,2
 #if IS_CACHED_SRV
@@ -1103,9 +1103,9 @@ static int decode_query_additional(unsigned char *data, size_t rlen, unsigned ch
 						DEBUG_MSG("decode_query_additional: Z field contains unknown nonzero bits (%04x).\n",
 							  Zflags);
 					}
-				}
-				if(rdlen) {
-					DEBUG_MSG("decode_query_additional: RDATA field in OPT record not empty!\n");
+					if(rdlen) {
+						DEBUG_MSG("decode_query_additional: RDATA field in OPT record not empty!\n");
+					}
 				}
 #endif
 			}
@@ -1119,7 +1119,7 @@ static int decode_query_additional(unsigned char *data, size_t rlen, unsigned ch
 		}
 
 		/* Skip RDATA field. */
-		sz -= rdlen;			
+		sz -= rdlen;
 		ptr += rdlen;
 	}
 

@@ -123,7 +123,7 @@ static const char *const help_messages[] =
 	"\tpdnsd.conf starting with 0. Use the status command to see the indexes.\n"
 	"\tYou can specify the label of a server (that matches the label option)\n"
 	"\tinstead of an index to make this easier.\n"
-	
+
 	"\tYou can specify all instead of an index to perform the action for all\n"
 	"\tservers registered with pdnsd.\n"
 
@@ -714,7 +714,7 @@ int main(int argc, char *argv[])
 					close(pf);
 					exit(2);
 				}
-			}	
+			}
 		}
 			goto read_retval;
 

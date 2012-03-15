@@ -1,5 +1,5 @@
 /* conf-parser.c - Parser for pdnsd config files.
-   Based on the files conf-lex.l and conf-parse.y written by 
+   Based on the files conf-lex.l and conf-parse.y written by
    Thomas Moestl.
    This version was rewritten in C from scratch by Paul A. Rombouts
    and doesn't require (f)lex or yacc/bison.
@@ -1454,7 +1454,7 @@ int confparse(FILE* in, char *prestr, globparm_t *global, servparm_array *server
 	      if(sz>0xffff) {
 		REPORT_ERRORF("data exceeds maximum size (65535 bytes) in %s= option", tpname);
 		PARSERROR;
-	      }		
+	      }
 	      SKIP_BLANKS(p);
 	      if(*p!=',') break;
 	      ++p;

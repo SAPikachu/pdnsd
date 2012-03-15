@@ -24,7 +24,7 @@
       <tr>
 	<td> <span class="small">
 	    <a href="index.html#aboutpdnsd">About pdnsd</a>
-	  </span></td> 
+	  </span></td>
 	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
@@ -38,12 +38,12 @@
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
-    </table> 
+    </table>
     <center><h1>The pdnsd Homepage</h1></center>
     <center><h2>News</h2></center>
     <table width="100%" cellspacing=1 cellpadding=7>
       <tr>
-	<td bgcolor="#ffccff" width="20%"><b>2012-03-14</b></td>
+	<td bgcolor="#ffccff" width="20%"><b>2012-03-17</b></td>
 	<td bgcolor="#ccffff" width="80%"><b>Version 1.2.9a-par has been released.</b>
 	  Version 1.2.9a fixes a bug in the 1.2.9 release that causes a build failure when pdnsd is
 	  configured with <span style="white-space:nowrap;"><code>--enable-strict-rfc2181</code></span>.
@@ -331,7 +331,7 @@
 	respond to issues, or did not respond at all. It is time that I officially announce that
 	pdnsd is no longer actively maintained; I apologize to all those who reported bugs or
 	asked questions without receiving any reply. However, <b>Paul A. Rombouts</b> has published
-	a patch set against the last released version at 
+	a patch set against the last released version at
 	<a href="http://members.home.nl/p.a.rombouts/pdnsd.html">http://members.home.nl/p.a.rombouts/pdnsd.html</a>,
 	which cleans up a lot of code fixes many bugs.
 	</td>
@@ -371,8 +371,8 @@
     or down DNS servers (for example in dial-in networking).<br>
     Since version 1.1.0, pdnsd supports negative caching.<br>
     <br>
-    It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="../../COPYING">GPL</A><!--notext(-->, 
-    <a HREF="http://www.gnu.org/copyleft/gpl.html">also available in html</A> and 
+    It is licensed under the <a HREF="http://www.gnu.org">GNU</a> General Public License (<a HREF="../../COPYING">GPL</A><!--notext(-->,
+    <a HREF="http://www.gnu.org/copyleft/gpl.html">also available in html</A> and
     <a HREF="http://www.gnu.org/copyleft/copyleft.html#translations">translated into various languages</A>.<!--)notext-->).
     This, in short, means that the sources are distributed togehter with the program, and
     that you are free to modify the sources and redistribute them as long as you
@@ -380,9 +380,9 @@
     It also means that there is <b>ABSOLUTELY NO WARRANTY</b> for pdnsd or any part
     of it. For details, please <a href="../../COPYING">read the GPL</a>.
     <p>
-      pdnsd can be used with applications that do DNS lookups, e.g. on startup, and 
+      pdnsd can be used with applications that do DNS lookups, e.g. on startup, and
       can't be configured to change that behaviour, to prevent the often minute-long
-      hangs (or even crashes) that result from stalled DNS queries. Some Netscape Navigator 
+      hangs (or even crashes) that result from stalled DNS queries. Some Netscape Navigator
       versions for Unix, for example, expose this behaviour.
     </p>
     pdnsd is configurable via a file and supports run-time configuration using the program pdnsd-ctl that comes
@@ -396,7 +396,7 @@
     Since version 1.0.0, pdnsd has full IPv6 support.
     <p>
       There is also a limited support for local zone records, intended for defining
-      1.0.0.127.in-addr.arpa. and localhost. , since some clients request that 
+      1.0.0.127.in-addr.arpa. and localhost. , since some clients request that
       information and it must be served even if the cached servers are not available
       or do not serve these records. pdnsd may also read your /etc/hosts file
       (this file is normally used by your local resolver and usually contains
@@ -404,7 +404,7 @@
       contents.
     </p> <p>
       pdnsd was started on Linux, and has since been ported to FreeBSD (and Cygwin and Darwin).
-      90% of the source code should be easily portable to POSIX- 
+      90% of the source code should be easily portable to POSIX-
       and BSD-compatible systems, provided that those systems support the POSIX threads (pthreads).
       The rest might need OS-specific rewrites.
     </p><p>
@@ -413,8 +413,8 @@
       to use gcc, I would recommend you just try to do the minor changes.
     </p>
     <p>
-      pdnsd must be started as root in some cases (raw sockets are needed for icmp 
-      echoes for the option <code>uptest=ping</code>, and the default port is 53, this must be 
+      pdnsd must be started as root in some cases (raw sockets are needed for icmp
+      echoes for the option <code>uptest=ping</code>, and the default port is 53, this must be
       &gt;1024 to allow non-root execution). However, pdnsd can be configured to change it's user
       and group id to those of a non-privileged user after opening the sockets needed for this.
     </p> <p>
@@ -475,10 +475,10 @@
     <h2>Features in detail</h2>
     <p>
       This section describes some of pdnsds features in detail. Most of the options are set
-      in the config file. For more information on the configuration file, see 
+      in the config file. For more information on the configuration file, see
       <a href="doc.html">the documenation page</a>.
     </p><br>
-      
+
     <h3>Uptests</h3>
     pdnsd provides several methods to test whether a remote DNS server should be regarded as available
     (so that pdnsd can query it), in
@@ -491,7 +491,7 @@
 	  pinging is sending a certain Internet packet type to a host to which any standard-conformant
 	  host is required to reply).
       <li><b>if:</b> a given network interface is tested whether it is existent, up and running. If
-	  it is not, the server is regarded to be not available. This is especially useful for ppp and 
+	  it is not, the server is regarded to be not available. This is especially useful for ppp and
 	  similar interfaces. A special case test for Linux isdn (ippp*) interfaces is integrated, so that the uptests
 	  should also work for these.
       <li><b>dev:</b> this is a variant of the if uptest for use with Linux dial-on-demand ppp interfaces. In addition
@@ -539,7 +539,7 @@
     Other BSD flavours may or may not work (feedback is very welcome!).
     The system and software requirements under Linux are:
     <ul>
-      <li> Kernel version &gt;2.2.0 
+      <li> Kernel version &gt;2.2.0
       <li> glibc version &gt;2.0.1 (aka libc6) with LinuxThreads (normally included)
         or NPTL (Native Posix Thread Library, recommended).<br>
 	Due to a bug, pdnsd 0.9.8 does not run with glibc2.1.1. This behaviour was
@@ -554,10 +554,10 @@
 
     The common software requirements for all supported systems are:
     <ul>
-      <li> GCC, preferably egcs-2.* or 3.* (other compilers are currently not supported; the needed patch for another compiler 
+      <li> GCC, preferably egcs-2.* or 3.* (other compilers are currently not supported; the needed patch for another compiler
 	should not be difficult, however)
       <li> GNU or BSD make
-      <li> the standard commands install, grep, sed, awk, touch and which (along with the REALLY 
+      <li> the standard commands install, grep, sed, awk, touch and which (along with the REALLY
 	standard ones mv, cp, ln, rm, pwd, test, echo, cat, mkdir, chown, chmod, tar). In
 	any standard Unix installation, this should be no problem.
       <li> for hacking and building own packages, you might also need gzip, bzip2, perl and rpmbuild
@@ -655,7 +655,7 @@
 	      <img src="gnuhead.png" alt="http://www.gnu.org"><br>
 	      The GNU homepage
 	    </a>
-	</center></td> 
+	</center></td>
 	<td><center>
 	    <a href="http://freecode.com">
 	      <img src="fm_logo.png" alt="http://freecode.com"><br>
@@ -671,7 +671,7 @@
 	    </a>
 	  </center></td>
       </tr>
-    </table> 
+    </table>
     <!--)nodoc-->
     <br>
     <hr>
@@ -680,7 +680,7 @@
     </address>
     <br>
     <p>
-      <i>Last revised: 27 February 2012 by Paul A. Rombouts</i>
+      <i>Last revised: 17 March 2012 by Paul A. Rombouts</i>
     </p>
   </body>
 </html>

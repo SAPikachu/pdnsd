@@ -12,7 +12,7 @@
 .\" You can find a copy of the GNU GPL in the file COPYING in the source
 .\" or documentation directory.
 .\" 
-.TH PDNSD.CONF 5 "Feb 2012" "pdnsd @fullversion@"
+.TH PDNSD.CONF 5 "Mar 2012" "pdnsd @fullversion@"
 .SH NAME
 pdnsd.conf \- The configuration file for pdnsd
 .hw config
@@ -61,8 +61,8 @@ in the documentation as
 The constants true|false and yes|no
 are accepted as synonyms for the constants on|off.
 .br
-Comments may be enclosed in /* and */, nested comments are possible. If the 
-# sign or two slashes (//) appear in the configuration file, everything from 
+Comments may be enclosed in /* and */, nested comments are possible. If the
+# sign or two slashes (//) appear in the configuration file, everything from
 these signs to the end of the current line is regarded as a comment and ignored.
 .br
 There are examples for nearly all options in the sample config file.
@@ -76,7 +76,7 @@ These are the possible options:
 
 .TP
 .B perm_cache=(\fInumber\fP|off);
-Switch the disk cache off or supply a maximum cache size in kB. If the disk 
+Switch the disk cache off or supply a maximum cache size in kB. If the disk
 cache is switched off, 8 bytes will still be written to disk.
 The memory cache is always 10kB larger than the file cache.
 This value is 2048 (2 MB) by default.
@@ -91,7 +91,7 @@ Set the server port. This is especially useful when you want to start the
 server and are not root. Note that you may also not specify uptest=ping in
 the server section as non-root.
 .br
-The default port is 53, the RFC-standard one. Note that you should only use 
+The default port is 53, the RFC-standard one. Note that you should only use
 non-standard ports when you only need clients on your machine to communicate
 with the server; others will probably fail if the try to contact the server
 on the basis of an NS record, since the A record that supplies the address for
@@ -161,11 +161,11 @@ marked down, with this option set the cache is not even used when a query is
 received, and a DNS error is returned in any case. The only exception from this
 is that local records (as specified in rr and source
 sections are still served normally.
-In general, you probably want to get cached entries even when the network is down, 
+In general, you probably want to get cached entries even when the network is down,
 so this defaults to off.
 .TP
 .B max_ttl=\fItimespec\fP;
-This option sets the maximum time a record is held in cache. All dns 
+This option sets the maximum time a record is held in cache. All dns
 resource records have a time to live field that says for what period of time the
 record may be cached before it needs to be requeried. If this is more than the
 value given with max_ttl, this time to live value is set to max_ttl.
@@ -173,7 +173,7 @@ This is done to prevent records from being cached an inappropriate long period o
 that is almost never a good thing to do. Default is 604800s (one week).
 .TP
 .B min_ttl=\fItimespec\fP;
-This option sets the minimum time a record is held in cache. All dns 
+This option sets the minimum time a record is held in cache. All dns
 resource records have a time to live field that says for what period of time the
 record may be cached before it needs to be requeried. If this is less than the
 value given with min_ttl, this time to live value is set to min_ttl.
@@ -215,7 +215,7 @@ supplied string gives a user name whose user id and primary group id are taken.
 A little more details: after reading the config file, becoming a daemon (if specified) and starting
 the server status thread, the main thread changes its gid and uid, as do all newly created threads
 thereafter. By taking another uid and gid, those threads run with the privileges of the
-specified user. 
+specified user.
 Under Linux and FreeBSD, the server status thread runs with the original privileges only when the strict_setuid option
 is set to off (see below, on by default), because these may be needed
 for exec uptests. The manager thread also retains its original privileges in this case.
@@ -226,7 +226,7 @@ and "operation not permitted" to discover permission problems.
 .TP
 .B strict_setuid=(on|off);
 When used together with the run_as option, this option lets you specify that all threads of the
-program will run with the privileges of the run_as user. This provides higher security than 
+program will run with the privileges of the run_as user. This provides higher security than
 the normal run_as
 option, but is not always possible. See the run_as option for further discussion.
 .br
@@ -235,25 +235,25 @@ This option is on by default.
 Note that this option has no effect on Non-Linux systems.
 .TP
 .B paranoid=(on|off);
-Normally, pdnsd queries all servers in recursive mode (i.e. instructs servers to query other servers themselves 
+Normally, pdnsd queries all servers in recursive mode (i.e. instructs servers to query other servers themselves
 if possible,
 and to give back answers for domains that may not be in its authority), and accepts additional records with information
 for servers that are not in the authority of the queried server. This opens the possibility of so-called cache poisoning:
 a malicious attacker might set up a dns server that, when queried, returns forged additional records. This way, he might
-replace trusted servers with his own ones by making your dns server return bad IP addresses. This option protects 
+replace trusted servers with his own ones by making your dns server return bad IP addresses. This option protects
 you from cache poisoning by rejecting additional records
-that do not describe domains in the queried servers authority space and not doing recursive queries any more. 
+that do not describe domains in the queried servers authority space and not doing recursive queries any more.
 An exception
 to this rule are the servers you specify in your config file, which are trusted.
 .br
-The penalty is a possible performance decrease, in particular, more queries might be necessary for the same 
+The penalty is a possible performance decrease, in particular, more queries might be necessary for the same
 operation.
 .br
-You should also notice that there may be other similar security problems, which are essentially problems of 
+You should also notice that there may be other similar security problems, which are essentially problems of
 the DNS, i.e.
-any "traditional" server has them (the DNS security extensions solve these problems, but are not widely 
+any "traditional" server has them (the DNS security extensions solve these problems, but are not widely
 supported).
-One of this vulnerabilities is that an attacker may bombard you with forged answers in hopes that one may match a 
+One of this vulnerabilities is that an attacker may bombard you with forged answers in hopes that one may match a
 query
 you have done. If you have done such a query, one in 65536 forged packets will be succesful (i.e. an average packet
 count of 32768 is needed for that attack). pdnsd can use TCP for queries,
@@ -496,9 +496,9 @@ This option sets the upper limit on the size of UDP DNS messages. The default is
 See also the edns_query server option below.
 
 .SS server Section
-Each server section specifies a set of name servers that pdnsd should try to get 
+Each server section specifies a set of name servers that pdnsd should try to get
 resource records or authoritative name server information from. The servers are
-queried in the order of their appearance (or parallel to a limited extend). 
+queried in the order of their appearance (or parallel to a limited extend).
 If one fails, the next one is taken and so on.
 .br
 You probably want to specify  the dns server in your LAN, the caching dns servers
@@ -578,16 +578,16 @@ isdn uptest will always fail.
 \(bu \fBdev\fP and \fBdiald\fP: Perform an if uptest, and, if that
 was succesful, additionally check whether a program is running that
 has locked a given (modem-) device. The needed parameters are an interface (specified as for the if
-uptest, e.g. "ppp0") and a device relative to /dev (e.g. 
+uptest, e.g. "ppp0") and a device relative to /dev (e.g.
 "modem" for /dev/modem specified using the device= option.
-pdnsd will then look for a pid file for the given interface in /var/lock (e.g. 
+pdnsd will then look for a pid file for the given interface in /var/lock (e.g.
 /var/run/ppp0.pid) and for a lockfile for the given device (e.g. /var/lock/LCK..modem),
 and then test whether the locking process is the process that created the pid file and this process is still
 alive. If this is the case, the normal if uptest is executed for the given interface.
 .br
 The dev option is for pppd dial-on-demand, diald is the same for diald users.
 .IP
-\(bu \fBexec\fP: Executes a given command in the /bin/sh shell 
+\(bu \fBexec\fP: Executes a given command in the /bin/sh shell
 (as /bin/sh \-c <command>)
 and evaluates the result (the return code of the last command) in the shell's way of handling return codes,
 i.e. 0 indicates success, all other indicate failure. The shell's process name will be
@@ -607,7 +607,7 @@ than the ones mentioned before.
 
 The default value is \fBnone\fP.
 
-\fBNOTE\fP: If you use on-demand dialing, use none, if, 
+\fBNOTE\fP: If you use on-demand dialing, use none, if,
 dev, diald or exec,
 since ping or query will send packets
 in the specified interval and the interface will thus frequently dial!
@@ -640,7 +640,7 @@ or
 .PD
 .B uptest_cmd=\fIstring\fP;
 Sets the command for the uptest=exec function to the first string.
-If the second string is given, it specifies a user with whose user 
+If the second string is given, it specifies a user with whose user
 id and primary group id the command is executed.
 .br
 This is especially useful if you are executing the server as root,
@@ -659,7 +659,7 @@ The command is executed using /bin/sh, so you should be able to use
 shell builtin commands.
 .TP
 .B interval=(\fItimespec\fP|onquery|ontimeout);
-Sets the interval for the server up-test. The default is 900 seconds; 
+Sets the interval for the server up-test. The default is 900 seconds;
 however, a test is forced when a query times out and the timestamp is reset then.
 .br
 If you specify onquery instead of a timeout, the interface will be
@@ -674,7 +674,7 @@ uptest=query, as it may cause delays if the server does not answer
 (btw, it doesn't make sense anyway).
 Note also that using onquery is no guarantee that the interface
 will not be used. When another (reachable) dns server tells pdnsd
-to query a third dns server for data, pdnsd will do that and has 
+to query a third dns server for data, pdnsd will do that and has
 no means of checking whether this will dial up the interface or not.
 This however should be a rare situation.
 .br
@@ -712,10 +712,10 @@ See the explanation of the timeout option in the global
 section for what that means.
 .TP
 .B purge_cache=(on|off);
-In every fetched dns record, there is a cache timeout given, which 
-specifies how long the fetched data may be cached until it needs to be 
-reloaded. If purge_cache is set to off, the stale records are not purged 
-(unless the cache size would be exceeded, in this case the oldest records are purged). 
+In every fetched dns record, there is a cache timeout given, which
+specifies how long the fetched data may be cached until it needs to be
+reloaded. If purge_cache is set to off, the stale records are not purged
+(unless the cache size would be exceeded, in this case the oldest records are purged).
 Instead, they are still served if they cannot succesfully be
 updated (e.g. because all servers are down).
 .br
@@ -731,7 +731,7 @@ information actually queried from pdnsd is resolved and cached. This has
 the advantage that usually less cache space is used and the query is
 usually faster. In 90% of the cases, only address (A) records are needed
 anyway. If switched off, pdnsd will always cache all data about a host
-it can find and will specifically ask for all available records 
+it can find and will specifically ask for all available records
 (well, at least it is a good approximation for what it really does ;\-)
 This will of course increase the answer packet sizes.
 .br
@@ -883,7 +883,7 @@ is given the server will be used only  for names consisting of two or more label
 If no server is available for a queried domain, pdnsd will return an error message
 to the client that usually will stop the client's attempts to resolve a specific
 domain from this server (the libc resolver will e.g. return an error to the application that
-tried to resolve the domain if no other servers are available in the resolv.conf). 
+tried to resolve the domain if no other servers are available in the resolv.conf).
 This may be of use sometimes.
 .br
 \fINote\fP: the simple_only and fqdn_only constants
@@ -903,7 +903,7 @@ the name given as string, the server is queried if this was the first matching r
 (see also the entry for policy).
 .br
 If the given name starts with a dot, the whole subdomain
-of the given name including the one of that name is matched, e.g. ".foo.bar." 
+of the given name including the one of that name is matched, e.g. ".foo.bar."
 will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.
 .br
 If it does not start in a dot, only exactly the given name (ignoring the case, of course)
@@ -928,7 +928,7 @@ the name given as string, the server is not queried if this was the first matchi
 (see also the entry for policy).
 .br
 If the given name starts with a dot, the whole subdomain
-of the given name including the one of that name is matched, e.g. ".foo.bar." 
+of the given name including the one of that name is matched, e.g. ".foo.bar."
 will match the domain names a.foo.bar., a.b.c.foo.bar. and foo.bar.
 .br
 If it does not start in a dot, only exactly the given name (ignoring the case, of course)
@@ -1038,9 +1038,9 @@ in different rr sections for the same name, the definition in the last
 rr section will cancel the definitions in the previous ones.
 .TP
 .B ptr=\fIstring\fP;
-Defines a PTR (domain name pointer) record. The argument is a host name in 
+Defines a PTR (domain name pointer) record. The argument is a host name in
 dotted notation (see name). The ptr record is for resolving adresses into names. For example, if
-you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something 
+you want the adress 127.0.0.1 to resolve into localhost, and localhost into 127.0.0.1, you need something
 like the following sections:
 .br
 .DS L
@@ -1065,12 +1065,12 @@ with reverse=on.
 .br
 There is something special about the name in the second section:
 when a resolver wants to get a host name from an internet address,
-it composes an address that is built of the IP address in reverse byte order 
-(1.0.0.127 instead of 127.0.0.1) where each byte of the adress written 
+it composes an address that is built of the IP address in reverse byte order
+(1.0.0.127 instead of 127.0.0.1) where each byte of the adress written
 as number constitutes a sub-domain under the domain in-addr.arpa. 
 .br
 So, if you want to compose an adress for reverse resolving, take your ip in dotted notation (e.g. 1.2.3.4),
-reverse the byte order (4.3.2.1) and append in-addr.arpa. (4.3.2.1.in-addr.arpa.) 
+reverse the byte order (4.3.2.1) and append in-addr.arpa. (4.3.2.1.in-addr.arpa.)
 Then, define an rr section giving this address as name and the domain name corresponding to
 that ip in the ptr option.
 .TP
@@ -1130,26 +1130,26 @@ before name= (sorry about that).
 Apart from greater consistency, the advantage is that you can now specify as many NS records as you like (including zero).
 .TP
 .B soa=\fIstring\fP,\fIstring\fP,\fInumber\fP,\fItimespec\fP,\fItimespec\fP,\fItimespec\fP,\fItimespec\fP;
-This defines a soa (start of authority) record. The first string is the 
-domain name of the server and should be equal to the name you specified as 
+This defines a soa (start of authority) record. The first string is the
+domain name of the server and should be equal to the name you specified as
 owner. 
 .br
-The second string specifies the email address of the maintainer of the name 
-server. It is also specified as a domain name, so you will have to replace the 
+The second string specifies the email address of the maintainer of the name
+server. It is also specified as a domain name, so you will have to replace the
 @ sign in the name with a dot (.) to get the name you have to specify here.
-The next parameter (the first number) is the serial number of the record. You 
+The next parameter (the first number) is the serial number of the record. You
 should increment this number if you change the record.
 .br
 The 4th parameter is the refresh timeout. It specifies after what amount
 of time a caching server should attempt to refresh the cached record.
 .br
-The 5th parameter specifies a time after which a caching server should attempt 
+The 5th parameter specifies a time after which a caching server should attempt
 to refresh the record after a refresh failure.
 .br
 The 6th parameter defines the timeout after which a cached record expires if it
 has not been refreshed.
 .br
-The 7th parameter is the ttl that is specified in every rr and should be the 
+The 7th parameter is the ttl that is specified in every rr and should be the
 same as given with the ttl option (if you do not specify a ttl, use the default 86400).
 .TP
 .B txt=\fIstring\fP,...,\fIstring\fP;
@@ -1157,7 +1157,7 @@ same as given with the ttl option (if you do not specify a ttl, use the default 
 Defines an TXT record. You can specify one or more strings here.
 
 .SS neg Section
-Every neg section specifies a dns resource record or a dns domain that should be 
+Every neg section specifies a dns resource record or a dns domain that should be
 cached negatively locally. Queries for negatively cached records are always answered
 immediatley with an error or an empty answer without querying other hosts as long
 as the record is valid. The records defined with neg sections remain
@@ -1194,7 +1194,7 @@ config file, this will also negate www.example.com, xxx.adserver.example.com, et
 .TP
 .B name=\fIstring\fP;
 Specifies the name of the domain for which negative cache entries are created.
-This option must be specified before the types option. 
+This option must be specified before the types option.
 Names are interpreted as absolute domain names (i.e. pdnsd
 assumes they end in the root domain).
 You need to specify domain names in dotted notation (example venera.isi.edu.).
@@ -1210,12 +1210,12 @@ This may be redefined. The default is 86400 seconds (=1 day).
 .TP
 .B types=(domain|\fIrr_type\fP[,\fIrr_type\fP[,\fIrr_type\fP[,...]]]);
 Specifies what is to be cached negatively: domain will cache the whole
-domain negatively; alternatively, you can specify a comma-separated list of RR types 
+domain negatively; alternatively, you can specify a comma-separated list of RR types
 which are to be cached negatively. You may specify multiple types options, but
 domain and the RR types are mutually exclusive.
 .br
 The RR types are specified using their official names from the RFC's in capitals,
-e.g. A, CNAME, NS, PTR, MX, 
+e.g. A, CNAME, NS, PTR, MX,
 AAAA, ...
 .br
 The command pdnsd\-ctl\ list\-rrtypes will give you a complete list
@@ -1224,24 +1224,24 @@ and will be installed in the same directory as the pdnsd binary during make inst
 
 .SS source Section
 Every source section allows you to let pdnsd read the records from a file in an
-/etc/hosts-like format. pdnsd will generate records to resolve the entries 
-address from its host name and vice versa for every entry in the file. This is 
+/etc/hosts-like format. pdnsd will generate records to resolve the entries
+address from its host name and vice versa for every entry in the file. This is
 normally easier than defining an rr for every of your addresses, since localhost
 and your other FQDNs are normally given in /etc/hosts.
 .br
-The accepted format is as follows: The #\-sign initiates a comment, the rest of 
-the line from the first occurence of this character on is ignored. Empty lines 
+The accepted format is as follows: The #\-sign initiates a comment, the rest of
+the line from the first occurence of this character on is ignored. Empty lines
 are tolerated.
 .br
 The first entry on a line (predeceded by an arbitrary number of tabs and spaces)
-is the IP in dotted notation, the second entry on one line (separated by the 
-first by an arbitrary number of tabs and spaces) is the FQDN (fully qualified 
-domain name) for that ip. The rest of the line is ignored by default (in the original 
+is the IP in dotted notation, the second entry on one line (separated by the
+first by an arbitrary number of tabs and spaces) is the FQDN (fully qualified
+domain name) for that ip. The rest of the line is ignored by default (in the original
 /etc/hosts, it may contain information not needed by pdnsd).
 
 .TP
 .B owner=\fIstring\fP;
-Specifies the name of the host pdnsd runs on and that are specified in dns 
+Specifies the name of the host pdnsd runs on and that are specified in dns
 answers (specifically, nameserver records).
 Must be specified before any file entries.
 .br
@@ -1255,12 +1255,12 @@ dot, but since version 1.1.8b1-par8, pdnsd automatically assumes a
 dot at the end if it is missing.
 .TP
 .B ttl=\fItimespec\fP;
-Specifies the ttl (time to live) for all resource records in this section after 
+Specifies the ttl (time to live) for all resource records in this section after
 this entry. This may be redefined. The default is 86400 seconds (=1 day).
 .TP
 .B file=\fIstring\fP;
-The string specifies a file name. For every file entry in a source section, 
-pdnsd will try to load the given file as described above. Failure is indicated 
+The string specifies a file name. For every file entry in a source section,
+pdnsd will try to load the given file as described above. Failure is indicated
 only when the file cannot be opened, malformed entries will be ignored.
 .TP
 .B serve_aliases=(on|off);
@@ -1291,7 +1291,7 @@ Include sections currently only have one type of option, which may be given mult
 
 .TP
 .B file=\fIstring\fP;
-The string specifies a file name. For every file option in an include section, 
+The string specifies a file name. For every file option in an include section,
 pdnsd will parse the given file as described above. The file may contain include sections itself,
 but as a precaution pdnsd checks that a certain maximum depth is not exceeded to guard against
 the possibility of infinite recursion.

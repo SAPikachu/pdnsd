@@ -67,7 +67,7 @@ int decompress_name(unsigned char *msg, size_t msgsz, unsigned char **src, size_
 				goto name_outside_msg;
 			newsz--;
 			offs=((lb&0x3f)<<8)|(*lptr);
-			if (offs>=msgsz) 
+			if (offs>=msgsz)
 				goto offset_outside_msg;
 			lptr=msg+offs;
 			goto jumped;
@@ -104,7 +104,7 @@ int decompress_name(unsigned char *msg, size_t msgsz, unsigned char **src, size_
 			if (++hops>255)
 				goto too_many_hops;
 			offs=((lb&0x3f)<<8)|(*lptr);
-			if (offs>=msgsz) 
+			if (offs>=msgsz)
 				goto offset_outside_msg;
 			lptr=msg+offs;
 			lb=*lptr++;
@@ -188,7 +188,7 @@ int domain_name_match(const unsigned char *ms, const unsigned char *md, int *os,
 				break;
 			}
 			--i; --j;
-		}	
+		}
 	}
 	if(os) *os=offs;
 	if(od) *od=offd;
@@ -238,7 +238,7 @@ unsigned int domain_match(const unsigned char *ms, const unsigned char *md, unsi
 }
 
 /* compress the domain name in in and put the result (of maximum length of rhnlen(in)) and
- * fill cb with compression information for further strings.*cb may be NULL initially. 
+ * fill cb with compression information for further strings.*cb may be NULL initially.
  * offs is the offset the generated string will be placed in the packet.
  * retval: 0 - error, otherwise length
  * When done, just free() cb (if it is NULL, free will behave correctly).
@@ -260,7 +260,7 @@ unsigned int compress_name(unsigned char *in, unsigned char *out, unsigned int o
 		unsigned int rv,rem,to;
 		if ((rv=domain_match(in, ci->s, &rem,&to))>longest) {
 			/*
-			 * This has some not obvious implications that should be noted: If a 
+			 * This has some not obvious implications that should be noted: If a
 			 * domain name as saved in the list has been compressed, we only can
 			 * index the non-compressed part. We rely here that the first occurence
 			 * can't be compressed. So we take the first occurence of a given length.
@@ -311,7 +311,7 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf)
 		if(n<0 || n>=DNSNAMEBUFSIZE)
 			return 0;
 	}
-	else 
+	else
 #if ALLOW_LOCAL_AAAA
 	if(tp==T_AAAA) {
 		unsigned char *p=(unsigned char *)&a->ipv6;
@@ -562,7 +562,7 @@ char *dnsflags2str(dns_hdr_t *hdr, char *buf)
 	*p=0;
 
 	return buf;
-}  
+}
 
 #endif
 

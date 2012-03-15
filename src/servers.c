@@ -68,7 +68,7 @@ static char schm[32];
 static void sigint_handler(int signum);
 
 /*
- * Execute an individual uptest. Call with locks applied 
+ * Execute an individual uptest. Call with locks applied
  */
 static int uptest (servparm_t *serv, int j)
 {
@@ -207,15 +207,15 @@ static int scheme_ok(servparm_t *serv)
 		  	ssize_t nschm;
 			int sc = open(global.scheme_file, O_RDONLY);
 			char *s;
-			if (sc<0) 
+			if (sc<0)
 				return 0;
 			nschm = read(sc, schm, sizeof(schm)-1);
 			close(sc);
-			if (nschm < 0) 
+			if (nschm < 0)
 				return 0;
 			schm[nschm] = '\0';
 			s = strchr(schm, '\n');
-			if (s) 
+			if (s)
 				*s='\0';
 		}
 		if (fnmatch(serv->scheme, schm, 0))
@@ -300,7 +300,7 @@ static addr2_array resolv_rootserver_addrs(atup_array a, int port, char edns_que
 	PDNSD_ASSERT(server_data_users>0, "server_data_users non-positive before attempt to decrement it");
 	if (--server_data_users==0) pthread_cond_broadcast(&server_data_cond);
 
-	return retval;	
+	return retval;
 }
 
 /*
@@ -330,7 +330,7 @@ void *servstat_thread(void *p)
 	if(sigaction(statusintsig, &action, NULL) == 0) {
 		sigset_t smask;
 		sigemptyset(&smask);
-		sigaddset(&smask, statusintsig); 
+		sigaddset(&smask, statusintsig);
 		pthread_sigmask(SIG_UNBLOCK,&smask,NULL);
 	}
 	else {
@@ -453,7 +453,7 @@ void *servstat_thread(void *p)
 					    (needs_intermittent_testing(sp) &&
 					     ((now=time(NULL))-ts>sp->interval ||
 					      ts>now /* kluge for clock skew */)))
-					{ 
+					{
 						retest(i,j);
 					}
 				}
@@ -536,11 +536,11 @@ int start_servstat_thread()
  * or to schedule an immediate retest (up=-1).
  * We can't always use indices to identify a server, because we allow run-time
  * configuration of server addresses, so the servers are identified by their IP addresses.
- */ 
+ */
 void sched_server_test(pdnsd_a *sa, int nadr, int up)
 {
 	int k,signal_test;
-	
+
 	pthread_mutex_lock(&servers_lock);
 
 	signal_test=0;
@@ -559,7 +559,7 @@ void sched_server_test(pdnsd_a *sa, int nadr, int up)
 						at->is_up=up;
 						at->i_ts=time(NULL);
 						DEBUG_PDNSDA_MSG("Marked server %s %s.\n",PDNSDA2STR(sak),up?"up":"down");
-					} 
+					}
 					else if(at->i_ts) {
 						/* A test may take a while, and we don't want to hold
 						   up the calling thread.
@@ -647,7 +647,7 @@ int mark_servers(int i, char *label, int up)
 void test_onquery()
 {
 	int i,n,signal_test;
-	
+
 	pthread_mutex_lock(&servers_lock);
 	schm[0] = '\0';
 	signal_test=0;

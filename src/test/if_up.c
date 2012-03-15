@@ -25,7 +25,7 @@ FILE *dbg_file;
 globparm_t global;
 
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	if (argc!=2) {
 		printf("Usage: %s <interface>\n",argv[0]);

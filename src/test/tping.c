@@ -26,7 +26,7 @@ FILE *dbg_file;
 globparm_t global;
 
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	pdnsd_a a;
 

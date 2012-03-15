@@ -127,7 +127,7 @@
 typedef struct {
 	/* the name is the first field. It has variable length, so it can't be put in the struct */
 	uint16_t type;
-	uint16_t class; 
+	uint16_t class;
 	uint32_t ttl;
 	uint16_t rdlength;
 	/* rdata follows */
@@ -291,7 +291,7 @@ int a2ptrstr(pdnsd_ca *a, int tp, unsigned char *buf);
 int read_hosts(const char *fn, unsigned char *rns, time_t ttl, unsigned flags, int aliases, char **errstr);
 
 const char *getrrtpname(int tp);
-#if DEBUG>0 
+#if DEBUG>0
 const char *get_cname(int id);
 const char *get_tname(int id);
 const char *get_ename(int id);

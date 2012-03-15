@@ -171,7 +171,7 @@ int read_config_file(const char *nm, globparm_t *global, servparm_array *servers
 			   Perhaps we should use getpwuid_r() instead of getpwuid(), which is not necessarily thread safe.
 			   As long as getpwuid() is only used by only one thread, it should be OK,
 			   but it is something to keep in mind.
-			*/		   
+			*/
 			struct passwd *pws;
 			char owner[24],user[24];
 			if((pws=getpwuid(sb.st_uid)))
@@ -399,7 +399,7 @@ static void free_server_data(servparm_array sa)
 int report_conf_stat(int f)
 {
 	int i,n,retval=0;
-	
+
 	fsprintf_or_return(f,"\nConfiguration:\n==============\nGlobal:\n-------\n");
 	fsprintf_or_return(f,"\tCache size: %li kB\n",global.perm_cache);
 	fsprintf_or_return(f,"\tServer directory: %s\n",global.cache_dir);
@@ -513,7 +513,7 @@ static int report_server_stat(int f,int i)
 		{char buf[ADDRSTR_MAXLEN];
 		 fsprintf_or_return(f,"\tip: %s\n",pdnsd_a2str(PDNSD_A2_TO_A(&at->a),buf,ADDRSTR_MAXLEN));}
 		fsprintf_or_return(f,"\tserver assumed available: %s\n",at->is_up?"yes":"no");
-	}		  
+	}
 	fsprintf_or_return(f,"\tport: %hu\n",st->port);
 	fsprintf_or_return(f,"\tuptest: %s\n",const_name(st->uptest));
 	fsprintf_or_return(f,"\ttimeout: %li\n",(long)st->timeout);

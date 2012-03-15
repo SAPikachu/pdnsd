@@ -56,7 +56,7 @@
   ISDN         20 (RECORD) for ISDN address                   [RFC 1183]
   RT           21 (RECORD) for Route Through                  [RFC 1183]
   NSAP         22 (RECORD) for NSAP address, NSAP style A record [RFC 1706]
-  NSAP-PTR     23 (PTR) for domain name pointer, NSAP style   [RFC 1348] 
+  NSAP-PTR     23 (PTR) for domain name pointer, NSAP style   [RFC 1348]
   SIG          24 for security signature                      [RFC 4034][RFC 3755][RFC 2535]
   KEY          25 for security key                            [RFC 4034][RFC 3755][RFC 2535]
   PX           26 X.400 mail mapping information              [RFC 2163]

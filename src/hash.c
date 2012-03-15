@@ -34,7 +34,7 @@
 
 /* This is not a perfect hash, but I hope it holds. It is designed for 1024 hash
  * buckets, and hashes strings with case-insensitivity.
- * It is position-aware in a limited way. 
+ * It is position-aware in a limited way.
  * It is exactly seen a two-way hash: because I do not want to exaggerate
  * the hash buckets (i do have 1024), but I hash strings and string-comparisons
  * are expensive, I save another 32 bit hash in each hash element that is checked
@@ -134,7 +134,7 @@ dns_cent_t *dns_lookup(const unsigned char *key, dns_hash_loc_t *loc)
 
   add_dns_hash returns 1 on success, or 0 if out of memory.
 */
-int add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc) 
+int add_dns_hash(dns_cent_t *data, dns_hash_loc_t *loc)
 {
 	dns_hash_ent_t *he = malloc(sizeof(dns_hash_ent_t));
 

@@ -1,8 +1,8 @@
 /* list.c - Dynamic array and list handling
-  
+
    Copyright (C) 2001 Thomas Moestl
    Copyright (C) 2002, 2003, 2007, 2011 Paul A. Rombouts
-  
+
   This file is part of the pdnsd package.
 
   pdnsd is free software; you can redistribute it and/or modify

@@ -22,14 +22,14 @@
 
 enum {
 	ERROR,
-	
+
 	GLOBAL,
 	SERVER,
 	RR,
 	NEG,
 	SOURCE,
 	INCLUDE_F,
-	
+
 	PERM_CACHE,
 	CACHE_DIR,
 	SERVER_PORT,
@@ -66,7 +66,7 @@ enum {
 	QUERY_PORT_END,
 	UDP_BUFSIZE,
 	DELEGATION_ONLY,
-	
+
 	IP,
 	PORT,
 	SCHEME,
@@ -94,7 +94,7 @@ enum {
 	REJECTPOLICY,
 	REJECTRECURSIVELY,
 	LABEL,
-	
+
 	A,
 	PTR,
 	MX,

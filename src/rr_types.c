@@ -92,7 +92,7 @@ const char *loc2str(const void *binary, char *ascii, size_t asclen)
 	int32_t latval, longval, altval;
 	uint32_t templ;
 	uint8_t sizeval, hpval, vpval, versionval;
-    
+
 	char sizestr[NPRECSIZE],hpstr[NPRECSIZE],vpstr[NPRECSIZE];
 
 	versionval = *cp++;
@@ -165,7 +165,7 @@ const char *loc2str(const void *binary, char *ascii, size_t asclen)
 		if(n<0 || n>=asclen)
 			return NULL;
 	}
-	
+
 	return (ascii);
 }
 

@@ -15,7 +15,7 @@
       <tr>
 	<td> <span class="small">
 	    <a href="index.html">pdnsd Homepage</a>
-  </span></td> 
+  </span></td>
 	<td> <span class="small">
 	    <a href="faq.html">pdnsd FAQ</a>
 	  </span></td>
@@ -29,7 +29,7 @@
 	    <a href="dl.html">Download Section</a>
 	  </span></td>
       </tr>
-    </table> 
+    </table>
     <!--)notext-->
     <center><h1>pdnsd Download Page</h1></center>
     <!--  For obvious reasons, the real download page is not included in the distribution ;-) -->

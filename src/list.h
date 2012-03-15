@@ -1,5 +1,5 @@
 /* list.h - Dynamic array and list handling
-  
+
    Copyright (C) 2001 Thomas Moestl
    Copyright (C) 2002, 2003, 2007, 2009, 2011 Paul A. Rombouts
 
@@ -32,7 +32,7 @@
 typedef struct {size_t nel;} *darray;
 
 /* used in type declarations */
-#define DYNAMIC_ARRAY(typ)  struct {size_t nel; typ elem[0];} 
+#define DYNAMIC_ARRAY(typ)  struct {size_t nel; typ elem[0];}
 #define DA_TYP_OFFSET(atyp) ((size_t)((atyp)0)->elem)
 #define DA_OFFSET(a) DA_TYP_OFFSET(typeof (a))
 

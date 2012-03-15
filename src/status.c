@@ -210,7 +210,7 @@ static void *status_thread (void *p)
 					{
 						DEBUG_MSG("Error writing to control socket: %s\n"
 							  "Failed to send status report.\n",strerror(errno));
-					}					    
+					}
 				}
 					break;
 				case CTL_SERVER: {

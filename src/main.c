@@ -72,7 +72,7 @@ char *conf_file=CONFDIR"/pdnsd.conf";
 
 /* version and licensing information */
 static const char info_message[] =
-	
+
 	"pdnsd - dns proxy daemon, version " VERSION "\n\n"
 	"Copyright (C) 2000, 2001 Thomas Moestl\n"
 	"Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2010 Paul A. Rombouts\n\n"
@@ -239,7 +239,7 @@ int main(int argc,char *argv[])
 		}
 	}
 #endif
-	
+
 	/* Parse the command line.
 	   Remember which options were specified here, because the command-line options
 	   shall override the ones given in the config file */
@@ -447,7 +447,7 @@ int main(int argc,char *argv[])
 			if (sp->uptest==C_EXEC && sp->uptest_usr[0]=='\0') {
 				uid_t uid=getuid();
 				struct passwd *pws=getpwuid(uid);
-		
+
 				/* No explicit uptest user given. If we run_as and strict_suid, we assume that
 				 * this is safe. If not - warn. */
 				fprintf(stderr,"Warning: uptest command \"%s\" will implicitly be executed as user ", sp->uptest_cmd);
@@ -469,10 +469,10 @@ int main(int argc,char *argv[])
 #ifdef O_NOFOLLOW
 			      |O_NOFOLLOW
 #else
-		/* 
-		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the 
-		 * directory for pidfiles should not be world writeable. 
-		 * OS's that do not support O_NOFOLLOW are currently not 
+		/*
+		 * No O_NOFOLLOW. Nevertheless, this not a hole, since the
+		 * directory for pidfiles should not be world writeable.
+		 * OS's that do not support O_NOFOLLOW are currently not
 		 * supported, this is just-in-case code.
 		 */
 #endif

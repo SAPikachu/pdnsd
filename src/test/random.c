@@ -24,7 +24,7 @@ FILE *dbg_file;
 globparm_t global;
 
 
-int main(void) 
+int main(void)
 {
 	init_rng();
 	printf("%i\n",(int)get_rand16());

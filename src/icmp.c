@@ -23,7 +23,7 @@
 /*
  * This should now work on both Linux and FreeBSD (and CYGWIN?). If anyone
  * with experience in other Unix flavors wants to contribute platform-specific
- * code, he is very welcome. 
+ * code, he is very welcome.
  */
 
 #include <config.h>
@@ -97,7 +97,7 @@ volatile int ping6_isocket=-1;
 # define icmp_seq un.echo.sequence
 #else
 # define ICMP_DEST_UNREACH  ICMP_UNREACH
-# define ICMP_TIME_EXCEEDED ICMP_TIMXCEED    
+# define ICMP_TIME_EXCEEDED ICMP_TIMXCEED
 #endif
 
 #define ICMP_BASEHDR_LEN  8
@@ -127,7 +127,7 @@ void init_ping_socket()
 #endif
 }
 
-/* Takes a packet as send out and a received ICMP packet and looks whether the ICMP packet is 
+/* Takes a packet as send out and a received ICMP packet and looks whether the ICMP packet is
  * an error reply on the sent-out one. packet is only the packet (without IP header).
  * errmsg includes an IP header.
  * to is the destination address of the original packet (the only thing that is actually
@@ -170,7 +170,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 #if (TARGET==TARGET_LINUX)
 	/* Fancy ICMP filering -- only on Linux (as far is I know) */
-	
+
 	/* In fact, there should be macros for treating icmp_filter, but I haven't found them in Linux 2.2.15.
 	 * So, set it manually and unportable ;-) */
 	/* This filter lets ECHO_REPLY (0), DEST_UNREACH(3) and TIME_EXCEEDED(11) pass. */
@@ -265,7 +265,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				else if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
-				return -1; 
+				return -1;
 			}
 			if (psres==0)  /* timed out */
 				break;
@@ -309,7 +309,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_error("Unhandled poll/select event in ping4() at %s, line %d.",__FILE__,__LINE__);
 				}
-				return -1; 
+				return -1;
 			}
 			tpassed=time(NULL)-tm;
 		} while (tpassed<timeout);
@@ -320,7 +320,7 @@ static int ping4(struct in_addr addr, int timeout, int rep)
 
 #ifdef ENABLE_IPV6
 
-/* Takes a packet as send out and a received ICMPv6 packet and looks whether the ICMPv6 packet is 
+/* Takes a packet as send out and a received ICMPv6 packet and looks whether the ICMPv6 packet is
  * an error reply on the sent-out one. packet is only the packet (without IPv6 header).
  * errmsg does not include an IPv6 header. to is the address the sent packet went to.
  * This is specialized for icmpv6: It zeros out the checksum field, which is filled in
@@ -389,7 +389,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		}
 		return -1;
 	}
-	
+
 	for (i=0;i<rep;i++) {
 		struct sockaddr_in6 from;
 		struct icmp6_hdr icmpd;
@@ -400,7 +400,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 		icmpd.icmp6_cksum=0; /* The friendly kernel does fill that in for us. */
 		icmpd.icmp6_id=htons((uint16_t)id);
 		icmpd.icmp6_seq=htons((uint16_t)i);
-		
+
 		memset(&from,0,sizeof(from));
 		from.sin6_family=AF_INET6;
 		from.sin6_flowinfo=IPV6_FLOWINFO;
@@ -457,7 +457,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				else if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_warn("poll/select failed: %s",strerror(errno));
 				}
-				return -1; 
+				return -1;
 			}
 			if (psres==0)  /* timed out */
 				break;
@@ -496,7 +496,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 				if (++icmp_errs<=ICMP_MAX_ERRS) {
 					log_error("Unhandled poll/select event in ping6() at %s, line %d.",__FILE__,__LINE__);
 				}
-				return -1; 
+				return -1;
 			}
 			tpassed=time(NULL)-tm;
 		} while (tpassed<timeout);
@@ -506,7 +506,7 @@ static int ping6(struct in6_addr a, int timeout, int rep)
 #endif /* ENABLE_IPV6*/
 
 
-/* Perform an icmp ping on a host, returning -1 on timeout or 
+/* Perform an icmp ping on a host, returning -1 on timeout or
  * "host unreachable" or the ping time in 10ths of secs
  * (but actually, we are not that accurate any more).
  * timeout in 10ths of seconds, rep is the repetition count
@@ -532,7 +532,7 @@ int ping(pdnsd_a *addr, int timeout, int rep)
 			struct in_addr v4;
 			v4.s_addr=((uint32_t *)&addr->ipv6)[3];
 			return ping4(v4,timeout,rep);
-		} else 
+		} else
 			return ping6(addr->ipv6,timeout,rep);
 	}
 #endif

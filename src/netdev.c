@@ -104,7 +104,7 @@ static volatile unsigned long isdn_errs=0;
  * If your kernel is too old or too new, just try to get the status as uptest=exec command
  * This will work, although slower.
  */
- 
+
 #   include <linux/isdn.h>
 
 int statusif(char *name)
@@ -118,7 +118,7 @@ int statusif(char *name)
 		}
 		return 0;
 	}
-		
+
 	strncp(phone.name, name, sizeof(phone.name));
 	if (ioctl(isdninfo, IIOCNETGPN, &phone)==0)
 		rc=1;
@@ -136,7 +136,7 @@ int dev_up(char *ifname, char *devname)
 {
  	FILE *fd;
  	int pidi, pidd, rv;
-	
+
 	{
 	  char path[sizeof("/var/run/.pid")+strlen(ifname)];
 	  stpcpy(stpcpy(stpcpy(path,"/var/run/"),ifname),".pid");
@@ -155,21 +155,21 @@ int dev_up(char *ifname, char *devname)
 	  stpcpy(stpcpy(path,"/var/lock/LCK.."),devname);
 	  if ((fd=fopen(path, "r")) == NULL)
 	    return 0;
-	
+
 	  if (fscanf(fd, "%d", &pidd) != 1) {
 	    fclose(fd);
 	    return 0;
 	  }
 	  fclose(fd);
 	}
-	
+
  	if (pidi != pidd)
 		return 0;
 	/* Test whether pppd is still alive */
 	rv=kill(pidi,0);
 	return (rv==0 || (rv==-1 && errno!=ESRCH));
 }
- 
+
 
 # endif /*(TARGET==TARGET_LINUX)*/
 
@@ -191,8 +191,8 @@ int if_up(char *devname)
 	unsigned int devnamelen=strlen(devname);
 	if (devnamelen>4 && devnamelen<=6 && strncmp(devname,"ippp",4)==0) {
 		/* This function didn't manage the interface uptest correctly. Thanks to
-		 * Joachim Dorner for pointing out. 
-		 * The new code (statusif()) was shamelessly stolen from isdnctrl.c of the 
+		 * Joachim Dorner for pointing out.
+		 * The new code (statusif()) was shamelessly stolen from isdnctrl.c of the
 		 * isdn4k-utils. */
 #  ifdef ISDN_SUPPORT
 		return statusif(devname);
@@ -259,14 +259,14 @@ int is_local_addr(pdnsd_a *a)
 		char   buf[40];
 		FILE   *f;
 		struct in6_addr b;
-		/* the interface configuration and information retrieval is obiously currently done via 
-		 * rt-netlink sockets. I think it is relatively likely to change in an incompatible way the 
+		/* the interface configuration and information retrieval is obiously currently done via
+		 * rt-netlink sockets. I think it is relatively likely to change in an incompatible way the
 		 * Linux kernel (there seem to be some major changes for 2.4).
-		 * Right now, I just analyze the /proc/net/if_inet6 entry. This may not be the fastest, but 
+		 * Right now, I just analyze the /proc/net/if_inet6 entry. This may not be the fastest, but
 		 * should work and is easy to adapt should the format change. */
 		if (!(f=fopen("/proc/net/if_inet6","r")))
 			return 0;
-		/* The address is at the start of the line. We just read 32 characters and insert a ':' 7 
+		/* The address is at the start of the line. We just read 32 characters and insert a ':' 7
 		 * times. Such, we can use inet_pton conveniently. More portable, that. */
 		for(;;) {
 			int i,ch; char *p=buf;
@@ -344,7 +344,7 @@ int is_local_addr(pdnsd_a *a)
 
  close_sock_return:
 	close(sock);
-	
+
 	return retval;
 }
 
