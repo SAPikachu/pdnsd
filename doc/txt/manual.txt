@@ -120,224 +120,242 @@ Change into the pdnsd source directory and run configure. It takes the
 following command line options (if you do not specify an option, defaults will
 be used):
 
-                          Specify the prefix directory. The pdnsd files are
-                          installed in subdirectories of the prefix, the pdnsd
---prefix=dir              and pdnsd-ctl executables are for example installed
-                          in the sbin subdirectory of the prefix. The default
-                          for this is /usr/local; you might want to set this to
-                          /usr (using --prefix=/usr).
+                            Specify the prefix directory. The pdnsd files are
+                            installed in subdirectories of the prefix, the
+--prefix=dir                pdnsd and pdnsd-ctl executables are for example
+                            installed in the sbin subdirectory of the prefix.
+                            The default for this is /usr/local; you might want
+                            to set this to /usr (using --prefix=/usr).
 
-                          Specify the config directory. pdnsd expects its
-                          pdnsd.conf file to reside there if the -c option is
---sysconfdir=dir          not given at startup. The default for this is the etc
-                          subdirectory of your prefix, e.g. /usr/local/etc if
-                          you did not specify a prefix. To set this e.g. to /
-                          etc, use --sysconfdir=/etc.
+                            Specify the config directory. pdnsd expects its
+                            pdnsd.conf file to reside there if the -c option is
+--sysconfdir=dir            not given at startup. The default for this is the
+                            etc subdirectory of your prefix, e.g. /usr/local/
+                            etc if you did not specify a prefix. To set this
+                            e.g. to /etc, use --sysconfdir=/etc.
 
---with-distribution=      Specify target distribution (default=Generic; others:
-distro                    RedHat, SuSE, Debian)
-                          See below for the effect of these settings.
+--with-distribution=        Specify target distribution (default=Generic;
+distro                      others: RedHat, SuSE, Debian)
+                            See below for the effect of these settings.
 
-                          Change compilation target platform (default:
-                          autodetect; others: Linux, BSD, Cygwin).
-                          autodetect will attempt to detect whether you are
---with-target=platform    using Linux, *BSD or Cygwin and should normally be
-                          sufficient. If this does not work, try specifying
-                          your system manually (for the Darwin platform (Apple
-                          Mac OS X) specify BSD here).
+                            Change compilation target platform (default:
+                            autodetect; others: Linux, BSD, Cygwin).
+                            autodetect will attempt to detect whether you are
+--with-target=platform      using Linux, *BSD or Cygwin and should normally be
+                            sufficient. If this does not work, try specifying
+                            your system manually (for the Darwin platform
+                            (Apple Mac OS X) specify BSD here).
 
-                          Default directory for pdnsd cache (default=/var/cache
---with-cachedir=dir       /pdnsd)
-                          This setting can be changed via config file settings
-                          when pdnsd has been built.
+                            Default directory for pdnsd cache (default=/var/
+--with-cachedir=dir         cache/pdnsd)
+                            This setting can be changed via config file
+                            settings when pdnsd has been built.
 
-                          Number of hash buckets to use (default=1024). The
-                          default should be sufficient for most purposes, but
-                          if you want to store a large number of names in the
---with-hash-buckets=num   cache, cache lookups may be faster if the number of
-                          hash buckets is comparable to the number of names
-                          stored in the cache. The number actually used is the
-                          smallest power of two greater or equal to the number
-                          specified here.
+                            Number of hash buckets to use (default=1024). The
+                            default should be sufficient for most purposes, but
+                            if you want to store a large number of names in the
+--with-hash-buckets=num     cache, cache lookups may be faster if the number of
+                            hash buckets is comparable to the number of names
+                            stored in the cache. The number actually used is
+                            the smallest power of two greater or equal to the
+                            number specified here.
 
-                          Enable ISDN support
-                          This option will work only on Linux and may cause
---enable-isdn             problems with 2.0.x or old 2.2.x kernels. You will
-                          need it for a proper if uptest under Linux for ISDN
-                          ppp devices.
+                            Enable ISDN support
+                            This option will work only on Linux and may cause
+--enable-isdn               problems with 2.0.x or old 2.2.x kernels. You will
+                            need it for a proper if uptest under Linux for ISDN
+                            ppp devices.
 
---disable-ipv4            Disable IPv4 networking support (default=enabled)
+--disable-ipv4              Disable IPv4 networking support (default=enabled)
 
-                          Enable IPv6 networking support.
---enable-ipv6             If your OS does support IPv6 properly, you should be
-                          able to serve also IPv4 queries using this. Normally,
-                          this is disabled and you won't need it.
+                            Enable IPv6 networking support.
+--enable-ipv6               If your OS does support IPv6 properly, you should
+                            be able to serve also IPv4 queries using this.
+                            Normally, this is disabled and you won't need it.
 
---disable-ipv4-startup    Disable IPv4 on pdnsd startup by default (default=
-                          enabled)
+--disable-ipv4-startup      Disable IPv4 on pdnsd startup by default (default=
+                            enabled)
 
-                          Enable IPV6 on pdnsd startup by default (default=
-                          IPv4). These options are only defaults, you can
---enable-ipv6-startup     specify on the command line or in the config files
-                          which IP version will really be used. Normally, you
-                          won't need to change these.
+                            Enable IPV6 on pdnsd startup by default (default=
+                            IPv4). These options are only defaults, you can
+--enable-ipv6-startup       specify on the command line or in the config files
+                            which IP version will really be used. Normally, you
+                            won't need to change these.
 
---disable-udp-queries     Disable UDP as query method. You shouldn't need to
-                          change this.
+--disable-udp-queries       Disable UDP as query method. You shouldn't need to
+                            change this.
 
-                          Disable TCP as query method. This only effects the
-                          querying of name servers by pdnsd, not the ability of
-                          pdnsd to answer TCP queries from clients. TCP queries
-                          are slower than UDP queries, but can be more secure
---disable-tcp-queries     against certain types of attacks and are able to
-                          handle large answers. For normal use this can be
-                          disabled. (Note that the default has changed:
-                          TCP-query support is now compiled in by default, but
-                          it still depends on the run-time options whether it
-                          is actually used.)
+                            Disable TCP as query method. This only effects the
+                            querying of name servers by pdnsd, not the ability
+                            of pdnsd to answer TCP queries from clients. TCP
+                            queries are slower than UDP queries, but can be
+--disable-tcp-queries       more secure against certain types of attacks and
+                            are able to handle large answers. For normal use
+                            this can be disabled. (Note that the default has
+                            changed: TCP-query support is now compiled in by
+                            default, but it still depends on the run-time
+                            options whether it is actually used.)
 
-                          Specify the query method (default=udponly, others:
-                          tcponly, tcpudp, udptcp). If you have enabled both
-                          UDP and TCP queries, this lets you control which
-                          query method pdnsd will use by default. tcpudp will
-                          try TCP first and fall back to UDP if TCP is not
---with-query-method=qm    supported by the server; udptcp will try UDP first
-                          and, if the answer was truncated, will repeat the
-                          query using TCP. udponly and tcponly should be clear.
-                          Note that this only effects the compiled-in default;
-                          the query method can still be changed using
-                          command-line options or options in the configuration
-                          file.
+                            Specify the query method (default=udponly, others:
+                            tcponly, tcpudp, udptcp). If you have enabled both
+                            UDP and TCP queries, this lets you control which
+                            query method pdnsd will use by default. tcpudp will
+                            try TCP first and fall back to UDP if TCP is not
+--with-query-method=qm      supported by the server; udptcp will try UDP first
+                            and, if the answer was truncated, will repeat the
+                            query using TCP. udponly and tcponly should be
+                            clear. Note that this only effects the compiled-in
+                            default; the query method can still be changed
+                            using command-line options or options in the
+                            configuration file.
 
-                          Disable the TCP server. In this case pdnsd will not
---disable-tcp-server      be able to respond to TCP queries from clients. This
-                          may cause problems with very large answers.
+                            Disable the TCP server. In this case pdnsd will not
+--disable-tcp-server        be able to respond to TCP queries from clients.
+                            This may cause problems with very large answers.
 
-                          Disable the UDP source address discovery.
-                          You need this only if you have trouble with messages
---disable-src-addr-disc   saying "could not discover udp source address".
-                          For the Cygwin target, this option is disabled by
-                          default.
+                            Disable the UDP source address discovery.
+                            You need this only if you have trouble with
+--disable-src-addr-disc     messages saying "could not discover udp source
+                            address".
+                            For the Cygwin target, this option is disabled by
+                            default.
 
---disable-poll            Disable poll(2) and use select(2) (default=enabled)
-                          You will normally not need this.
+--disable-poll              Disable poll(2) and use select(2) (default=enabled)
+                            You will normally not need this.
 
-                          Since version 1.2.9 this option is obsolete and
-                          ignored. It is now possible to configure for each RR
---disable-new-rrs         type separately whether it is cacheable by pdnsd by
-                          editing the file src/rr_types.in. The comments in
-                          this file explain how to do this.
+                            Since version 1.2.9 this option is obsolete and
+                            ignored. It is now possible to configure for each
+--disable-new-rrs           RR type separately whether it is cacheable by pdnsd
+                            by editing the file src/rr_types.in. The comments
+                            in this file explain how to do this.
 
-                          Enforce strict RFC 2181 compliance.
-                          This will cause pdnsd to reject DNS answers with
---enable-strict-rfc2181   incorrect timestamp settings (multiple RRs of the
-                          same type and for the same domain with different
-                          TTLs). Normally not needed.
+                            Enforce strict RFC 2181 compliance.
+                            This will cause pdnsd to reject DNS answers with
+--enable-strict-rfc2181     incorrect timestamp settings (multiple RRs of the
+                            same type and for the same domain with different
+                            TTLs). Normally not needed.
 
-                          This option is obsolete. Since version 1.2, pdnsd
---enable-underscores      places no restrictions on the types of characters in
-                          domain names (there are still a few restrictions for
-                          locally defined names, though).
+                            This option is obsolete. Since version 1.2, pdnsd
+--enable-underscores        places no restrictions on the types of characters
+                            in domain names (there are still a few restrictions
+                            for locally defined names, though).
 
-                          Specify random device; default: C Library random()
-                          PRNG
-                          pdnsd uses (pseudo-) random numbers as query IDs for
-                          security reasons (this makes forging DNS answers more
-                          difficult). This option controls where pdnsd gets
-                          these from. The default is the C library random()
-                          function, which is relatively weak. You can specify a
---with-random-device=     device like /dev/urandom here if you like; pdnsd will
-device                    read random numbers from it 16-bit-wise. /dev/urandom
-                          is present under Linux and most BSD derivates. You
-                          should not use /dev/random - it is more secure, but
-                          may block and delay pdnsd's answers for a long time.
-                          You can specify arc4random to use the BSD arc4random
-                          () library function (default for FreeBSD target),
-                          which is considered safe.
-                          You can also specify random as device to use the C
-                          Library random() function (described above).
+                            Specify random device; default: C Library random()
+                            PRNG
+                            pdnsd uses (pseudo-) random numbers as query IDs
+                            for security reasons (this makes forging DNS
+                            answers more difficult). This option controls where
+                            pdnsd gets these from. The default is the C library
+                            random() function, which is relatively weak. You
+                            can specify a device like /dev/urandom here if you
+--with-random-device=       like; pdnsd will read random numbers from it
+device                      16-bit-wise. /dev/urandom is present under Linux
+                            and most BSD derivates. You should not use /dev/
+                            random - it is more secure, but may block and delay
+                            pdnsd's answers for a long time.
+                            You can specify arc4random to use the BSD
+                            arc4random() library function (default for FreeBSD
+                            target), which is considered safe.
+                            You can also specify random as device to use the C
+                            Library random() function (described above).
 
-                          Specify default user for pdnsd (default=nobody). This
-                          is the user that will be entered for the run_as
---with-default-id=user    option in the config file (see below) that will be
-                          installed during make install. You can change this
-                          any time in your config file.
+                            Specify default user for pdnsd (default=nobody).
+                            This is the user that will be entered for the
+--with-default-id=user      run_as option in the config file (see below) that
+                            will be installed during make install. You can
+                            change this any time in your config file.
 
-                          Specify debugging level. Normally you can safely
-                          switch debugging off by setting the level to 0. This
-                          will increase speed (although only marginally) and
-                          save space in the executable (only about 12kB).
-                          However, more significant may be the savings in stack
-                          space, especially if pdnsd is put under heavy load
-                          and there are many simultaneous running threads.
-                          Presently the only defined debug levels are in the
-                          range 0 - 9. Setting the level to 9 enables hex dumps
---with-debug=level        of the queries and replies pdnsd receives and should
-                          normally not be needed. Debug output will only be
-                          generated if you turn on special switches; it might
-                          be useful for debugging your config files, so I
-                          recommend using the default (1). However, if you use
-                          pdnsd under heavy load, a better strategy may be to
-                          compile one version of pdnsd without debug support
-                          (configured with --with-debug=0) for production use,
-                          and one version with with debug support (e.g.
-                          --with-debug=9) for diagnostic purposes.
+                            Specify debugging level. Normally you can safely
+                            switch debugging off by setting the level to 0.
+                            This will increase speed (although only marginally)
+                            and save space in the executable (only about 12kB).
+                            However, more significant may be the savings in
+                            stack space, especially if pdnsd is put under heavy
+                            load and there are many simultaneous running
+                            threads.
+                            Presently the only defined debug levels are in the
+                            range 0 - 9. Setting the level to 9 enables hex
+--with-debug=level          dumps of the queries and replies pdnsd receives and
+                            should normally not be needed. Debug output will
+                            only be generated if you turn on special switches;
+                            it might be useful for debugging your config files,
+                            so I recommend using the default (1). However, if
+                            you use pdnsd under heavy load, a better strategy
+                            may be to compile one version of pdnsd without
+                            debug support (configured with --with-debug=0) for
+                            production use, and one version with with debug
+                            support (e.g. --with-debug=9) for diagnostic
+                            purposes.
 
---with-verbosity=level    Specify default message verbosity. The default should
-                          be ok.
+--with-verbosity=level      Specify default message verbosity. The default
+                            should be ok.
 
-                          Enable RCS IDs in executables (default=disabled).
---enable-rcsids           For personal use, there is no need to do this. If you
-                          build rpm's, it might have advantages.
+                            Enable RCS IDs in executables (default=disabled).
+--enable-rcsids             For personal use, there is no need to do this. If
+                            you build rpm's, it might have advantages.
 
-                          Enable subsequent tcp queries. The DNS protocol
-                          standard requires that servers must be capable of
-                          answering multiple subsequent queries that are sent
-                          over the same tcp connection, and that the server may
-                          only close the connection by himself after a certain
---enable-tcp-subseq       timeout. This feature is rarely used, but may make
-                          denial-of-service attacks easier, as it allows for an
-                          attacker to hold a connection open a long time
-                          (although the attacker's IP is most likely revealed
-                          then). For full standard compliance, you should use
-                          this option. If you do not use --enable-tcp-server,
-                          is option is not honored.
+                            Enable subsequent tcp queries. The DNS protocol
+                            standard requires that servers must be capable of
+                            answering multiple subsequent queries that are sent
+                            over the same tcp connection, and that the server
+                            may only close the connection by himself after a
+                            certain timeout. This feature is rarely used, but
+--enable-tcp-subseq         may make denial-of-service attacks easier, as it
+                            allows for an attacker to hold a connection open a
+                            long time (although the attacker's IP is most
+                            likely revealed then). For full standard
+                            compliance, you should use this option. If you do
+                            not use --enable-tcp-server, is option is not
+                            honored.
 
-                          Specify default tcp query timeout after which the
-                          connection is closed if no full query has been
---with-tcp-qtimeout=      received. The default is 30s. You can also change
-secs                      this option at run time using the tcp_qtimeout config
-                          file option. If you do not use --enable-tcp-server,
-                          is option is not honored.
+                            Specify default tcp query timeout after which the
+                            connection is closed if no full query has been
+--with-tcp-qtimeout=secs    received. The default is 30s. You can also change
+                            this option at run time using the tcp_qtimeout
+                            config file option. If you do not use
+                            --enable-tcp-server, is option is not honored.
 
-                          Specify the default number of queries that can be
-                          executed in parallel. You can also change this option
---with-par-queries=num    at run time using the par_queries config file option.
-                          See the description of that option for an explanation
-                          of what it really does.
-                          The default for this option is 2.
+                            Specify the default number of queries that can be
+                            executed in parallel. You can also change this
+--with-par-queries=num      option at run time using the par_queries config
+                            file option. See the description of that option for
+                            an explanation of what it really does.
+                            The default for this option is 2.
 
-                          Added by Paul Rombouts: Use this option if you
-                          experience problems with signal handling under Linux.
-                          The usual symptom is that pdnsd fails to save the
-                          cache to disk, and /var/cache/pdnsd/pdnsd.cache
-                          remains empty. If you experience this kind of
-                          trouble, try reconfiguring with different values for
-                          the --with-thread-lib option. The allowable values
-                          are linuxthreads (or lt for short), linuxthreads2 (or
-                          lt2 for short), and nptl. By default the configure
-                          script tries to detect automatically whether
---with-thread-lib=lib     linuxthreads or nptl is more appropriate for your
-                          system, but the method used is not foolproof. Look
-                          for the line: checking if this is an NPTL-based
-                          system...
-                          If the automatic test mistakenly indentifies the
-                          thread library on your system as NPTL based, you
-                          should reconfigure with --with-thread-lib=lt and
-                          recompile. If the result of the automatic test is
-                          "no" or if --with-thread-lib=lt does not have the
-                          desired effect, try again using --with-thread-lib=lt2
-                          .
+                            New in version 1.2.9b: Specify the maximum number
+                            of IP addresses that can be used per nameserver
+                            obtained from NS records (when resolving names
+                            recursively). Just one IP address per nameserver is
+                            sufficient in the vast majority of cases (and this
+--with-max-nameserver-ips   was the strategy used by pdnsd in previous
+=num                        versions), but in rare cases this will cause
+                            unnecessary resolve failures if the address chosen
+                            for each nameserver happens to be unreachable while
+                            the other addresses would lead to successful
+                            resolution.
+                            The default for this option is 2.
+
+                            Added by Paul Rombouts: Use this option if you
+                            experience problems with signal handling under
+                            Linux. The usual symptom is that pdnsd fails to
+                            save the cache to disk, and /var/cache/pdnsd/
+                            pdnsd.cache remains empty. If you experience this
+                            kind of trouble, try reconfiguring with different
+                            values for the --with-thread-lib option. The
+                            allowable values are linuxthreads (or lt for
+                            short), linuxthreads2 (or lt2 for short), and nptl.
+                            By default the configure script tries to detect
+--with-thread-lib=lib       automatically whether linuxthreads or nptl is more
+                            appropriate for your system, but the method used is
+                            not foolproof. Look for the line: checking if this
+                            is an NPTL-based system...
+                            If the automatic test mistakenly indentifies the
+                            thread library on your system as NPTL based, you
+                            should reconfigure with --with-thread-lib=lt and
+                            recompile. If the result of the automatic test is
+                            "no" or if --with-thread-lib=lt does not have the
+                            desired effect, try again using --with-thread-lib=
+                            lt2 .
 
 Normally, you will need only --prefix, --sysconfdir and --with-distribution. If
 you specify your distribution using --with-distribution, this has the following
@@ -1995,5 +2013,5 @@ status.h              pdnsd's interface to pdnsd-ctl.
 Copyright (C) 2000, 2001 Thomas Moestl
 Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2012 Paul A. Rombouts
 
-Last revised: 27 February 2012 by Paul A. Rombouts
+Last revised: 13 April 2012 by Paul A. Rombouts
 

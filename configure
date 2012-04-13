@@ -760,6 +760,7 @@ enable_rcsids
 with_tcp_qtimeout
 enable_tcp_subseq
 with_par_queries
+with_max_nameserver_ips
 enable_specbuild
 with_thread_lib
 '
@@ -1447,6 +1448,7 @@ Optional Packages:
                               greater or equal to the number specified here.
   --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30)
   --with-par-queries=num      Specify default parallel query number (default=2)
+  --with-max-nameserver-ips=num      Specify maximum number of IP addresses used per nameserver obtained from NS records (default=2)
   --with-thread-lib=lib       Specify thread library, overriding automatic detection (for Linux only).
                               Possible values: LinuxThreads,
                               LinuxThreads2 (implements a fix for newer glibcs)
@@ -4776,6 +4778,16 @@ fi
 if test "${with_par_queries+set}" = set; then
   withval=$with_par_queries; cat >>confdefs.h <<_ACEOF
 #define PAR_QUERIES $withval
+_ACEOF
+
+fi
+
+
+
+# Check whether --with-max-nameserver-ips was given.
+if test "${with_max_nameserver_ips+set}" = set; then
+  withval=$with_max_nameserver_ips; cat >>confdefs.h <<_ACEOF
+#define MAXNAMESERVIPS $withval
 _ACEOF
 
 fi
