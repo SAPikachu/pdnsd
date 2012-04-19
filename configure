@@ -1448,7 +1448,7 @@ Optional Packages:
                               greater or equal to the number specified here.
   --with-tcp-qtimeout=secs    Specify default tcp query timeout (default=30)
   --with-par-queries=num      Specify default parallel query number (default=2)
-  --with-max-nameserver-ips=num      Specify maximum number of IP addresses used per nameserver obtained from NS records (default=2)
+  --with-max-nameserver-ips=num      Specify maximum number of IP addresses used per nameserver obtained from NS records (default=3)
   --with-thread-lib=lib       Specify thread library, overriding automatic detection (for Linux only).
                               Possible values: LinuxThreads,
                               LinuxThreads2 (implements a fix for newer glibcs)

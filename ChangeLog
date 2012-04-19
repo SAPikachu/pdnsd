@@ -1,3 +1,22 @@
+2012-04-19  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/cache.c
+	In report_cache_stat(), make copies of volatile data to get a
+	consistent data set before making calculations with cache size and
+	entry numbers.
+
+2012-04-16  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/netdev.c
+	If we can't open /proc/net/if_inet6 in is_local_addr() log a warning
+	message.
+
+2012-04-15  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	The code checking for duplicate IP addresses obtained from NS records
+	in auth_ok() has been slightly optimized.
+
 2012-04-12  Paul A. Rombouts  <p.a.rombouts@home.nl>
 
 	* src/dns_query.c

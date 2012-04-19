@@ -2641,7 +2641,7 @@ static int auth_ok(query_stat_array q, const unsigned char *name, int thint, dns
 		rr_bucket_t *localrr=NULL;
 		for (nsdomp=dlist_first(ns);;) {
 			unsigned char *nsname=NULL;  /* Initialize to inhibit compiler warning. */
-			int nserva, ia;
+			int nserva, ia, n;
 			pdnsd_a2 serva[MAXNAMESERVIPS];
 
 			/* Get next name server. */
@@ -2781,19 +2781,19 @@ static int auth_ok(query_stat_array q, const unsigned char *name, int thint, dns
 				DEBUG_RHN_MSG("Looking up address for name server \"%s\" failed.\n",RHN2STR(nsname));
 			}
 #endif
+			n=DA_NEL(*serv);
 			for(ia=0; ia<nserva; ++ia) {
 				pdnsd_a2 *pserva= &serva[ia];
+				int i;
 
 				if(is_local_addr(PDNSD_A2_TO_A(pserva)))
 					continue;  /* Do not use local address (as defined in netdev.c). */
 
-				{       /* Skip duplicate addresses. */
-					int i,n=DA_NEL(*serv);
-					for (i=0; i<n; ++i) {
-						query_stat_t *qs=&DA_INDEX(*serv,i);
-						if (query_stat_same_inaddr2(qs,pserva))
-							goto skip_server_addr;
-					}
+				/* Skip duplicate addresses. */
+				for (i=0; i<n; ++i) {
+					query_stat_t *qs=&DA_INDEX(*serv,i);
+					if (query_stat_same_inaddr2(qs,pserva))
+						goto skip_server_addr;
 				}
 
 				{       /* We've got an address. Add it to the list if it wasn't one of the servers we queried. */

@@ -156,7 +156,7 @@
 #define PAR_QUERIES   2
 
 /* Maximum number of IP addresses used per nameserver obtained from NS records. */
-#define MAXNAMESERVIPS 2
+#define MAXNAMESERVIPS 3
 
 /* These are the possible targets. Normally no need to touch these
  * definitions. */
