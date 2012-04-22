@@ -1,3 +1,12 @@
+2012-04-21  Paul A. Rombouts  <p.a.rombouts@home.nl>
+
+	* src/dns_query.c
+	When following the delegation chain trying to get an authoritative
+	answer, pdnsd would answer with SERVFAIL if it failed to get a reply
+	from the last server in the chain. Instead pdnsd will now use the last
+	reply in the chain with RCode=0 that raised the AA or RA flag, if there
+	is one.
+
 2012-04-19  Paul A. Rombouts  <p.a.rombouts@home.nl>
 
 	* src/cache.c

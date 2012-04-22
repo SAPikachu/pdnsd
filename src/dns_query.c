@@ -86,9 +86,9 @@ typedef struct {
 #endif
 	time_t              timeout;
 	unsigned short      flags;
-	short               nocache;
 	short               state;
 	short               qm;
+	char                nocache;
         char                auth_serv;
 	char                lean_query;
 	char                edns_query;
@@ -96,6 +96,7 @@ typedef struct {
 	char                trusted;
 	char                aa;
 	char                tc;
+	char                ra;
 	char                failed;
 	const unsigned char *nsdomain;
 	rejectlist_t        *rejectlist;
@@ -1412,7 +1413,8 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		lcnt-=4;
 
 		st->aa= (st->recvbuf->aa && !st->failed);
-		st->tc=st->recvbuf->tc;
+		st->tc= st->recvbuf->tc;
+		st->ra= (rd && st->recvbuf->ra);
 
 		/* Don't flag cache entries from a truncated reply as authoritative. */
 		aa= (st->aa && !st->tc);
@@ -1618,7 +1620,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 				/* We did not get what we wanted. Cache according to policy */
 				dns_cent_t *ent=&DA_INDEX(ans_sec,0);
 				int neg_domain_pol=global.neg_domain_pol;
-				if (neg_domain_pol==C_ON || (neg_domain_pol==C_AUTH && st->recvbuf->aa)) {
+				if (neg_domain_pol==C_ON || (neg_domain_pol==C_AUTH && st->aa)) {
 					time_t ttl=global.neg_ttl;
 
 					/* Try to find a SOA record that came with the reply.
@@ -1739,7 +1741,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 				/* We did not get what we wanted. Cache according to policy */
 				int neg_rrs_pol=global.neg_rrs_pol;
 				if (neg_rrs_pol==C_ON || (neg_rrs_pol==C_AUTH && aa) ||
-				    (neg_rrs_pol==C_DEFAULT && (aa || (rd && st->recvbuf->ra))))
+				    (neg_rrs_pol==C_DEFAULT && (aa || st->ra)))
 				{
 					time_t ttl=global.neg_ttl;
 					rr_set_t *rrset=getrrset_SOA(ent);
@@ -1956,7 +1958,7 @@ inline static void init_qserv(query_stat_array *q)
  * Be sure to free the q-list before freeing the name.
  */
 static int add_qserv(query_stat_array *q, pdnsd_a2 *a, int port, time_t timeout, unsigned flags,
-		     int nocache, char lean_query, char edns_query, char auth_s, char needs_testing, char trusted,
+		     char nocache, char lean_query, char edns_query, char auth_s, char needs_testing, char trusted,
 		     const unsigned char *nsdomain, rejectlist_t *rejectlist)
 {
 	query_stat_t *qs;
@@ -1998,6 +2000,7 @@ static int add_qserv(query_stat_array *q, pdnsd_a2 *a, int port, time_t timeout,
 	qs->trusted=trusted;
 	qs->aa=0;
 	qs->tc=0;
+	qs->ra=0;
 	qs->failed=0;
 	qs->nsdomain=nsdomain; /* Note: only a reference is copied, not the name itself! */
 	qs->rejectlist=rejectlist;
@@ -2516,7 +2519,9 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 			DEBUG_MSG("Unrecoverable error encountered while processing query.\n");
 			rv=RC_SERVFAIL;
 		}
-		DEBUG_MSG("No query succeeded. Returning error code \"%s\"\n",get_ename(rv));
+		DEBUG_MSG("%sReturning error code \"%s\"\n",
+			  rv!=RC_NAMEERR? "No query succeeded. ": "",
+			  get_ename(rv));
 		goto clean_up_return;
 	}
 
@@ -2526,20 +2531,43 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 		/* Authority records present. Ask them, because the answer was non-authoritative. */
 		qstatnode_t qsn={q,qslist};
 		unsigned char save_ns=ent->c_ns,save_soa=ent->c_soa;
-		free_cent(ent  DBG1);
-		pdnsd_free(ent);
+		
+		if(qse->aa || qse->ra) {
+			/* The server claimed to be authoritative or have recursion available,
+			   yet we did not completely trust the answer for some reason.
+			   We will try to ask the servers in the authority records,
+			   but in case we fail, we will save a copy of the answer. */
+			entsave=ent;
+		}
+		else {
+			free_cent(ent  DBG1);
+			pdnsd_free(ent);
+			entsave=NULL;
+		}
 		rv=p_dns_cached_resolve(serv, name, thint,&ent,hops-1,&qsn,qhlist,time(NULL),c_soa);
 		if(rv==RC_OK) {
 			if(save_ns!=cundef && (ent->c_ns==cundef || ent->c_ns<save_ns))
 				ent->c_ns=save_ns;
 			if(save_soa!=cundef && (ent->c_soa==cundef || ent->c_soa<save_soa))
 				ent->c_soa=save_soa;
+			goto free_entsave;
 		}
-		else if(rv==RC_NAMEERR && c_soa) {
-			if(save_soa!=cundef && (*c_soa==cundef || *c_soa<save_soa))
+		else if(rv==RC_NAMEERR) {
+			if(c_soa && save_soa!=cundef && (*c_soa==cundef || *c_soa<save_soa))
 				*c_soa=save_soa;
+		free_entsave:
+			if(entsave) {
+				free_cent(entsave  DBG1);
+				pdnsd_free(entsave);
+			}
 		}
-		/* return the answer in any case. */
+		else if(entsave) {
+			DEBUG_PDNSDA_MSG("Using saved reply from %s that claims to %s.\n",
+					 PDNSDA2STR(PDNSD_A(qse)),
+					 qse->aa? "be authoritative": "have recursion available");
+			ent=entsave;
+			rv=RC_OK;
+		}
 	}
 
  clean_up_return:
@@ -3636,6 +3664,8 @@ int query_uptest(pdnsd_a *addr, int port, const unsigned char *name, time_t time
 	qs.trusted=1;
 	qs.aa=0;
 	qs.tc=0;
+	qs.ra=0;
+	qs.failed=0;
 	qs.nsdomain=NULL;
 	qs.rejectlist=NULL;
 
