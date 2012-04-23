@@ -340,22 +340,58 @@ test "$adisc" = "yes" && AC_DEFINE(SRC_ADDR_DISC)
 
 dnl Checks for libraries.
 if test "$target" = "Linux"; then
-  AC_CHECK_LIB(pthread, pthread_kill)
+AC_MSG_CHECKING([if we can compile and link with -pthread])
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -pthread"
+AC_LINK_IFELSE([
+#include <pthread.h>
+
+void *thread_func(void *data)
+{
+	*((int *)data)=1;
+	return data;
+}
+
+int main()
+{
+	pthread_t thread;
+	void *retval;
+	int val;
+
+	if(pthread_create(&thread, NULL, thread_func, &val))
+		return 1;
+
+	if(pthread_join(thread,&retval))
+		return 1;
+
+	return (*((int *)retval)!=1);
+}
+],
+  gcc_pthread_flag="yes", gcc_pthread_flag="no")
+CFLAGS="$old_CFLAGS"
+AC_MSG_RESULT([$gcc_pthread_flag])
+
+  if test "$gcc_pthread_flag" = yes ; then
+    thread_CFLAGS="-pthread"
+    AC_SUBST(thread_CFLAGS)
+  else
+    AC_CHECK_LIB(pthread, pthread_create)
+  fi
 fi
 if test "$target" = "BSD" -a `uname` != Darwin ; then
 #  if test $freebsd_pthread = 4 ; then
     thread_CFLAGS="-pthread"
     AC_SUBST(thread_CFLAGS)
 #  else
-#    AC_CHECK_LIB(c_r, pthread_kill, , 
+#    AC_CHECK_LIB(c_r, pthread_create, , 
 #      AC_MSG_ERROR([You must have libc_r installed to build/run pdnsd!]))
 #  fi;
 fi
 
 if test "$target" = "Linux" -a "$threadlib" = default; then
 AC_MSG_CHECKING([if this is an NPTL-based system])
-old_LIBS="$LIBS"
-LIBS="$LIBS -lpthread"
+old_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $thread_CFLAGS"
 AC_RUN_IFELSE([
 #include <stdio.h>
 #include <errno.h>
@@ -406,7 +442,7 @@ int main()
   AC_MSG_RESULT([couldn't run test program])
   threadlib=linuxthreads
 ])
-LIBS="$old_LIBS"
+CFLAGS="$old_CFLAGS"
 fi
 
 if test "$threadlib" = nptl -o "$threadlib" = NPTL; then
