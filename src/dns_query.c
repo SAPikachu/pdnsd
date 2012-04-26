@@ -2078,6 +2078,9 @@ static int simple_dns_cached_resolve(atup_array atup_a, int port, char edns_quer
  * take the original values for the record, but flags=0 and ttl=0 (but only if we do not already have
  * a cached record for that set). These settings cause the record be purged on the next cache addition.
  * It will also not be used again.
+ *
+ * The return value of p_recursive_query() has the same meaning as that of p_dns_cached_resolve()
+ * (see below).
  */
 static int p_recursive_query(query_stat_array q, const unsigned char *name, int thint, dns_cent_t **entp,
 			     int *nocache, int hops, qstatnode_t *qslist, qhintnode_t *qhlist,
@@ -2545,7 +2548,7 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 			entsave=NULL;
 		}
 		rv=p_dns_cached_resolve(serv, name, thint,&ent,hops-1,&qsn,qhlist,time(NULL),c_soa);
-		if(rv==RC_OK) {
+		if(rv==RC_OK || rv==RC_CACHED || (rv==RC_STALE && !entsave)) {
 			if(save_ns!=cundef && (ent->c_ns==cundef || ent->c_ns<save_ns))
 				ent->c_ns=save_ns;
 			if(save_soa!=cundef && (ent->c_soa==cundef || ent->c_soa<save_soa))
@@ -2562,6 +2565,10 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 			}
 		}
 		else if(entsave) {
+			if(rv==RC_STALE) {
+				free_cent(ent  DBG1);
+				pdnsd_free(ent);
+			}
 			DEBUG_PDNSDA_MSG("Using saved reply from %s that claims to %s.\n",
 					 PDNSDA2STR(PDNSD_A(qse)),
 					 qse->aa? "be authoritative": "have recursion available");
@@ -2576,7 +2583,7 @@ static int p_recursive_query(query_stat_array q, const unsigned char *name, int 
 	del_qserv(serv);
 	dlist_free(ns);
 
-	if(rv==RC_OK) *entp=ent;
+	if(rv==RC_OK || rv==RC_CACHED || rv==RC_STALE) *entp=ent;
 	return rv;
 #	undef save_query_result
 }
@@ -3294,6 +3301,7 @@ static int p_dns_resolve(const unsigned char *name, int thint, dns_cent_t **cach
 					free_cent(cached  DBG1);
 					pdnsd_free(cached);
 					cached=tc;
+					/* rc=RC_CACHED; */
 				} else
 					DEBUG_MSG("p_dns_resolve: merging answer with cache failed, using local cent copy.\n");
 			} else
@@ -3301,6 +3309,8 @@ static int p_dns_resolve(const unsigned char *name, int thint, dns_cent_t **cach
 
 			*cachedp=cached;
 		}
+		else if(rc==RC_CACHED || rc==RC_STALE)
+			*cachedp=cached;
 	}
 	else {
 		DEBUG_MSG("No server is marked up and allowed for this domain.\n");
@@ -3451,9 +3461,13 @@ return_rc:
 
 
 /*
- * Resolve records for name into dns_cent_t, type thint
+ * Resolve records for name into dns_cent_t, type thint.
  * q is the set of servers to query from. Set q to NULL if you want to ask the servers registered with pdnsd.
  * qslist should refer to a list of server arrays already used higher up the calling chain (may be NULL).
+ * p_dns_cached_resolve() returns one of the following values:
+ *   RC_OK  means that the name was successfully resolved by querying other servers.
+ *   RC_CACHED or RC_STALE means that the name was found in the cache.
+ *   RC_NAMEERR or RC_SERVFAIL indicates a resolve error.
  */
 static int p_dns_cached_resolve(query_stat_array q, const unsigned char *name, int thint, dns_cent_t **cachedp,
 				int hops, qstatnode_t *qslist, qhintnode_t *qhlist, time_t queryts,
@@ -3468,7 +3482,7 @@ static int p_dns_cached_resolve(query_stat_array q, const unsigned char *name, i
 	if(rc==RC_OK) {
 		/* Locally defined record. */
 		*cachedp=cached;
-		return RC_OK;
+		return RC_CACHED;
 	}
 	else if(rc==RC_NAMEERR)  /* Locally negated name. */
 		return RC_NAMEERR;
@@ -3506,27 +3520,28 @@ static int p_dns_cached_resolve(query_stat_array q, const unsigned char *name, i
 			rc=p_recursive_query(q,name,thint, &ent,NULL,hops,qslist,qhlist,c_soa);
 		else
 			rc=p_dns_resolve(name,thint, &ent,hops,qhlist,c_soa);
-		if (rc!=RC_OK) {
-			if (rc==RC_SERVFAIL && cached && (flags&CF_NOPURGE)) {
-				/* We could not get a new record, but we have a timed-out cached one
-				   with the nopurge flag set. This means that we shall use it even
-				   if timed out when no new one is available*/
-				DEBUG_MSG("Falling back to cached record.\n");
-			} else {
-				goto cleanup_return;
-			}
-		} else {
+
+		if(rc==RC_OK || rc==RC_CACHED || rc==RC_STALE) {
 			if (cached) {
 				free_cent(cached  DBG1);
 				pdnsd_free(cached);
 			}
 			cached=ent;
 		}
+		else if (rc==RC_SERVFAIL && cached && (flags&CF_NOPURGE)) {
+			/* We could not get a new record, but we have a timed-out cached one
+			   with the nopurge flag set. This means that we shall use it even
+			   if timed out when no new one is available*/
+			DEBUG_MSG("Falling back to cached record.\n");
+			rc=RC_STALE;
+		}
+		else
+			goto cleanup_return;
 	} else {
 		DEBUG_MSG("Using cached record.\n");
 	}
 	*cachedp=cached;
-	return RC_OK;
+	return rc;
 
  cleanup_return:
 	if(cached) {
@@ -3538,7 +3553,8 @@ static int p_dns_cached_resolve(query_stat_array q, const unsigned char *name, i
 
 
 /* r_dns_cached_resolve() is like p_dns_cached_resolve(), except that r_dns_cached_resolve()
-   will not return negatively cached entries, but return RC_NAMEERR instead.
+   will not return negatively cached entries, but returns RC_NAMEERR instead.
+   It also does not return RC_CACHED or RC_STALE, but RC_OK instead.
 */
 int r_dns_cached_resolve(unsigned char *name, int thint, dns_cent_t **cachedp,
 			 int hops, qhintnode_t *qhlist, time_t queryts,
@@ -3546,16 +3562,18 @@ int r_dns_cached_resolve(unsigned char *name, int thint, dns_cent_t **cachedp,
 {
 	dns_cent_t *cached;
 	int rc=p_dns_cached_resolve(NULL,name,thint,&cached,hops,NULL,qhlist,queryts,c_soa);
-	if(rc==RC_OK) {
+	if(rc==RC_OK || rc==RC_CACHED || rc==RC_STALE) {
 		if(cached->flags&DF_NEGATIVE) {
 			if(c_soa)
 				*c_soa=cached->c_soa;
 			free_cent(cached  DBG1);
 			pdnsd_free(cached);
-			rc=RC_NAMEERR;
+			return RC_NAMEERR;
 		}
-		else
+		else {
 			*cachedp=cached;
+			return RC_OK;
+		}
 	}
 	return rc;
 }
@@ -3608,7 +3626,7 @@ static int simple_dns_cached_resolve(atup_array atup_a, int port, char edns_quer
 			} else
 				DEBUG_MSG("simple_dns_cached_resolve: merging answer with cache failed, using local cent copy.\n");
 		}
-		else
+		else if(!(rc==RC_CACHED || rc==RC_STALE))  /* RC_CACHED and RC_STALE should not be possible. */
 			return rc;
 	} else {
 		DEBUG_MSG("Using cached record.\n");
