@@ -115,6 +115,7 @@ typedef struct {
 	dns_hdr_t           *recvbuf;
 	unsigned short      myrid;
 	int                 s_errno;
+	unsigned short      qtype;
 } query_stat_t;
 typedef DYNAMIC_ARRAY(query_stat_t) *query_stat_array;
 
@@ -1019,6 +1020,15 @@ static int p_query_sm(query_stat_t *st)
 
 		/* connect */
 #ifdef ENABLE_IPV6
+		/* prefer IPv4 server for A queries */
+		if(!run_ipv4 && st->qtype==T_A && st->a4fallback.s_addr!=INADDR_ANY)
+		{
+			IPV6_MAPIPV4(&st->a4fallback,&st->a.sin6.sin6_addr);
+			st->a4fallback.s_addr=INADDR_ANY;
+			DEBUG_PDNSDA_MSG("Falling back to %s for A query\n", PDNSDA2STR(PDNSD_A(st)));
+		}
+#endif
+#ifdef ENABLE_IPV6
 	retry_udp_connect:
 #endif
 		if (connect(st->sock,SOCK_ADDR(st),SIN_LEN)==-1) {
@@ -1179,6 +1189,7 @@ static int p_exec_query(dns_cent_t **entp, const unsigned char *name, int thint,
 		if(name) {
 			unsigned char *p = mempcpy((unsigned char *)(&st->msg->hdr+1),name,rrnlen);
 			unsigned short qtype=(st->lean_query?thint:QT_ALL);
+			st->qtype=qtype;
 			PUTINT16(qtype,p);
 			PUTINT16(C_IN,p);
 			transl += rrnlen+4;
